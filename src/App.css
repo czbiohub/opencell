@@ -1,0 +1,46 @@
+
+
+html {
+	margin-left: 0%;
+	background-color: #fff;
+	color: rgba(0, 0, 0, .7);
+	font-family: 'Lato', verdana;
+}
+
+div {
+	border: 0px solid #f66;
+}
+
+span {
+	cursor: pointer;
+}
+
+
+/* --------------------- react-table style overrides --------------------- */
+/* eliminate shadow under the header and footer */
+.ReactTable .rt-thead.-header {
+	box-shadow: none;
+	border-bottom: 2px solid #eee;
+}
+
+.ReactTable .-pagination {
+	box-shadow: none;
+}
+
+.ReactTable {
+	font-size: 12px;
+}
+
+.ReactTable .rt-thead {
+	font-size: 13px;
+	font-weight: bolder;
+}
+
+
+
+/* --------------------- blueprint style overrides --------------------- */
+/* inline radiogroup labels */
+label.bp3-label {
+	display: inline-block;
+	padding-right: 10px;
+}

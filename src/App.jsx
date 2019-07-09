@@ -2,9 +2,10 @@ import * as d3 from 'd3';
 import React, { Component } from 'react';
 
 import * as constants from './constants.js';
-import { columnDefs, columnGroups, filterDefs } from './definitions.js';
+import { columnDefs, columnGroups, filterDefs, defaultSelectedColumns} from './definitions.js';
 
-import { Radio, RadioGroup, Tab, Tabs } from "@blueprintjs/core";
+import { Button, Radio, RadioGroup, MenuItem } from "@blueprintjs/core";
+import { Select } from "@blueprintjs/select";
 
 import DataTable from './dataTable.jsx';
 import PlateTable from './plateTable.jsx';
@@ -31,33 +32,54 @@ class App extends Component {
     constructor (props) {
         super(props);
 
+        const filterValues = {};
+        filterDefs.forEach(def => filterValues[def.accessor] = 'all');
+
         this.state = {
-            columnDefs,     // (each with a .selected key that's toggled by the sidebar)
-            columnGroups,   // 
-            filterDefs,     // (the same for both main panel modes)
-            filters: [],    // list of active filters
-            data: [],       // cell line data to load
-            mainPanelMode: 'table', // 'table' or 'plate'
+            data: null,               // cell line data tobe loaded
+            mainPanelMode: 'table',   // 'table' or 'plate'
+            filterValues,
+            filterDefs,
+            selectedColumns: defaultSelectedColumns,
         };
 
         this.toggleColumn = this.toggleColumn.bind(this);
         this.setMainPanelMode = this.setMainPanelMode.bind(this);
-        this.updateFilter = this.updateFilter.bind(this);
+        this.updateCategoricalFilter = this.updateCategoricalFilter.bind(this);
 
     }
 
     componentDidMount() {
         fetch('http://localhost:5000/polyclonallines')
             .then(result => result.json())
-            .then(d => this.setState({data: d}), error => console.log(error));
+            .then(data => {
+                this.setState({data});
+                this.calcCategoricalFilterValues(data);
+            }, 
+            error => console.log(error));
+    }
+
+    calcCategoricalFilterValues(data) {
+        // calculate unique values for each categorical filter
+        // (called only once, after cell line data loads)
+        // HACK: we directly mutate the filterDefs object
+        const filterDefs = this.state.filterDefs;
+        filterDefs.forEach(def => {
+            def.values = [...new Set(data.map(d => d[def.accessor]))].sort();
+            def.values.push('all');
+        });
+        this.setState({filterDefs});
     }
 
     toggleColumn(columnId) {
-        // toggle the given column on/off
-        columnDefs.forEach(def => {
-            def.selected = def.id===columnId ? !def.selected : def.selected;
-        });
-        this.setState({columnDefs});
+        // add or remove the column from the list of selected columns
+        const selectedColumns = this.state.selectedColumns;
+        if (selectedColumns.includes(columnId)) {
+            selectedColumns.splice(selectedColumns.indexOf(columnId), 1);
+        } else {
+            selectedColumns.push(columnId);
+        }
+        this.setState({selectedColumns});
     }
 
     setMainPanelMode(event) {
@@ -65,12 +87,46 @@ class App extends Component {
         this.setState({mainPanelMode: event.currentTarget.value});
     }
 
-    updateFilter(filterId) {
-        // update (or remove) a filter
+    updateCategoricalFilter(def, value) {
+        // update a categorical filter
+        const filterValues = this.state.filterValues;
+        filterValues[def.accessor] = value;
+        this.setState({filterValues});
+
     }
 
 
+
     render() {
+
+        function renderItem (item, {handleClick, modifiers}) {
+            //if (!modifiers.matchesPredicate) return null;
+            return (
+                <MenuItem
+                    active={modifiers.active}
+                    key={item}
+                    label={item}
+                    text={item}
+                    onClick={handleClick}
+                />
+            );
+        };
+
+        function filterItem(query, item) {
+            // filter function for blueprint Select components
+            return String(item).toLowerCase().indexOf(query.toLowerCase()) >= 0;
+        }
+
+        let mainPanel;
+        if (this.state.mainPanelMode==="table") {
+            mainPanel = <DataTable 
+                data={this.state.data}
+                columnDefs={columnDefs} 
+                columnGroups={columnGroups} 
+                selectedColumns={this.state.selectedColumns}/>
+        } else {
+            mainPanel = <PlateTable {...this.state}/>
+        }
 
         return (
             // main container
@@ -89,20 +145,38 @@ class App extends Component {
                 */}
                 <div className="fl w-100 pt2">
 
-                    <div className="w-25"> 
+                    <div className="dib"> 
                         <RadioGroup
                             label="Display mode:" 
                             name="mode-group"
                             inline={true}
                             onChange={this.setMainPanelMode} 
                             selectedValue={this.state.mainPanelMode}>
-                            <Radio {...this.state} value="table" label="Table"/>
-                            <Radio {...this.state} value="plate" label="Plate"/>
+                            <Radio value="table" label="Table"/>
+                            <Radio value="plate" label="Plate"/>
                         </RadioGroup>
                     </div>
 
-                    {/* <FilterControls updateFilter={this.updateFilter} filterDefs={this.state.filterDefs}/> */}
+                    {filterDefs.map((def, index) => (
+                        <div className="dib pr3">
+                            <span>{def.name}: </span>
+                            <Select 
+                                key={index} 
+                                items={def.values} 
+                                itemRenderer={renderItem} 
+                                itemPredicate={filterItem}
+                                onItemSelect={(value) => this.updateCategoricalFilter(def, value)}
+                            >
+                                <Button 
+                                    className="bp3-button-custom"
+                                    text={this.state.filterValues[def.accessor]}
+                                    rightIcon="double-caret-vertical"/>
+                            </Select>
+                        </div>
+                    ))}
+                        
                 </div>
+
 
                 {/* side bar includes:
                     - toggle-able list of table columns to show in the main panel;
@@ -112,8 +186,9 @@ class App extends Component {
                 */}
                 <div className="fl w-20">
                     <ColumnControls 
-                        columnDefs={this.state.columnDefs}
-                        columnGroups={this.state.columnGroups} 
+                        columnDefs={columnDefs}
+                        columnGroups={columnGroups} 
+                        selectedColumns={this.state.selectedColumns}
                         toggleColumn={this.toggleColumn}/>
                 </div>
     
@@ -124,9 +199,7 @@ class App extends Component {
                     and we will need to toggle (in the left sidebar) between the more succinct representations
                     of subsets of the data - e.g., the FACS plots, thumbnail FOVs, existence of monoclonal lines, etc.
                 */}
-                <div className="fl w-75">
-                {this.state.mainPanelMode==="table" ? <DataTable {...this.state}/> : <PlateTable {...this.state}/>}
-                </div>
+                <div className="fl w-75">{mainPanel}</div>
             </div>  
 
         );

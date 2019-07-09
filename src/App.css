@@ -15,8 +15,23 @@ span {
 	cursor: pointer;
 }
 
+/* --------------------- custom div-based buttons --------------------- */
+.simple-button {
+	width: auto;
+	cursor: pointer;
+}
 
-/* --------------------- react-table style overrides --------------------- */
+.simple-button:hover {
+	background-color: #cfd3d64d;
+}
+
+.simple-button-active, .simple-button-active:hover {
+	background-color: #7e82854d;
+}
+
+
+
+/* --------------------- react-table overrides --------------------- */
 /* eliminate shadow under the header and footer */
 .ReactTable .rt-thead.-header {
 	box-shadow: none;
@@ -38,7 +53,7 @@ span {
 
 
 
-/* --------------------- blueprint style overrides --------------------- */
+/* --------------------- blueprint overrides --------------------- */
 /* inline radiogroup labels */
 label.bp3-label {
 	display: inline-block;
@@ -47,4 +62,11 @@ label.bp3-label {
 
 .bp3-button.bp3-minimal {
 	border-radius: 0px;
+}
+
+.bp3-button-custom {
+	background-image: none !important;
+	box-shadow: none !important;
+	-webkit-box-shadow: none !important;
+	background-color: rgba(209, 212, 214, 0.3) !important; /* color from bp3-menu-item:hover */
 }

@@ -1,59 +1,59 @@
 
 
-//     "cell_line_id": 2, 
-//     "electroporation_date": "Tue, 16 Oct 2018 00:00:00 GMT", 
-//     "facs_quality": null, 
-//     "id": 381, 
-//     "imaging_data": null, 
-//     "plate_design_id": "P0005", 
-//     "plate_instance_id": 5, 
-//     "protospacer_name": "pl5_crRNA_A2_ACTB", 
-//     "protospacer_notes": "cuts close to intron/exon junction", 
-//     "protospacer_sequence": "GCTATTCTCGCAGCTCACCA", 
-//     "sequencing_results": null, 
-//     "target_family": "actin", 
-//     "target_name": "ACTB", 
-//     "target_terminus": "N_TERMINUS", 
-//     "template_name": "pl5_mNG11_A2_ACTB", 
-//     "template_notes": null, 
-//     "template_sequence": "", 
-//     "terminus_notes": "Allen collection", 
-//     "transcript_id": "ENST00000331789", 
-//     "transcript_notes": null, 
-//     "well_id": "A02"
-
-
 export const columnDefs = [
     {
-        Header: 'Plate',
+        Header: 'Plate ID',
         accessor: 'plate_design_id',
     },{
-        Header: 'Well',
+        Header: 'Well ID',
         accessor: 'well_id',
     },{
-        Header: 'Date',
+        Header: 'EP date',
         id: 'electroporation_date',
         accessor: d => {
+            // hack-ish way to display the date in the form '%Y-%m-%d'
             const date = new Date(d.electroporation_date); 
             return date.toJSON() ? date.toJSON().slice(0, 10) : 'missing date';
         },
     },{
-        Header: 'Target',
+        Header: 'Gene name',
         accessor: 'target_name',
     },{
-        Header: 'Family',
+        Header: 'Gene family',
         accessor: 'target_family',
     },{
         Header: 'Terminus',
         accessor: 'target_terminus',
+    },{
+        Header: 'ENST ID',
+        accessor: 'transcript_id',
+    },{
+        Header: 'Protospacer name',
+        accessor: 'protospacer_name',
+    },{
+        Header: 'Protospacer notes',
+        accessor: 'protospacer_notes',
+    },{
+        Header: 'Protospacer sequence',
+        accessor: 'protospacer_sequence',
+    },{
+        Header: 'Template name',
+        accessor: 'template_name',
+    },{
+        Header: 'Template notes',
+        accessor: 'template_notes',
+    },{
+        Header: 'Template sequence',
+        accessor: 'template_sequence',
     },
 ];
 
 // copy id from accessor
 columnDefs.forEach(def => def.id = def.id ? def.id : def.accessor);
 
-// default selected
-columnDefs.forEach(def => def.selected = false);
+// default selected columns
+export const defaultSelectedColumns = [
+    'plate_design_id', 'well_id', 'target_name', 'target_family'];
 
 
 export const columnGroups = [
@@ -62,13 +62,17 @@ export const columnGroups = [
         ids: ['plate_design_id', 'well_id', 'electroporation_date'],
     },{
         name: 'Target',
-        ids: ['target_name', 'target_family', 'target_terminus'],
+        ids: ['target_name', 'target_family', 'target_terminus', 'transcript_id'],
     },{
-        name: 'Protospacer',
-        ids: ['protospacer_name', 'protospacer_notes', 'protospacer_sequence'],
+        name: 'Crispr design',
+        ids: [
+            'protospacer_name', 'protospacer_notes', 'protospacer_sequence',
+            'template_name', 'template_notes', 'template_sequence',
+            ''
+        ],
     },{
-        name: 'Template',
-        ids: ['tempate_name', 'template_notes', 'template_sequence'],
+        name: 'Expression',
+        ids: [],
     },{
         name: 'FACS',
         ids: [],
@@ -85,14 +89,20 @@ export const columnGroups = [
 ];
 
 
-
-
 // definitions for filters
 export const filterDefs = [
     {
-        name: 'plateDesign',
-        column: '',
-        
-    },
+        name: 'Plate ID',
+        accessor: 'plate_design_id',
+        values: [],
+    },{
+        name: 'Gene family',
+        accessor: 'target_family',
+        values: [],
+    },{
+        name: 'FACS score',
+        accessor: 'facs_score',
+        values: [],
+    }
 ];
 

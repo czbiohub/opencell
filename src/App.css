@@ -44,3 +44,7 @@ label.bp3-label {
 	display: inline-block;
 	padding-right: 10px;
 }
+
+.bp3-button.bp3-minimal {
+	border-radius: 0px;
+}

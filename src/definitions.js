@@ -49,6 +49,12 @@ export const columnDefs = [
     },
 ];
 
+// copy id from accessor
+columnDefs.forEach(def => def.id = def.id ? def.id : def.accessor);
+
+// default selected
+columnDefs.forEach(def => def.selected = false);
+
 
 export const columnGroups = [
     {

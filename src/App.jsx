@@ -2,7 +2,7 @@ import * as d3 from 'd3';
 import React, { Component } from 'react';
 
 import * as constants from './constants.js';
-import { columnDefs, filterDefs } from './definitions.js';
+import { columnDefs, columnGroups, filterDefs } from './definitions.js';
 
 import { Radio, RadioGroup, Tab, Tabs } from "@blueprintjs/core";
 
@@ -33,6 +33,7 @@ class App extends Component {
 
         this.state = {
             columnDefs,     // (each with a .selected key that's toggled by the sidebar)
+            columnGroups,   // 
             filterDefs,     // (the same for both main panel modes)
             filters: [],    // list of active filters
             data: [],       // cell line data to load
@@ -52,7 +53,11 @@ class App extends Component {
     }
 
     toggleColumn(columnId) {
-        // toggle the column on/off
+        // toggle the given column on/off
+        columnDefs.forEach(def => {
+            def.selected = def.id===columnId ? !def.selected : def.selected;
+        });
+        this.setState({columnDefs});
     }
 
     setMainPanelMode(event) {
@@ -84,7 +89,7 @@ class App extends Component {
                 */}
                 <div className="fl w-100 pt2">
 
-                    <div className="w-30"> 
+                    <div className="w-25"> 
                         <RadioGroup
                             label="Display mode:" 
                             name="mode-group"
@@ -96,7 +101,7 @@ class App extends Component {
                         </RadioGroup>
                     </div>
 
-                    <FilterControls updateFilter={this.updateFilter} filterDefs={this.state.filterDefs}/>
+                    {/* <FilterControls updateFilter={this.updateFilter} filterDefs={this.state.filterDefs}/> */}
                 </div>
 
                 {/* side bar includes:
@@ -105,8 +110,11 @@ class App extends Component {
                       and columns that aren't displayable are grayed out (e.g., guide/repair sequences)
                     - above or below the column list, a small table of common metadata (master cell line, ep date)
                 */}
-                <div className="fl w-25">
-                    <ColumnControls columnDefs={this.state.columnDefs} toggleColumn={this.toggleColumn}/>
+                <div className="fl w-20">
+                    <ColumnControls 
+                        columnDefs={this.state.columnDefs}
+                        columnGroups={this.state.columnGroups} 
+                        toggleColumn={this.toggleColumn}/>
                 </div>
     
                 {/* main panel - cell-line data as either a react-table or a plate-like layout 

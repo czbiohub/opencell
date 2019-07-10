@@ -14,7 +14,6 @@ class ColumnControls extends Component {
 
 
     render() {
-
         return (
             <div className="pr3">
                 {this.props.columnGroups.map((group, index) => (
@@ -37,14 +36,13 @@ class ColumnGroupButtons extends Component {
     render() {
         return this.props.group.ids.map(id => {
             const def = this.props.columnDefs.filter(def => def.id===id).pop();
-            if (!def) return <div className="black-30">{id}</div>;
+            if (!def) return <div key={id} className="black-30">{id}</div>;
             return (
-                <div className="">
-                    <SimpleButton 
-                        active={this.props.selectedColumns.includes(id)} 
-                        onClick={d => this.props.toggleColumn(id)} 
-                        text={def.Header}/>
-                </div>
+                <SimpleButton 
+                    active={this.props.selectedColumns.includes(id)} 
+                    onClick={d => this.props.toggleColumn(id)} 
+                    text={def.Header}
+                    key={id}/>
             );
         });
     }

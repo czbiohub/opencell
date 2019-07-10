@@ -49,6 +49,7 @@ class App extends Component {
 
     }
 
+    
     componentDidMount() {
         fetch('http://localhost:5000/polyclonallines')
             .then(result => result.json())
@@ -59,6 +60,7 @@ class App extends Component {
             error => console.log(error));
     }
 
+
     calcCategoricalFilterValues(data) {
         // calculate unique values for each categorical filter
         // (called only once, after cell line data loads)
@@ -66,10 +68,11 @@ class App extends Component {
         const filterDefs = this.state.filterDefs;
         filterDefs.forEach(def => {
             def.values = [...new Set(data.map(d => d[def.accessor]))].sort();
-            def.values.push('all');
+            def.values = ['all', ...def.values];
         });
         this.setState({filterDefs});
     }
+
 
     toggleColumn(columnId) {
         // add or remove the column from the list of selected columns
@@ -82,10 +85,12 @@ class App extends Component {
         this.setState({selectedColumns});
     }
 
+
     setMainPanelMode(event) {
         // change the main panel mode (either 'table' or 'plate')
         this.setState({mainPanelMode: event.currentTarget.value});
     }
+
 
     updateCategoricalFilter(def, value) {
         // update a categorical filter
@@ -99,15 +104,15 @@ class App extends Component {
 
     render() {
 
-        function renderItem (item, {handleClick, modifiers}) {
-            //if (!modifiers.matchesPredicate) return null;
+        function renderItem (item, props) {
+            if (!props.modifiers.matchesPredicate) return null;
             return (
                 <MenuItem
-                    active={modifiers.active}
+                    active={props.modifiers.active}
                     key={item}
                     label={item}
                     text={item}
-                    onClick={handleClick}
+                    onClick={props.handleClick}
                 />
             );
         };
@@ -123,7 +128,8 @@ class App extends Component {
                 data={this.state.data}
                 columnDefs={columnDefs} 
                 columnGroups={columnGroups} 
-                selectedColumns={this.state.selectedColumns}/>
+                selectedColumns={this.state.selectedColumns}
+                filterValues={this.state.filterValues}/>
         } else {
             mainPanel = <PlateTable {...this.state}/>
         }
@@ -166,6 +172,7 @@ class App extends Component {
                                 itemRenderer={renderItem} 
                                 itemPredicate={filterItem}
                                 onItemSelect={(value) => this.updateCategoricalFilter(def, value)}
+                                activeItem={this.state.filterValues[def.accessor]}
                             >
                                 <Button 
                                     className="bp3-button-custom"

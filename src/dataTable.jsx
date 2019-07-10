@@ -13,16 +13,23 @@ class DataTable extends Component {
 
 
     render() {
-
-        const columnDefs = this.props.columnDefs.filter(def => this.props.selectedColumns.includes(def.id));
-
         if (!this.props.data) return null;
-        
-        return <ReactTable 
-            filterable={true}
-            columns={columnDefs} 
-            data={this.props.data}/>
 
+        // columnDefs of selected columns
+        const columnDefs = this.props.columnDefs.filter(def => this.props.selectedColumns.includes(def.id));
+        
+        // filter data
+        let data = [...this.props.data];
+        for (const [accessor, value] of Object.entries(this.props.filterValues)) {
+            if (value==='all') continue;
+            data = data.filter(d => d[accessor]===value);
+        }
+
+        return <ReactTable 
+            data={data}
+            filterable={true}
+            columns={columnDefs}
+        />
     }
 }
 

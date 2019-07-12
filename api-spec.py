@@ -62,6 +62,23 @@
 
     "sequencing": {
         # TODO!
+    },
+
+    "localization_annotations": [
+        {
+            "username": "keith",
+            "annotation": "ER",
+        }
+    ],
+
+    "comments": [
+        {
+            "username": "Keith",
+            "content": ""
+        }
+    ]
+
+
     }
   }
 

@@ -1,7 +1,7 @@
 
 import numpy as np
 from pipeline_process.facs import constants as facs_constants
-FITC, SSC, FSC = facs_constants.FITC, facs_constants.SSC, facs_constants.FSC
+FITC, SSCA, FSCA = facs_constants.FITC, facs_constants.SSCA, facs_constants.FSCA
 
 
 def transform_and_gate_dataset(dataset):
@@ -16,7 +16,7 @@ def transform_and_gate_dataset(dataset):
     '''
 
     # transform first...
-    dataset = dataset.transform('hlog', channels=[FITC, FSC, SSC], b=facs_constants.HLOG_B)
+    dataset = dataset.transform('hlog', channels=[FITC, FSCA, SSCA], b=facs_constants.HLOG_B)
     
     # ...and then apply the gates
     dataset = dataset.gate(facs_constants.VIABLE_GATE).gate(facs_constants.SINGLET_GATE)

@@ -14,9 +14,8 @@ from pipeline_process.facs import utils as facs_utils
 from pipeline_process.facs import constants as facs_constants
 from pipeline_process.common import constants as common_constants
 
-# FACS dataset channel names
-FITC, SSC, FSC = facs_constants.FITC, facs_constants.SSC, facs_constants.FSC
-
+# FITC channel name
+FITC = facs_constants.FITC
 
 class FACSProcessor(object):
 
@@ -133,24 +132,23 @@ class FACSProcessor(object):
         Concatenate the mean-subtracted FITC measurements from all control datasets
         '''
 
-        ns, means, all_values = [], [], []
+        counts, means, all_values = [], [], []
         for control in self.controls:
             values = control.data[FITC].values
-            n = values.shape[0]
             mean = values.mean()
+            count = values.shape[0]
 
-            ns.append(n)
             means.append(mean)
+            counts.append(count)
             all_values.append(values - mean)
-
-            print('Loaded control dataset %s: n=%d, mean=%d' % (control.ID, n, mean))
+            print('Loaded control dataset %s: n=%d, mean=%d' % (control.ID, count, mean))
 
         all_values = np.concatenate(tuple(all_values), axis=0)
 
         # calculate global mean and std
-        ns = np.array(ns)
         means = np.array(means)
-        global_mean = (means * ns).sum() / ns.sum()
+        counts = np.array(counts)
+        global_mean = (means * counts).sum() / counts.sum()
         global_std = np.std(all_values)
 
         return all_values, global_mean, global_std

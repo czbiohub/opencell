@@ -2,7 +2,7 @@
 from FlowCytometryTools import ThresholdGate, PolyGate
 
 # channel names
-FITC, SSC, FSC = 'FITC-A', 'SSC-A', 'FSC-A'
+FITC, SSCA, FSCA, FSCW = 'FITC-A', 'SSC-A', 'FSC-A', 'FSC-W'
 
 # b-paramter for hlog transform 
 # (this is a kwarg for the FCMeasurement.transform method)

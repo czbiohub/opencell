@@ -78,7 +78,7 @@ class FACSProcessor(object):
 
         unexpected_well_ids = set(well_ids).difference(common_constants.WELL_IDS)
         if unexpected_well_ids:
-            print('Warning: FCS files for unexpected well_ids %s' % unexpected_well_ids)
+            print('Warning: FCS files found for unexpected well_ids %s' % unexpected_well_ids)
     
         # count the number of negative control datasets
         control_filepaths = glob.glob(os.path.join(self.controls_dirpath, '*.fcs'))
@@ -236,6 +236,28 @@ class FACSProcessor(object):
         return dataset
     
     
+    @staticmethod
+    def hlog_inverse(value):
+        '''
+        Inverse of base-10 hyperlog transform
+        Copied directly from Nathan's 'FACS_QC_v8.py' script
+        '''
+
+        b = facs_constants.HLOG_B
+
+        # these constants are copied from Nathan's script
+        # TODO: understand what they mean
+        r = 10**4
+        d = np.log10(2**18)
+
+        aux = 1. * d / r * value
+        s = np.sign(value)
+        if s.shape:
+            s[s==0] = 1
+        elif s==0:
+            s = 1
+        return s * 10 ** (s * aux) + b * aux - s
+
 
     def process_sample(self, well_id, show_plots=True):
         '''
@@ -266,12 +288,12 @@ class FACSProcessor(object):
         result = unmixer.fit()
 
         # extract the offset and scale of the fitted reference
-        self.best_offset, self.best_scale = result.x
+        fitted_offset, fitted_scale = result.x
 
-        # the fitted reference histogram
-        y_ref_fitted = unmixer.predict(*result.x)
+        # get the fitted reference histogram
+        y_ref_fitted = unmixer.predict(fitted_offset, fitted_scale)
 
-        # the unmixed sample histogram
+        # calculate the unmixed sample histogram
         y_sample_unmixed = y_sample - y_ref_fitted
 
         if show_plots:
@@ -279,24 +301,29 @@ class FACSProcessor(object):
             plt.plot(x_sample, y_ref_fitted)
             plt.plot(x_sample, y_sample_unmixed)
 
-        # use the fit parameters to define a boundary between the left and right hand 'sides'
+        # use the fit parameters to define a boundary between 
+        # the left and right hand 'sides' of the distribution
         # (that is, between GFP-negative and -positive populations)
-        left_right_boundary = self.best_offset + self.ref_std
+        left_right_boundary = fitted_offset + self.ref_std
 
         # calculate stats of the right-hand side of the unmixed histogram
-        stats = self.calc_unmixed_stats(x_sample, y_sample_unmixed, left_right_boundary)
+        stats = self.calc_unmixed_stats(
+            x_sample, 
+            y_sample_unmixed, 
+            fitted_offset,
+            left_right_boundary)
+    
         return stats
 
 
-    @staticmethod
-    def calc_unmixed_stats(x, y, left_right_boundary):
+    def calc_unmixed_stats(self, x, y, fitted_offset, left_right_boundary):
         '''
         '''
 
         def as_int(value):
             try:
                 value = int(value)
-            except ValueError:
+            except (ValueError, TypeError):
                 value = None
             return value
 
@@ -305,31 +332,49 @@ class FACSProcessor(object):
         y = y[mask]
 
         # default values
-        area = 0
-        mean, std, median, p99 = None, None, None, None
-
+        stats = {
+            'area': 0,
+            'mean': None,
+            'std': None,
+            'median': None,
+            '99th_percentile': None
+         }
+        
         # the area of the right-hand side of the unmixed sample histogram
-        area = y.sum() * (x[1] - x[0])
+        stats['area'] = y.sum() * (x[1] - x[0])
 
         # if the area is less than zero, there's no distribution to quantify
-        if area > 0:
+        if stats['area'] > 0:
     
             # the mean/std of the right-hand side of the unmixed sample histogram
-            mean = (y * x).sum() / y.sum()
-            std = ((y * x**2).sum() / y.sum() - mean**2)**.5
+            stats['mean'] = (y * x).sum() / y.sum()
+            stats['std'] = ((y * x**2).sum() / y.sum() - stats['mean']**2)**.5
 
             # median and 99th percentile of the right-hand side 
             # (by interpolating the cumulative histogram)
             y_c = np.cumsum(y)
             y_c /= y_c.max()
-            median, p99 = interpolate.interp1d(y_c, x)([.5, .99])
+            stats['median'] = interpolate.interp1d(y_c, x)([.5])[0]
+            stats['99th_percentile'] = interpolate.interp1d(y_c, x)([.99])[0]
 
-        stats = {
-            'area': as_int(area*100),
-            'intensity_mean': as_int(mean),
-            'intensity_std': as_int(std),
-            'intensity_median': as_int(median),
-            'intensity_p99': as_int(p99),
-        }
+        # coerce to ints
+        stats['area'] = as_int(stats['area']*100)
+        stats['std'] = as_int(stats['std'])
+
+        # subtract the fitted offset (the location of the GFP-negative peak)    
+        # in linear scale...
+        fitted_offset_linear = self.hlog_inverse(fitted_offset)
+        for key in ('mean', 'median', '99th_percentile'):
+            delta = None
+            if stats[key] is not None:
+                delta = self.hlog_inverse(stats[key]) - fitted_offset_linear
+            stats['%s_linear' % key] = delta
+
+        # ...and in log scale
+        for key in ('mean', 'median', '99th_percentile'):
+            delta = None
+            if stats[key] is not None:
+                delta = np.log10(self.hlog_inverse(stats[key])/fitted_offset_linear)
+            stats['%s_log' % key] = delta
 
         return stats

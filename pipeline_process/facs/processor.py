@@ -10,12 +10,12 @@ from matplotlib import pyplot as plt
 from scipy import interpolate, optimize
 
 from pipeline_process.facs.unmixer import FACSUnmixer
+from pipeline_process.facs import utils as facs_utils
 from pipeline_process.facs import constants as facs_constants
 from pipeline_process.common import constants as common_constants
 
 # FACS dataset channel names
-FITC, SSC, FSC = 'FITC-A', 'SSC-A', 'FSC-A'
-
+FITC, SSC, FSC = facs_constants.FITC, facs_constants.SSC, facs_constants.FSC
 
 
 class FACSProcessor(object):
@@ -109,7 +109,7 @@ class FACSProcessor(object):
         '''
         
         dataset = fct.FCMeasurement(ID=well_id, datafile=self.sample_filepath(well_id))
-        dataset = self.transform_and_gate_dataset(dataset)
+        dataset = facs_utils.transform_and_gate_dataset(dataset)
         return dataset
 
 
@@ -123,7 +123,7 @@ class FACSProcessor(object):
         for ind, filepath in enumerate(self.control_filepaths):
             dataset_id = 'nc-%s' % ind
             dataset = fct.FCMeasurement(ID=dataset_id, datafile=filepath)
-            dataset = self.transform_and_gate_dataset(dataset)
+            dataset = facs_utils.transform_and_gate_dataset(dataset)
             datasets.append(dataset)
         return datasets
 
@@ -215,49 +215,6 @@ class FACSProcessor(object):
         return bin_centers, bin_counts
 
 
-    @staticmethod
-    def transform_and_gate_dataset(dataset):
-        '''
-        Apply hard-coded gates to select viable single cells,
-        and hlog-transform the dataset
-
-        Parameters
-        ----------
-        dataset : an FCMeasurement instance
-
-        '''
-
-        # transform first...
-        dataset = dataset.transform('hlog', channels=[FITC, FSC, SSC], b=facs_constants.HLOG_B)
-        
-        # ...and then apply the gates
-        dataset = dataset.gate(facs_constants.VIABLE_GATE).gate(facs_constants.SINGLET_GATE)
-
-        return dataset
-    
-    
-    @staticmethod
-    def hlog_inverse(value):
-        '''
-        Inverse of base-10 hyperlog transform
-        Copied directly from Nathan's 'FACS_QC_v8.py' script
-        '''
-
-        b = facs_constants.HLOG_B
-
-        # these constants are copied from Nathan's script
-        # TODO: understand what they mean
-        r = 10**4
-        d = np.log10(2**18)
-
-        aux = 1. * d / r * value
-        s = np.sign(value)
-        if s.shape:
-            s[s==0] = 1
-        elif s==0:
-            s = 1
-        return s * 10 ** (s * aux) + b * aux - s
-
 
     def process_sample(self, well_id, show_plots=True):
         '''
@@ -297,9 +254,9 @@ class FACSProcessor(object):
         y_sample_unmixed = y_sample - y_ref_fitted
 
         if show_plots:
-            plt.plot(x_sample, y_sample)
-            plt.plot(x_sample, y_ref_fitted)
-            plt.plot(x_sample, y_sample_unmixed)
+            plt.fill(x_sample, y_sample, color='black', alpha=.2)
+            plt.plot(x_sample, y_ref_fitted, color='black', alpha=.7)
+            plt.plot(x_sample, y_sample_unmixed, color='green')
 
         # use the fit parameters to define a boundary between 
         # the left and right hand 'sides' of the distribution
@@ -312,7 +269,14 @@ class FACSProcessor(object):
             y_sample_unmixed, 
             fitted_offset,
             left_right_boundary)
-    
+
+        if show_plots:
+            try:
+                plt.axvline(stats['raw_median'], color='green', ls='--')
+                plt.axvline(stats['raw_percentile99'], color='green', ls=':')
+            except TypeError:
+                pass
+
         return stats
 
 
@@ -320,61 +284,49 @@ class FACSProcessor(object):
         '''
         '''
 
-        def as_int(value):
-            try:
-                value = int(value)
-            except (ValueError, TypeError):
-                value = None
-            return value
-
         mask = x > left_right_boundary
         x = x[mask]
         y = y[mask]
 
-        # default values
         stats = {
-            'area': 0,
-            'mean': None,
-            'std': None,
-            'median': None,
-            '99th_percentile': None
-         }
-        
+            'fitted_offset': fitted_offset,
+            'left_right_boundary': left_right_boundary,
+        }
+    
         # the area of the right-hand side of the unmixed sample histogram
         stats['area'] = y.sum() * (x[1] - x[0])
 
         # if the area is less than zero, there's no distribution to quantify
-        if stats['area'] > 0:
+        if stats['area'] < 0:
+            stats['area'] = 0
+            return stats
     
-            # the mean/std of the right-hand side of the unmixed sample histogram
-            stats['mean'] = (y * x).sum() / y.sum()
-            stats['std'] = ((y * x**2).sum() / y.sum() - stats['mean']**2)**.5
+        # the mean/std of the right-hand side of the unmixed sample histogram
+        stats['raw_mean'] = (y * x).sum() / y.sum()
+        stats['raw_std'] = ((y * x**2).sum() / y.sum() - stats['raw_mean']**2)**.5
 
-            # median and 99th percentile of the right-hand side 
-            # (by interpolating the cumulative histogram)
-            y_c = np.cumsum(y)
-            y_c /= y_c.max()
-            stats['median'] = interpolate.interp1d(y_c, x)([.5])[0]
-            stats['99th_percentile'] = interpolate.interp1d(y_c, x)([.99])[0]
-
-        # coerce to ints
-        stats['area'] = as_int(stats['area']*100)
-        stats['std'] = as_int(stats['std'])
+        # median and 99th percentile of the right-hand side 
+        # (by interpolating the cumulative histogram)
+        y_c = np.cumsum(y)/y.sum()
+        stats['raw_median'] = interpolate.interp1d(y_c, x)([.5])[0]
+        stats['raw_percentile99'] = interpolate.interp1d(y_c, x)([.99])[0]
 
         # subtract the fitted offset (the location of the GFP-negative peak)    
-        # in linear scale...
-        fitted_offset_linear = self.hlog_inverse(fitted_offset)
-        for key in ('mean', 'median', '99th_percentile'):
-            delta = None
-            if stats[key] is not None:
-                delta = self.hlog_inverse(stats[key]) - fitted_offset_linear
-            stats['%s_linear' % key] = delta
+        fitted_offset_linear = facs_utils.hlog_inverse(fitted_offset)
 
-        # ...and in log scale
-        for key in ('mean', 'median', '99th_percentile'):
-            delta = None
-            if stats[key] is not None:
-                delta = np.log10(self.hlog_inverse(stats[key])/fitted_offset_linear)
-            stats['%s_log' % key] = delta
+        for prop in ('mean', 'median', 'percentile99'):
+            value = stats.get('raw_%s' % prop)
+            if value is not None:   
+                value_linear = facs_utils.hlog_inverse(value)
+
+                # in linear scale...
+                stats['rel_%s_linear' % prop] = value_linear - fitted_offset_linear
+
+                # ...in log scale...
+                stats['rel_%s_log' % prop] = np.log10(value_linear/fitted_offset_linear)
+
+                # ...and in hlog scale
+                stats['rel_%s_hlog' % prop] = value - fitted_offset
+
 
         return stats

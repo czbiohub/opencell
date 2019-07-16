@@ -26,12 +26,13 @@ SAMPLE_DIRNAMES = {
     'P0004': 'plate4_redo_FCS',
 }
 
-plates_with_consistent_dirnames = range(5, 20)
-for plate_num in plates_with_consistent_dirnames:
+# the remaining plates (plate5-plate19) have consistent directory names
+# that we can generate programmatically
+plate_nums = range(5, 20)
+for plate_num in plate_nums:
     plate_id = plate_id_from_number(plate_num)
     SAMPLE_DIRNAMES[plate_id] = 'plate%d_FCS' % plate_num
     CONTROL_DIRNAMES[plate_id] = 'WT_plate%dmNG' % plate_num
-
 
 # HACK: there was no control for plate18, so we use plate17
 CONTROL_DIRNAMES['P0018'] = CONTROL_DIRNAMES['P0017']
@@ -40,6 +41,10 @@ CONTROL_DIRNAMES['P0018'] = CONTROL_DIRNAMES['P0017']
 class FACSManager(object):
 
     def __init__(self, box_root):
+        '''
+        box_root : local path to the Box 'root' directory
+        '''
+    
         self.box_root = box_root
         self.facs_data_root = os.path.join(self.box_root, 'FACS_data')
     
@@ -63,7 +68,7 @@ class FACSManager(object):
         return path
 
 
-    def sample_and_control_dirpaths(self, plate_id):
+    def get_sample_and_control_dirpaths(self, plate_id):
         '''
         Public method to get a tuple of sample and control paths
         to the directories containing the sample and negative control datasets

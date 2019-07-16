@@ -23,3 +23,5 @@ def read_and_validate_platemap(filepath):
         raise ValueError('Missing gene names in platemap %s' % filepath)
 
     return platemap
+
+    

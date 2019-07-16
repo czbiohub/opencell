@@ -20,7 +20,7 @@ FITC = facs_constants.FITC
 class FACSProcessor(object):
 
 
-    def __init__(self, samples_dirpath, controls_dirpath):
+    def __init__(self, samples_dirpath, controls_dirpath, verbose=True):
         '''
         Class to load and process the FACS data from a single pipeline plate
 
@@ -43,6 +43,7 @@ class FACSProcessor(object):
 
         '''
 
+        self.verbose = verbose
         self.samples_dirpath = samples_dirpath
         self.controls_dirpath = controls_dirpath
 
@@ -141,7 +142,8 @@ class FACSProcessor(object):
             means.append(mean)
             counts.append(count)
             all_values.append(values - mean)
-            print('Loaded control dataset %s: n=%d, mean=%d' % (control.ID, count, mean))
+            if self.verbose:
+                print('Loaded control dataset %s: n=%d, mean=%d' % (control.ID, count, mean))
 
         all_values = np.concatenate(tuple(all_values), axis=0)
 
@@ -275,7 +277,14 @@ class FACSProcessor(object):
             except TypeError:
                 pass
 
-        return stats
+        # the sample and fitted reference distributions
+        distributions = {
+            'x': x_sample,
+            'y_sample': y_sample,
+            'y_ref_fitted': y_ref_fitted,
+        }
+
+        return stats, distributions
 
 
     def calc_unmixed_stats(self, x, y, fitted_offset, left_right_boundary):

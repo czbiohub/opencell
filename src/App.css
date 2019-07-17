@@ -32,6 +32,7 @@ span {
 
 
 /* --------------------- react-table overrides --------------------- */
+
 /* eliminate shadow under the header and footer */
 .ReactTable .rt-thead.-header {
 	box-shadow: none;
@@ -51,6 +52,10 @@ span {
 	font-weight: bolder;
 }
 
+/* allow line breaks in long headers */
+.ReactTable .rt-th, .ReactTable .rt-td {
+	white-space: normal;
+}
 
 
 /* --------------------- blueprint overrides --------------------- */

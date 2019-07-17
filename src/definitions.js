@@ -1,3 +1,7 @@
+import * as d3 from 'd3';
+import React, { Component } from 'react';
+
+import FACSPlot from './facsPlot.jsx';
 
 
 export const columnDefs = [
@@ -20,11 +24,9 @@ export const columnDefs = [
     },{
         Header: 'Gene name',
         accessor: 'target_name',
-        width: 100,
     },{
         Header: 'Gene family',
         accessor: 'target_family',
-        width: 100,
     },{
         Header: 'Terminus',
         accessor: 'target_terminus',
@@ -86,17 +88,38 @@ export const columnDefs = [
     },{
         id: 'facs_plot',
         Header: 'FACS plot',
-        accessor: row => null,
+        accessor: row => row.cell_line_id,
+        Cell: row => {
+            // note: the 'raw' row is found in `row.original`
+            // note: the `key` prop below is required for the cell to re-render
+            // when the table rows change (on, e.g., sorting or paging)
+            return <FACSPlot key={row.value} cellLineId={row.value}/>
+        },
     },
 ];
+
 
 // copy id from accessor
 // *** WARNING: this assumes that columnDefs without an id have a string-valued accessor ***
 columnDefs.forEach(def => def.id = def.id ? def.id : def.accessor);
 
+// force width to 100 if no width is specified
+columnDefs.forEach(def => def.width = def.width ? def.width : 100);
+
+
 // default selected columns
 export const defaultSelectedColumns = [
-    'plate_design_id', 'well_id', 'target_name', 'target_family'];
+    'plate_design_id', 
+    'well_id', 
+    'target_name', 
+    'target_family', 
+    'target_terminus',
+    'hek_tpm',
+    'facs_area',
+    'facs_rel_median_log',
+    'facs_rel_percentile99_log',
+    'facs_plot',
+];
 
 
 export const columnGroups = [
@@ -114,7 +137,8 @@ export const columnGroups = [
             'target_family', 
             'target_terminus', 
             'transcript_id', 
-            'hek_tpm'],
+            'hek_tpm'
+        ],
     },{
         name: 'Crispr design',
         ids: [

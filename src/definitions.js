@@ -6,7 +6,7 @@ import FACSPlot from './facsPlot.jsx';
 
 
 // other options: 'OrRd', 'YlGn'
-const facsColormapName = '';
+const facsColormapName = 'OrRd';
 
 // function that returns a getProps function to apply cell-specific styles
 // currently only used to set a background color for the cell
@@ -72,7 +72,6 @@ export const columnDefs = [
     },{
         Header: 'TPM (HEK293)',
         accessor: 'hek_tpm',
-        width: 70,
         getProps: styleBackgroundColor('OrRd', [0, 2000]),
     },{
         Header: 'Protospacer name',

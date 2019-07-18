@@ -4,22 +4,29 @@ import React, { Component } from 'react';
 import ReactTable from 'react-table';
 import { ReactTableDefaults } from 'react-table';
 
+import FACSPlot from './facsPlot.jsx';
+
 
 const rows = "abcdefgh".split("");
 const cols = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(d => String(d));
 
 
 function renderCell(row) {
-    return (
-        <div
-            style={{
-            width: '50px',
-            height: '50px',
-            backgroundColor: '#dadada',
-            borderRadius: '2px'
-            }}
-        >{row.value}</div>
-    );
+
+    const data = row.column.accessor(row.original).data;
+    if (!data) return null;
+    return <FACSPlot key={data.cell_line_id} cellLineId={data.cell_line_id}/>
+
+    // return (
+    //     <div
+    //         style={{
+    //         width: '50px',
+    //         height: '50px',
+    //         backgroundColor: '#dadada',
+    //         borderRadius: '2px'
+    //         }}
+    //     >{row.value}</div>
+    // );
 }
 
 
@@ -34,13 +41,15 @@ class PlateTable extends Component {
                 Header: col,
                 accessor: col,
                 Cell: renderCell,
+                // HACK: this width must match the hard-coded width in FACSPlot
+                width: 100,
             }
         });
 
-        this.data = rows.map(row => {
-            const d = {}
-            cols.map(col => d[col] = `${row.toUpperCase()}${col.padStart(2, '0')}`);
-            return d;
+        this.platemap = rows.map(row => {
+            const rowWells = {}
+            cols.map(col => rowWells[col] = ({'well_id': `${row.toUpperCase()}${col.padStart(2, '0')}`}));
+            return rowWells;
         });
     }
 
@@ -49,15 +58,34 @@ class PlateTable extends Component {
     }
 
     render() {
+        if (!this.props.data) return null;
+
+        // add the data to the platemap
+        this.platemap.forEach(row => {
+            cols.forEach(col => {
+                let data = this.props.data.filter(d => d.well_id===row[col].well_id);
+                row[col]['data'] = data ? data[0] : null;
+            });
+        });
+
         return (
             <ReactTable
-                data={this.data}
+                data={this.platemap}
                 columns={this.columnDefs}
                 column={{...ReactTableDefaults.column, minWidth: 20}}
                 showPagination={false}
                 defaultPageSize={8}
                 sortable={false}
                 style={{textAlign: 'center'}}
+                getTdProps={() => ({
+                    style: {
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        borderBottom: '1px solid #ddd',
+                        borderLeft: '1px solid #ddd',
+                    }
+                })}
             />
         );
     }

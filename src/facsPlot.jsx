@@ -41,8 +41,10 @@ class FACSPlot extends Component {
                     ],
                 },
             ],
-
+            
+            // HACK: hard-coded size for now
             size: [100, 80],
+
             margin: { left: 5, bottom: 5, right: 5, top: 5 },
 
             xAccessor: "x",

@@ -51,9 +51,11 @@ export const columnDefs = [
         Header: 'Gene family',
         accessor: 'target_family',
     },{
-        Header: 'Terminus',
+        id: 'target_terminus',
+        Header: 'Term',
         accessor: 'target_terminus',
         width: 50,
+        accessor: row => row.target_terminus[0],
     },{
         Header: 'ENST ID',
         accessor: 'transcript_id',
@@ -62,6 +64,7 @@ export const columnDefs = [
         Header: 'TPM (HEK293)',
         accessor: 'hek_tpm',
         width: 70,
+        getProps: styleBackgroundColor('OrRd', [0, 2000]),
     },{
         Header: 'Protospacer name',
         accessor: 'protospacer_name',

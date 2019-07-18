@@ -149,7 +149,7 @@ class App extends Component {
                       continuous: FACS intensity/score, HDR frequency, expression level
                     - 
                 */}
-                <div className="fl w-100 pt2">
+                <div className="fl w-100 pt3 pb3">
 
                     <div className="dib"> 
                         <RadioGroup
@@ -191,7 +191,7 @@ class App extends Component {
                       and columns that aren't displayable are grayed out (e.g., guide/repair sequences)
                     - above or below the column list, a small table of common metadata (master cell line, ep date)
                 */}
-                <div className="fl w-20">
+                <div className="fl pr3">
                     <ColumnControls 
                         columnDefs={columnDefs}
                         columnGroups={columnGroups} 

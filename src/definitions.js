@@ -5,18 +5,27 @@ import React, { Component } from 'react';
 import FACSPlot from './facsPlot.jsx';
 
 
+// other options: 'OrRd', 'YlGn'
+const facsColormapName = '';
+
 // function that returns a getProps function to apply cell-specific styles
 // currently only used to set a background color for the cell
-const styleBackgroundColor = (colormapName, colormapDomain) => {
+const styleBackgroundColor = (colormapName, colormapDomain, accessor) => {
 
     // colormap instance
     const colormap = chroma.scale(colormapName).domain(colormapDomain).padding([0, .2])
 
     // this is the `getProps` function
     return (state, rowInfo, column) => {
+        
+        if (!rowInfo) return {};
 
         // this is how we get this cell's value
-        const value = column.accessor(rowInfo.original);
+        let value = column.accessor(rowInfo.original);
+
+        // if a custom accessor was provided
+        if (accessor) value = accessor(rowInfo.original);
+    
         return {
             style: {
                 background: chroma(colormap(value)).alpha(.5),
@@ -90,7 +99,7 @@ export const columnDefs = [
             if (row.facs) return row.facs.area;
             return undefined;
         },
-        getProps: styleBackgroundColor('OrRd', [0, 1]),
+        getProps: styleBackgroundColor(facsColormapName, [0, 1]),
 
     },{
         id: 'facs_rel_median_log',
@@ -99,7 +108,7 @@ export const columnDefs = [
             if (row.facs) return row.facs.rel_median_log;
             return undefined;
         },
-        getProps: styleBackgroundColor('OrRd', [0, 2]),
+        getProps: styleBackgroundColor(facsColormapName, [0, 2]),
 
     },{
         id: 'facs_rel_percentile99_log',
@@ -108,7 +117,7 @@ export const columnDefs = [
             if (row.facs) return row.facs.rel_percentile99_log;
             return undefined;
         },
-        getProps: styleBackgroundColor('OrRd', [0, 3]),
+        getProps: styleBackgroundColor(facsColormapName, [0, 3]),
 
     },{
         id: 'facs_raw_std',
@@ -117,7 +126,7 @@ export const columnDefs = [
             if (row.facs) return row.facs.raw_std;
             return undefined;
         },
-        getProps: styleBackgroundColor('OrRd', [0, 1500]),
+        getProps: styleBackgroundColor(facsColormapName, [0, 1500]),
 
     },{
         id: 'facs_plot',
@@ -129,6 +138,8 @@ export const columnDefs = [
             // when the table rows change (on, e.g., sorting or paging)
             return <FACSPlot key={row.value} cellLineId={row.value}/>
         },
+        // to color the background by the area
+        //getProps: styleBackgroundColor('OrRd', [0, 1], row => row.facs ? row.facs.area : null),
     },
 ];
 

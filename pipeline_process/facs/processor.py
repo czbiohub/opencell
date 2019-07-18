@@ -226,7 +226,7 @@ class FACSProcessor(object):
 
         # parameters for fitting the control (reference) histogram to the sample histogram
         offset_guess = self.ref_mean
-        offset_bounds = (self.ref_mean - self.ref_std, self.ref_mean + self.ref_std)
+        offset_bounds = (0, self.ref_mean + 2*self.ref_std)
 
         # this window defines the extent of the 'left side' of the sample histogram,
         # to which we will fit the reference histogram
@@ -284,7 +284,7 @@ class FACSProcessor(object):
             'y_ref_fitted': y_ref_fitted,
         }
 
-        return stats, distributions
+        return stats, distributions, unmixer
 
 
     def calc_unmixed_stats(self, x, y, fitted_offset, left_right_boundary):

@@ -25,10 +25,21 @@ class DataTable extends Component {
             data = data.filter(d => d[accessor]===value);
         }
 
+        // the getTdProps is required to vertically center cell text
+        // all other approaches to vertically centering introduce a margin,
+        // which leaves white sprace if the cells have a non-white background color
         return <ReactTable 
             data={data}
             filterable={true}
             columns={columnDefs}
+            getTdProps={() => ({
+                style: {
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    borderBottom: '1px solid #ddd',
+                }
+            })}
         />
     }
 }

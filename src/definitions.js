@@ -1,7 +1,30 @@
 import * as d3 from 'd3';
+import chroma from 'chroma-js';
 import React, { Component } from 'react';
 
 import FACSPlot from './facsPlot.jsx';
+
+
+// function that returns a getProps function to apply cell-specific styles
+// currently only used to set a background color for the cell
+const styleBackgroundColor = (colormapName, colormapDomain) => {
+
+    // colormap instance
+    const colormap = chroma.scale(colormapName).domain(colormapDomain).padding([0, .2])
+
+    // this is the `getProps` function
+    return (state, rowInfo, column) => {
+
+        // this is how we get this cell's value
+        const value = column.accessor(rowInfo.original);
+        return {
+            style: {
+                background: chroma(colormap(value)).alpha(.5),
+                borderBottom: 'none',
+            }
+        }
+    }
+}
 
 
 export const columnDefs = [
@@ -63,28 +86,36 @@ export const columnDefs = [
         accessor: row => {
             if (row.facs) return row.facs.area;
             return undefined;
-        }
+        },
+        getProps: styleBackgroundColor('OrRd', [0, 1]),
+
     },{
         id: 'facs_rel_median_log',
         Header: 'FACS intensity (median)',
         accessor: row => {
             if (row.facs) return row.facs.rel_median_log;
             return undefined;
-        }
+        },
+        getProps: styleBackgroundColor('OrRd', [0, 2]),
+
     },{
         id: 'facs_rel_percentile99_log',
         Header: 'FACS intensity (max)',
         accessor: row => {
             if (row.facs) return row.facs.rel_percentile99_log;
             return undefined;
-        }
+        },
+        getProps: styleBackgroundColor('OrRd', [0, 3]),
+
     },{
         id: 'facs_raw_std',
         Header: 'FACS width',
         accessor: row => {
             if (row.facs) return row.facs.raw_std;
             return undefined;
-        }
+        },
+        getProps: styleBackgroundColor('OrRd', [0, 1500]),
+
     },{
         id: 'facs_plot',
         Header: 'FACS plot',

@@ -55,7 +55,22 @@ span {
 /* allow line breaks in long headers */
 .ReactTable .rt-th, .ReactTable .rt-td {
 	white-space: normal;
+	padding: 0px;
 }
+
+.ReactTable .rt-tbody .rt-td {
+	/* margin: auto; */
+	vertical-align: middle;
+	text-align: center;
+	/* turn off borders between cells */
+	border: none;
+}
+
+/* turn off horizontal borders between table rows */
+.ReactTable .rt-tbody .rt-tr-group {
+	border: none;
+}
+
 
 
 /* --------------------- blueprint overrides --------------------- */

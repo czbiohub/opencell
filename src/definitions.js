@@ -5,17 +5,14 @@ import React, { Component } from 'react';
 import FACSPlot from './facsPlot.jsx';
 
 
-// other options: 'OrRd', 'YlGn'
-const facsColormapName = 'OrRd';
-
-// function that returns a getProps function to apply cell-specific styles
-// currently only used to set a background color for the cell
-const styleBackgroundColor = (colormapName, colormapDomain, accessor) => {
+// style a scalar react-table cell
+// (apply a background color and remove the border)
+const scalarCellStyle = (colormapName, colormapDomain, accessor) => {
 
     // colormap instance
     const colormap = chroma.scale(colormapName).domain(colormapDomain).padding([0, .2])
 
-    // this is the `getProps` function
+    // this is the `getProps` function expected by react-table
     return (state, rowInfo, column) => {
         
         if (!rowInfo) return {};
@@ -28,6 +25,7 @@ const styleBackgroundColor = (colormapName, colormapDomain, accessor) => {
     
         return {
             style: {
+                color: "#333",
                 background: chroma(colormap(value)).alpha(.5),
                 borderBottom: 'none',
             }
@@ -35,6 +33,9 @@ const styleBackgroundColor = (colormapName, colormapDomain, accessor) => {
     }
 }
 
+// chroma colormap name for FACS-related scalar columns
+// other options: 'OrRd', 'YlGn'
+const facsColormapName = 'OrRd';
 
 export const columnDefs = [
     {
@@ -72,7 +73,7 @@ export const columnDefs = [
     },{
         Header: 'TPM (HEK293)',
         accessor: 'hek_tpm',
-        getProps: styleBackgroundColor('OrRd', [0, 2000]),
+        getProps: scalarCellStyle('OrRd', [0, 2000]),
     },{
         Header: 'Protospacer name',
         accessor: 'protospacer_name',
@@ -98,7 +99,7 @@ export const columnDefs = [
             if (row.facs) return row.facs.area;
             return undefined;
         },
-        getProps: styleBackgroundColor(facsColormapName, [0, 1]),
+        getProps: scalarCellStyle(facsColormapName, [0, 1]),
 
     },{
         id: 'facs_rel_median_log',
@@ -107,7 +108,7 @@ export const columnDefs = [
             if (row.facs) return row.facs.rel_median_log;
             return undefined;
         },
-        getProps: styleBackgroundColor(facsColormapName, [0, 2]),
+        getProps: scalarCellStyle(facsColormapName, [0, 2]),
 
     },{
         id: 'facs_rel_percentile99_log',
@@ -116,7 +117,7 @@ export const columnDefs = [
             if (row.facs) return row.facs.rel_percentile99_log;
             return undefined;
         },
-        getProps: styleBackgroundColor(facsColormapName, [0, 3]),
+        getProps: scalarCellStyle(facsColormapName, [0, 3]),
 
     },{
         id: 'facs_raw_std',
@@ -125,7 +126,7 @@ export const columnDefs = [
             if (row.facs) return row.facs.raw_std;
             return undefined;
         },
-        getProps: styleBackgroundColor(facsColormapName, [0, 1500]),
+        getProps: scalarCellStyle(facsColormapName, [0, 1500]),
 
     },{
         id: 'facs_plot',
@@ -135,7 +136,10 @@ export const columnDefs = [
             // note: the 'raw' row is found in `row.original`
             // note: the `key` prop below is required for the cell to re-render
             // when the table rows change (on, e.g., sorting or paging)
-            return <FACSPlot key={row.value} cellLineId={row.value}/>
+            return <FACSPlot 
+                key={row.value} 
+                cellLineId={row.value}
+                width={100}/>
         },
         // to color the background by the area
         //getProps: styleBackgroundColor('OrRd', [0, 1], row => row.facs ? row.facs.area : null),
@@ -151,8 +155,8 @@ columnDefs.forEach(def => def.id = def.id ? def.id : def.accessor);
 columnDefs.forEach(def => def.width = def.width ? def.width : 100);
 
 
-// default selected columns
-export const defaultSelectedColumns = [
+// default selected columns in react-table mode
+export const defaultSelectedColumnIds = [
     'plate_design_id', 
     'well_id', 
     'target_name', 

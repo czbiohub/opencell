@@ -39,7 +39,7 @@ class ColumnGroupButtons extends Component {
             if (!def) return <div key={id} className="black-30">{id}</div>;
             return (
                 <SimpleButton 
-                    active={this.props.selectedColumns.includes(id)} 
+                    active={this.props.selectedColumnIds.includes(id)} 
                     onClick={d => this.props.toggleColumn(id)} 
                     text={def.Header}
                     key={id}/>

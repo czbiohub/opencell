@@ -16,7 +16,7 @@ class DataTable extends Component {
         if (!this.props.data) return null;
 
         // columnDefs of selected columns
-        const columnDefs = this.props.columnDefs.filter(def => this.props.selectedColumns.includes(def.id));
+        const columnDefs = this.props.columnDefs.filter(def => this.props.selectedColumnIds.includes(def.id));
         
         // filter data
         let data = [...this.props.data];

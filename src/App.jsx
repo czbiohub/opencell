@@ -2,7 +2,7 @@ import * as d3 from 'd3';
 import React, { Component } from 'react';
 
 import * as constants from './constants.js';
-import { columnDefs, columnGroups, filterDefs, defaultSelectedColumns} from './definitions.js';
+import { columnDefs, columnGroups, filterDefs, defaultSelectedColumnIds} from './definitions.js';
 
 import { Button, Radio, RadioGroup, MenuItem } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
@@ -40,7 +40,7 @@ class App extends Component {
             mainPanelMode: 'table',   // 'table' or 'plate'
             filterValues,
             filterDefs,
-            selectedColumns: defaultSelectedColumns,
+            selectedColumnIds: defaultSelectedColumnIds,
         };
 
         this.toggleColumn = this.toggleColumn.bind(this);
@@ -76,13 +76,13 @@ class App extends Component {
 
     toggleColumn(columnId) {
         // add or remove the column from the list of selected columns
-        const selectedColumns = this.state.selectedColumns;
-        if (selectedColumns.includes(columnId)) {
-            selectedColumns.splice(selectedColumns.indexOf(columnId), 1);
+        const selectedColumnIds = this.state.selectedColumnIds;
+        if (selectedColumnIds.includes(columnId)) {
+            selectedColumnIds.splice(selectedColumnIds.indexOf(columnId), 1);
         } else {
-            selectedColumns.push(columnId);
+            selectedColumnIds.push(columnId);
         }
-        this.setState({selectedColumns});
+        this.setState({selectedColumnIds});
     }
 
 
@@ -128,10 +128,10 @@ class App extends Component {
                 data={this.state.data}
                 columnDefs={columnDefs} 
                 columnGroups={columnGroups} 
-                selectedColumns={this.state.selectedColumns}
+                selectedColumnIds={this.state.selectedColumnIds}
                 filterValues={this.state.filterValues}/>
         } else {
-            mainPanel = <PlateTable {...this.state}/>
+            mainPanel = <PlateTable columnDefs={columnDefs} {...this.state}/>
         }
 
         return (
@@ -163,11 +163,10 @@ class App extends Component {
                         </RadioGroup>
                     </div>
 
-                    {filterDefs.map((def, index) => (
-                        <div className="dib pr3">
+                    {filterDefs.map((def, ind) => (
+                        <div className="dib pr3" key={ind}>
                             <span>{def.name}: </span>
                             <Select 
-                                key={index} 
                                 items={def.values} 
                                 itemRenderer={renderItem} 
                                 itemPredicate={filterItem}
@@ -177,7 +176,8 @@ class App extends Component {
                                 <Button 
                                     className="bp3-button-custom"
                                     text={this.state.filterValues[def.accessor]}
-                                    rightIcon="double-caret-vertical"/>
+                                    rightIcon="double-caret-vertical"
+                                />
                             </Select>
                         </div>
                     ))}
@@ -195,7 +195,7 @@ class App extends Component {
                     <ColumnControls 
                         columnDefs={columnDefs}
                         columnGroups={columnGroups} 
-                        selectedColumns={this.state.selectedColumns}
+                        selectedColumnIds={this.state.selectedColumnIds}
                         toggleColumn={this.toggleColumn}/>
                 </div>
     

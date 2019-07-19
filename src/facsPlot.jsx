@@ -13,6 +13,8 @@ class FACSPlot extends Component {
             loaded: false,
         };
 
+        this.aspectRatio = .8;
+
         const strokeColor = {
             'sample': 'none',
             'reference': '#666',
@@ -25,26 +27,19 @@ class FACSPlot extends Component {
             'gfp': 'lightgreen',
         };
 
-        this.frameProps = {   
+        // default hard-coded props for the XYFrame
+        this.frameProps = {  
+         
             lines: [
                 {
                     title: "Sample", 
-                    coordinates: [
-                        {x: 0, y: 0},
-                        {x: 1, y: 1},
-                    ],
+                    coordinates: [],
                 },{
                     title: "Fitted reference", 
-                    coordinates: [
-                        {x: 0, y: 0},
-                        {x: 1, y: 2},
-                    ],
+                    coordinates: [],
                 },
             ],
             
-            // HACK: hard-coded size for now
-            size: [100, 80],
-
             margin: { left: 5, bottom: 5, right: 5, top: 5 },
 
             xAccessor: "x",
@@ -120,7 +115,12 @@ class FACSPlot extends Component {
                     coord.y = coord.y < 0 ? 0 : coord.y;
                 });
 
+                // plot data
                 this.frameProps.lines = [sampleLine, refLine, gfpLine];
+                
+                // plot size
+                this.frameProps.size = [this.props.width, this.props.width * this.aspectRatio],
+
                 this.setState({loaded: true});
 
             },

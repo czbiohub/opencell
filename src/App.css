@@ -30,6 +30,29 @@ span {
 }
 
 
+/* --------------------- plate-table style --------------------- */
+#plate-table-container {
+	border-top: 1px solid white;
+	border-left: 1px solid white;
+}
+
+.plate-table-row {
+	width: 100%;
+	display: table;
+	table-layout: fixed;
+}
+
+.plate-table-well {
+	display: table-cell;
+	border-bottom: 1px solid white;
+	border-right: 1px solid white;
+	vertical-align: middle;
+	text-align: center;
+	color: #333;
+	background-color: #eee;
+}
+
+
 
 /* --------------------- react-table overrides --------------------- */
 

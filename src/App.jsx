@@ -41,6 +41,7 @@ class App extends Component {
             filterValues,
             filterDefs,
             selectedColumnIds: defaultSelectedColumnIds,
+            selectedColumnId: 'facs_plot',
         };
 
         this.toggleColumn = this.toggleColumn.bind(this);
@@ -75,7 +76,8 @@ class App extends Component {
 
 
     toggleColumn(columnId) {
-        // add or remove the column from the list of selected columns
+
+        // add or remove the column from the list of selected columns (for data-table mode)
         const selectedColumnIds = this.state.selectedColumnIds;
         if (selectedColumnIds.includes(columnId)) {
             selectedColumnIds.splice(selectedColumnIds.indexOf(columnId), 1);
@@ -83,6 +85,9 @@ class App extends Component {
             selectedColumnIds.push(columnId);
         }
         this.setState({selectedColumnIds});
+
+        // update the single selected column (for plate-table mode)
+        this.setState({selectedColumnId: columnId});
     }
 
 
@@ -195,7 +200,7 @@ class App extends Component {
                     <ColumnControls 
                         columnDefs={columnDefs}
                         columnGroups={columnGroups} 
-                        selectedColumnIds={this.state.selectedColumnIds}
+                        selectedColumnIds={this.state.mainPanelMode==='table' ? this.state.selectedColumnIds : [this.state.selectedColumnId]}
                         toggleColumn={this.toggleColumn}/>
                 </div>
     

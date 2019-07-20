@@ -46,12 +46,30 @@ span {
 	display: table-cell;
 	border-bottom: 1px solid white;
 	border-right: 1px solid white;
-	vertical-align: middle;
-	text-align: center;
 	color: #333;
 	background-color: #eee;
 }
 
+.plate-table-well:hover {
+	opacity: .7;
+}
+
+.plate-table-well-header {
+	font-size: 10px;
+	background: white;
+	opacity: .7;
+	width: min-content;
+	padding: 3px;
+	position: absolute;
+}
+
+.plate-table-well-content {
+	font-size: 12px;
+	/* this is a bit of a hack - empirically, a margin-top of 10% approximately vertically centers the content */
+	/* margin-top: 40%;  */
+	/* vertical-align: middle; */
+	/* text-align: center; */
+}
 
 
 /* --------------------- react-table overrides --------------------- */

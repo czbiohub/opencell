@@ -7,10 +7,13 @@ import FACSPlot from './facsPlot.jsx';
 
 
 const measureElement = element => {
-    const DOMNode = ReactDOM.findDOMNode(element);
+
+    if (!element) return undefined;
+
+    const node = ReactDOM.findDOMNode(element);
     return {
-        width: DOMNode.offsetWidth,
-        height: DOMNode.offsetHeight,
+        width: node.offsetWidth,
+        height: node.offsetHeight,
     };
 }
 
@@ -61,9 +64,9 @@ class PlateTable extends Component {
         if (!this.props.data) return null;
 
         // selected columnDef
-        const columnDef = this.props.columnDefs.filter(def => def.id===this.props.selectedColumnIds[0])[0];
+        const columnDef = this.props.columnDefs.filter(def => def.id===this.props.selectedColumnId)[0];
         
-        // filter data
+        // apply the active categorical filters
         let data = [...this.props.data];
         for (const [accessor, value] of Object.entries(this.props.filterValues)) {
             if (value==='all') continue;
@@ -101,7 +104,8 @@ class PlateRow extends Component {
     render () {
         return (
             <div className='plate-table-row'>
-                {this.props.wells.map(well => (<PlateWell key={well.wellId} data={well.data} {...this.props}/>))}
+                {this.props.wells.map(well => (
+                    <PlateWell key={well.wellId} wellId={well.wellId} data={well.data} {...this.props}/>))}
             </div>
         );
     }
@@ -117,38 +121,60 @@ class PlateWell extends Component {
             height: 0,
         };
 
-        this.wellSize = 70;
+        this.hardCodedWidth = 70;
     }
 
     componentDidMount () {
-        // set the height to the width so that the wells are square
-        this.container && this.setState({height: measureElement(this.container).width});
+
+        // set the height to the width so that the well divs are rendered as squares
+        const renderedWidth = measureElement(this.container).width;
+        const width = this.hardCodedWidth;
+
+        this.container && this.setState({
+            width,
+            height: width,
+        });
     }
 
     render () {
 
         // the accessor can be a string (a key) or a user-defined function
-        const fnOrKey = this.props.columnDef.accessor;
-        const accessor = typeof fnOrKey === 'string' ? d => d[fnOrKey] : fnOrKey;
+        const functionOrString = this.props.columnDef.accessor;
+        const accessor = typeof functionOrString === 'string' ? d => d[functionOrString] : functionOrString;
         
         // wrap the accessor with a check that the data exists
         const safeAccessor = data => data ? accessor(data) : undefined;
+        const value = safeAccessor(this.props.data);
 
-        let value = this.props.columnDef.Cell ? this.props.columnDef.Cell({value}) : safeAccessor(this.props.data);
-
+        // HACK-ish: if it exists, execute getProps, designed for react-table, 
+        // by mocking the arguments passed to it by react-table
         let cellStyle = {background: ''};
         if (this.props.columnDef.getProps) {
-            // execute getProps, designed for react-table, by mocking the arguments passed by react-table
             cellStyle = this.props.columnDef.getProps(
-                {}, {original: this.props.data}, {accessor: safeAccessor}).style;
+                {}, {original: this.props.data}, {accessor: safeAccessor}
+            ).style;
+        }
+
+        // assumes scalar content
+        let content = <div className='plate-table-well-content'>{value ? value : 'ND'}</div>;
+
+        // HACK: hard-coded exception for facs_plot
+        if (this.props.data && this.props.columnDef.id==='facs_plot') {
+            content = (
+                <FACSPlot cellLineId={this.props.data.cell_line_id} width={this.state.width}/>
+            );
         }
 
         return (
             <div 
                 className='plate-table-well' 
                 ref={ref => this.container = ref}
-                style={{height: this.state.height, background: cellStyle.background}}>
-                {value ? value : 'ND'}
+                style={{height: this.state.height, width: this.state.width, background: cellStyle.background}}
+            >
+                <div className='w-100 plate-table-well-header'>
+                    {`${this.props.data ? this.props.data.target_name : 'ND'}`}
+                </div>
+                {content}
             </div>
         );
     }

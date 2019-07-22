@@ -99,39 +99,23 @@ export const columnDefs = [
     },{
         id: 'facs_area',
         Header: 'FACS area',
-        accessor: row => {
-            if (row.facs) return row.facs.area;
-            return undefined;
-        },
+        accessor: row => row.facs_results ? row.facs_results.area : undefined,
         getProps: scalarCellStyle(facsColormapName, [0, 1]),
-
     },{
         id: 'facs_rel_median_log',
         Header: 'FACS intensity (median)',
-        accessor: row => {
-            if (row.facs) return row.facs.rel_median_log;
-            return undefined;
-        },
+        accessor: row => row.facs_results ? row.facs_results.rel_median_log : undefined,
         getProps: scalarCellStyle(facsColormapName, [0, 2]),
-
     },{
         id: 'facs_rel_percentile99_log',
         Header: 'FACS intensity (max)',
-        accessor: row => {
-            if (row.facs) return row.facs.rel_percentile99_log;
-            return undefined;
-        },
+        accessor: row => row.facs_results ? row.facs_results.rel_percentile99_log : undefined,
         getProps: scalarCellStyle(facsColormapName, [0, 3]),
-
     },{
         id: 'facs_raw_std',
         Header: 'FACS width',
-        accessor: row => {
-            if (row.facs) return row.facs.raw_std;
-            return undefined;
-        },
+        accessor: row => row.facs_results ? row.facs_results.raw_std : undefined,
         getProps: scalarCellStyle(facsColormapName, [0, 1500]),
-
     },{
         id: 'facs_plot',
         Header: 'FACS plot',
@@ -143,6 +127,7 @@ export const columnDefs = [
             return <FACSPlot 
                 key={row.value} 
                 cellLineId={row.value}
+                data={row.original.facs_histograms}
                 width={100}/>
         },
         // to color the background by the area
@@ -170,7 +155,6 @@ export const defaultSelectedColumnIds = [
     'facs_area',
     'facs_rel_median_log',
     'facs_rel_percentile99_log',
-    'facs_plot',
 ];
 
 

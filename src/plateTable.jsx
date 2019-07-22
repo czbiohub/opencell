@@ -169,8 +169,8 @@ class PlateWell extends Component {
             content = this.props.data && (
                 <div style={{paddingTop: 10}}>
                     <FACSPlot 
-                        cellLineId={this.props.data.cell_line_id} 
-                        width={this.state.width}/>
+                        width={this.state.width}
+                        data={this.props.data.facs_histograms}/>
                 </div>
             );
 

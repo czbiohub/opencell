@@ -43,6 +43,7 @@ span {
 }
 
 .plate-table-well {
+	cursor: pointer;
 	display: table-cell;
 	border-bottom: 1px solid white;
 	border-right: 1px solid white;
@@ -103,7 +104,7 @@ span {
 .ReactTable .rt-tbody .rt-td {
 	/* margin: auto; */
 	vertical-align: middle;
-	text-align: center;
+	text-align: left;
 	/* turn off borders between cells */
 	border: none;
 }
@@ -111,8 +112,12 @@ span {
 /* turn off horizontal borders between table rows */
 .ReactTable .rt-tbody .rt-tr-group {
 	border: none;
+	cursor: pointer;
 }
 
+.ReactTable .rt-tbody .rt-tr-group:hover {
+	opacity: .5;
+}
 
 
 /* --------------------- blueprint overrides --------------------- */

@@ -28,6 +28,7 @@ const scalarCellStyle = (colormapName, colormapDomain, accessor) => {
                 color: "#333",
                 background: chroma(colormap(value)).alpha(.5),
                 borderBottom: 'none',
+                textAlign: 'center',
             }
         }
     }

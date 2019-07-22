@@ -42,7 +42,8 @@ class PlateTable extends Component {
         this.state = {};
 
         const rowIds = "ABCDEFGH".split("");
-        const colIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(d => String(d).padStart(2, '0'));
+        const colIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(
+            d => String(d).padStart(2, '0'));
 
         // construct as platemap of the form
         // {rowId: 'A', wells: [{wellId: 'A01'}, {wellId: 'A02'}, ...]}
@@ -64,7 +65,8 @@ class PlateTable extends Component {
         if (!this.props.data) return null;
 
         // selected columnDef
-        const columnDef = this.props.columnDefs.filter(def => def.id===this.props.selectedColumnId)[0];
+        const columnDef = this.props.columnDefs.filter(
+            def => def.id===this.props.selectedColumnId)[0];
         
         // apply the active categorical filters
         let data = [...this.props.data];
@@ -105,7 +107,12 @@ class PlateRow extends Component {
         return (
             <div className='plate-table-row'>
                 {this.props.wells.map(well => (
-                    <PlateWell key={well.wellId} wellId={well.wellId} data={well.data} {...this.props}/>))}
+                    <PlateWell 
+                        key={well.wellId} 
+                        wellId={well.wellId} 
+                        data={well.data} 
+                        {...this.props}/>
+                ))}
             </div>
         );
     }
@@ -155,21 +162,37 @@ class PlateWell extends Component {
             ).style;
         }
 
-        // assumes scalar content
-        let content = <div className='plate-table-well-content'>{value ? value : 'ND'}</div>;
+        let content;
 
         // HACK: hard-coded exception for facs_plot
-        if (this.props.data && this.props.columnDef.id==='facs_plot') {
-            content = (
-                <FACSPlot cellLineId={this.props.data.cell_line_id} width={this.state.width}/>
+        if (this.props.columnDef.id==='facs_plot') {
+            content = this.props.data && (
+                <div style={{paddingTop: 10}}>
+                    <FACSPlot 
+                        cellLineId={this.props.data.cell_line_id} 
+                        width={this.state.width}/>
+                </div>
             );
+
+        // assume scalar content
+        } else {
+            content = (
+                <div className='plate-table-well-content'>
+                    {value ? value : 'ND'}
+                </div>
+            );
+            
         }
 
         return (
             <div 
                 className='plate-table-well' 
                 ref={ref => this.container = ref}
-                style={{height: this.state.height, width: this.state.width, background: cellStyle.background}}
+                style={{
+                    // height: this.state.height, 
+                    // width: this.state.width, 
+                    ...cellStyle,
+                }}
             >
                 <div className='w-100 plate-table-well-header'>
                     {`${this.props.data ? this.props.data.target_name : 'ND'}`}

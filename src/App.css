@@ -66,9 +66,10 @@ span {
 .plate-table-well-content {
 	font-size: 12px;
 	/* this is a bit of a hack - empirically, a margin-top of 10% approximately vertically centers the content */
-	/* margin-top: 40%;  */
-	/* vertical-align: middle; */
-	/* text-align: center; */
+	margin-top: 40%; 
+	margin-bottom: 30%;
+	vertical-align: middle;
+	text-align: center;
 }
 
 

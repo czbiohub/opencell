@@ -47,6 +47,10 @@ export const columnDefs = [
         accessor: 'well_id',
         width: 50,
     },{
+        Header: 'Line ID',
+        accessor: 'cell_line_id',
+        width: 50,
+    },{
         Header: 'EP date',
         id: 'electroporation_date',
         accessor: d => {
@@ -176,6 +180,7 @@ export const columnGroups = [
         ids: [
             'plate_design_id', 
             'well_id', 
+            'cell_line_id',
             'electroporation_date',
         ],
     },{

@@ -75,7 +75,8 @@ class FACSPlot extends Component {
         };
     }
 
-    componentDidMount() {
+    fetchData () {
+
         fetch(`http://localhost:5000/facshistograms/${this.props.cellLineId}`)
             .then(result => result.json())
             .then(data => {
@@ -127,7 +128,16 @@ class FACSPlot extends Component {
             error => console.log(error));
     }
 
-    
+    componentDidMount () {
+        this.fetchData();
+    }
+
+    componentDidUpdate(prevProps) {
+        if(this.props.cellLineId !== prevProps.cellLineId) {
+            this.fetchData();
+        }
+    }
+
     render () {
         return this.state.loaded ? <XYFrame lines={this.frameProps.lines} {...this.frameProps}/> : null;
     }

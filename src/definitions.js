@@ -37,6 +37,7 @@ const scalarCellStyle = (colormapName, colormapDomain, accessor) => {
 // chroma colormap name for FACS-related scalar columns
 // other options: 'OrRd', 'YlGn'
 const facsColormapName = 'OrRd';
+const sequencingColormapName = 'PuBu';
 
 export const columnDefs = [
     {
@@ -133,6 +134,16 @@ export const columnDefs = [
         },
         // to color the background by the area
         //getProps: styleBackgroundColor('OrRd', [0, 1], row => row.facs ? row.facs.area : null),
+    },{
+        id: 'hdr_all',
+        Header: 'HDR (all)',
+        accessor: row => row.sequencing_results ? row.sequencing_results.hdr_all : undefined,
+        getProps: scalarCellStyle(sequencingColormapName, [0, 1]),
+    },{
+        id: 'hdr_modified',
+        Header: 'HDR (modified)',
+        accessor: row => row.sequencing_results ? row.sequencing_results.hdr_modified : undefined,
+        getProps: scalarCellStyle(sequencingColormapName, [0, 1]),
     },
 ];
 
@@ -199,7 +210,10 @@ export const columnGroups = [
         ],
     },{
         name: 'Sequencing',
-        ids: [],
+        ids: [
+            'hdr_all', 
+            'hdr_modified',
+        ],
     },{
         name: 'Imaging',
         ids: [],

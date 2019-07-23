@@ -41,7 +41,7 @@ class App extends Component {
             filterValues,
             filterDefs,
             selectedColumnIds: defaultSelectedColumnIds,
-            selectedColumnId: 'facs_plot',
+            selectedColumnId: 'facs_area',
         };
 
         this.toggleColumn = this.toggleColumn.bind(this);

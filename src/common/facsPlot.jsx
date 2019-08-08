@@ -8,12 +8,11 @@ class FACSPlot extends Component {
     //
     // A single FACS plot
     // 
-    // props.mode : 'sparkline' or 'full'
-    //     whether to generate a minimal (and tiny) plot or a full plot with axes
     // props.width : absolute width in pixels (required)
     // props.height : absolute height (optional; hard-coded aspect ratio used if not provided)
     // props.data : 
-
+    // props.isSparkline : whether to generate a minimal (and tiny) plot or a full plot with axes
+    // props.showGFP : whether to show the GFP-positive population (the subtracted histogram)  
 
     constructor (props) {
         super(props);
@@ -126,7 +125,8 @@ class FACSPlot extends Component {
         });
 
         // plot data
-        this.frameProps.lines = [sampleLine, refLine, gfpLine];
+        this.frameProps.lines = [sampleLine, refLine];
+        if (this.props.showGFP) this.frameProps.lines.push(gfpLine);
         
         // plot size
         const height = this.props.height ? this.props.height : this.props.width * this.aspectRatio;

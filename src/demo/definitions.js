@@ -11,11 +11,6 @@ export const metadataDefinitions = [
         Header: 'Protein name',
         units: null,
     },{
-        id: 'uniprot_id',
-        accessor: row => manualMetadata[row.targetName].uniprot_id,
-        Header: 'Uniprot ID',
-        units: null,
-    },{
         id: 'target_family',
         accessor: row => {
             let value = pipelineMetadata[row.targetName].target_family;
@@ -23,6 +18,21 @@ export const metadataDefinitions = [
         },
         Header: 'Family',
         units: '',
+    },{
+        id: 'enst_id',
+        accessor: row => pipelineMetadata[row.targetName].transcript_id,
+        Header: 'Transcript ID',
+        units: null,
+    },{
+        id: 'plate_id',
+        accessor: row => pipelineMetadata[row.targetName].plate_design_id,
+        Header: 'Plate ID',
+        units: null,
+    },{
+        id: 'well_id',
+        accessor: row => pipelineMetadata[row.targetName].well_id,
+        Header: 'Well',
+        units: null,
     },{
         id: 'hek_tpm',
         accessor: row => Math.round(pipelineMetadata[row.targetName].hek_tpm),
@@ -33,6 +43,11 @@ export const metadataDefinitions = [
         accessor: row => pipelineMetadata[row.targetName].facs_results.rel_median_log,
         Header: 'FACS intensity',
         units: 'log a.u.',
-    }
+    },{
+        id: 'facs_area',
+        accessor: row => Math.round(pipelineMetadata[row.targetName].facs_results.area*100),
+        Header: 'FACS area',
+        units: '%',
+    },
 ];
 

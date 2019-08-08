@@ -155,12 +155,15 @@ class ScatterPlot extends Component {
 
     updateScatterPlot () {
 
-        const calcRadius = d => {
+        const calcDotRadius = d => {
             // scatter plot dot size from pvalue and enrichment values
 
             const minRadius = 2;
             const width = 15;
             const minDist = 2;
+
+            // any hit with negative enrichment is necessarily not significant
+            if (this.props.xAccessor(d) < 0) return minRadius;
 
             // distance from the origin in the log(pvalue) vs enrichment space
             // as a measure of overall 'significance'
@@ -169,6 +172,23 @@ class ScatterPlot extends Component {
             const weight = (1 - Math.exp(-((dist - minDist)**2 / width)));
             return (plotProps.dotRadius - minRadius) * weight + minRadius;
         }
+
+
+        const calcDotColor = d => {
+            // color dots that correspond to significant hits  
+            return '#333';
+        }
+
+
+        const calcDotStroke = d => {
+            // outline the dot if we have data for it
+            if (this.genesWithData.includes(msMetadata[d.gene_id].gene_name)) {
+                return '#111';
+            }
+            return 'none';
+        }
+
+
 
         const tip = this.tip;
         const plotProps = this.plotProps;
@@ -191,23 +211,17 @@ class ScatterPlot extends Component {
         dots.enter().append('circle')
             .attr('class', 'scatter-dot')
             .attr('fill-opacity', d => {
-                if (this.genesWithData.includes(msMetadata[d.gene_id].gene_name)) {
-                    return .6;
-                };
+                // data-independent opacity for now
                 return plotProps.dotAlpha;
             })
             .merge(dots)
-            .attr('fill', d => {
-                if (this.genesWithData.includes(msMetadata[d.gene_id].gene_name)) {
-                    return '#f33';
-                }
-                return '#333';
-            })
-            .attr('stroke', 'none') //d => d3.rgb('gray').darker().toString())
-            .attr('r', calcRadius)
+            .attr('r', calcDotRadius)
+            .attr('fill', calcDotColor)
+            .attr('stroke', calcDotStroke)
             .attr('cx', d => xScale(this.props.xAccessor(d)))
             .attr('cy', d => yScale(this.props.yAccessor(d)))
             .on("mouseover", function (d) {
+                // enlarge and outline the dots on hover
                 d3.select(this)
                   .attr("r", plotProps.dotRadius + 2)
                   .attr("stroke", '#111')
@@ -216,8 +230,8 @@ class ScatterPlot extends Component {
              })
              .on("mouseout", function (d) {
                 d3.select(this)
-                  .attr("r", calcRadius)
-                  .attr("stroke", "none")
+                  .attr("r", calcDotRadius)
+                  .attr("stroke", calcDotStroke)
                   .classed("scatter-dot-hover", false);
                 tip.hide(msMetadata[d.gene_id], this);
              })

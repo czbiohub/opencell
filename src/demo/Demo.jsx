@@ -148,27 +148,59 @@ class App extends Component {
         }
 
         return (
-            // main container
+
             <div>
-            
             <Navbar/>
 
-            {/* full-bleed navbar
-            <div className="w-100 pa2 bg-black-10 f3">
-                <div className='dib f3 pr4'>OpenCell v0.0.1</div>
-
-                <div className='fr pt2 dib f5'>
-                    <div className='dib pl3 pr3' style={{borderRight: '1px solid #aaa'}}>Home</div>
-                    <div className='dib pl3 pr3' style={{borderRight: '1px solid #aaa'}}><strong>Database</strong></div>
-                    <div className='dib pl3 pr3'>About</div>
-                </div>
-            </div> */}
-
-
+            {/* main container */}
             <div className="w-100 pl4 pr4">
+
 
                 {/* page header and metadata */}
                 <Header targetName={this.state.targetName}/>
+
+
+                {/* FACS plot */}
+                <div className="fl w-30 dib pl3">
+    
+                    <div className="bb b--black-10">
+                        <div className="f3 container-header">FACS</div>
+                    </div>
+
+                    {/* FACS plot controls */}
+                    <div className="pt3 pb2">
+
+                        {/* Top row - scatterplot controls */}
+                        <div className='fl w-100 pb3'>
+                            <div className='dib pr4'>
+                                <ButtonGroup 
+                                    label='GFP-positive population' 
+                                    values={['On', 'Off']}
+                                    activeValue={this.state.facsShowGFP}
+                                    onClick={value => this.setState({facsShowGFP: value})}/>
+                            </div>
+                            <div className='dib pr4'>
+                                <ButtonGroup 
+                                    label='Annotations' 
+                                    values={['On', 'Off']}
+                                    activeValue={this.state.facsShowAnnotations}
+                                    onClick={value => this.setState({facsShowAnnotations: value})}/>
+                            </div>
+                        </div>
+                    </div>
+                
+                    {/* FACS plot itself*/}
+                    <div className="fl pt3 w-100 facs-container" style={{marginLeft: -40, marginTop: -10}}>
+                        <FACSPlot 
+                            width={500}
+                            height={400}
+                            isSparkline={false}
+                            showGFP={this.state.facsShowGFP=='On'}
+                            data={pipelineMetadata[this.state.targetName].facs_histograms}/>
+                    </div>
+                </div>
+
+
 
                 {/* microscopy - slice-viz and volume-viz modes */}
                 {/* note that the 'fl' is required here for 'dib' to work*/}
@@ -239,6 +271,8 @@ class App extends Component {
                     </div>
                 </div>
 
+
+
                 {/* mass spec data (scatter plot and list of interactors) */}
                 <div className="fl w-30 dib pl3">
     
@@ -306,45 +340,6 @@ class App extends Component {
                     </div>
                 </div>
 
-
-                {/* FACS plot */}
-                <div className="fl w-30 dib pl3">
-    
-                    <div className="bb b--black-10">
-                        <div className="f3 container-header">FACS</div>
-                    </div>
-
-                    {/* FACS plot controls */}
-                    <div className="pt3 pb2">
-
-                        {/* Top row - scatterplot controls */}
-                        <div className='fl w-100 pb3'>
-                            <div className='dib pr4'>
-                                <ButtonGroup 
-                                    label='GFP-positive population' 
-                                    values={['On', 'Off']}
-                                    activeValue={this.state.facsShowGFP}
-                                    onClick={value => this.setState({facsShowGFP: value})}/>
-                            </div>
-                            <div className='dib pr4'>
-                                <ButtonGroup 
-                                    label='Annotations' 
-                                    values={['On', 'Off']}
-                                    activeValue={this.state.facsShowAnnotations}
-                                    onClick={value => this.setState({facsShowAnnotations: value})}/>
-                            </div>
-                        </div>
-                    </div>
-                
-                    {/* FACS plot itself*/}
-                    <div className="fl pt3 w-100 facs-container" style={{marginLeft: -40, marginTop: -10}}>
-                        <FACSPlot 
-                            width={500}
-                            height={400}
-                            isSparkline={false}
-                            data={pipelineMetadata[this.state.targetName].facs_histograms}/>
-                    </div>
-                </div>
 
 
                 {/* table of all targets */}

@@ -6,7 +6,7 @@ import { columnDefs, columnGroups, filterDefs, defaultSelectedColumnIds} from '.
 import { Button, Radio, RadioGroup, MenuItem } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
 
-import Navbar from './navbar.jsx';
+import Navbar from '../common/navbar.jsx';
 import DataTable from './dataTable.jsx';
 import PlateTable from './plateTable.jsx';
 import ColumnControls from './columnControls.jsx';
@@ -17,7 +17,7 @@ import 'tachyons';
 import "@blueprintjs/core/lib/css/blueprint.css";
 // import "blueprintjs/select/lib/css/blueprint-select.css";
 
-import './common.css';
+import '../common/common.css';
 import './Dashboard.css';
 
 // debugging
@@ -141,7 +141,7 @@ export default class Dashboard extends Component {
             <div>
 
             <Navbar/>
-            <div className="fl w-100 pl3 pt3">
+            <div className="fl w-100 pl4 pt3 pr4">
 
                 {/* header */}
                 <div className="bb b--black-20">

@@ -3,7 +3,7 @@ import * as d3 from 'd3';
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
 
-import FACSPlot from './facsPlot.jsx';
+import FACSPlot from '../common/facsPlot.jsx';
 
 
 const measureElement = element => {

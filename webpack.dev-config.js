@@ -7,8 +7,8 @@ const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const config = {
 
     entry: {
-        app: './src/appIndex.jsx',
-        dashboard: './src/dashboardIndex.jsx'
+        home: './src/home/index.jsx',
+        dashboard: './src/dashboard/index.jsx'
     },
 
     module: {
@@ -44,14 +44,14 @@ const config = {
     plugins: [
         new MiniCssExtractPlugin({
             filename: '[name].bundle.css',
-            chunks: ['app'],
+            chunks: ['home'],
         }),
 
         new HtmlWebpackPlugin({
             title: 'Home',
             template: './static/index.html',
             filename: './dev/index.html',
-            chunks: ['app']
+            chunks: ['home']
         }),
         new HtmlWebpackPlugin({
             title: 'Dashboard',

@@ -5,6 +5,15 @@ import XYFrame from "semiotic/lib/XYFrame"
 
 
 class FACSPlot extends Component {
+    //
+    // A single FACS plot
+    // 
+    // props.mode : 'sparkline' or 'full'
+    //     whether to generate a minimal (and tiny) plot or a full plot with axes
+    // props.width : absolute width in pixels (required)
+    // props.height : absolute height (optional; hard-coded aspect ratio used if not provided)
+    // props.data : 
+
 
     constructor (props) {
         super(props);
@@ -27,18 +36,39 @@ class FACSPlot extends Component {
             'gfp': 'lightgreen',
         };
 
+        const xExtent = [0, 10000];
+        const yExtent = [0, 700];
+
+        const axes = [
+            {
+                orient: 'left',
+                label: 'Frequency',
+                tickValues: [0, 200, 400, 600, 700],
+                tickFormat: val => val==700 ? '' : val.toFixed(0),
+            },{
+                orient: 'bottom',
+                label: 'Intensity',
+                tickValues: [0, 2000, 4000, 6000, 8000, 10000],
+                tickFormat: val => val.toFixed(0),
+            }
+        ];
+
+        const tightMargin = {left: 5, bottom: 5, right: 5, top: 5};
+        const wideMargin = {left: 60, bottom: 60, right: 10, top: 10};
+
         // default hard-coded props for the XYFrame
         this.frameProps = {  
             
             // line data is constructed in constructLineData
             lines: [],
             
-            margin: { left: 5, bottom: 5, right: 5, top: 5 },
+            // tight margin for sparkline mode
+            margin: this.props.isSparkline ? tightMargin : wideMargin,
 
             xAccessor: "x",
             yAccessor: "y",
-            yExtent: [0, 7e-4 * 1e6],
-            xExtent: [0, 10000],
+            yExtent,
+            xExtent,
 
             lineType: 'area',
             lineStyle: (d, i) => {
@@ -50,7 +80,8 @@ class FACSPlot extends Component {
                 };
             },
 
-            axes: [],
+            // no axes in sparkline mode
+            axes: this.props.isSparkline ? [] : axes,
         };
     }
 
@@ -98,7 +129,8 @@ class FACSPlot extends Component {
         this.frameProps.lines = [sampleLine, refLine, gfpLine];
         
         // plot size
-        this.frameProps.size = [this.props.width, this.props.width * this.aspectRatio];
+        const height = this.props.height ? this.props.height : this.props.width * this.aspectRatio;
+        this.frameProps.size = [this.props.width, height];
 
     }
 

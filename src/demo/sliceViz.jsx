@@ -82,8 +82,8 @@ class SliceViz extends Component {
                          .append('canvas')
                          .style('margin', 'auto')
                          .style('display', 'block')
-                         .attr("width", 612)
-                         .attr("height", 612);
+                         .attr("width", 512)
+                         .attr("height", 512);
                         
         const context = canvas.node().getContext('2d');
         //const displaySlice = this.displaySlice();

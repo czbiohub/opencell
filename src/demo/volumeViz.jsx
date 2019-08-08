@@ -131,8 +131,8 @@ class VolumeViz extends Component {
 
         // set the height of the canvas to the container's width
         const containerAspect = .8;
-        const width = 612; //d3.select(this.node).style('width');
-        const height = 612; //width * containerAspect;
+        const width = 512; //d3.select(this.node).style('width');
+        const height = 512; //width * containerAspect;
 
         this.scene = new THREE.Scene();
         const canvas = d3.select(this.node)

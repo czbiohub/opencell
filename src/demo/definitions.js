@@ -29,11 +29,6 @@ export const metadataDefinitions = [
         Header: 'Expression',
         units: 'tpm',
     },{
-        id: 'hdr_all',
-        accessor: row => Math.round(pipelineMetadata[row.targetName].sequencing_results.hdr_all*100),
-        Header: 'HDR frequency',
-        units: '%',
-    },{
         id: 'facs_intensity',
         accessor: row => pipelineMetadata[row.targetName].facs_results.rel_median_log,
         Header: 'FACS intensity',

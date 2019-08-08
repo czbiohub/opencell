@@ -53,6 +53,12 @@ class App extends Component {
             // 'None', 'Family', 'Status'
             msColorMode: 'Status',
 
+            // whether to plot the GFP-positive population
+            facsShowGFP: 'On',
+
+            // whether to show the annotations (median/max intensity etc)
+            facsShowAnnotations: 'On',
+
             // HACK: these values must match the initial values hard-coded in the sliders below
             gfpMin: 0,
             gfpMax: 50,
@@ -166,7 +172,7 @@ class App extends Component {
 
                 {/* microscopy - slice-viz and volume-viz modes */}
                 {/* note that the 'fl' is required here for 'dib' to work*/}
-                <div className="fl w-40 dib pr3">
+                <div className="fl w-33 dib pr3">
                     <div className="bb b--black-10">
                         <div className="f3 container-header">Localization</div>
                     </div>
@@ -264,7 +270,7 @@ class App extends Component {
 
                     {/* volcano plot
                     the hack-ish absolute margins here are to better align the svg itself*/}
-                    <div className="fl w-100 scatterplot-container" style={{marginLeft: -40, marginTop: -10}}>
+                    <div className="fl w-100 scatterplot-container" style={{marginLeft: -30, marginTop: -10}}>
                         <ScatterPlot
                             xAccessor={row => row.enrichment}
                             yAccessor={row => row.pvalue}
@@ -291,7 +297,7 @@ class App extends Component {
                                     accessor: row => row.enrichment.toFixed(2),
                                 },{
                                     id: 'pvalue',
-                                    Header: 'p-value (-log)',
+                                    Header: '-log p-value',
                                     accessor: row => row.pvalue.toFixed(2),
                                 }
                             ]}
@@ -308,17 +314,41 @@ class App extends Component {
                         <div className="f3 container-header">FACS</div>
                     </div>
 
+                    {/* FACS plot controls */}
+                    <div className="pt3 pb2">
+
+                        {/* Top row - scatterplot controls */}
+                        <div className='fl w-100 pb3'>
+                            <div className='dib pr4'>
+                                <ButtonGroup 
+                                    label='GFP-positive population' 
+                                    values={['On', 'Off']}
+                                    activeValue={this.state.facsShowGFP}
+                                    onClick={value => this.setState({facsShowGFP: value})}/>
+                            </div>
+                            <div className='dib pr4'>
+                                <ButtonGroup 
+                                    label='Annotations' 
+                                    values={['On', 'Off']}
+                                    activeValue={this.state.facsShowAnnotations}
+                                    onClick={value => this.setState({facsShowAnnotations: value})}/>
+                            </div>
+                        </div>
+                    </div>
+                
                     {/* FACS plot itself*/}
-                    <div className="fl pt3 w-100">
+                    <div className="fl pt3 w-100 facs-container" style={{marginLeft: -40, marginTop: -10}}>
                         <FACSPlot 
-                            width={400}
+                            width={500}
+                            height={400}
+                            isSparkline={false}
                             data={pipelineMetadata[this.state.targetName].facs_histograms}/>
                     </div>
                 </div>
 
 
                 {/* table of all targets */}
-                <div className="fl w-100 pt4 pr3">
+                <div className="fl w-70 pt4 pr3">
 
                     <div className="">
                         <div className="f3 container-header">All tagged genes</div>

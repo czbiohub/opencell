@@ -149,6 +149,22 @@ div {
   }
 
 
+  /* FACS plot */
+  .facs-container line {
+    stroke: #ccc;
+}
+
+.facs-container .axis path {
+    stroke: #ccc !important;
+    stroke-width: 1px;
+}
+
+.facs-container .axis text {
+    font-size: 12px;
+}
+
+
+
 /* --------------------- d3-tip styles --------------------- */
 /* copied from d3-tip examples: https://github.com/caged/d3-tip */
 

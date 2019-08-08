@@ -6,9 +6,10 @@ const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
 const config = {
 
-    entry: [
-        './src/index.jsx'
-    ],
+    entry: {
+        app: './src/appIndex.jsx',
+        dashboard: './src/dashboardIndex.jsx'
+    },
 
     module: {
         rules: [
@@ -32,7 +33,7 @@ const config = {
 
     output: {
         path: path.resolve(__dirname, 'dev'),
-        filename: 'bundle.js',
+        filename: '[name].bundle.js',
         publicPath: '/',
     },
 
@@ -41,8 +42,23 @@ const config = {
     },
 
     plugins: [
-        new MiniCssExtractPlugin({filename: 'bundle.css'}),
-        new HtmlWebpackPlugin({template: './static/index.html'})
+        new MiniCssExtractPlugin({
+            filename: '[name].bundle.css',
+            chunks: ['app'],
+        }),
+
+        new HtmlWebpackPlugin({
+            title: 'Home',
+            template: './static/index.html',
+            filename: './dev/index.html',
+            chunks: ['app']
+        }),
+        new HtmlWebpackPlugin({
+            title: 'Dashboard',
+            template: './static/index.html',
+            filename: './dev/dashboard/index.html',
+            chunks: ['dashboard']
+        })
     ]
 
 };

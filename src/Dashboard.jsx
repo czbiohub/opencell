@@ -1,18 +1,15 @@
 import * as d3 from 'd3';
 import React, { Component } from 'react';
 
-import * as constants from './constants.js';
 import { columnDefs, columnGroups, filterDefs, defaultSelectedColumnIds} from './definitions.js';
 
 import { Button, Radio, RadioGroup, MenuItem } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
 
+import Navbar from './navbar.jsx';
 import DataTable from './dataTable.jsx';
 import PlateTable from './plateTable.jsx';
-
-import DisplayControls from './displayControls.jsx';
 import ColumnControls from './columnControls.jsx';
-import FilterControls from './filterControls.jsx';
 
 import 'react-table/react-table.css';
 import 'tachyons';
@@ -20,14 +17,14 @@ import 'tachyons';
 import "@blueprintjs/core/lib/css/blueprint.css";
 // import "blueprintjs/select/lib/css/blueprint-select.css";
 
-
-import './App.css';
+import './common.css';
+import './Dashboard.css';
 
 // debugging
 let _APP = {d3};
 
 
-class App extends Component {
+export default class Dashboard extends Component {
 
     constructor (props) {
         super(props);
@@ -141,6 +138,9 @@ class App extends Component {
 
         return (
             // main container
+            <div>
+
+            <Navbar/>
             <div className="fl w-100 pl3 pt3">
 
                 {/* header */}
@@ -214,11 +214,10 @@ class App extends Component {
                 <div className="fl w-75">{mainPanel}</div>
             </div>  
 
+            </div>
         );
     }
 }
 
-
-export default App;
 
 

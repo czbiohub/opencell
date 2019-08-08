@@ -11,7 +11,7 @@ import Navbar from '../common/navbar.jsx';
 import Header from './header.jsx';
 import SliceViz from './sliceViz.jsx';
 import VolumeViz from './volumeViz.jsx';
-import ScatterPlot from './scatterPlot.jsx';
+import VolcanoPlot from './volcanoPlot.jsx';
 import FACSPlot from '../common/facsPlot.jsx';
 
 import 'tachyons';
@@ -305,7 +305,7 @@ class App extends Component {
                     {/* volcano plot
                     the hack-ish absolute margins here are to better align the svg itself*/}
                     <div className="fl w-100 scatterplot-container" style={{marginLeft: -30, marginTop: -10}}>
-                        <ScatterPlot
+                        <VolcanoPlot
                             xAccessor={row => row.enrichment}
                             yAccessor={row => row.pvalue}
                             xDomain={[-15, 15]}

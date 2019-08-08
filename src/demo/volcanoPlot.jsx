@@ -12,7 +12,7 @@ import msMetadata from './data/ms_metadata.json';
 
 // wrapper around a d3-based interactive scatterplot
 
-class ScatterPlot extends Component {
+export default class VolcanoPlot extends Component {
 
     constructor (props) {
 
@@ -294,4 +294,3 @@ class ScatterPlot extends Component {
 
 }
 
-export default ScatterPlot;

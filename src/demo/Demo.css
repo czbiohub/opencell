@@ -128,7 +128,7 @@ div {
 
 
 
-/* --------------------- scatterplot stuff --------------------- */
+/* --------------------- Volcano plot --------------------- */
 
   .scatterplot-container line {
       stroke: #ccc;
@@ -148,8 +148,14 @@ div {
       pointer-events: none;
   }
 
+  .volcano-fdr-line {
+      fill: none;
+      stroke: rgba(255, 98, 98, 0.721);
+      stroke-width: 1px;
+      stroke-dasharray: 4;
+  }
 
-  /* FACS plot */
+  /* --------------------- FACS plot --------------------- */
   .facs-container line {
     stroke: #ccc;
 }

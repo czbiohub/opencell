@@ -306,10 +306,8 @@ class App extends Component {
                     the hack-ish absolute margins here are to better align the svg itself*/}
                     <div className="fl w-100 scatterplot-container" style={{marginLeft: -30, marginTop: -10}}>
                         <VolcanoPlot
-                            xAccessor={row => row.enrichment}
-                            yAccessor={row => row.pvalue}
-                            xDomain={[-15, 15]}
-                            yDomain={[0, 20]}
+                            enrichmentAccessor={row => row.enrichment}
+                            pvalueAccessor={row => row.pvalue}
                             targetName={this.state.targetName}
                             changeTarget={this.changeTarget}
                         />

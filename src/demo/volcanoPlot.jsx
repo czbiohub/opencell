@@ -10,9 +10,11 @@ import msData from './data/ms_data.json';
 import msMetadata from './data/ms_metadata.json';
 
 
-// wrapper around a d3-based interactive scatterplot
-
 export default class VolcanoPlot extends Component {
+
+    // A volcano plot of mass-spec enrichment data
+    // The x-axis is enrichment and the y-axis is -log pvalue
+    //
 
     constructor (props) {
 
@@ -39,6 +41,20 @@ export default class VolcanoPlot extends Component {
         // list of gene/target names with an MS dataset
         this.genesWithData = msData.map(d => d.target_name);
 
+        // parameters for the data-based 1% FDR curve from Hein 2015
+        this.fdrParams = {
+            x0: 1.75,
+            c: 3.65,
+        };
+
+        this.fdrDataLeft = d3.range(-20, -this.fdrParams.x0, .1).map(enrichment => {
+            return {x: enrichment, y: this.fdrParams.c / (-enrichment - this.fdrParams.x0)};
+        });
+        
+        this.fdrDataRight = d3.range(this.fdrParams.x0 + .1, 20, .1).map(enrichment => {
+            return {x: enrichment, y: this.fdrParams.c / (enrichment - this.fdrParams.x0)};
+        });
+
     }
 
     
@@ -64,6 +80,9 @@ export default class VolcanoPlot extends Component {
 
 
     constructData() {
+        // to speed up the rendering of the plot,
+        // we drop all hits with a pvalue less than 0.5 
+        // and randomly drop hits with a pvalue between 0.5 and 1
         let data = msData.filter(d => d.target_name==this.props.targetName)[0].hits;
         data = data.filter(d => {
             return (d.pvalue > 1) || (d.pvalue < 1 && d3.randomUniform(0, 1)() > .5);
@@ -149,6 +168,14 @@ export default class VolcanoPlot extends Component {
         this.svg = svg;
         this.g = g;
 
+        this.fdrLineLeft = g.append("path")
+                            .attr('class', 'volcano-fdr-line')
+                            .datum(this.fdrDataLeft);
+
+        this.fdrLineRight = g.append("path")
+                             .attr('class', 'volcano-fdr-line')
+                             .datum(this.fdrDataRight);
+
     }
 
 
@@ -163,11 +190,11 @@ export default class VolcanoPlot extends Component {
             const minDist = 2;
 
             // any hit with negative enrichment is necessarily not significant
-            if (this.props.xAccessor(d) < 0) return minRadius;
+            if (this.props.enrichmentAccessor(d) < this.fdrParams.x0) return minRadius;
 
             // distance from the origin in the log(pvalue) vs enrichment space
             // as a measure of overall 'significance'
-            let dist = (this.props.yAccessor(d)**2 + this.props.xAccessor(d)**2)**.5;
+            let dist = (this.props.pvalueAccessor(d)**2 + this.props.enrichmentAccessor(d)**2)**.5;
             if (dist < minDist) return minRadius;
             const weight = (1 - Math.exp(-((dist - minDist)**2 / width)));
             return (plotProps.dotRadius - minRadius) * weight + minRadius;
@@ -176,25 +203,34 @@ export default class VolcanoPlot extends Component {
 
         const calcDotColor = d => {
             // color dots that correspond to significant hits  
-            return '#333';
+
+            const color = '#f66';
+            const noColor = '#333';
+
+            if (this.props.enrichmentAccessor(d) < this.fdrParams.x0) return noColor;
+            const thresh = this.fdrParams.c / (this.props.enrichmentAccessor(d) - this.fdrParams.x0);
+            if (this.props.pvalueAccessor(d) > thresh) return color;
+            return noColor;
         }
 
 
         const calcDotStroke = d => {
             // outline the dot if we have data for it
             if (this.genesWithData.includes(msMetadata[d.gene_id].gene_name)) {
-                return '#111';
+                return '#333';
             }
             return 'none';
         }
 
-
-
         const tip = this.tip;
         const plotProps = this.plotProps;
 
-        this.xScale.domain(this.props.xDomain);
-        this.yScale.domain(this.props.yDomain);
+        // dynamically determine the domain of the plot
+        const maxEnrichment = d3.max(this.data, this.props.enrichmentAccessor);
+        const maxPvalue = d3.max(this.data, this.props.pvalueAccessor);
+
+        this.xScale.domain([-maxEnrichment - 1, maxEnrichment + 1]);
+        this.yScale.domain([0, maxPvalue + 1]);
 
         let xScale = this.xScale;
         let yScale = this.yScale;
@@ -202,6 +238,15 @@ export default class VolcanoPlot extends Component {
             xScale = this.currentTransform.rescaleX(xScale);
             yScale = this.currentTransform.rescaleY(yScale);
         }
+
+        // create the generator the significance curves
+        const line = d3.line()
+                       .x(d => xScale(d.x))
+                       .y(d => yScale(d.y));
+    
+        // update the line generator
+        this.fdrLineLeft.attr('d', line);
+        this.fdrLineRight.attr('d', line);
 
         const dots = this.g.selectAll('.scatter-dot')
                            .data(this.data, d => d.gene_id);
@@ -218,8 +263,8 @@ export default class VolcanoPlot extends Component {
             .attr('r', calcDotRadius)
             .attr('fill', calcDotColor)
             .attr('stroke', calcDotStroke)
-            .attr('cx', d => xScale(this.props.xAccessor(d)))
-            .attr('cy', d => yScale(this.props.yAccessor(d)))
+            .attr('cx', d => xScale(this.props.enrichmentAccessor(d)))
+            .attr('cy', d => yScale(this.props.pvalueAccessor(d)))
             .on("mouseover", function (d) {
                 // enlarge and outline the dots on hover
                 d3.select(this)
@@ -248,8 +293,8 @@ export default class VolcanoPlot extends Component {
                 .attr('text-anchor', 'middle')
                 .text(d => msMetadata[d.gene_id].gene_name)
                 .merge(captions)
-                .attr('x', d => xScale(this.props.xAccessor(d)))
-                .attr('y', d => yScale(this.props.yAccessor(d)) - 10)
+                .attr('x', d => xScale(this.props.enrichmentAccessor(d)))
+                .attr('y', d => yScale(this.props.pvalueAccessor(d)) - 10)
                 .attr('fill-opacity', d => {
                     return this.currentTransform ? this.captionOpacityScale(this.currentTransform.k) : 0
                 });
@@ -271,12 +316,12 @@ export default class VolcanoPlot extends Component {
         const yScaleZoom = transform.rescaleY(this.yScale);
 
         this.g.selectAll(".scatter-dot")
-            .attr("cx", d => xScaleZoom(this.props.xAccessor(d)))
-            .attr("cy", d => yScaleZoom(this.props.yAccessor(d)));
+            .attr("cx", d => xScaleZoom(this.props.enrichmentAccessor(d)))
+            .attr("cy", d => yScaleZoom(this.props.pvalueAccessor(d)));
 
         this.g.selectAll(".scatter-caption")
-            .attr("x", d => xScaleZoom(this.props.xAccessor(d)))
-            .attr("y", d => yScaleZoom(this.props.yAccessor(d)) - 10)
+            .attr("x", d => xScaleZoom(this.props.enrichmentAccessor(d)))
+            .attr("y", d => yScaleZoom(this.props.pvalueAccessor(d)) - 10)
             .attr("fill-opacity", d => transform ? this.captionOpacityScale(transform.k) : 0);
 
         this.svg.select("#x-axis").call(this.xAxis.scale(xScaleZoom));

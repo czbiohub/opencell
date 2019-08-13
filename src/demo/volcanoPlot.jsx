@@ -36,15 +36,22 @@ export default class VolcanoPlot extends Component {
         }
 
         this.zoom = this.zoom.bind(this);
+        this.updateScatterPlot = this.updateScatterPlot.bind(this);
         this.constructData = this.constructData.bind(this);
 
         // list of gene/target names with an MS dataset
         this.genesWithData = msData.map(d => d.target_name);
 
-        // parameters for the data-based 1% FDR curve from Hein 2015
+        // parameters for 1% FDR from Hein 2015
+        // this.fdrParams = {
+        //     x0: 1.75,
+        //     c: 3.65,
+        // };
+
+        // parameters for 5% FDR calculated from 2019-08-02 data
         this.fdrParams = {
-            x0: 1.75,
-            c: 3.65,
+            x0: 1.62,
+            c: 4.25,
         };
 
         this.fdrDataLeft = d3.range(-20, -this.fdrParams.x0, .1).map(enrichment => {
@@ -184,6 +191,9 @@ export default class VolcanoPlot extends Component {
 
 
     updateScatterPlot () {
+
+        // reset the transform
+        this.currentTransform = undefined;
 
         const calcDotRadius = d => {
             // scatter plot dot size from pvalue and enrichment values

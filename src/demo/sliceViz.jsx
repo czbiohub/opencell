@@ -156,7 +156,7 @@ class SliceViz extends Component {
             //const [redRatio, greenRatio, blueRatio] = [.1, .92, .1];
 
             // hard-coded weights for blue (DAPI)
-            const [redRatio, greenRatio, blueRatio] = [.1, .1, .9];
+            const [redRatio, greenRatio, blueRatio] = [0, 0, 1];
 
             const slices = this.props.volumes.map(volume => {
                 return volume.data.slice(this.props.zIndex*this.numPx, (this.props.zIndex + 1)*this.numPx);

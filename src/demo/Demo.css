@@ -130,12 +130,14 @@ div {
 
 /* --------------------- Volcano plot --------------------- */
 
-  .scatterplot-container line {
+  .scatterplot-container .tick line {
       stroke: #ccc;
+      stroke-width: 1px;
+      stroke-dasharray: 2;
   }
 
   .scatterplot-container .axis path {
-      stroke: #ccc !important;
+      stroke: #cccccc00 !important;
       stroke-width: 1px;
   }
 
@@ -155,14 +157,19 @@ div {
       stroke-dasharray: 4;
   }
 
-  /* --------------------- FACS plot --------------------- */
-  .facs-container line {
+
+/* --------------------- FACS plot --------------------- */
+
+.facs-container .tick path, .facs-container .axis line {
     stroke: #ccc;
+    stroke-width: 1px;
+    stroke-dasharray: 2;
 }
 
-.facs-container .axis path {
-    stroke: #ccc !important;
-    stroke-width: 1px;
+/* the bottom-most horizontal axis line should be solid and darker */
+.axis .bottom line {
+    stroke: #666;
+    stroke-dasharray: none;
 }
 
 .facs-container .axis text {

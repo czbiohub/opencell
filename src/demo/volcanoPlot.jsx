@@ -102,10 +102,13 @@ export default class VolcanoPlot extends Component {
         this.xScale = d3.scaleLinear().range([pp.padLeft, pp.width - pp.padRight]);
         this.yScale = d3.scaleLinear().range([pp.height - pp.padBottom, pp.padTop]);
 
-        this.captionOpacityScale = d3.scaleLinear()
-                                .range([0, 1])
-                                .domain([2.5, 4.5])
-                                .clamp(true);
+        this.captionOpacityScale = k => {
+            const val = d3.scaleLinear()
+                        .range([0, 1])
+                        .domain([2.5, 4.5])
+                        .clamp(true)(k);
+            return val**2;
+        };
 
         this.xAxis = d3.axisBottom(this.xScale)
             .tickSize(-pp.height + pp.padTop + pp.padBottom, 0)
@@ -195,8 +198,9 @@ export default class VolcanoPlot extends Component {
             // distance from the origin in the log(pvalue) vs enrichment space
             // as a measure of overall 'significance'
             let dist = (this.props.pvalueAccessor(d)**2 + this.props.enrichmentAccessor(d)**2)**.5;
-            if (dist < minDist) return minRadius;
             const weight = (1 - Math.exp(-((dist - minDist)**2 / width)));
+
+            if (dist < minDist) return minRadius;
             return (plotProps.dotRadius - minRadius) * weight + minRadius;
         }
 
@@ -204,20 +208,28 @@ export default class VolcanoPlot extends Component {
         const calcDotColor = d => {
             // color dots that correspond to significant hits  
 
-            const color = '#f66';
-            const noColor = '#333';
+            const baitColor = '#ffff33ff';
+            const sigColor = '#00429d55';
+            const notSigColor = '#33333333';
+    
+            // special color if the hit is the target itself
+            if (msMetadata[d.gene_id].gene_name===this.props.targetName) return baitColor;
 
-            if (this.props.enrichmentAccessor(d) < this.fdrParams.x0) return noColor;
+            // negatively-enriched hits are (definitionally) not significant
+            if (this.props.enrichmentAccessor(d) < this.fdrParams.x0) return notSigColor;
+
+            // check if the positive enrichment is above the FDR curve
             const thresh = this.fdrParams.c / (this.props.enrichmentAccessor(d) - this.fdrParams.x0);
-            if (this.props.pvalueAccessor(d) > thresh) return color;
-            return noColor;
+            if (this.props.pvalueAccessor(d) > thresh) return sigColor;
+
+            return notSigColor;
         }
 
 
         const calcDotStroke = d => {
             // outline the dot if we have data for it
             if (this.genesWithData.includes(msMetadata[d.gene_id].gene_name)) {
-                return '#333';
+                return '#666';
             }
             return 'none';
         }
@@ -234,10 +246,12 @@ export default class VolcanoPlot extends Component {
 
         let xScale = this.xScale;
         let yScale = this.yScale;
-        if (this.currentTransform) {
-            xScale = this.currentTransform.rescaleX(xScale);
-            yScale = this.currentTransform.rescaleY(yScale);
-        }
+
+        // to retain the zoom/pan state when the target is changed
+        // if (this.currentTransform) {
+        //     xScale = this.currentTransform.rescaleX(xScale);
+        //     yScale = this.currentTransform.rescaleY(yScale);
+        // }
 
         // create the generator the significance curves
         const line = d3.line()
@@ -255,10 +269,6 @@ export default class VolcanoPlot extends Component {
     
         dots.enter().append('circle')
             .attr('class', 'scatter-dot')
-            .attr('fill-opacity', d => {
-                // data-independent opacity for now
-                return plotProps.dotAlpha;
-            })
             .merge(dots)
             .attr('r', calcDotRadius)
             .attr('fill', calcDotColor)
@@ -315,6 +325,14 @@ export default class VolcanoPlot extends Component {
         const xScaleZoom = transform.rescaleX(this.xScale);
         const yScaleZoom = transform.rescaleY(this.yScale);
 
+        const line = d3.line()
+            .x(d => xScaleZoom(d.x))
+            .y(d => yScaleZoom(d.y));
+
+        // update the line generator
+        this.fdrLineLeft.attr('d', line);
+        this.fdrLineRight.attr('d', line);
+       
         this.g.selectAll(".scatter-dot")
             .attr("cx", d => xScaleZoom(this.props.enrichmentAccessor(d)))
             .attr("cy", d => yScaleZoom(this.props.pvalueAccessor(d)));

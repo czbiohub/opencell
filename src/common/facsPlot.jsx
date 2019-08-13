@@ -36,13 +36,13 @@ class FACSPlot extends Component {
         };
 
         const xExtent = [0, 10000];
-        const yExtent = [0, 700];
+        const yExtent = [0, 600];
 
         const axes = [
             {
                 orient: 'left',
                 label: 'Frequency',
-                tickValues: [0, 200, 400, 600, 700],
+                tickValues: [0, 200, 400, 600,],
                 tickFormat: val => val==700 ? '' : val.toFixed(0),
             },{
                 orient: 'bottom',

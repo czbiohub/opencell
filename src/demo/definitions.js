@@ -1,5 +1,5 @@
 
-import pipelineMetadata from './data/pipeline_metadata.json';
+import pipelineMetadata from './data/20190816_pipeline-metadata.json';
 import manualMetadata from './data/manual_metadata.json';
 
 

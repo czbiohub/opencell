@@ -6,8 +6,8 @@ import React, { Component } from 'react';
 import 'tachyons';
 import './Demo.css';
 
-import msData from './data/ms_data.json';
-import msMetadata from './data/ms_metadata.json';
+import msData from './data/20190816_ms-data.json';
+import msMetadata from './data/20190816_ms-metadata.json';
 
 
 export default class VolcanoPlot extends Component {

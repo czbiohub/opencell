@@ -3,7 +3,7 @@ import React, {Component} from 'react';
 
 import FACSPlot from '../common/facsPlot.jsx';
 import {metadataDefinitions} from './definitions.js';
-import pipelineMetadata from './data/pipeline_metadata.json';
+import pipelineMetadata from './data/20190816_pipeline-metadata.json';
 
 
 class Header extends Component {

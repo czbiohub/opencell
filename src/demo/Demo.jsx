@@ -20,10 +20,10 @@ import 'react-table/react-table.css';
 import { NRRDLoader } from 'three/examples/jsm/loaders/NRRDLoader';
 import { metadataDefinitions } from './definitions.js';
 
-import msData from './data/ms_data.json';
+import msData from './data/20190816_ms-data.json';
 import nrrdFilepaths from './data/nrrd_filepaths.json';
 import manualMetadata from './data/manual_metadata.json';
-import pipelineMetadata from './data/pipeline_metadata.json';
+import pipelineMetadata from './data/20190816_pipeline-metadata.json';
 
 import '../common/common.css';
 import './Demo.css';
@@ -71,7 +71,7 @@ class App extends Component {
 
         // the list of all targets for which we have data;
         // these target names should also all appear in manualMetadata
-        this.allTargetNames = Object.keys(nrrdFilepaths);
+        this.allTargetNames = Object.keys(manualMetadata);
     
     }
 
@@ -146,6 +146,16 @@ class App extends Component {
                 {...this.state}
             />
         }
+
+        // append gene_name to metadataDefinitions (used only for the table of all targets at the bottom)
+        let tableDefs = [
+            {   
+                id: 'gene_name',
+                Header: 'Gene name',
+                accessor: row => row.targetName,
+            },
+            ...metadataDefinitions,
+        ];
 
         return (
 
@@ -306,14 +316,14 @@ class App extends Component {
                     the hack-ish absolute margins here are to better align the svg itself*/}
                     <div className="fl w-100 scatterplot-container" style={{marginLeft: -30, marginTop: -10}}>
                         <VolcanoPlot
-                            enrichmentAccessor={row => row.enrichment}
-                            pvalueAccessor={row => row.pvalue}
+                            enrichmentAccessor={row => parseFloat(row.enrichment)}
+                            pvalueAccessor={row => parseFloat(row.pvalue)}
                             targetName={this.state.targetName}
                             changeTarget={this.changeTarget}
                         />
                     </div>
                     {/* table of top MS hits */}
-                    <div className='fl w-100'>
+                    <div className='fl w-100' style={{visibility: 'hidden'}}>
                         <div className='f3 container-header'>Top hits</div>
                         <ReactTable
                             pageSize={5}
@@ -326,11 +336,11 @@ class App extends Component {
                                 },{
                                     id: 'enrichment',
                                     Header: 'Enrichment',
-                                    accessor: row => row.enrichment.toFixed(2),
+                                    accessor: row => parseFloat(row.enrichment).toFixed(2),
                                 },{
                                     id: 'pvalue',
                                     Header: '-log p-value',
-                                    accessor: row => row.pvalue.toFixed(2),
+                                    accessor: row => parseFloat(row.pvalue).toFixed(2),
                                 }
                             ]}
                             data={msData.filter(d => d.target_name==this.state.targetName)[0].hits}
@@ -350,7 +360,7 @@ class App extends Component {
                     <ReactTable 
                         pageSize={10}
                         filterable={false}
-                        columns={metadataDefinitions}
+                        columns={tableDefs}
                         data={this.allTargetNames.map(name => ({targetName: name, isActive: this.state.targetName===name}))}
                         getTrProps={(state, rowInfo, column) => {
                             return {

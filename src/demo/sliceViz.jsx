@@ -29,6 +29,9 @@ class SliceViz extends Component {
             'GFP': this.gfpInd,
         };
 
+        // hard-coded size of the image data (assuming square aspect ratio)
+        this.imageSize = 600;
+
     }
 
     
@@ -82,8 +85,8 @@ class SliceViz extends Component {
                          .append('canvas')
                          .style('margin', 'auto')
                          .style('display', 'block')
-                         .attr("width", 512)
-                         .attr("height", 512);
+                         .attr("width", this.imageSize)
+                         .attr("height", this.imageSize);
                         
         const context = canvas.node().getContext('2d');
         //const displaySlice = this.displaySlice();
@@ -93,7 +96,7 @@ class SliceViz extends Component {
         function zoom () {
 
             const transform = d3.event.transform;
-            const imageData = context.getImageData(0, 0, 512, 512);
+            const imageData = context.getImageData(0, 0, this.imageSize, this.imageSize);
 
             context.save();
 
@@ -176,7 +179,7 @@ class SliceViz extends Component {
             }
         }
 
-        const imageData = context.getImageData(0, 0, 512, 512);
+        const imageData = context.getImageData(0, 0, this.imageSize, this.imageSize);
         imageData.data.set(this.imData);
         context.putImageData(imageData, 0, 0);
 

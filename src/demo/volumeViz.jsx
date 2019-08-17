@@ -130,9 +130,9 @@ class VolumeViz extends Component {
     initViz() {
 
         // set the height of the canvas to the container's width
-        const containerAspect = .8;
-        const width = 512; //d3.select(this.node).style('width');
-        const height = 512; //width * containerAspect;
+        const containerAspect = 1;
+        const width = 600; //d3.select(this.node).style('width');
+        const height = 600; //width * containerAspect;
 
         this.scene = new THREE.Scene();
         const canvas = d3.select(this.node)
@@ -151,14 +151,14 @@ class VolumeViz extends Component {
 
         // copied from 'webgl2_materials_texture3d' example
         // TODO: figure out how these coordinates work
-        const h = 512; // frustum height
+        const h = 600; // frustum height
 
         const aspect = 1/containerAspect; //window.innerWidth / window.innerHeight;
         this.camera = new THREE.OrthographicCamera(-h * aspect/2, h*aspect/2, h/2, -h/2, 1, 1000);
 
         // hard-coded empirically-selected default position
         // looking directly down in the image
-        this.camera.position.set(256, 256, 500);
+        this.camera.position.set(h/2, h/2, 500);
 
         // copied from the example - because 'z is up'
         this.camera.up.set(0, 0, 1);
@@ -170,7 +170,7 @@ class VolumeViz extends Component {
             //console.log(this.camera.position);
             this.renderVolume()
         });
-        controls.target.set(256, 256, 32);
+        controls.target.set(h/2, h/2, 32);
         controls.minZoom = 0.5;
         controls.maxZoom = 4;
         controls.update();
@@ -238,6 +238,7 @@ class VolumeViz extends Component {
         uniforms['u_cmdata'].value = colormaps.blue;
         uniforms['u_renderstyle'].value = 0;
         uniforms['u_renderthreshold'].value = 30;
+        
         this.material_blue = new THREE.ShaderMaterial({
             uniforms: uniforms,
             vertexShader: VolumeRenderShader1.vertexShader,

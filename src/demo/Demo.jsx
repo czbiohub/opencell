@@ -21,7 +21,7 @@ import { NRRDLoader } from 'three/examples/jsm/loaders/NRRDLoader';
 import { metadataDefinitions } from './definitions.js';
 
 import msData from './data/20190816_ms-data.json';
-import nrrdFilepaths from './data/nrrd_filepaths.json';
+import nrrdFilepaths from './data/20190816_nrrd-filepaths.json';
 import manualMetadata from './data/manual_metadata.json';
 import pipelineMetadata from './data/20190816_pipeline-metadata.json';
 

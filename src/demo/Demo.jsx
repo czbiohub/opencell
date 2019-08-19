@@ -12,7 +12,11 @@ import Header from './header.jsx';
 import SliceViz from './sliceViz.jsx';
 import VolumeViz from './volumeViz.jsx';
 import VolcanoPlot from './volcanoPlot.jsx';
+
+
 import FACSPlot from '../common/facsPlot.jsx';
+import ExpressionPlot from '../common/expressionPlot.jsx';
+
 
 import 'tachyons';
 import 'react-table/react-table.css';
@@ -170,11 +174,22 @@ class App extends Component {
                 <Header targetName={this.state.targetName}/>
 
 
-                {/* FACS plot */}
+                {/* Expression scatterplot and FACS histograms */}
                 <div className="fl w-25 dib pl3 pr4">
     
                     <div className="bb b--black-10">
-                        <div className="f3 container-header">FACS</div>
+                        <div className="f3 container-header">Gene expression</div>
+                    </div>
+
+
+                    {/* tpm-GFP scatterplot*/}
+                    <div className="fl pt3 pb3 w-100 expression-plot-container" style={{marginLeft: -20, marginTop: -10}}>
+                        <ExpressionPlot targetName={this.state.targetName}/>
+                    </div>
+
+
+                    <div className="bb b--black-10">
+                        <div className="f3 container-header">FACS histogram</div>
                     </div>
 
                     {/* FACS plot controls */}
@@ -198,7 +213,8 @@ class App extends Component {
                             </div>
                         </div>
                     </div>
-                
+
+
                     {/* FACS plot itself*/}
                     <div className="fl pt3 w-100 facs-container" style={{marginLeft: -20, marginTop: -10}}>
                         <FACSPlot 

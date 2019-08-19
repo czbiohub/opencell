@@ -31,7 +31,7 @@ class Header extends Component {
         return (
             <div className="fl w-100 pt3 pb3">
                 {/* main container with bottom border */}
-                <div className="bb b--black-10 pb3" style={{overflow: 'hidden'}}>
+                <div className="bb b--white pb3" style={{overflow: 'hidden'}}>
 
                     {/* target name */}
                     <div className='fl dib w-15'>

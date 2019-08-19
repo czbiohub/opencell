@@ -2,6 +2,7 @@
 import * as d3 from 'd3';
 import tip from 'd3-tip';
 import React, { Component } from 'react';
+import ReactDOM from 'react-dom';
 
 import 'tachyons';
 import './Demo.css';
@@ -22,12 +23,18 @@ export default class VolcanoPlot extends Component {
         this.state = {};
 
         this.plotProps = {
+
+            // these hard-coded width/height are overridden in createScatterPlot
             width: 500,
             height: 400,
+            aspectRatio: 1,
+
+            // note that these pad values are independent of the actual width
             padLeft: 40,
             padRight: 10,
             padTop: 10,
             padBottom: 40,
+
             numTicks: 3,
             dotAlpha: .3,
             dotRadius: 5,
@@ -99,8 +106,13 @@ export default class VolcanoPlot extends Component {
 
 
     createScatterPlot () {
-        
+
         const pp = this.plotProps;
+
+        // override manuallly defined widths
+        pp.width = ReactDOM.findDOMNode(this.node).offsetWidth;
+        pp.height = pp.width * pp.aspectRatio;
+        
         const svg = d3.select(this.node)
                       .append('svg')
                       .attr('width', pp.width)
@@ -218,7 +230,7 @@ export default class VolcanoPlot extends Component {
         const calcDotColor = d => {
             // color dots that correspond to significant hits  
 
-            const baitColor = '#ffff33ff';
+            const baitColor = '#a8d7a8'; //'#ffff33ff';
             const sigColor = '#ff666655';
             const notSigColor = '#33333333';
     
@@ -323,8 +335,8 @@ export default class VolcanoPlot extends Component {
         this.svg.select("#x-axis").call(this.xAxis.scale(xScale));
         this.svg.select("#y-axis").call(this.yAxis.scale(yScale));
 
-        this.svg.select("#x-axis-label").text('Enrichment');
-        this.svg.select("#y-axis-label").text('-log p-value');
+        this.svg.select("#x-axis-label").text('Relative enrichment');
+        this.svg.select("#y-axis-label").text('-log10 p-value');
 
     }
 

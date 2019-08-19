@@ -230,6 +230,10 @@ class VolumeViz extends Component {
             vertexShader: VolumeRenderShader1.vertexShader,
             fragmentShader: VolumeRenderShader1.fragmentShader,
             side: THREE.BackSide,
+
+            // TODO: think about this: if `transparent` is true here, then the blue material 
+            // is completely invisible - need to add alpha channel to the gray colormap?
+            //transparent: true,
         });
 
         // semi-transparent blue-colormapped material for two-color mode 
@@ -253,12 +257,14 @@ class VolumeViz extends Component {
         const geometry = new THREE.BoxBufferGeometry(...shape);
         geometry.translate(...center);
 
-        this.mesh_gray = new THREE.Mesh(geometry, this.material_gray);
         this.mesh_blue = new THREE.Mesh(geometry, this.material_blue);
+        this.mesh_gray = new THREE.Mesh(geometry, this.material_gray);
 
         const group = new THREE.Group();
-        group.add(this.mesh_gray);
+
+        // note: order of addition here doesn't (seem to) matter
         group.add(this.mesh_blue);
+        group.add(this.mesh_gray);
         this.scene.add(group);
 
     }

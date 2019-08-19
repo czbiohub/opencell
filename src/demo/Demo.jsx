@@ -45,7 +45,7 @@ class App extends Component {
             localizationMode: 'Slice',
 
             // 'GFP' or 'DAPI' or 'Both'
-            localizationChannel: 'DAPI',
+            localizationChannel: 'Both',
 
             // 'Volcano' or 'Table'
             msDisplayMode: 'Volcano',
@@ -171,7 +171,7 @@ class App extends Component {
 
 
                 {/* FACS plot */}
-                <div className="fl w-30 dib pl3">
+                <div className="fl w-25 dib pl3 pr4">
     
                     <div className="bb b--black-10">
                         <div className="f3 container-header">FACS</div>
@@ -200,10 +200,10 @@ class App extends Component {
                     </div>
                 
                     {/* FACS plot itself*/}
-                    <div className="fl pt3 w-100 facs-container" style={{marginLeft: -40, marginTop: -10}}>
+                    <div className="fl pt3 w-100 facs-container" style={{marginLeft: -20, marginTop: -10}}>
                         <FACSPlot 
-                            width={500}
-                            height={400}
+                            width={400}
+                            height={300}
                             isSparkline={false}
                             showGFP={this.state.facsShowGFP=='On'}
                             data={pipelineMetadata[this.state.targetName].facs_histograms}/>
@@ -214,7 +214,7 @@ class App extends Component {
 
                 {/* microscopy - slice-viz and volume-viz modes */}
                 {/* note that the 'fl' is required here for 'dib' to work*/}
-                <div className="fl w-33 dib pr3">
+                <div className="fl w-40 dib pl3 pr4">
                     <div className="bb b--black-10">
                         <div className="f3 container-header">Localization</div>
                     </div>
@@ -284,7 +284,7 @@ class App extends Component {
 
 
                 {/* mass spec data (scatter plot and list of interactors) */}
-                <div className="fl w-30 dib pl3">
+                <div className="fl w-33 dib pl3">
     
                     <div className="bb b--black-10">
                         <div className="f3 container-header">Interactions</div>
@@ -314,7 +314,7 @@ class App extends Component {
 
                     {/* volcano plot
                     the hack-ish absolute margins here are to better align the svg itself*/}
-                    <div className="fl w-100 scatterplot-container" style={{marginLeft: -30, marginTop: -10}}>
+                    <div className="fl w-100 scatterplot-container" style={{marginLeft: -20, marginTop: 10}}>
                         <VolcanoPlot
                             enrichmentAccessor={row => parseFloat(row.enrichment)}
                             pvalueAccessor={row => parseFloat(row.pvalue)}
@@ -351,7 +351,7 @@ class App extends Component {
 
 
                 {/* table of all targets */}
-                <div className="fl w-70 pt4 pr3">
+                <div className="fl w-70 pt0 pl4 pb5">
 
                     <div className="">
                         <div className="f3 container-header">All tagged genes</div>

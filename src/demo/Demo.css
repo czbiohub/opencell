@@ -72,12 +72,13 @@ div {
 }
 
 .simple-button:hover {
-	background-color: #ddd;
+	background-color: #eee;
 }
 
 .simple-button-active, .simple-button-active:hover {
     font-weight: bold;
-    background-color: rgba(78, 174, 234, 0.3);
+    /* background-color: #ddd; rgba(78, 174, 234, 0.3); */
+    background-color: #ddd;
     border-bottom: none;
 }
 

@@ -183,7 +183,7 @@ class App extends Component {
 
 
                     {/* tpm-GFP scatterplot*/}
-                    <div className="fl pt3 pb3 w-100 expression-plot-container" style={{marginLeft: -20, marginTop: -10}}>
+                    <div className="fl pt3 pb3 w-100 expression-plot-container" style={{marginLeft: -20, marginTop: 0}}>
                         <ExpressionPlot targetName={this.state.targetName}/>
                     </div>
 
@@ -222,6 +222,7 @@ class App extends Component {
                             height={300}
                             isSparkline={false}
                             showGFP={this.state.facsShowGFP=='On'}
+                            targetName={this.state.targetName}
                             data={pipelineMetadata[this.state.targetName].facs_histograms}/>
                     </div>
                 </div>
@@ -374,7 +375,7 @@ class App extends Component {
                     </div>
         
                     <ReactTable 
-                        pageSize={10}
+                        pageSize={8}
                         filterable={false}
                         columns={tableDefs}
                         data={this.allTargetNames.map(name => ({targetName: name, isActive: this.state.targetName===name}))}

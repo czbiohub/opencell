@@ -89,6 +89,7 @@ export default class VolcanoPlot extends Component {
         if (prevProps.targetName!==this.props.targetName) {
             this.data = this.constructData();
         }
+    
         this.updateScatterPlot();
     }
 

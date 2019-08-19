@@ -65,8 +65,16 @@ class ExpressionPlot extends Component {
         this.bringActiveDotToFront();
     }
 
-    componentDidUpdate () {
+    componentDidUpdate (prevProps) {
         this.bringActiveDotToFront();
+    }
+
+    shouldComponentUpdate (nextProps) {
+        // HACK: only update if the target has changed
+        // (without this, scrolling through z-slices is laggy,
+        // presumably because it takes react awhile to diff all 1700ish scatterplot dots)
+        if (this.props.targetName===nextProps.targetName) return false;
+        return true;
     }
     
     bringActiveDotToFront () {
@@ -84,8 +92,7 @@ class ExpressionPlot extends Component {
                 r: isActive ? 5 : 2,
         
                 // current target in green
-                fillOpacity: isActive ? 1 : .2,
-                fill: isActive ? '#a8d7a8' : '#666',
+                fill: isActive ? '#a8d7a8' : '#66666633',
 
                 stroke: isActive ? 'green' : null,
 

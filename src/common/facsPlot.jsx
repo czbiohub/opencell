@@ -143,6 +143,7 @@ class FACSPlot extends Component {
             .then(
                 data => {
                     this.fetchedData = fetchedData;
+                    this.constructLineData();
                     this.setState({loaded: true});
                 },
                 error => console.log(error)
@@ -154,6 +155,7 @@ class FACSPlot extends Component {
 
         // only fetch the data if it was not passed as a prop
         if (this.props.data) {
+            this.constructLineData();
             this.setState({loaded: true});
         } else {
             this.fetchData();
@@ -167,6 +169,9 @@ class FACSPlot extends Component {
         if (this.props.cellLineId !== prevProps.cellLineId) {
             this.fetchData();
         }
+
+        // construct the line data only if the target has changed
+        if (this.props.targetName!==prevProps.targetName) this.constructLineData();
     }
 
 
@@ -174,10 +179,6 @@ class FACSPlot extends Component {
 
         if (!this.state.loaded) return null;
         
-        // construct the line data object expected by XYFrame 
-        // (from either this.props.data or this.fetchedData)
-        this.constructLineData();
-
         // HACK: if constructLineData failed, we should not render the plot
         if (!this.frameProps.lines.length) return null;
 

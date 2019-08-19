@@ -30,17 +30,18 @@ class Header extends Component {
 
         return (
             <div className="fl w-100 pt3 pb3">
+
                 {/* main container with bottom border */}
-                <div className="bb b--white pb3" style={{overflow: 'hidden'}}>
+                <div className="bb b--white" style={{overflow: 'hidden'}}>
 
                     {/* OpenCell logo */}
                     <div className='fl dib w-10'>
-                        <img src='./logos/opencell_logo.png' width={140} height={120}/>
+                        <img src='./logos/opencell_logo.png' width={120} height={100}/>
                     </div>
 
                     {/* target name */}
                     <div className='fl dib'>
-                        <div className="f1 blue pt4">{this.props.targetName}</div>
+                        <div className="blue pt3" style={{fontSize: 66}}>{this.props.targetName}</div>
                     </div>
 
                       {/* stats */}

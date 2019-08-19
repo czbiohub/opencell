@@ -231,7 +231,7 @@ export default class VolcanoPlot extends Component {
             // color dots that correspond to significant hits  
 
             const baitColor = '#a8d7a8'; //'#ffff33ff';
-            const sigColor = '#ff666655';
+            const sigColor = '#ff666677';
             const notSigColor = '#33333333';
     
             // special color if the hit is the target itself

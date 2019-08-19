@@ -153,7 +153,7 @@ div {
 
   .volcano-fdr-line {
       fill: none;
-      stroke: rgba(255, 98, 98, 0.721);
+      stroke: rgb(240, 65, 65);
       stroke-width: 1px;
       stroke-dasharray: 4;
   }
@@ -181,6 +181,7 @@ div {
 .facs-container .axis text {
     font-size: 12px;
 }
+
 
 
 

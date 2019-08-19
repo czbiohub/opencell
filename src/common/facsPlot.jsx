@@ -2,6 +2,7 @@ import * as d3 from 'd3';
 import React, { Component } from 'react';
 
 import XYFrame from "semiotic/lib/XYFrame"
+import ResponsiveXYFrame from "semiotic/lib/ResponsiveXYFrame"
 
 
 class FACSPlot extends Component {
@@ -181,7 +182,7 @@ class FACSPlot extends Component {
         if (!this.frameProps.lines.length) return null;
 
         return (
-            <XYFrame lines={this.frameProps.lines} {...this.frameProps}/>
+            <ResponsiveXYFrame responsiveWidth={true} lines={this.frameProps.lines} {...this.frameProps}/>
         );
     }
 }

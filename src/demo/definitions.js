@@ -19,11 +19,6 @@ export const metadataDefinitions = [
         Header: 'Family',
         units: '',
     },{
-        id: 'enst_id',
-        accessor: row => pipelineMetadata[row.targetName].transcript_id,
-        Header: 'Transcript ID',
-        units: null,
-    },{
         id: 'plate_id',
         accessor: row => pipelineMetadata[row.targetName].plate_design_id,
         Header: 'Plate ID',

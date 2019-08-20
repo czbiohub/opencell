@@ -49,9 +49,10 @@ export default class VolcanoPlot extends Component {
             notSigHit: '#33333333',
         };
 
-        this.zoom = this.zoom.bind(this);
-        this.updateScatterPlot = this.updateScatterPlot.bind(this);
+        this.onZoom = this.onZoom.bind(this);
+        this.captionOpacity = this.captionOpacity.bind(this);
         this.constructData = this.constructData.bind(this);
+        this.updateScatterPlot = this.updateScatterPlot.bind(this);
 
         // list of gene/target names with an MS dataset
         this.genesWithData = msData.map(d => d.target_name);
@@ -76,6 +77,10 @@ export default class VolcanoPlot extends Component {
             return {x: enrichment, y: this.fdrParams.c / (enrichment - this.fdrParams.x0)};
         });
 
+        // transform when zoomed/panned
+        this.currentTransform = undefined;
+
+
     }
 
     
@@ -95,6 +100,10 @@ export default class VolcanoPlot extends Component {
 
         if (prevProps.targetName!==this.props.targetName) {
             this.data = this.constructData();
+
+            // reset the pan/zoom transform
+            this.currentTransform = undefined;
+            this.svg.call(this.zoom.transform, d3.zoomIdentity);
         }
     
         this.updateScatterPlot();
@@ -136,6 +145,7 @@ export default class VolcanoPlot extends Component {
                         .clamp(true)(k);
             return val**2;
         };
+
 
         this.xAxis = d3.axisBottom(this.xScale)
             .tickSize(-pp.height + pp.padTop + pp.padBottom, 0)
@@ -232,9 +242,12 @@ export default class VolcanoPlot extends Component {
                 .offset([-10, 0])
                 .attr("class", "d3-tip")
                 .html(d => `<strong>${d.gene_name}</strong><br>${d.protein_names}`);
-        
-        svg.call(d3.zoom().on('zoom', this.zoom));
         svg.call(this.tip);
+
+
+        this.zoom = d3.zoom().on('zoom', this.onZoom);
+        svg.call(this.zoom);
+
 
         this.svg = svg;
         this.g = g;
@@ -253,8 +266,6 @@ export default class VolcanoPlot extends Component {
 
     updateScatterPlot () {
 
-        // reset the transform
-        this.currentTransform = undefined;
 
         const calcDotRadius = d => {
             // scatter plot dot size from pvalue and enrichment values
@@ -314,11 +325,11 @@ export default class VolcanoPlot extends Component {
         let xScale = this.xScale;
         let yScale = this.yScale;
 
-        // to retain the zoom/pan state when the target is changed
-        // if (this.currentTransform) {
-        //     xScale = this.currentTransform.rescaleX(xScale);
-        //     yScale = this.currentTransform.rescaleY(yScale);
-        // }
+        // retain the zoom/pan state when the target is changed
+        if (this.currentTransform) {
+            xScale = this.currentTransform.rescaleX(xScale);
+            yScale = this.currentTransform.rescaleY(yScale);
+        }
 
         // create the generator the significance curves
         const line = d3.line()
@@ -372,10 +383,7 @@ export default class VolcanoPlot extends Component {
                 .merge(captions)
                 .attr('x', d => xScale(this.props.enrichmentAccessor(d)))
                 .attr('y', d => yScale(this.props.pvalueAccessor(d)) - 10)
-                .attr('fill-opacity', d => {
-                    return this.currentTransform ? this.captionOpacityScale(this.currentTransform.k) : 0
-                });
-
+                .attr('fill-opacity', this.captionOpacity);
 
         this.svg.select("#x-axis").call(this.xAxis.scale(xScale));
         this.svg.select("#y-axis").call(this.yAxis.scale(yScale));
@@ -386,9 +394,24 @@ export default class VolcanoPlot extends Component {
     }
 
 
-    zoom () {
+    captionOpacity () {
+        let opacity;
+        if (this.props.showLabels==='Always') {
+            opacity = 1;
+        } else if (this.props.showLabels==='Never') {
+            opacity = 0;
+        } else {
+            opacity = this.currentTransform ? this.captionOpacityScale(this.currentTransform.k) : 0;
+        }
+        return opacity;
+    }
+
+
+    onZoom () {
 
         const transform = d3.event.transform;
+        this.currentTransform = transform;
+
         const xScaleZoom = transform.rescaleX(this.xScale);
         const yScaleZoom = transform.rescaleY(this.yScale);
 
@@ -407,12 +430,11 @@ export default class VolcanoPlot extends Component {
         this.g.selectAll(".scatter-caption")
             .attr("x", d => xScaleZoom(this.props.enrichmentAccessor(d)))
             .attr("y", d => yScaleZoom(this.props.pvalueAccessor(d)) - 10)
-            .attr("fill-opacity", d => transform ? this.captionOpacityScale(transform.k) : 0);
+            .attr("fill-opacity", this.captionOpacity);
 
         this.svg.select("#x-axis").call(this.xAxis.scale(xScaleZoom));
         this.svg.select("#y-axis").call(this.yAxis.scale(yScaleZoom));
 
-        this.currentTransform = transform;
     }
 
 

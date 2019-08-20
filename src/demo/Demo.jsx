@@ -63,6 +63,9 @@ class App extends Component {
             // whether to show the annotations (median/max intensity etc)
             facsShowAnnotations: 'On',
 
+            // label mode for volcano plot
+            volcanoShowLabels: 'When zoomed',
+
             // HACK: these values must match the initial values hard-coded in the sliders below
             gfpMin: 0,
             gfpMax: 50,
@@ -320,10 +323,10 @@ class App extends Component {
                             </div>
                             <div className='dib pr4'>
                                 <ButtonGroup 
-                                    label='Color by' 
-                                    values={['None', 'Family', 'Status']}
-                                    activeValue={this.state.msColorMode}
-                                    onClick={value => this.setState({msColorMode: value})}/>
+                                    label='Show labels' 
+                                    values={['Always', 'Never', 'When zoomed']}
+                                    activeValue={this.state.volcanoShowLabels}
+                                    onClick={value => this.setState({volcanoShowLabels: value})}/>
                             </div>
                         </div>
                     </div>
@@ -336,6 +339,7 @@ class App extends Component {
                             pvalueAccessor={row => parseFloat(row.pvalue)}
                             targetName={this.state.targetName}
                             changeTarget={this.changeTarget}
+                            showLabels={this.state.volcanoShowLabels}
                         />
                     </div>
                     {/* table of top MS hits */}
@@ -370,7 +374,7 @@ class App extends Component {
                 <div className="fl w-70 pt0 pl4 pb5">
 
                     <div className="">
-                        <div className="f3 container-header">All tagged genes</div>
+                        <div className="f3 container-header">All cell lines</div>
                     </div>
         
                     <ReactTable 

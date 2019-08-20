@@ -3,6 +3,7 @@ import * as d3 from 'd3';
 import tip from 'd3-tip';
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
+import chroma from 'chroma-js';
 
 import 'tachyons';
 import './Demo.css';
@@ -40,7 +41,13 @@ export default class VolcanoPlot extends Component {
             dotRadius: 5,
             xAxisLabelOffset: 5,
             yAxisLabelOffset: 15,
-        }
+        };
+
+        this.colors = {
+            bait: '#a8d7a8',
+            sigHit: '#ff666677',
+            notSigHit: '#33333333',
+        };
 
         this.zoom = this.zoom.bind(this);
         this.updateScatterPlot = this.updateScatterPlot.bind(this);
@@ -180,6 +187,47 @@ export default class VolcanoPlot extends Component {
             .attr("width", pp.width - pp.padLeft - pp.padRight)
             .attr("height", pp.height - pp.padTop - pp.padBottom);
 
+
+        // legend
+        const legend = svg.append('g')
+            .attr('transform', `translate(20, 10)`)
+            .style('fill', '#ffffff55');
+ 
+         legend.append('rect')
+               .attr('width', 150)
+               .attr('height', 100)
+               .style('fill', 'white')
+               .style('fill-opacity', .7);
+ 
+         legend.append('text')
+               .attr('class', 'volcano-plot-legend')
+               .attr('x', 10)
+               .attr('y', 20)
+               .style('fill', chroma(this.colors.bait).darken().saturate())
+               .text('● bait');
+ 
+         legend.append('text')
+               .attr('class', 'volcano-plot-legend')
+               .attr('x', 10)
+               .attr('y', 40)
+               .style('fill', chroma(this.colors.sigHit).alpha(1))
+               .text('● significant hits');
+ 
+         legend.append('text')
+               .attr('class', 'volcano-plot-legend')
+               .attr('x', 10)
+               .attr('y', 60)
+               .style('fill', chroma(this.colors.notSigHit).alpha(.5))
+               .text('● non-significant hits');
+ 
+         legend.append('text')
+               .attr('class', 'volcano-plot-legend')
+               .attr('x', 10)
+               .attr('y', 80)
+               .style('fill', chroma(this.colors.sigHit).alpha(1))
+               .text('--- 5% FDR curve');
+
+    
         this.tip = tip()
                 .offset([-10, 0])
                 .attr("class", "d3-tip")
@@ -231,21 +279,17 @@ export default class VolcanoPlot extends Component {
         const calcDotColor = d => {
             // color dots that correspond to significant hits  
 
-            const baitColor = '#a8d7a8'; //'#ffff33ff';
-            const sigColor = '#ff666677';
-            const notSigColor = '#33333333';
-    
-            // special color if the hit is the target itself
-            if (msMetadata[d.gene_id].gene_name===this.props.targetName) return baitColor;
+            // special color if the hit is the target (i.e., the bait) itself
+            if (msMetadata[d.gene_id].gene_name===this.props.targetName) return this.colors.bait;
 
             // negatively-enriched hits are (definitionally) not significant
-            if (this.props.enrichmentAccessor(d) < this.fdrParams.x0) return notSigColor;
+            if (this.props.enrichmentAccessor(d) < this.fdrParams.x0) return this.colors.notSigHit;
 
             // check if the positive enrichment is above the FDR curve
             const thresh = this.fdrParams.c / (this.props.enrichmentAccessor(d) - this.fdrParams.x0);
-            if (this.props.pvalueAccessor(d) > thresh) return sigColor;
+            if (this.props.pvalueAccessor(d) > thresh) return this.colors.sigHit;
 
-            return notSigColor;
+            return this.colors.notSigHit;
         }
 
 

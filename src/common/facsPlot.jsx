@@ -1,5 +1,6 @@
 import * as d3 from 'd3';
 import React, { Component } from 'react';
+import chroma from 'chroma-js';
 
 import XYFrame from "semiotic/lib/XYFrame"
 import ResponsiveXYFrame from "semiotic/lib/ResponsiveXYFrame"
@@ -26,7 +27,7 @@ class FACSPlot extends Component {
 
         const strokeColor = {
             'sample': 'none',
-            'reference': '#666',
+            'reference': '#555',
             'gfp': 'green',
         };
 
@@ -52,6 +53,17 @@ class FACSPlot extends Component {
                 tickFormat: val => val.toFixed(0),
             }
         ];
+
+        // legend
+        const foregroundGraphics = [(
+            <text key={'gfp'} x={70} y={30} style={{fill: chroma('#a8d7a8').darken().saturate()}}>
+                <tspan fontSize="14">{'● GFP-positive population'}</tspan>
+            </text>
+        ),(
+            <text key={'curve'} x={70} y={50} style={{fill: '#666'}}>
+                <tspan fontSize="14">{'— Estimated background'}</tspan>
+            </text>
+        )];
 
         const tightMargin = {left: 5, bottom: 5, right: 5, top: 5};
         const wideMargin = {left: 60, bottom: 60, right: 10, top: 10};
@@ -82,6 +94,8 @@ class FACSPlot extends Component {
 
             // no axes in sparkline mode
             axes: this.props.isSparkline ? [] : axes,
+
+            foregroundGraphics: this.props.isSparkline ? nulll : foregroundGraphics,
         };
     }
 

@@ -1,6 +1,7 @@
 import * as d3 from 'd3';
 import React, { Component } from 'react';
 
+import chroma from 'chroma-js';
 import XYFrame from "semiotic/lib/XYFrame";
 import ResponsiveXYFrame from "semiotic/lib/ResponsiveXYFrame";
 
@@ -38,6 +39,18 @@ class ExpressionPlot extends Component {
             }
         ];
 
+        // legend
+        const foregroundGraphics = [(
+            <text key={'active'} x={70} y={30} style={{fill: chroma('#a8d7a8').darken().saturate()}}>
+                <tspan fontSize="14">{'● Selected cell line'}</tspan>
+            </text>
+        ),(
+            <text key={'all'} x={70} y={50} style={{fill: '#777'}}>
+                <tspan fontSize="14">{'● All cell lines'}</tspan>
+            </text>
+        )];
+
+
         const margin = {left: 60, bottom: 60, right: 10, top: 10};
 
         // hard-coded constant XYFrame props
@@ -55,6 +68,8 @@ class ExpressionPlot extends Component {
             yAccessor: "tpm",
 
             points: expressionData,
+
+            foregroundGraphics,
 
         };
 
@@ -92,7 +107,7 @@ class ExpressionPlot extends Component {
                 r: isActive ? 5 : 2,
         
                 // current target in green
-                fill: isActive ? '#a8d7a8' : '#66666633',
+                fill: isActive ? '#a8d7a8aa' : '#66666633',
 
                 stroke: isActive ? 'green' : null,
 

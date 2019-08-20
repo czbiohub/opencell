@@ -159,27 +159,26 @@ div {
   }
 
 
-/* --------------------- FACS plot --------------------- */
+/* --------------------- expression scatterplot and FACS plot --------------------- */
 
-.facs-container .tick path, .facs-container .axis line {
+.facs-container .tick path, 
+.facs-container .axis line,
+.expression-plot-container .tick path, 
+.expression-plot-container .axis line {
     stroke: #ccc;
     stroke-width: 1px;
     stroke-dasharray: 2;
 }
 
-.expression-plot-container .tick path, .expression-plot-container .axis line {
-    stroke: #ccc;
-    stroke-width: 1px;
-    stroke-dasharray: 2;
-}
 /* the bottom-most horizontal axis line in the FACS plot should be solid and darker */
 .facs-container .axis .bottom line {
     stroke: #666;
     stroke-dasharray: none;
 }
 
-.facs-container .axis text {
-    font-size: 12px;
+.facs-container .axis text,
+.expression-plot-container .axis text {
+    font-size: 14px;
 }
 
 

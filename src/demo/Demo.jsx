@@ -189,13 +189,12 @@ class App extends Component {
 
 
                     <div className="bb b--black-10">
-                        <div className="f3 container-header">FACS histogram</div>
+                        <div className="f3 container-header">FACS histograms</div>
                     </div>
 
                     {/* FACS plot controls */}
-                    <div className="pt3 pb2">
+                    {/* <div className="pt3 pb2">
 
-                        {/* Top row - scatterplot controls */}
                         <div className='fl w-100 pb3'>
                             <div className='dib pr4'>
                                 <ButtonGroup 
@@ -212,11 +211,11 @@ class App extends Component {
                                     onClick={value => this.setState({facsShowAnnotations: value})}/>
                             </div>
                         </div>
-                    </div>
+                    </div> */}
 
 
                     {/* FACS plot itself*/}
-                    <div className="fl pt3 w-100 facs-container" style={{marginLeft: -20, marginTop: -10}}>
+                    <div className="fl pt3 w-100 facs-container" style={{marginLeft: -20, marginTop: 0}}>
                         <FACSPlot 
                             width={400}
                             height={300}

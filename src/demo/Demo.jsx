@@ -378,10 +378,19 @@ class App extends Component {
                         pageSize={8}
                         filterable={false}
                         columns={tableDefs}
-                        data={this.allTargetNames.map(name => ({targetName: name, isActive: this.state.targetName===name}))}
+                        data={this.allTargetNames.map(name => {
+                            return {
+                                targetName: name, 
+                                isActive: this.state.targetName===name
+                            };
+                        })}
                         getTrProps={(state, rowInfo, column) => {
                             return {
-                                onClick: () => this.changeTarget(rowInfo.original.targetName)
+                                onClick: () => this.changeTarget(rowInfo.original.targetName),
+                                style: {
+                                    background: rowInfo.original.isActive ? '#ddd' : null,
+                                    fontWeight: rowInfo.original.isActive ? 'bold' : 'normal'
+                                }
                             }
                         }}
                     />

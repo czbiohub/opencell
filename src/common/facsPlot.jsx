@@ -116,7 +116,8 @@ class FACSPlot extends Component {
             title: 'Subtracted sample',
             coordinates: data.x.map((val, ind) => ({
                 x: val, 
-                y: data.y_sample[ind] - data.y_ref_fitted[ind]
+                // clamp values less than the (mean + std dev) of the negative control
+                y: val > 2800 ? data.y_sample[ind] - data.y_ref_fitted[ind] : 0
             })),
         };
         
@@ -125,11 +126,11 @@ class FACSPlot extends Component {
             coord.y = coord.y < 0 ? 0 : coord.y;
         });
 
-        // plot data
+        // data to pass to XYFrame
         this.frameProps.lines = [sampleLine, refLine];
         if (this.props.showGFP) this.frameProps.lines.push(gfpLine);
         
-        // plot size
+        // plot size (though only the height will be used by ResponsiveXYFrame)
         const height = this.props.height ? this.props.height : this.props.width * this.aspectRatio;
         this.frameProps.size = [this.props.width, height];
 
@@ -140,10 +141,8 @@ class FACSPlot extends Component {
 
         fetch(`http://localhost:5000/facshistograms/${this.props.cellLineId}`)
             .then(result => result.json())
-            .then(
-                data => {
+            .then(data => {
                     this.fetchedData = fetchedData;
-                    this.constructLineData();
                     this.setState({loaded: true});
                 },
                 error => console.log(error)
@@ -154,11 +153,10 @@ class FACSPlot extends Component {
     componentDidMount () {
 
         // only fetch the data if it was not passed as a prop
-        if (this.props.data) {
-            this.constructLineData();
-            this.setState({loaded: true});
-        } else {
+        if (!this.props.data) {
             this.fetchData();
+        } else {
+            this.setState({loaded: true});
         }
     }
 
@@ -166,12 +164,13 @@ class FACSPlot extends Component {
     componentDidUpdate(prevProps) {
 
         // re-fetch the data only if it was not passed as a prop and if the cellLineId has changed
-        if (this.props.cellLineId !== prevProps.cellLineId) {
+        if (this.props.cellLineId!==prevProps.cellLineId) {
             this.fetchData();
         }
 
-        // construct the line data only if the target has changed
-        if (this.props.targetName!==prevProps.targetName) this.constructLineData();
+        // TODO: it's ineffecient to construct the line data on every update
+        // (should only be done when the target has changed)
+        this.constructLineData();
     }
 
 
@@ -183,7 +182,10 @@ class FACSPlot extends Component {
         if (!this.frameProps.lines.length) return null;
 
         return (
-            <ResponsiveXYFrame responsiveWidth={true} lines={this.frameProps.lines} {...this.frameProps}/>
+            <ResponsiveXYFrame 
+                responsiveWidth={true} 
+                lines={this.frameProps.lines} 
+                {...this.frameProps}/>
         );
     }
 }

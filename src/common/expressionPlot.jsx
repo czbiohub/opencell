@@ -107,7 +107,7 @@ class ExpressionPlot extends Component {
                 r: isActive ? 5 : 2,
         
                 // current target in green
-                fill: isActive ? '#a0f3a0' : '#66666633',
+                fill: isActive ? '#98ea98' : '#66666633',
 
                 stroke: isActive ? 'green' : null,
 

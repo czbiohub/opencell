@@ -395,7 +395,8 @@ class App extends Component {
                     </div>
         
                     <ReactTable 
-                        pageSize={8}
+                        pageSize={10}
+                        showPageSizeOptions={false}
                         filterable={false}
                         columns={tableDefs}
                         data={this.allTargetNames.map(name => {
@@ -405,11 +406,12 @@ class App extends Component {
                             };
                         })}
                         getTrProps={(state, rowInfo, column) => {
+                            const isActive = rowInfo ? rowInfo.original.isActive : false;
                             return {
                                 onClick: () => this.changeTarget(rowInfo.original.targetName),
                                 style: {
-                                    background: rowInfo.original.isActive ? '#ddd' : null,
-                                    fontWeight: rowInfo.original.isActive ? 'bold' : 'normal'
+                                    background: isActive ? '#ddd' : null,
+                                    fontWeight: isActive ? 'bold' : 'normal'
                                 }
                             }
                         }}

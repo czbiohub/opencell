@@ -48,10 +48,25 @@ div {
     font-size: 14px;
 }
 
-.header-metadata .label {
+.header-metadata-label {
     display: block;
     color: #aaa;
 }
+
+.header-search-label {
+    display: block;
+    color: #aaa;
+    padding-top: 5px;
+}
+
+.header-search-textbox {
+    font-size: 24px;
+    font-weight: bold;
+    padding: 5px;
+    width: 150px;
+    text-transform: uppercase;
+}
+
 
 /* for the FACS plot only */
 /* .axis-label {

@@ -79,6 +79,7 @@ class App extends Component {
         };
 
         this.changeTarget = this.changeTarget.bind(this);
+        this.onSearchChange = this.onSearchChange.bind(this);
 
         // the list of all targets for which we have data;
         // these target names should also all appear in manualMetadata
@@ -102,6 +103,16 @@ class App extends Component {
             gfpMax: manualMetadata[targetName].gfp_max || 50,
         });
 
+    }
+
+    onSearchChange (value) {
+        // fired when the user hits enter in the header's target search text input
+        // `value` is the value of the input
+        
+        const matches = this.allTargetNames.filter(name => name.startsWith(value));
+        if (matches.length===1) {
+            this.changeTarget(matches[0]);
+        }
     }
 
 
@@ -185,7 +196,9 @@ class App extends Component {
 
 
                 {/* page header and metadata */}
-                <Header targetName={this.state.targetName}/>
+                <Header 
+                    targetName={this.state.targetName}
+                    onSearchChange={this.onSearchChange}/>
 
 
                 {/* Expression scatterplot and FACS histograms */}
@@ -401,7 +414,7 @@ class App extends Component {
                     </div>
         
                     <ReactTable 
-                        pageSize={10}
+                        pageSize={8}
                         showPageSizeOptions={false}
                         filterable={false}
                         columns={tableDefs}

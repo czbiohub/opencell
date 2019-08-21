@@ -41,8 +41,22 @@ class Header extends Component {
                     </div>
 
                       {/* stats */}
-                    <div className='fl dib w-70 pt3 header-metadata'>
+                    <div className='fl dib pt3 header-metadata'>
                         <ul>{metadataItems}</ul>
+                    </div>
+
+                    {/* target search text input */}
+                    <div className='fr dib w-20 pl6 pt4'>
+                        <input 
+                            type='text' 
+                            className='header-search-textbox' 
+                            defaultValue={''}
+                            onKeyPress={(event) => {
+                                if (event.charCode===13) {
+                                    this.props.onSearchChange(event.currentTarget.value);
+                                }
+                            }}/>
+                        <div className='f5 header-search-label'>Search by target name</div>
                     </div>
 
                 </div>
@@ -57,7 +71,7 @@ function MetadataItem(props) {
         <li>
             <strong className='f3'>{props.value}</strong>
             <abbr className='f4' title='units description'>{props.units}</abbr>
-            <div className='f5 label'>{props.label}</div>
+            <div className='f5 header-metadata-label'>{props.label}</div>
         </li>
     );
 }

@@ -1,9 +1,7 @@
 
 import React, {Component} from 'react';
 
-import FACSPlot from '../common/facsPlot.jsx';
 import {metadataDefinitions} from './definitions.js';
-import pipelineMetadata from './data/20190816_pipeline-metadata.json';
 
 
 class Header extends Component {
@@ -14,8 +12,6 @@ class Header extends Component {
 
 
     render () {
-
-        const metadata = pipelineMetadata[this.props.targetName];
 
         const metadataItems = metadataDefinitions.map(def => {
             return (
@@ -36,7 +32,7 @@ class Header extends Component {
 
                     {/* OpenCell logo */}
                     <div className='fl dib w-10'>
-                        <img src='./logos/opencell_logo.png' width={120} height={100}/>
+                        <img src='./logos/opencell_logo.png' width={100} height={100}/>
                     </div>
 
                     {/* target name */}
@@ -49,13 +45,6 @@ class Header extends Component {
                         <ul>{metadataItems}</ul>
                     </div>
 
-                    {/* FACS plot */}
-                    {/* <div className='fl dib pl3' style={{marginTop: 0}}>
-                        <div className='f6 black-70 w-100 tc'>FACS plot</div>
-                        <FACSPlot 
-                            width={100}
-                            data={metadata.facs_histograms}/>
-                    </div> */}
                 </div>
             </div>
         );

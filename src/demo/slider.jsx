@@ -9,19 +9,13 @@ import './Demo.css';
 class Slider extends Component {
 
     constructor (props) {
-
         super(props);
-        this.state = {
-            value: props.initialValue,
-        };
-
+        this.state = {};
         this.onChange = this.onChange.bind(this);
-
     }
 
 
     onChange(event) {
-        this.setState({value: event.target.value});
         this.props.onChange(event.target.value);
     }
 
@@ -36,7 +30,7 @@ class Slider extends Component {
                     className="dib slider" 
                     min={this.props.min} 
                     max={this.props.max}
-                    value={this.state.value}
+                    value={this.props.value}
                     onChange={this.onChange}/>
                 </div>
             </div>

@@ -96,7 +96,11 @@ class App extends Component {
         if (!msData.filter(d => d.target_name===targetName).length || !nrrdFilepaths[targetName]) return;
 
         // reset appHasLoaded to false, since we now need to load new NRRD files
-        this.setState({appHasLoaded: false, targetName});
+        this.setState({
+            targetName,
+            appHasLoaded: false, 
+            gfpMax: manualMetadata[targetName].gfp_max || 50,
+        });
 
     }
 
@@ -138,6 +142,8 @@ class App extends Component {
         if (prevState.targetName!==this.state.targetName) {
             this.loadStacks();
         }
+
+        //console.log(this.state.gfpMax);
     }
 
 
@@ -280,11 +286,11 @@ class App extends Component {
                             <div className=''>DAPI range</div>
                             <Slider 
                                 label='Min'
-                                min={0} max={100} initialValue={5}
+                                min={0} max={100} value={this.state.dapiMin}
                                 onChange={value => this.setState({dapiMin: value})}/>
                             <Slider 
                                 label='Max'
-                                min={0} max={100} initialValue={50}
+                                min={0} max={100} value={this.state.dapiMax}
                                 onChange={value => this.setState({dapiMax: value})}/>
                         </div>
 
@@ -292,18 +298,18 @@ class App extends Component {
                             <div className=''>GFP range</div>
                             <Slider 
                                 label='Min'
-                                min={0} max={100} initialValue={0}
+                                min={0} max={100} value={this.state.gfpMin}
                                 onChange={value => this.setState({gfpMin: value})}/>
                             <Slider 
                                 label='Max'
-                                min={0} max={100} initialValue={50}
+                                min={0} max={100} value={this.state.gfpMax}
                                 onChange={value => this.setState({gfpMax: value})}/>
                         </div>
                         <div className='w-100 pt2'>
                             <div className=''>Z-slice</div>
                             <Slider 
                                 label='z-index'
-                                min={0} max={100} initialValue={30}
+                                min={0} max={100} value={this.state.zIndex}
                                 onChange={value => this.setState({zIndex: value})}/>
                         </div>
                     </div>

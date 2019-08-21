@@ -109,7 +109,7 @@ class App extends Component {
         // fired when the user hits enter in the header's target search text input
         // `value` is the value of the input
         
-        const matches = this.allTargetNames.filter(name => name.startsWith(value));
+        const matches = this.allTargetNames.filter(name => name.startsWith(value.toUpperCase()));
         if (matches.length===1) {
             this.changeTarget(matches[0]);
         }

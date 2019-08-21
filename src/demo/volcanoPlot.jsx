@@ -50,6 +50,8 @@ export default class VolcanoPlot extends Component {
         };
 
         this.onZoom = this.onZoom.bind(this);
+        this.resetZoom = this.resetZoom.bind(this);
+        this.hitIsSignificant = this.hitIsSignificant.bind(this);
         this.captionOpacity = this.captionOpacity.bind(this);
         this.constructData = this.constructData.bind(this);
         this.updateScatterPlot = this.updateScatterPlot.bind(this);
@@ -100,13 +102,21 @@ export default class VolcanoPlot extends Component {
 
         if (prevProps.targetName!==this.props.targetName) {
             this.data = this.constructData();
+            this.resetZoom();
+        }
 
-            // reset the pan/zoom transform
-            this.currentTransform = undefined;
-            this.svg.call(this.zoom.transform, d3.zoomIdentity);
+        if (prevProps.resetZoom!==this.props.resetZoom) {
+            this.resetZoom();
         }
     
         this.updateScatterPlot();
+    }
+
+
+    resetZoom () {
+        // reset the pan/zoom transform
+        this.currentTransform = undefined;
+        this.svg.call(this.zoom.transform, d3.zoomIdentity);
     }
 
 
@@ -119,6 +129,17 @@ export default class VolcanoPlot extends Component {
             return (d.pvalue > 1) || (d.pvalue < 1 && d3.randomUniform(0, 1)() > .5);
         }).filter(d => d.pvalue > .5);
         return data;
+    }
+
+    hitIsSignificant (d) {
+
+        // negatively-enriched hits are (definitionally) not significant
+        if (this.props.enrichmentAccessor(d) < this.fdrParams.x0) return false;
+
+        // check if the positive enrichment is above the FDR curve
+        const thresh = this.fdrParams.c / (this.props.enrichmentAccessor(d) - this.fdrParams.x0);
+        if (this.props.pvalueAccessor(d) > thresh) return true;
+        return false;
     }
 
 
@@ -200,42 +221,42 @@ export default class VolcanoPlot extends Component {
 
         // legend
         const legend = svg.append('g')
-            .attr('transform', `translate(20, 10)`)
+            .attr('transform', `translate(0, 0)`)
             .style('fill', '#ffffff55');
  
          legend.append('rect')
                .attr('width', 150)
                .attr('height', 100)
                .style('fill', 'white')
-               .style('fill-opacity', .7);
+               .style('fill-opacity', .9);
  
          legend.append('text')
                .attr('class', 'volcano-plot-legend')
-               .attr('x', 10)
-               .attr('y', 20)
+               .attr('x', 30)
+               .attr('y', 30)
                .style('fill', chroma(this.colors.bait).darken().saturate())
-               .text('● bait');
+               .text('● Bait');
  
          legend.append('text')
                .attr('class', 'volcano-plot-legend')
-               .attr('x', 10)
-               .attr('y', 40)
+               .attr('x', 30)
+               .attr('y', 55)
                .style('fill', chroma(this.colors.sigHit).alpha(1))
-               .text('● significant hits');
+               .text('● Significant hits');
  
          legend.append('text')
                .attr('class', 'volcano-plot-legend')
-               .attr('x', 10)
-               .attr('y', 60)
-               .style('fill', chroma(this.colors.notSigHit).alpha(.5))
-               .text('● non-significant hits');
- 
-         legend.append('text')
-               .attr('class', 'volcano-plot-legend')
-               .attr('x', 10)
+               .attr('x', 30)
                .attr('y', 80)
+               .style('fill', chroma(this.colors.notSigHit).alpha(.5))
+               .text('● Non-significant hits');
+ 
+         legend.append('text')
+               .attr('class', 'volcano-plot-legend')
+               .attr('x', 30)
+               .attr('y', 105)
                .style('fill', chroma(this.colors.sigHit).alpha(1))
-               .text('--- 5% FDR curve');
+               .text('- - -  5% FDR curve');
 
     
         this.tip = tip()
@@ -266,7 +287,6 @@ export default class VolcanoPlot extends Component {
 
     updateScatterPlot () {
 
-
         const calcDotRadius = d => {
             // scatter plot dot size from pvalue and enrichment values
 
@@ -288,18 +308,11 @@ export default class VolcanoPlot extends Component {
 
 
         const calcDotColor = d => {
-            // color dots that correspond to significant hits  
 
             // special color if the hit is the target (i.e., the bait) itself
             if (msMetadata[d.gene_id].gene_name===this.props.targetName) return this.colors.bait;
 
-            // negatively-enriched hits are (definitionally) not significant
-            if (this.props.enrichmentAccessor(d) < this.fdrParams.x0) return this.colors.notSigHit;
-
-            // check if the positive enrichment is above the FDR curve
-            const thresh = this.fdrParams.c / (this.props.enrichmentAccessor(d) - this.fdrParams.x0);
-            if (this.props.pvalueAccessor(d) > thresh) return this.colors.sigHit;
-
+            if (this.hitIsSignificant(d)) return this.colors.sigHit;
             return this.colors.notSigHit;
         }
 
@@ -370,9 +383,9 @@ export default class VolcanoPlot extends Component {
              })
             .on('click', d => this.props.changeTarget(msMetadata[d.gene_id].gene_name));
 
-
+        // bind data - filter for only significant hits
         const captions = this.g.selectAll('.scatter-caption')
-                               .data(this.data, d => d.gene_id);
+                               .data(this.data.filter(this.hitIsSignificant), d => d.gene_id);
             
         captions.exit().remove();
 

@@ -43,7 +43,7 @@ class App extends Component {
             appHasLoaded: false,
 
             // default initial target
-            targetName: 'ATL2',
+            targetName: 'LMNB1',
 
             // 'Volume' or 'Slice'
             localizationMode: 'Slice',
@@ -65,6 +65,10 @@ class App extends Component {
 
             // label mode for volcano plot
             volcanoShowLabels: 'When zoomed',
+
+            // whether to reset the zoom 
+            // this is a hack: volcanoPlot just listens for changes to this value
+            volcanoResetZoom: false,
 
             // HACK: these values must match the initial values hard-coded in the sliders below
             gfpMin: 0,
@@ -154,7 +158,8 @@ class App extends Component {
             />
         }
 
-        // append gene_name to metadataDefinitions (used only for the table of all targets at the bottom)
+        // append gene_name to metadataDefinitions 
+        // (used only for the table of all targets at the bottom)
         let tableDefs = [
             {   
                 id: 'gene_name',
@@ -186,7 +191,9 @@ class App extends Component {
 
 
                     {/* tpm-GFP scatterplot*/}
-                    <div className="fl pt3 pb3 w-100 expression-plot-container" style={{marginLeft: -20, marginTop: 0}}>
+                    <div 
+                        className="fl pt3 pb3 w-100 expression-plot-container" 
+                        style={{marginLeft: -20, marginTop: 0}}>
                         <ExpressionPlot targetName={this.state.targetName}/>
                     </div>
 
@@ -218,7 +225,9 @@ class App extends Component {
 
 
                     {/* FACS plot itself*/}
-                    <div className="fl pt3 w-100 facs-container" style={{marginLeft: -20, marginTop: 0}}>
+                    <div 
+                        className="fl pt3 w-100 facs-container" 
+                        style={{marginLeft: -20, marginTop: 0}}>
                         <FACSPlot 
                             width={400}
                             height={300}
@@ -324,9 +333,16 @@ class App extends Component {
                             <div className='dib pr4'>
                                 <ButtonGroup 
                                     label='Show labels' 
-                                    values={['Always', 'Never', 'When zoomed']}
+                                    values={['Always', 'Never', 'On zoom']}
                                     activeValue={this.state.volcanoShowLabels}
                                     onClick={value => this.setState({volcanoShowLabels: value})}/>
+                            </div>
+                            <div className='fr dib pr4'>
+                                <div 
+                                    className='f6 simple-button' 
+                                    onClick={() => this.setState({volcanoResetZoom: !this.state.volcanoResetZoom})}>
+                                    {'Reset zoom'}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -340,6 +356,7 @@ class App extends Component {
                             targetName={this.state.targetName}
                             changeTarget={this.changeTarget}
                             showLabels={this.state.volcanoShowLabels}
+                            resetZoom={this.state.volcanoResetZoom}
                         />
                     </div>
                     {/* table of top MS hits */}

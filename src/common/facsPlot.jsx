@@ -95,7 +95,7 @@ class FACSPlot extends Component {
             // no axes in sparkline mode
             axes: this.props.isSparkline ? [] : axes,
 
-            foregroundGraphics: this.props.isSparkline ? nulll : foregroundGraphics,
+            foregroundGraphics: this.props.isSparkline ? null : foregroundGraphics,
         };
     }
 
@@ -171,7 +171,10 @@ class FACSPlot extends Component {
             this.fetchData();
         } else {
             this.setState({loaded: true});
+            this.constructLineData();
+
         }
+
     }
 
 
@@ -185,6 +188,7 @@ class FACSPlot extends Component {
         // TODO: it's ineffecient to construct the line data on every update
         // (should only be done when the target has changed)
         this.constructLineData();
+
     }
 
 

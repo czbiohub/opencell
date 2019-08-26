@@ -20,7 +20,7 @@ class ExpressionPlot extends Component {
         this.aspectRatio = .7;
 
         // RNA-seq tpm
-        const yExtent = [0, 10];
+        const yExtent = [0, 4];
 
         // GFP intensity
         const xExtent = [0, 2.5];
@@ -29,7 +29,7 @@ class ExpressionPlot extends Component {
             {
                 orient: 'left',
                 label: 'Log expression (tpm)',
-                tickValues: [0, 2, 4, 6, 8, 10,],
+                tickValues: [0, 1, 2, 3, 4, ],
                 tickFormat: val => val.toFixed(0),
             },{
                 orient: 'bottom',

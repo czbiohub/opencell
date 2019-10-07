@@ -53,8 +53,8 @@ class SliceViz extends Component {
         // TODO check whether any of the display-related props have changed
         // (if not, there's no reason to call displaySlice)
         this.displaySlice();
-
     }
+
 
     maybeInitData() {
 
@@ -72,7 +72,6 @@ class SliceViz extends Component {
         }).flat();
 
         this.imData = new Uint8ClampedArray(this.imData);
-    
     }
 
 
@@ -87,7 +86,7 @@ class SliceViz extends Component {
                          .style('display', 'block')
                          .attr("width", this.imageSize)
                          .attr("height", this.imageSize);
-                        
+        
         const context = canvas.node().getContext('2d');
         //const displaySlice = this.displaySlice();
 
@@ -109,11 +108,9 @@ class SliceViz extends Component {
             // (because putImageData ignores the context's transform, 
             // which we just set above using .translate and .scale)
             context.restore();
-
         }
 
         this.canvas = canvas.node();
-
     }
 
 
@@ -127,8 +124,6 @@ class SliceViz extends Component {
             intensity *= 255;
             return intensity;
         }
-
-        const context = this.canvas.getContext('2d');
 
         const gfpRange = [this.props.gfpMin, this.props.gfpMax].map(val => val*255/100);
         const dapiRange = [this.props.dapiMin, this.props.dapiMax].map(val => val*255/100);
@@ -179,10 +174,19 @@ class SliceViz extends Component {
             }
         }
 
+        // draw the image on the canvas
+        let context = this.canvas.getContext('2d');
         const imageData = context.getImageData(0, 0, this.imageSize, this.imageSize);
         imageData.data.set(this.imData);
         context.putImageData(imageData, 0, 0);
 
+        // HACK: flip the image vertically 
+        // to align it with the initial top-down view in the volume rendering
+        if (context.getTransform().m22===1) {
+            context.scale(1, -1);
+            context.translate(0, -this.canvas.height);
+        }
+        context.drawImage(this.canvas, 0, 0, this.imageSize, this.imageSize);
     }
 
 

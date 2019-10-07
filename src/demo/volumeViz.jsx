@@ -158,7 +158,7 @@ class VolumeViz extends Component {
 
         // hard-coded empirically-selected default position
         // looking directly down in the image
-        this.camera.position.set(h/2, h/2, 500);
+        this.camera.position.set(300, 190, 500);
 
         // copied from the example - because 'z is up'
         this.camera.up.set(0, 0, 1);
@@ -168,7 +168,7 @@ class VolumeViz extends Component {
         const controls = new OrbitControls(this.camera, this.webGLRenderer.domElement);
         controls.addEventListener('change', () => {
             //console.log(this.camera.position);
-            this.renderVolume()
+            this.renderVolume();
         });
         controls.target.set(h/2, h/2, 32);
         controls.minZoom = 0.5;

@@ -204,22 +204,22 @@ class App extends Component {
 
 
                 {/* Expression scatterplot and FACS histograms */}
-                <div className="fl w-25 dib pl3 pr4">
+                <div className="fl w-25 dib pl3 pr4 pt4">
 
                     <div className="bb b--black-10">
                         <div className="f3 container-header">About this protein</div>
                     </div>
 
                     <div
-                        className='fl pt2 pb3 w-100 protein-function-container'
-                        style={{height: 250, overflow: 'auto', lineHeight: 1.25}}>
+                        className='pt0 pb3 w-100 protein-function-container'
+                        style={{height: 200, overflow: 'auto', lineHeight: 1.25}}>
                         <div>
                             <p>{uniprotMetadata[this.state.targetName].uniprot_function}</p>
                         </div>
                     </div>
 
 
-                    <div className="pt3 bb b--black-10">
+                    <div className="pt4 bb b--black-10">
                         <div className="f3 container-header">Expression levels</div>
                     </div>
 

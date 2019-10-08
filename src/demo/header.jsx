@@ -30,17 +30,21 @@ class Header extends Component {
                 {/* main container with bottom border */}
                 <div className="bb b--white" style={{overflow: 'hidden'}}>
 
-                    {/* OpenCell graphic logo */}
-                    <div className='fl dib w-5'>
-                        <img src='./logos/opencell_logo.png' width={100} height={100}/>
-                    </div>
+                    <div className='fl dib w-25 pt3 pl3'>
 
-                    {/* 'OpenCell' text header on top of the CZB logo */}
-                    <div className='fl pl3 dib w-20' style={{marginTop: -15}}>
-                        <div className="blue pt3 pb2 opencell-logo">{'OpenCell'}</div>
-                        <img src='./logos/logo_text_smaller.png' width={'33%'} height={'33%'}
-                                style={{verticalAlign: 'top', paddingLeft: 0}}
-                            />
+                        {/* OpenCell graphic logo */}
+                        <div className='fl dib w-25'>
+                            <img src='./logos/opencell_logo.png' width={100} height={100}/>
+                        </div>
+
+                        {/* 'OpenCell' text header on top of the CZB logo */}
+                        <div className='fl pl3 dib w-75' style={{marginTop: -15}}>
+                            <div className="blue pt3 pb2 opencell-logo">{'OpenCell'}</div>
+                            <img src='./logos/logo_text_smaller.png' width={'40%'}
+                                    style={{verticalAlign: 'top', paddingLeft: 0}}
+                                />
+                        </div>
+                    
                     </div>
 
                     {/* target name */}

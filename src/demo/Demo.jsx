@@ -27,10 +27,12 @@ import { metadataDefinitions } from './definitions.js';
 import msData from './data/20190816_ms-data.json';
 import nrrdFilepaths from './data/20190816_nrrd-filepaths.json';
 import manualMetadata from './data/manual_metadata.json';
+import uniprotMetadata from './data/uniprot_metadata.json';
 import pipelineMetadata from './data/20190816_pipeline-metadata.json';
 
 import '../common/common.css';
 import './Demo.css';
+
 
 
 class App extends Component {
@@ -203,11 +205,23 @@ class App extends Component {
 
                 {/* Expression scatterplot and FACS histograms */}
                 <div className="fl w-25 dib pl3 pr4">
-    
+
                     <div className="bb b--black-10">
-                        <div className="f3 container-header">Gene expression</div>
+                        <div className="f3 container-header">About this protein</div>
                     </div>
 
+                    <div
+                        className='fl pt2 pb3 w-100 protein-function-container'
+                        style={{height: 250, overflow: 'auto', lineHeight: 1.25}}>
+                        <div>
+                            <p>{uniprotMetadata[this.state.targetName].uniprot_function}</p>
+                        </div>
+                    </div>
+
+
+                    <div className="pt3 bb b--black-10">
+                        <div className="f3 container-header">Expression levels</div>
+                    </div>
 
                     {/* tpm-GFP scatterplot*/}
                     <div 
@@ -217,9 +231,11 @@ class App extends Component {
                     </div>
 
 
+                    {/* 
                     <div className="bb b--black-10">
                         <div className="f3 container-header">FACS histograms</div>
-                    </div>
+                    </div> 
+                    */}
 
                     {/* FACS plot controls */}
                     {/* <div className="pt3 pb2">
@@ -244,6 +260,7 @@ class App extends Component {
 
 
                     {/* FACS plot itself*/}
+                    {/*
                     <div 
                         className="fl pt3 w-100 facs-container" 
                         style={{marginLeft: -20, marginTop: 0}}>
@@ -255,6 +272,7 @@ class App extends Component {
                             targetName={this.state.targetName}
                             data={pipelineMetadata[this.state.targetName].facs_histograms}/>
                     </div>
+                    */}
                 </div>
 
 

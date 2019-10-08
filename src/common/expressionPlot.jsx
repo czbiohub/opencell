@@ -28,12 +28,12 @@ class ExpressionPlot extends Component {
         const axes = [
             {
                 orient: 'left',
-                label: 'Log expression (tpm)',
+                label: 'RNA abundance (log tpm)',
                 tickValues: [0, 1, 2, 3, 4, ],
                 tickFormat: val => val.toFixed(0),
             },{
                 orient: 'bottom',
-                label: 'Log GFP intensity',
+                label: 'Fluorescence intensity (log a.u.)',
                 tickValues: [0, .5, 1, 1.5, 2, 2.5,],
                 tickFormat: val => val.toFixed(1),
             }
@@ -50,9 +50,16 @@ class ExpressionPlot extends Component {
             </text>
         )];
 
-
         const margin = {left: 60, bottom: 60, right: 10, top: 10};
 
+        // HACK: eliminate duplicates in the data
+        // (these are the CLTA and BCAP controls)
+        const clta = expressionData.filter(d => d.target_name==='CLTA');
+        const bcap = expressionData.filter(d => d.target_name==='BCAP31');
+        
+        let data = expressionData.filter(d => !['CLTA', 'BCAP31'].includes(d.target_name));
+        data.push(clta[0], bcap[0]);
+        
         // hard-coded constant XYFrame props
         this.frameProps = {  
 
@@ -67,7 +74,7 @@ class ExpressionPlot extends Component {
             xAccessor: "gfp",
             yAccessor: "tpm",
 
-            points: expressionData,
+            points: data,
 
             foregroundGraphics,
 
@@ -107,9 +114,9 @@ class ExpressionPlot extends Component {
                 r: isActive ? 5 : 2,
         
                 // current target in green
-                fill: isActive ? '#98ea98' : '#66666633',
+                fill: isActive ? '#a9d7a8' : '#66666633',
 
-                stroke: isActive ? 'green' : null,
+                stroke: isActive ? '#088104' : null,
 
                 // hide points with missing data
                 visibility: (d.tpm && d.tpm > 0 && d.gfp && d.gfp > 0) ? 'visible' : 'hidden',

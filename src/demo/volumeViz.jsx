@@ -158,7 +158,7 @@ class VolumeViz extends Component {
 
         // hard-coded empirically-selected default position
         // looking directly down in the image
-        this.camera.position.set(300, 190, 500);
+        this.camera.position.set(300, 290, 500);
 
         // copied from the example - because 'z is up'
         this.camera.up.set(0, 0, 1);

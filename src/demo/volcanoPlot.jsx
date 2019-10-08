@@ -225,8 +225,8 @@ export default class VolcanoPlot extends Component {
             .style('fill', '#ffffff55');
  
          legend.append('rect')
-               .attr('width', 150)
-               .attr('height', 100)
+               .attr('width', 200)
+               .attr('height', 120)
                .style('fill', 'white')
                .style('fill-opacity', .9);
  

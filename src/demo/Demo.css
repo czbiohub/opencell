@@ -17,11 +17,17 @@ button:focus {
 
 /* override tachyon's blue */
 .blue {
-    color: #4EAEEA;
+    color: #01a1dd;
 }
 
 .container-header {
     color: #333;
+}
+
+.opencell-logo {
+    font-size: 40px;
+    font-weight: 100;
+    letter-spacing: 2px;
 }
 
 .loading-overlay {

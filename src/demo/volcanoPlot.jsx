@@ -44,14 +44,14 @@ export default class VolcanoPlot extends Component {
         };
 
         this.sigModeDotColors = {
-            bait: '#a8d7a8',
+            bait: '#01a1dd', // blue
             sigHit: '#ff6666',
             notSigHit: '#33333333',
         };
 
         this.sigModeLegendItems = [
             {
-                color: chroma(this.sigModeDotColors.bait).darken().saturate(),
+                color: chroma(this.sigModeDotColors.bait),
                 text: '● Selected protein',
             },{
                color: chroma(this.sigModeDotColors.sigHit).alpha(1),
@@ -68,7 +68,7 @@ export default class VolcanoPlot extends Component {
         this.functionModeDotColors = [
             {
                 annotation: 'Intracellular transport',
-                color: '#0096E7', //blue //'#9be0ee', // cyan
+                color: chroma('#a8d7a8').saturate().darken(), //green //'#9be0ee', // cyan
             },{
                 annotation: 'RNA processing and stability',
                 color: '#fa9523', // orange
@@ -362,7 +362,7 @@ export default class VolcanoPlot extends Component {
             let color;
 
             // special color if the hit is the target (i.e., the bait) itself
-            if (msMetadata[d.gene_id].gene_name===this.props.targetName) return this.sigModeDotColors.bait;
+            if (msMetadata[d.gene_id].gene_name===this.props.targetName) return chroma(this.sigModeDotColors.bait).alpha(.7);
             
             // if not sig, always the same color
             if (!this.hitIsSignificant(d)) return this.sigModeDotColors.notSigHit;

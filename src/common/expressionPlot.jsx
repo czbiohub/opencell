@@ -19,6 +19,9 @@ class ExpressionPlot extends Component {
 
         this.aspectRatio = .7;
 
+        //this.selectedCellLineColor = '#a8d7a8'; // green
+        this.selectedCellLineColor = '#01a1dd'; // blue
+
         // RNA-seq tpm
         const yExtent = [0, 4];
 
@@ -41,7 +44,7 @@ class ExpressionPlot extends Component {
 
         // legend
         const foregroundGraphics = [(
-            <text key={'active'} x={70} y={30} style={{fill: chroma('#a8d7a8').darken().saturate()}}>
+            <text key={'active'} x={70} y={30} style={{fill: chroma(this.selectedCellLineColor).saturate()}}>
                 <tspan fontSize="14">{'● Selected cell line'}</tspan>
             </text>
         ),(
@@ -114,9 +117,9 @@ class ExpressionPlot extends Component {
                 r: isActive ? 5 : 2,
         
                 // current target in green
-                fill: isActive ? '#a9d7a8' : '#66666633',
+                fill: isActive ? chroma(this.selectedCellLineColor).alpha(.7) : '#66666633',
 
-                stroke: isActive ? '#088104' : null,
+                stroke: isActive ? chroma(this.selectedCellLineColor).darken() : null,
 
                 // hide points with missing data
                 visibility: (d.tpm && d.tpm > 0 && d.gfp && d.gfp > 0) ? 'visible' : 'hidden',

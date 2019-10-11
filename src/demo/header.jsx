@@ -33,12 +33,12 @@ class Header extends Component {
                     <div className='fl dib w-25 pt3 pl3'>
 
                         {/* OpenCell graphic logo */}
-                        <div className='fl dib w-25'>
-                            <img src='./logos/opencell_logo.png' width={100} height={100}/>
+                        <div className='fl dib w-30'>
+                            <img src='./logos/opencell_logo.png' width={120} height={120}/>
                         </div>
 
                         {/* 'OpenCell' text header on top of the CZB logo */}
-                        <div className='fl pl3 dib w-75' style={{marginTop: -15}}>
+                        <div className='fl pl3 dib w-70' style={{marginTop: -15}}>
                             <div className="blue pt3 pb2 opencell-logo">{'OpenCell'}</div>
                             <img src='./logos/logo_text_smaller.png' width={'40%'}
                                     style={{verticalAlign: 'top', paddingLeft: 0}}

@@ -46,7 +46,7 @@ export default class VolcanoPlot extends Component {
         this.sigModeDotColors = {
             bait: '#01a1dd', // blue
             sigHit: '#ff6666',
-            notSigHit: '#33333333',
+            notSigHit: '#aaa',
         };
 
         this.sigModeLegendItems = [
@@ -57,10 +57,10 @@ export default class VolcanoPlot extends Component {
                color: chroma(this.sigModeDotColors.sigHit).alpha(1),
                text: '● Significant hits',
             },{
-               color: chroma(this.sigModeDotColors.notSigHit).alpha(.5),
+               color: chroma(this.sigModeDotColors.notSigHit).alpha(1),
                text: '● Non-significant hits',
             },{
-               color: chroma(this.sigModeDotColors.notSigHit).alpha(1),
+               color: chroma(this.sigModeDotColors.notSigHit).darken(2).alpha(1),
                text: '- - -  5% FDR curve',
             }
         ];
@@ -365,18 +365,18 @@ export default class VolcanoPlot extends Component {
             if (msMetadata[d.gene_id].gene_name===this.props.targetName) return chroma(this.sigModeDotColors.bait).alpha(.7);
             
             // if not sig, always the same color
-            if (!this.hitIsSignificant(d)) return this.sigModeDotColors.notSigHit;
+            if (!this.hitIsSignificant(d)) return chroma(this.sigModeDotColors.notSigHit).alpha(.7);
 
             // if we're still here and coloring by significance only
             if (this.props.labelColor==='Significance') {
-                return chroma(this.sigModeDotColors.sigHit).alpha(.5);
+                return chroma(this.sigModeDotColors.sigHit).alpha(.6);
             }
             
             // if we're still here and coloring by annotation (what the UI calls 'function')
             if (this.props.labelColor==='Function') {
                 let ant = msMetadata[d.gene_id].annotation || 'Other';
                 const color = this.functionModeDotColors.filter(d => d.annotation===ant)[0].color;
-                return chroma(color).alpha(.5);
+                return chroma(color).alpha(.6);
             }
 
         }

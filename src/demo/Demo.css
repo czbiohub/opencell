@@ -176,7 +176,7 @@ button:focus {
 
   .volcano-fdr-line {
       fill: none;
-      stroke: rgb(240, 65, 65);
+      stroke: #333;
       stroke-width: 1px;
       stroke-dasharray: 4;
   }

@@ -9,7 +9,7 @@ import 'tachyons';
 import './Demo.css';
 
 import msData from './data/20190816_ms-data.json';
-import msMetadata from './data/20190816_ms-metadata.json';
+import msMetadata from './data/20191009_ms-metadata.json';
 
 
 export default class VolcanoPlot extends Component {
@@ -45,9 +45,28 @@ export default class VolcanoPlot extends Component {
 
         this.colors = {
             bait: '#a8d7a8',
-            sigHit: '#ff666677',
+            sigHit: '#ff6666',
             notSigHit: '#33333333',
         };
+
+        this.antColors = [
+            {
+                annotation: 'Intracellular transport',
+                color: '#9be0ee', // cyan
+            },{
+                annotation: 'RNA processing and stability',
+                color: '#fa9523', // orange
+            },{
+                annotation: 'mRNA decay',
+                color: '#af8852', // brown
+            },{
+                annotation: 'Ubiquitination',
+                color: '#8c7dd8', // purple
+            },{
+                annotation: 'Other',
+                color: this.colors.sigHit, 
+            },
+        ];
 
         this.onZoom = this.onZoom.bind(this);
         this.resetZoom = this.resetZoom.bind(this);
@@ -255,7 +274,7 @@ export default class VolcanoPlot extends Component {
                .attr('class', 'volcano-plot-legend')
                .attr('x', 30)
                .attr('y', 105)
-               .style('fill', chroma(this.colors.sigHit).alpha(1))
+               .style('fill', chroma(this.colors.notSigHit).alpha(1))
                .text('- - -  5% FDR curve');
 
     
@@ -309,20 +328,41 @@ export default class VolcanoPlot extends Component {
 
         const calcDotColor = d => {
 
+
+            let color;
+
             // special color if the hit is the target (i.e., the bait) itself
             if (msMetadata[d.gene_id].gene_name===this.props.targetName) return this.colors.bait;
+            
+            // if not sig, always the same color
+            if (!this.hitIsSignificant(d)) return this.colors.notSigHit;
 
-            if (this.hitIsSignificant(d)) return this.colors.sigHit;
-            return this.colors.notSigHit;
+            // if we're still here and coloring by significance only
+            if (this.props.labelColor==='Significance') {
+                return chroma(this.colors.sigHit).alpha(.5);
+            }
+            
+            // if we're still here and coloring by annotation (what the UI calls 'function')
+            if (this.props.labelColor==='Function') {
+                let ant = msMetadata[d.gene_id].annotation || 'Other';
+                const color = this.antColors.filter(d => d.annotation===ant)[0].color;
+                return chroma(color).alpha(.5);
+            }
+
         }
 
 
         const calcDotStroke = d => {
+
+            if (!this.hitIsSignificant(d)) return 'none';
+            return chroma(calcDotColor(d)).darken(2);
+
             // outline the dot if we have data for it
             if (this.genesWithData.includes(msMetadata[d.gene_id].gene_name)) {
                 return '#666';
             }
             return 'none';
+
         }
 
         const tip = this.tip;

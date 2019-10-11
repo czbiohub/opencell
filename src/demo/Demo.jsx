@@ -56,6 +56,9 @@ class App extends Component {
             // 'Volcano' or 'Table'
             msDisplayMode: 'Volcano',
 
+            // 'Significance' or 'Function'
+            volcanoLabelColor: 'Significance',
+
             // 'None', 'Family', 'Status'
             msColorMode: 'Status',
 
@@ -136,9 +139,11 @@ class App extends Component {
             `./demo-data/stacks/${fileroot}_C1.nrrd`,  // GFP
         ];
 
+        console.log('before promise');
         Promise.all(filepaths.map(loadStack)).then(volumes => {
             this.volumes = volumes;
             this.setState({appHasLoaded: true});
+            console.log('volumes loaded');
         });
     }
 
@@ -362,10 +367,10 @@ class App extends Component {
                         <div className='fl w-100 pb3'>
                             <div className='dib pr4'>
                                 <ButtonGroup 
-                                    label='Mode' 
-                                    values={['Volcano', 'Network']}
-                                    activeValue={this.state.msDisplayMode}
-                                    onClick={value => this.setState({msDisplayMode: value})}/>
+                                    label='Label color' 
+                                    values={['Significance', 'Function']}
+                                    activeValue={this.state.volcanoLabelColor}
+                                    onClick={value => this.setState({volcanoLabelColor: value})}/>
                             </div>
                             <div className='dib pr4'>
                                 <ButtonGroup 
@@ -394,6 +399,7 @@ class App extends Component {
                             changeTarget={this.changeTarget}
                             showLabels={this.state.volcanoShowLabels}
                             resetZoom={this.state.volcanoResetZoom}
+                            labelColor={this.state.volcanoLabelColor}
                         />
                     </div>
                     {/* table of top MS hits */}

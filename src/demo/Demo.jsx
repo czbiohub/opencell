@@ -209,7 +209,7 @@ class App extends Component {
 
 
                 {/* Expression scatterplot and FACS histograms */}
-                <div className="fl w-25 dib pl3 pr4 pt4">
+                <div className="fl w-25 dib pl3 pr4 pt0">
 
                     <div className="bb b--black-10">
                         <div className="f3 container-header">About this protein</div>
@@ -217,7 +217,7 @@ class App extends Component {
 
                     <div
                         className='pt0 pb3 w-100 protein-function-container'
-                        style={{height: 200, overflow: 'auto', lineHeight: 1.25}}>
+                        style={{height: 175, overflow: 'auto', lineHeight: 1.33}}>
                         <div>
                             <p>{uniprotMetadata[this.state.targetName].uniprot_function}</p>
                         </div>
@@ -225,7 +225,7 @@ class App extends Component {
 
 
                     <div className="pt4 bb b--black-10">
-                        <div className="f3 container-header">Expression levels</div>
+                        <div className="f3 container-header">Expression level</div>
                     </div>
 
                     {/* tpm-GFP scatterplot*/}
@@ -379,7 +379,7 @@ class App extends Component {
                                     activeValue={this.state.volcanoShowLabels}
                                     onClick={value => this.setState({volcanoShowLabels: value})}/>
                             </div>
-                            <div className='fr dib pr4'>
+                            <div className='fr dib'>
                                 <div 
                                     className='f6 simple-button' 
                                     onClick={() => this.setState({volcanoResetZoom: !this.state.volcanoResetZoom})}>

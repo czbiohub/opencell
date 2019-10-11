@@ -30,7 +30,7 @@ class Header extends Component {
                 {/* main container with bottom border */}
                 <div className="bb b--white" style={{overflow: 'hidden'}}>
 
-                    <div className='fl dib w-25 pt3 pl3'>
+                    <div className='fl dib w-25 pt0 pl3'>
 
                         {/* OpenCell graphic logo */}
                         <div className='fl dib w-30'>
@@ -47,30 +47,32 @@ class Header extends Component {
                     
                     </div>
 
-                    {/* target name */}
-                    <div className='fl dib'>
-                        <div className="blue pt3" style={{fontSize: 66}}>{this.props.targetName}</div>
-                    </div>
+                    <div className='fl dib w-75 pt3 pl3'>
 
-                      {/* stats */}
-                    <div className='fl dib pt3 header-metadata'>
-                        <ul>{metadataItems}</ul>
-                    </div>
+                        {/* target name */}
+                        <div className='fl dib'>
+                            <div className="blue pt3" style={{fontSize: 66}}>{this.props.targetName}</div>
+                        </div>
 
-                    {/* target search text input */}
-                    <div className='fr dib w-20 pl6 pt4'>
-                        <input 
-                            type='text' 
-                            className='header-search-textbox' 
-                            defaultValue={''}
-                            onKeyPress={(event) => {
-                                if (event.charCode===13) {
-                                    this.props.onSearchChange(event.currentTarget.value);
-                                }
-                            }}/>
-                        <div className='f5 header-search-label'>Search by target name</div>
-                    </div>
+                        {/* stats */}
+                        <div className='fl dib pt3 header-metadata'>
+                            <ul>{metadataItems}</ul>
+                        </div>
 
+                        {/* target search text input */}
+                        <div className='fr dib pt4 pr4'>
+                            <input 
+                                type='text' 
+                                className='header-search-textbox' 
+                                defaultValue={''}
+                                onKeyPress={(event) => {
+                                    if (event.charCode===13) {
+                                        this.props.onSearchChange(event.currentTarget.value);
+                                    }
+                                }}/>
+                            <div className='f5 header-search-label'>Search by target name</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         );

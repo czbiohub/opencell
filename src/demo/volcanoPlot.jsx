@@ -43,29 +43,56 @@ export default class VolcanoPlot extends Component {
             yAxisLabelOffset: 15,
         };
 
-        this.colors = {
+        this.sigModeDotColors = {
             bait: '#a8d7a8',
             sigHit: '#ff6666',
             notSigHit: '#33333333',
         };
 
-        this.antColors = [
+        this.sigModeLegendItems = [
+            {
+                color: chroma(this.sigModeDotColors.bait).darken().saturate(),
+                text: '● Selected protein',
+            },{
+               color: chroma(this.sigModeDotColors.sigHit).alpha(1),
+               text: '● Significant hits',
+            },{
+               color: chroma(this.sigModeDotColors.notSigHit).alpha(.5),
+               text: '● Non-significant hits',
+            },{
+               color: chroma(this.sigModeDotColors.notSigHit).alpha(1),
+               text: '- - -  5% FDR curve',
+            }
+        ];
+
+        this.functionModeDotColors = [
             {
                 annotation: 'Intracellular transport',
-                color: '#9be0ee', // cyan
+                color: '#0096E7', //blue //'#9be0ee', // cyan
             },{
                 annotation: 'RNA processing and stability',
                 color: '#fa9523', // orange
+                text: 'RNA processing',
             },{
                 annotation: 'mRNA decay',
-                color: '#af8852', // brown
-            },{
-                annotation: 'Ubiquitination',
                 color: '#8c7dd8', // purple
             },{
+                annotation: 'Ubiquitination',
+                color: '#af8852', // brown
+            },{
                 annotation: 'Other',
-                color: this.colors.sigHit, 
+                color: this.sigModeDotColors.sigHit, 
+                text: 'Other significant hits'
             },
+        ];
+
+        this.functionModeLegendItems = this.functionModeDotColors.map(d => {
+            d.text = `● ${d.text || d.annotation}`;
+            return d;
+        });
+
+        this.functionModeLegendItems = [
+            this.sigModeLegendItems[0], ...this.functionModeLegendItems, this.sigModeLegendItems[2],
         ];
 
         this.onZoom = this.onZoom.bind(this);
@@ -73,6 +100,7 @@ export default class VolcanoPlot extends Component {
         this.hitIsSignificant = this.hitIsSignificant.bind(this);
         this.captionOpacity = this.captionOpacity.bind(this);
         this.constructData = this.constructData.bind(this);
+        this.updateLegend = this.updateLegend.bind(this);
         this.updateScatterPlot = this.updateScatterPlot.bind(this);
 
         // list of gene/target names with an MS dataset
@@ -237,57 +265,21 @@ export default class VolcanoPlot extends Component {
             .attr("width", pp.width - pp.padLeft - pp.padRight)
             .attr("height", pp.height - pp.padTop - pp.padBottom);
 
-
-        // legend
+        // legend container
         const legend = svg.append('g')
+            .attr('id', 'volcano-plot-legend')
             .attr('transform', `translate(0, 0)`)
             .style('fill', '#ffffff55');
- 
-         legend.append('rect')
-               .attr('width', 200)
-               .attr('height', 120)
-               .style('fill', 'white')
-               .style('fill-opacity', .9);
- 
-         legend.append('text')
-               .attr('class', 'volcano-plot-legend')
-               .attr('x', 30)
-               .attr('y', 30)
-               .style('fill', chroma(this.colors.bait).darken().saturate())
-               .text('● Bait');
- 
-         legend.append('text')
-               .attr('class', 'volcano-plot-legend')
-               .attr('x', 30)
-               .attr('y', 55)
-               .style('fill', chroma(this.colors.sigHit).alpha(1))
-               .text('● Significant hits');
- 
-         legend.append('text')
-               .attr('class', 'volcano-plot-legend')
-               .attr('x', 30)
-               .attr('y', 80)
-               .style('fill', chroma(this.colors.notSigHit).alpha(.5))
-               .text('● Non-significant hits');
- 
-         legend.append('text')
-               .attr('class', 'volcano-plot-legend')
-               .attr('x', 30)
-               .attr('y', 105)
-               .style('fill', chroma(this.colors.notSigHit).alpha(1))
-               .text('- - -  5% FDR curve');
-
-    
+        
+     
         this.tip = tip()
                 .offset([-10, 0])
                 .attr("class", "d3-tip")
                 .html(d => `<strong>${d.gene_name}</strong><br>${d.protein_names}`);
         svg.call(this.tip);
 
-
         this.zoom = d3.zoom().on('zoom', this.onZoom);
         svg.call(this.zoom);
-
 
         this.svg = svg;
         this.g = g;
@@ -302,6 +294,44 @@ export default class VolcanoPlot extends Component {
 
     }
 
+
+    updateLegend () {
+
+        // legend
+        const legend = this.svg.select('#volcano-plot-legend');
+
+        legend.selectAll("text").remove();
+        legend.selectAll("rect").remove();
+ 
+        let legendItems;
+        if (this.props.labelColor==='Significance') {
+            legendItems = this.sigModeLegendItems;
+        }
+
+        if (this.props.labelColor==='Function') {
+            legendItems = this.functionModeLegendItems;
+        }
+
+        const padLeft = 30
+        const padTop = 30
+        const verticalSpace = 25
+
+        legend.append('rect')
+            .attr('width', 250)
+            .attr('height', padTop + legendItems.length * verticalSpace)
+            .style('fill', 'white')
+            .style('fill-opacity', .9);
+
+        legendItems.map((d, ind) => {
+            legend.append('text')
+                  .attr('class', 'volcano-plot-legend')
+                  .attr('x', padLeft)
+                  .attr('y', padTop + verticalSpace * ind)
+                  .style('fill', d.color)
+                  .text(d.text);
+        });
+
+    }
 
 
     updateScatterPlot () {
@@ -332,20 +362,20 @@ export default class VolcanoPlot extends Component {
             let color;
 
             // special color if the hit is the target (i.e., the bait) itself
-            if (msMetadata[d.gene_id].gene_name===this.props.targetName) return this.colors.bait;
+            if (msMetadata[d.gene_id].gene_name===this.props.targetName) return this.sigModeDotColors.bait;
             
             // if not sig, always the same color
-            if (!this.hitIsSignificant(d)) return this.colors.notSigHit;
+            if (!this.hitIsSignificant(d)) return this.sigModeDotColors.notSigHit;
 
             // if we're still here and coloring by significance only
             if (this.props.labelColor==='Significance') {
-                return chroma(this.colors.sigHit).alpha(.5);
+                return chroma(this.sigModeDotColors.sigHit).alpha(.5);
             }
             
             // if we're still here and coloring by annotation (what the UI calls 'function')
             if (this.props.labelColor==='Function') {
                 let ant = msMetadata[d.gene_id].annotation || 'Other';
-                const color = this.antColors.filter(d => d.annotation===ant)[0].color;
+                const color = this.functionModeDotColors.filter(d => d.annotation===ant)[0].color;
                 return chroma(color).alpha(.5);
             }
 
@@ -355,13 +385,13 @@ export default class VolcanoPlot extends Component {
         const calcDotStroke = d => {
 
             if (!this.hitIsSignificant(d)) return 'none';
-            return chroma(calcDotColor(d)).darken(2);
 
-            // outline the dot if we have data for it
+            // stroke in black we have data for it
             if (this.genesWithData.includes(msMetadata[d.gene_id].gene_name)) {
                 return '#666';
             }
-            return 'none';
+
+            return chroma(calcDotColor(d)).darken(1);
 
         }
 
@@ -443,6 +473,8 @@ export default class VolcanoPlot extends Component {
 
         this.svg.select("#x-axis-label").text('Relative enrichment');
         this.svg.select("#y-axis-label").text('-log10 p-value');
+
+        this.updateLegend();
 
     }
 

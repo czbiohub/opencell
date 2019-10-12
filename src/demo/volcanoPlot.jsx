@@ -317,7 +317,7 @@ export default class VolcanoPlot extends Component {
         const verticalSpace = 25
 
         legend.append('rect')
-            .attr('width', 250)
+            .attr('width', 210)
             .attr('height', padTop + legendItems.length * verticalSpace)
             .style('fill', 'white')
             .style('fill-opacity', .9);
@@ -388,7 +388,7 @@ export default class VolcanoPlot extends Component {
 
             // stroke in black we have data for it
             if (this.genesWithData.includes(msMetadata[d.gene_id].gene_name)) {
-                return '#666';
+                return '#333';
             }
 
             return chroma(calcDotColor(d)).darken(1);

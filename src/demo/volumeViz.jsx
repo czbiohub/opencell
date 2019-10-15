@@ -12,12 +12,6 @@ import 'tachyons';
 import './Demo.css';
 
 
-// wrapper around a d3-based interactive scatterplot
-
-// a single z-slice (assuming the dimension order is (x, y, z))
-// let slice = volumeData.data.slice((zInd - 1)*512*512, zInd*512*512);
-            
-
 class VolumeViz extends Component {
 
     constructor (props) {
@@ -39,20 +33,17 @@ class VolumeViz extends Component {
 
 
     getMinMax() {
-        
         const minMaxs = {
             'DAPI': [this.props.dapiMin, this.props.dapiMax],
             'GFP': [this.props.gfpMin, this.props.gfpMax],
             'Both': [this.props.gfpMin, this.props.gfpMax],
         };
-
         return minMaxs[this.props.localizationChannel].map(val => val/100);
     }
 
 
     getVolume() {
         // WARNING: the channel indicies here must match those found in App.componentDidMount
-
         const inds = {
             'DAPI': 0,
             'GFP': 1,
@@ -103,7 +94,6 @@ class VolumeViz extends Component {
     }
 
     updateUniforms(fields) {
-
 
         if (fields.includes('u_data')) {
             this.material_gray.uniforms['u_data'].value = this.createTexture(this.getVolume());
@@ -179,7 +169,7 @@ class VolumeViz extends Component {
 
 
     createTexture (volume) {
-
+        
         const shape = [volume.xLength, volume.yLength, volume.zLength];
         const texture = new THREE.DataTexture3D(volume.data, ...shape);
 
@@ -191,6 +181,13 @@ class VolumeViz extends Component {
         texture.minFilter = texture.magFilter = THREE.LinearFilter;
         texture.unpackAlignment = 1;
         texture.needsUpdate = true;
+
+        // attempt to change scaling in z by using a repeat value
+        // of less than one in the z dimension
+        // (this is a recommended approach to scaling textures in 2D)
+        // this has no effect, possibly because texture.repeat is a 2D vector
+        // even for DataTexture3D (which might be a bug)
+        //texture.repeat = new THREE.Vector3(1, 1, .5);
         return texture;
     }
 
@@ -256,15 +253,30 @@ class VolumeViz extends Component {
 
         const geometry = new THREE.BoxBufferGeometry(...shape);
         geometry.translate(...center);
+        
+        // attempt to change scaling in z by changing geometry.scale 
+        // this leads to the top slice being repeated in the depth dimension
+        // (presumably this is behavior specified by DataTexture3D.wrapR)
+        //geometry.scale(1, 1, 2);
 
         this.mesh_blue = new THREE.Mesh(geometry, this.material_blue);
         this.mesh_gray = new THREE.Mesh(geometry, this.material_gray);
+
+        // attempt to change scaling in z by changing mesh.scale 
+        // this also does not work as expected; 
+        // the scaling is applied only far away from the camera
+        //this.mesh_blue.scale.set(1, 1, 2);
+        //this.mesh_gray.scale.set(1, 1, 2);
 
         const group = new THREE.Group();
 
         // note: order of addition here doesn't (seem to) matter
         group.add(this.mesh_blue);
         group.add(this.mesh_gray);
+        
+        // changing group.scale has the same effect as mesh.scale
+        //group.scale.set(1, 1, 2);
+
         this.scene.add(group);
 
     }

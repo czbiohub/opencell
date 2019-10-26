@@ -3,13 +3,14 @@ import re
 import sys
 import glob
 import json
+import pickle
+import skimage
 import hashlib
 import datetime
 import tifffile
+
 import numpy as np
 import pandas as pd
-
-import pickle
 
 # hard-coded plate directory names of the 'original' image data
 PLATE_DIR_NAMES = {'P%04d' % num: 'mNG96wp%d' % num for num in range(1, 20)}
@@ -20,16 +21,14 @@ THAWED_PLATE_DIR_NAMES = {'P%04d' % num: 'mNG96wp%d_Thawed' % num for num in ran
 
 class PlateMicroscopyAPI:
 
-    root_paths = {
-        'ess': '/Volumes/ml_group/PlateMicroscopy/',
-        'flexo': '/Volumes/MicroscopyData/ML_group/Plate_Microscopy/'
-    }
     
-    def __init__(self, cache_dir=None, partition=None):
+    def __init__(self, root_dir=None, cache_dir=None, partition=None):
         '''
         '''
+
+        self.root_dir = root_dir
         self.cache_dir = cache_dir
-        self.root = self.root_paths[partition]
+        os.makedirs(self.cache_dir, exist_ok=True)
 
         self.cached_os_walk_filepath = os.path.join(self.cache_dir, 'os_walk.p')
         self.cached_metadata_filepath = os.path.join(self.cache_dir, 'all-metadata.csv')
@@ -52,7 +51,7 @@ class PlateMicroscopyAPI:
         if os.path.isfile(self.cached_os_walk_filepath):
             raise ValueError('Cached os_walk already exists')
     
-        os_walk = list(os.walk(self.root))
+        os_walk = list(os.walk(self.root_dir))
         with open(self.cached_os_walk_filepath, 'wb') as file:
             pickle.dump(os_walk, file)
 
@@ -79,7 +78,7 @@ class PlateMicroscopyAPI:
             filenames = [name for name in filenames if '.tif' in name]
             if not filenames:
                 continue
-            maxx = max(maxx, len(path.replace(self.root, '').split(os.sep)))  
+            maxx = max(maxx, len(path.replace(self.root_dir, '').split(os.sep)))  
         return maxx
     
 
@@ -124,7 +123,7 @@ class PlateMicroscopyAPI:
                 continue
             
             # only include 'mnG96wp{num}' or 'mNG96wp{num}_Thawed'
-            rel_path = path.replace(self.root, '')
+            rel_path = path.replace(self.root_dir, '')
             if not re.match('^mNG96wp[1-9]([0-9])?(_Thawed|/)', rel_path):
                 continue
                 
@@ -158,14 +157,14 @@ class PlateMicroscopyAPI:
         Append the file size and creation time to the metadata
         (requires that the partition be mounted)
         '''
-        if not os.path.isdir(self.root):
+        if not os.path.isdir(self.root_dir):
             print('Warning: cannot determine file info unless the partition is mounted')
     
         md = self.md.replace(to_replace=np.nan, value='')
         for ind, row in md.iterrows():
             if not np.mod(ind, 10000):
                 print(ind)
-            s = os.stat(os.path.join(self.root, row.plate_dir, row.exp_dir, row.exp_subdir, row.filename))
+            s = os.stat(os.path.join(self.root_dir, row.plate_dir, row.exp_dir, row.exp_subdir, row.filename))
             md.at[ind, 'filesize'] = s.st_size
             md.at[ind, 'ctime'] = s.st_ctime
 
@@ -196,7 +195,10 @@ class PlateMicroscopyAPI:
         def add_tag(filepath, tag):
             return filepath.replace('.tif', '_%s.tif' % tag)
 
-        src_filepath = os.path.join(src_root, row.plate_dir, row.exp_dir, row.exp_subdir, row.filename)
+        src_filepath = os.path.join(src_root, row.plate_dir, row.exp_dir)
+        if not pd.isna(row.exp_subdir):
+            src_filepath = os.path.join(src_filepath, row.exp_subdir)
+        src_filepath = os.path.join(src_filepath, row.filename)
         
         dst_dir = os.path.join(dst_root, row.plate_dir)
         dst_filename = 'P%04d_%s_%s' % (row.plate_num, row.exp_dir, row.filename)
@@ -204,14 +206,25 @@ class PlateMicroscopyAPI:
         os.makedirs(dst_dir, exist_ok=True)
         dst_filepath = os.path.join(dst_dir, dst_filename.replace('.ome', ''))
 
-        im = tifffile.imread(src_filepath)  
-        nslices = im.shape[0]
-        if np.mod(nslices, 2):
-            print('Warning: odd number of z-slices in file %s' % row.filename)
-        
-        nslices = int(nslices/2)
-        dapi_stack = im[:nslices, :, :]
-        gfp_stack = im[nslices:, :, :]  
+        # hackish way to check whether we've already processed this stack
+        # (GFP_YPROJ is the last projection saved below)
+        if os.path.isfile(add_tag(dst_filepath, 'GFP_YPROJ')):
+            return
+
+        # note: important to use skimage's tifffile, and not the stand-alone package,
+        # to avoid errors that occur when loading some stacks with tifffile itself
+        # (these errors appear to be related to invalid TIFF metadata tags)
+        # (example: 'E7_9_RAB14.ome.tif' in 'mNG96wp1_Thawed')
+        im = skimage.external.tifffile.imread(src_filepath) 
+
+        # some stacks are shape (z, channel, x, y) and some are (z, x, y) 
+        if len(im.shape) == 4:
+            dapi_stack = im[:, 0, :, :]
+            gfp_stack = im[:, 1, :, :]
+        else:
+            nslices = int(im.shape[0]/2)
+            dapi_stack = im[:nslices, :, :]
+            gfp_stack = im[nslices:, :, :]  
 
         tifffile.imsave(add_tag(dst_filepath, 'DAPI_ZPROJ'), dapi_stack.max(axis=0))
         tifffile.imsave(add_tag(dst_filepath, 'GFP_ZPROJ'), gfp_stack.max(axis=0))
@@ -222,6 +235,12 @@ class PlateMicroscopyAPI:
         tifffile.imsave(add_tag(dst_filepath, 'DAPI_YPROJ'), dapi_stack.max(axis=2))
         tifffile.imsave(add_tag(dst_filepath, 'GFP_YPROJ'), gfp_stack.max(axis=2))
         
+        return im.shape
+
+
+    def make_all_projections(self):
+        pass
+
 
     def get_experiments(self, plate_id, well_id, group='original'):
         '''

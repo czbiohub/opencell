@@ -179,7 +179,7 @@ class PlateMicroscopyAPI:
         '''
         d_raw = self.md.loc[self.md.exp_dir.apply(
             lambda s: re.match('^ML[0-9]{4}_[0-9]{8}$', s) is not None)].copy()
-        return d_raw
+        return d_raw.reset_index()
 
 
     @staticmethod
@@ -211,13 +211,17 @@ class PlateMicroscopyAPI:
         if os.path.isfile(add_tag(dst_filepath, 'GFP_YPROJ')):
             return
 
-        # note: important to use skimage's tifffile, and not the stand-alone package,
-        # to avoid errors that occur when loading some stacks with tifffile itself
-        # (these errors appear to be related to invalid TIFF metadata tags)
-        # (example: 'E7_9_RAB14.ome.tif' in 'mNG96wp1_Thawed')
-        im = skimage.external.tifffile.imread(src_filepath) 
+        # note: some TIFF stacks can only be loaded with skimage.exernal.tifffile,
+        # while others can only be loaded with the stand-alone tifffile package 
+        # (either version '2019.7.26' or '0.15.1')
+        # in both cases, the errors appear to be related to invalid TIFF metadata tags.
+        try:
+            im = skimage.external.tifffile.imread(src_filepath) 
+        except ValueError:
+            im = tifffile.imread(src_filepath)
 
-        # some stacks are shape (z, channel, x, y) and some are (z, x, y) 
+        # most stacks are shape (z, x, y) (with channel concatenated in z),
+        # but a few stacks are shape (z, channel, x, y)
         if len(im.shape) == 4:
             dapi_stack = im[:, 0, :, :]
             gfp_stack = im[:, 1, :, :]

@@ -41,13 +41,11 @@ class PlateMicroscopyAPI:
 
 
     def load_cached_os_walk(self):
-
         with open(self.cached_os_walk_filepath, 'rb') as file:
             self.os_walk = pickle.load(file)
 
 
     def cache_os_walk(self):
-        
         if os.path.isfile(self.cached_os_walk_filepath):
             raise ValueError('Cached os_walk already exists')
     
@@ -118,36 +116,51 @@ class PlateMicroscopyAPI:
         rows = []
         for row in self.os_walk:
             path, subdirs, filenames = row
+
+            # all TIFF files in the directory
+            # (we assume these are TIFF stacks)
             filenames = [name for name in filenames if '.tif' in name]
             if not filenames:
                 continue
-            
-            # only include 'mnG96wp{num}' or 'mNG96wp{num}_Thawed'
+
+            # ignore plate-level directories that are not of the form
+            # 'mnG96wp{num}' or 'mNG96wp{num}_Thawed'
             rel_path = path.replace(self.root_dir, '')
             if not re.match('^mNG96wp[1-9]([0-9])?(_Thawed|/)', rel_path):
                 continue
-                
+
+            # create a column for each subdirectory, starting with the plate-level directory
             path_dirs = rel_path.split(os.sep)
             path_info = {'level_%d' % ind: path_dir for ind, path_dir in enumerate(path_dirs)}
+
+            # create a row only for the path
             if paths_only:
                 rows.append(path_info)
-            else:
-                for filename in filenames:
-                    file_info = {}
-                    try:
-                        file_info = self.parse_raw_filename(filename)
-                    except:
-                        print('Warning: unparse-able filename %s' % filename)
-                    rows.append({'filename': filename, **file_info, **path_info})
+                continue
+            
+            # create a row for each file
+            for filename in filenames:
+                file_info = {}
+                try:
+                    file_info = self.parse_raw_filename(filename)
+                except:
+                    print('Warning: unparse-able filename %s' % filename)
+                rows.append({'filename': filename, **file_info, **path_info})
 
         md = pd.DataFrame(data=rows)
         # d = d.replace(to_replace=np.nan, value='')
 
-        # rename subdirectory columns
+        # rename the subdirectory columns
+        # (we know that there are always at most three of these columns)
         md = md.rename(columns={'level_0': 'plate_dir', 'level_1': 'exp_dir', 'level_2': 'exp_subdir'})
 
-        # parse plate_num from plate_dir
+        # parse the plate_num from the plate_dir
         md['plate_num'] = [re.findall('^mNG96wp([0-9]{1,2})', s.split(os.sep)[0])[0] for s in md.plate_dir]
+
+        # flag all of the raw files
+        # these are all TIFF files in experiment dirs of the form '^ML[0-9]{4}_[0-9]{8}$'
+        # (for example: 'ML0045_20181022')        
+        md['is_raw'] = md.exp_dir.apply(lambda s: re.match('^ML[0-9]{4}_[0-9]{8}$', s) is not None)
 
         self.md = md
 
@@ -171,15 +184,18 @@ class PlateMicroscopyAPI:
         self.md = md
 
 
-    def raw_metadata(self):
-        '''
-        All raw z-stacks - these are all TIFF files 
-        in experiment dirs of the form '^ML[0-9]{4}_[0-9]{8}$'
-        For example: 'ML0045_20181022'
-        '''
-        d_raw = self.md.loc[self.md.exp_dir.apply(
-            lambda s: re.match('^ML[0-9]{4}_[0-9]{8}$', s) is not None)].copy()
-        return d_raw.reset_index()
+    def src_filepath(self, row, src_root=None):
+        
+        if src_root is None:
+            src_root = self.root_dir
+        
+        # exp_subdir can be missing
+        exp_subdir = row.exp_subdir
+        if  pd.isna(exp_subdir):
+            exp_subdir = ''
+
+        src_filepath = os.path.join(src_root, row.plate_dir, row.exp_dir, exp_subdir, row.filename)
+        return src_filepath
 
 
     @staticmethod
@@ -195,11 +211,7 @@ class PlateMicroscopyAPI:
         def add_tag(filepath, tag):
             return filepath.replace('.tif', '_%s.tif' % tag)
 
-        src_filepath = os.path.join(src_root, row.plate_dir, row.exp_dir)
-        if not pd.isna(row.exp_subdir):
-            src_filepath = os.path.join(src_filepath, row.exp_subdir)
-        src_filepath = os.path.join(src_filepath, row.filename)
-        
+        src_filepath = self.src_filepath(row, src_root=src_root)
         dst_dir = os.path.join(dst_root, row.plate_dir)
         dst_filename = 'P%04d_%s_%s' % (row.plate_num, row.exp_dir, row.filename)
 

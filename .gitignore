@@ -4,6 +4,7 @@
 .vscode/
 ignore/
 cache/
+plate-microscopy-cache/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

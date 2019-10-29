@@ -12,6 +12,9 @@ import tifffile
 import numpy as np
 import pandas as pd
 
+from . import image
+
+
 # hard-coded plate directory names of the 'original' image data
 PLATE_DIR_NAMES = {'P%04d' % num: 'mNG96wp%d' % num for num in range(1, 20)}
 
@@ -157,6 +160,9 @@ class PlateMicroscopyAPI:
         # parse the plate_num from the plate_dir
         md['plate_num'] = [re.findall('^mNG96wp([0-9]{1,2})', s.split(os.sep)[0])[0] for s in md.plate_dir]
 
+        # the ML experiment ID
+        md['exp_id'] = [exp_dir.split('_')[0] for exp_dir in md.exp_dir]
+
         # flag all of the raw files
         # these are all TIFF files in experiment dirs of the form '^ML[0-9]{4}_[0-9]{8}$'
         # (for example: 'ML0045_20181022')        
@@ -185,7 +191,10 @@ class PlateMicroscopyAPI:
 
 
     def src_filepath(self, row, src_root=None):
-        
+        '''
+        Construct the complete filepath to a TIFF stack given a row of metadata
+        (works for raw and processed files)
+        '''
         if src_root is None:
             src_root = self.root_dir
         
@@ -198,60 +207,29 @@ class PlateMicroscopyAPI:
         return src_filepath
 
 
-    @staticmethod
-    def make_projections(row, src_root, dst_root):
+    def parse_raw_file(self, row, src_root, dst_root):
         '''
-        Project all of the raw z-stacks
+        Parse the metadata from a raw file
 
         row : a row of raw metadata
         src_root : the root of the PlateMicroscopy directory
         dst_root : the directory in which to save projections
         '''
 
-        def add_tag(filepath, tag):
-            return filepath.replace('.tif', '_%s.tif' % tag)
-
         src_filepath = self.src_filepath(row, src_root=src_root)
+
         dst_dir = os.path.join(dst_root, row.plate_dir)
-        dst_filename = 'P%04d_%s_%s' % (row.plate_num, row.exp_dir, row.filename)
-
         os.makedirs(dst_dir, exist_ok=True)
-        dst_filepath = os.path.join(dst_dir, dst_filename.replace('.ome', ''))
 
-        # hackish way to check whether we've already processed this stack
-        # (GFP_YPROJ is the last projection saved below)
-        if os.path.isfile(add_tag(dst_filepath, 'GFP_YPROJ')):
-            return
+        dst_filename = 'P%04d_%s_%s' % (row.plate_num, row.exp_id, row.filename)
+        dst_fileroot = os.path.join(dst_dir, dst_filename.replace('.ome.tif', ''))
 
-        # note: some TIFF stacks can only be loaded with skimage.exernal.tifffile,
-        # while others can only be loaded with the stand-alone tifffile package 
-        # (either version '2019.7.26' or '0.15.1')
-        # in both cases, the errors appear to be related to invalid TIFF metadata tags.
-        try:
-            im = skimage.external.tifffile.imread(src_filepath) 
-        except ValueError:
-            im = tifffile.imread(src_filepath)
+        tiff = image.RawPipelineImage(src_filepath, verbose=False)
+        tiff.parse_micromanager_metadata()
+        tiff.validate_micromanager_metadata()
 
-        # most stacks are shape (z, x, y) (with channel concatenated in z),
-        # but a few stacks are shape (z, channel, x, y)
-        if len(im.shape) == 4:
-            dapi_stack = im[:, 0, :, :]
-            gfp_stack = im[:, 1, :, :]
-        else:
-            nslices = int(im.shape[0]/2)
-            dapi_stack = im[:nslices, :, :]
-            gfp_stack = im[nslices:, :, :]  
-
-        tifffile.imsave(add_tag(dst_filepath, 'DAPI_ZPROJ'), dapi_stack.max(axis=0))
-        tifffile.imsave(add_tag(dst_filepath, 'GFP_ZPROJ'), gfp_stack.max(axis=0))
-        
-        tifffile.imsave(add_tag(dst_filepath, 'DAPI_XPROJ'), dapi_stack.max(axis=1))
-        tifffile.imsave(add_tag(dst_filepath, 'GFP_XPROJ'), gfp_stack.max(axis=1))
-        
-        tifffile.imsave(add_tag(dst_filepath, 'DAPI_YPROJ'), dapi_stack.max(axis=2))
-        tifffile.imsave(add_tag(dst_filepath, 'GFP_YPROJ'), gfp_stack.max(axis=2))
-        
-        return im.shape
+        tiff.save_events(dst_fileroot)
+        tiff.save_metadata(dst_fileroot)
 
 
     def make_all_projections(self):

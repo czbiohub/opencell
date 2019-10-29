@@ -9,14 +9,17 @@ import hashlib
 import imageio
 import datetime
 import tifffile
-
 import numpy as np
 import pandas as pd
 
 
+def timestamp():
+    return datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+
 class RawPipelineImage:
 
-    def __init__(self, src_filepath):
+    def __init__(self, src_filepath, verbose=True):
         '''
         Processing methods for raw pipeline-like z-stacks
 
@@ -24,8 +27,35 @@ class RawPipelineImage:
         -----------
 
         '''
-        self.metadata = {}
+        self.events = []
+        self.global_metadata = {'timestamp': timestamp()}
+        
+        self.verbose = verbose
         self.src_filepath = src_filepath
+        self.open_tiff()
+
+
+    def event_logger(self, message):
+        '''
+        '''
+        if self.verbose:
+            print('EVENT: %s' % message)
+        self.events.append({'message': message, 'timestamp': timestamp()})
+
+
+    def save_events(self, dst_fileroot):
+        if not self.events:
+            return
+        pd.DataFrame(data=self.events).to_csv('%s_events.csv' % dst_fileroot, index=False)
+
+
+    def save_metadata(self, dst_fileroot):
+        
+        with open('%s_global_metadata.json' % dst_fileroot, 'w') as file:
+            json.dump(self.global_metadata, file)
+
+        self.mm_metadata.to_csv('%s_raw_mm_metadata.csv' % dst_fileroot, index=False)
+        self.validated_mm_metadata.to_csv('%s_validated_mm_metadata.csv' % dst_fileroot, index=False)
 
 
     def calc_hash(self):
@@ -37,7 +67,7 @@ class RawPipelineImage:
             sha1.update(file.read())
 
         hash_value = sha1.hexdigest()
-        self.metadata['sha1_hash'] = hash_value
+        self.global_metadata['sha1_hash'] = hash_value
         return hash_value
 
 
@@ -51,7 +81,7 @@ class RawPipelineImage:
         except:
             loader = 'skimage.external.tifffile'
             self.tiff = skimage.external.tifffile.TiffFile(self.src_filepath)        
-        self.metadata['loader'] = loader
+        self.global_metadata['loader'] = loader
     
 
     def parse_micromanager_metadata(self):
@@ -59,42 +89,65 @@ class RawPipelineImage:
         Parse the MicroManager metadata for each page in the TIFF file
         '''
 
-        # the MM metadata tag name *should* be consistent
-        mm_tag_name = 'MicroManagerMetadata'
-
-        if not hasattr(self, 'tiff'):
-            self.open_tiff()
+        # the IJMetadata appears only in the first page
+        ij_metadata = None
+        try:
+            ij_metadata = self.tiff.pages[0].tags['IJMetadata'].value['Info']
+        except:
+            self.event_logger('There was no IJMetadata tag found on the first page')
+        try:
+            ij_metadata = json.loads(ij_metadata)
+        except:
+            self.event_logger('IJMetadata could not be parsed by json.loads')
+        self.global_metadata['ij_metadata'] = ij_metadata
 
         rows = []
         for ind, page in enumerate(self.tiff.pages):
-            row = {'ind': ind}
-            mm_tag = page.tags.get(mm_tag_name)
+            row = {
+                'page_ind': ind,
+                'error': False
+            }
+
+            mm_tag = page.tags.get('MicroManagerMetadata')
             if not isinstance(mm_tag, tifffile.tifffile.TiffTag):
-                rows.append({'ind': ind, 'error': 'Missing MicroManagerMetadata tag'})
+                self.event_logger('There was no MicroManagerMetadata tag found on page %s' % ind)
+                row['error'] = True
+                rows.append(row)
                 continue
 
             mm_tag = mm_tag.value
-            metadata_schema = None
-            page_metadata = {'error': 'Unparseable MicroManagerMetadata tag'}
             try:
-                page_metadata = self._parse_mm_tag_schema_v1(mm_tag)
-                metadata_schema = 'v1'
+                page_metadata_v1 = self._parse_mm_tag_schema_v1(mm_tag)
             except:
+                page_metadata_v1 = None
                 try:
-                    page_metadata = self._parse_mm_tag_schema_v2(mm_tag)
-                    metadata_schema = 'v2'
+                    page_metadata_v2 = self._parse_mm_tag_schema_v2(mm_tag)
                 except:
-                    pass
+                    page_metadata_v2 = None
+
+            page_metadata = {}
+            metadata_schema = None
+            if page_metadata_v1 is not None:
+                metadata_schema = 'v1'
+                page_metadata = page_metadata_v1
+            elif page_metadata_v2 is not None:
+                metadata_schema = 'v2'
+                page_metadata = page_metadata_v2
+            else:
+                row['error'] = True
+                self.event_logger('Unable to parse MicroManagerMetadata tag from page %s' % ind)
+
             rows.append({**row, **page_metadata})
 
         self.mm_metadata = pd.DataFrame(data=rows)
-        self.metadata['metadata_schema'] = metadata_schema
+        self.global_metadata['metadata_schema'] = metadata_schema
 
 
     @staticmethod
     def _parse_mm_tag_schema_v1(mm_tag):
         '''
         Parse a MicroManagerMetadata tag in the 'old' schema
+        (KC: I believe this schema corresponds to MicroManager 1.x)
         '''
         md = {
             'slice_ind': mm_tag['SliceIndex'],
@@ -112,6 +165,7 @@ class RawPipelineImage:
     def _parse_mm_tag_schema_v2(mm_tag):
         '''
         Parse a MicroManagerMetadata tag in the 'new' schema
+        (KC: I believe this schema corresponds to MicroManager 2.x)
         '''
         md = {
             'slice_ind': mm_tag['SliceIndex'],
@@ -125,37 +179,88 @@ class RawPipelineImage:
         return md
 
 
+    def validate_micromanager_metadata(self):
+        '''
+        '''
+
+        md = self.mm_metadata.copy()
+
+        errors = md['error']
+        md = md.drop(labels='error', axis=1)
+
+        # drop rows with NAs in any of the columns parsed from the MicroManagerMetadata tag
+        parsed_columns = set(md.columns).difference(['page_ind'])
+        md = md.dropna(how='any', subset=parsed_columns, axis=0)
+
+        # check that the dropped rows had an error
+        num_error_rows = errors.sum()
+        num_dropped_rows = self.mm_metadata.shape[0] - md.shape[0]
+        if num_dropped_rows:
+            self.event_logger('Dropped %s rows with NAs from mm_metadata' % num_dropped_rows)
+        if num_dropped_rows != num_error_rows:
+            self.event_logger('There were more mm_metadata rows with NAs than rows with errors')
+
+        # check that there are an even number of pages
+        if np.mod(md.shape[0], 2) == 1:
+            self.event_logger('There are an odd number of pages with valid MicroManager metadata')
+
+        int_columns = ['slice_ind', 'channel_ind']
+        float_columns = ['laser_power_405', 'laser_power_488', 'exposure_time',]
+
+        for column in int_columns:
+            md[column] = md[column].apply(int)
+
+        for column in float_columns:
+            md[column] = md[column].apply(float)
+
+        # check that slice inds are contiguous
+        # and that exposure time and laser power are consistent for each channel
+        channel_inds = md.channel_ind.unique()
+        for channel_ind in channel_inds:
+            md_channel = md.loc[md.channel_ind==channel_ind]
+
+            steps = np.unique(np.diff(md_channel.slice_ind))
+            if len(steps) > 1:
+                self.event_logger('The slice_inds are not contiguous for channel_ind %s' % channel_ind)
+
+            for column in float_columns:
+                steps = np.unique(np.diff(md_channel[column]))
+                if len(steps) > 1 or steps[0] != 0:
+                    self.event_logger('Inconsistent values found in column %s for channel_ind %s' % (column, channel_ind))
+
+        self.validated_mm_metadata = md
+
+
     def load_stack(self, channel_ind):
         '''
         Load the stack for one channel into a numpy array
         '''
-        inds = np.argwhere(self.mm_metadata.channel_ind==channel_ind).flatten()
+        inds = np.argwhere(self.validated_mm_metadata.channel_ind==channel_ind).flatten()
         inds.sort()
 
         im = np.array([self.tiff.pages[ind].asarray() for ind in inds])
         return im
 
 
-    def project_stack(self, channel_name='dapi', axis_name='z', dst_filepath=None):
+    def project_stack(self, channel='dapi', axis='z', dst_filepath=None):
         '''
         Generate x-, y-, or z-projections
         '''
         
-        # TODO: eliminate NaN rows in mm_metadata
-        channel_inds = self.mm_metadata.channel_ind.unique()
-        if channel_name == 'dapi':
+        channel_inds = self.validated_mm_metadata.channel_ind.unique()
+        if channel == 'dapi':
             channel_ind = channel_inds.min()
-        if channel_name == 'gfp':
+        if channel == 'gfp':
             channel_ind = channel_inds.max()
 
-        axes = {'x': 1, 'y': 2, 'z': 0}
-        if axis_name not in axes.keys():
+        axis_inds = {'x': 1, 'y': 2, 'z': 0}
+        if axis not in axis_inds.keys():
             raise ValueError("Axis must be one of 'x', 'y', or 'z'")
-        axis_ind = axes[axis_name]
+        axis_ind = axis_inds[axis]
 
         proj = self.load_stack(channel_ind).max(axis=axis_ind)
         if dst_filepath is not None:
-            imageio.imsave(dst_filepath, proj)
+            tifffile.imsave(dst_filepath, proj)
 
         return proj
 

@@ -95,10 +95,12 @@ class RawPipelineImage:
             ij_metadata = self.tiff.pages[0].tags['IJMetadata'].value['Info']
         except:
             self.event_logger('There was no IJMetadata tag found on the first page')
-        try:
-            ij_metadata = json.loads(ij_metadata)
-        except:
-            self.event_logger('IJMetadata could not be parsed by json.loads')
+        
+        if ij_metadata is not None:
+            try:
+                ij_metadata = json.loads(ij_metadata)
+            except:
+                self.event_logger('IJMetadata could not be parsed by json.loads')
         self.global_metadata['ij_metadata'] = ij_metadata
 
         rows = []
@@ -115,13 +117,12 @@ class RawPipelineImage:
                 rows.append(row)
                 continue
 
-            mm_tag = mm_tag.value
             try:
-                page_metadata_v1 = self._parse_mm_tag_schema_v1(mm_tag)
+                page_metadata_v1 = self._parse_mm_tag_schema_v1(mm_tag.value)
             except:
                 page_metadata_v1 = None
                 try:
-                    page_metadata_v2 = self._parse_mm_tag_schema_v2(mm_tag)
+                    page_metadata_v2 = self._parse_mm_tag_schema_v2(mm_tag.value)
                 except:
                     page_metadata_v2 = None
 
@@ -195,27 +196,30 @@ class RawPipelineImage:
         # check that the dropped rows had an error
         num_error_rows = errors.sum()
         num_dropped_rows = self.mm_metadata.shape[0] - md.shape[0]
-        if num_dropped_rows:
-            self.event_logger('Dropped %s rows with NAs from mm_metadata' % num_dropped_rows)
         if num_dropped_rows != num_error_rows:
-            self.event_logger('There were more mm_metadata rows with NAs than rows with errors')
+            self.event_logger('More rows with NAs were dropped than there were rows with errors')
 
-        # check that there are an even number of pages
-        if np.mod(md.shape[0], 2) == 1:
-            self.event_logger('There are an odd number of pages with valid MicroManager metadata')
-
+        # check that we can coerce the parsed columns as expected
         int_columns = ['slice_ind', 'channel_ind']
-        float_columns = ['laser_power_405', 'laser_power_488', 'exposure_time',]
-
         for column in int_columns:
             md[column] = md[column].apply(int)
 
+        float_columns = ['laser_power_405', 'laser_power_488', 'exposure_time',]
         for column in float_columns:
             md[column] = md[column].apply(float)
 
+        # check for two channels and an equal number of slices
+        channel_inds = md.channel_ind.unique()
+        if len(channel_inds) != 2:
+            self.event_logger('Unexpected number of channel indices found (%s)' % len(channel_inds))
+        else:
+            num_0 = (md.channel_ind==channel_inds[0]).sum()
+            num_1 = (md.channel_ind==channel_inds[1]).sum()
+            if num_0 != num_1:
+                self.event_logger('Channels have unequal number of slices: %s and %s' % (num_0, num_1))
+
         # check that slice inds are contiguous
         # and that exposure time and laser power are consistent for each channel
-        channel_inds = md.channel_ind.unique()
         for channel_ind in channel_inds:
             md_channel = md.loc[md.channel_ind==channel_ind]
 

@@ -59,6 +59,7 @@ class PlateMicroscopyAPI:
 
     def load_cached_metadata(self):
         self.md = pd.read_csv(self.cached_metadata_filepath)
+        self.construct_raw_metadata()
 
 
     def cache_metadata(self, overwrite=False):
@@ -169,6 +170,39 @@ class PlateMicroscopyAPI:
         md['is_raw'] = md.exp_dir.apply(lambda s: re.match('^ML[0-9]{4}_[0-9]{8}$', s) is not None)
 
         self.md = md
+        self.construct_raw_metadata()
+
+
+    def construct_raw_metadata(self):
+        '''
+        Construct the raw metadata (a subset of self.md)
+        '''
+
+        # use the is_raw flag
+        md_raw = self.md.loc[self.md.is_raw].copy()
+
+        # parse the ML experiment ID from the experiment directory name
+        md_raw['exp_id'] = [exp_dir.split('_')[0] for exp_dir in md_raw.exp_dir]
+
+        # make sure the plate_num is a number
+        md_raw['plate_num'] = md_raw.plate_num.apply(int)
+
+        # drop rows without a well_id
+        # (these are un-renamed stacks in 'Plate5_Thawed2')
+        md_raw.dropna(how='any', subset=['well_id'], axis=0, inplace=True)
+
+        # check for valid well_ids and pad the column numbers ('A1' -> 'A01')
+        dropped_inds = []
+        for ind, row in md_raw.iterrows():        
+            result = re.findall('([A-H])([0-9]{1,2})', row.well_id)
+            if not result:        
+                dropped_inds.append(ind)
+                continue            
+            well_row, well_col = result[0]
+            md_raw.at[ind, 'well_id'] = '%s%02d' % (well_row, int(well_col))
+        md_raw.drop(dropped_inds, inplace=True)
+
+        self.md_raw = md_raw
 
 
     def append_file_info(self):
@@ -190,13 +224,20 @@ class PlateMicroscopyAPI:
         self.md = md
 
 
-    def src_filepath(self, row, src_root=None):
+    @staticmethod
+    def src_filepath(row, src_root=None):
         '''
-        Construct the complete filepath to a TIFF stack given a row of metadata
-        (works for raw and processed files)
+        Construct the absolute filepath to a TIFF stack in the 'PlateMicroscopy' directory 
+        from a row of metadata (works for raw and processed TIFFs)
+
+        Returns a path of the form (relative to src_root):
+        'mNG96wp15/ML0125_20190424/mNG96wp15_sortday2/C11_4_SLC35F2.ome.tif'
+
+        src_root is the absolute path to the 'PlateMicroscopy' directory
+        (e.g., on `cap`, '/gpfsML/ML_group/PlateMicroscopy/')
         '''
         if src_root is None:
-            src_root = self.root_dir
+            src_root = ''
         
         # exp_subdir can be missing
         exp_subdir = row.exp_subdir
@@ -207,33 +248,122 @@ class PlateMicroscopyAPI:
         return src_filepath
 
 
-    def parse_raw_file(self, row, src_root, dst_root):
+    @staticmethod
+    def dst_filepath(row, kind=None, channel=None, axis=None):
         '''
-        Parse the metadata from a raw file
+        Construct the relative directory path and filename for a 'kind' of output file
 
-        row : a row of raw metadata
-        src_root : the root of the PlateMicroscopy directory
-        dst_root : the directory in which to save projections
+        The path is of the form {dst_root}/{dst_plate_dir}
+
+        dst_plate_dir is of the form 'smNG-P0001-E01-R00'
+        dst_filename is of the form '{dst_plate_dir}-ML0123-A01-S01-CLTA'
+
+        Returns dst_dirpath and the dst_filename as a tuple
+        (so that dst_dirpath can be created if it doesn't exist)
+
+        '''
+
+        kinds = ['metadata', 'projections', 'raw-stacks', 'cropped-stacks', 'processed-stacks']
+        if kind not in kinds:
+            raise ValueError('%s is not a valid destination kind' % kind)
+        
+        subdir_names = [kind]
+        # validate and create subdir names for projections directory
+        # (channel and projection axis)
+        if kind == 'projections':
+            axis, channel = axis.upper(), channel.upper()
+            if channel not in ['DAPI', 'GFP', 'RGB']:
+                raise ValueError("'%s' is not a valid channel" % channel)
+            if axis not in ['X', 'Y', 'Z']:
+                raise ValueError("'%s' is not a valid axis" % axis)
+            subdir_names.extend([channel, 'PROJ%s' % axis])
+
+        # parental line is always the mNeonGreen 1-10 line 
+        # (here abbreviated 'smNG' for 'split mNeonGreen')
+        parental_line = 'mNG'
+
+        # the plate design ID
+        plate_id = 'P%04d' % row.plate_num
+
+        # the electroporation ID 
+        # (always the same, since all plates have been electroporated once)
+        ep_id = 'E01'
+
+        # hackish way to determine the imaging round ID
+        # (zero for the first, post-sorting round)
+        if 'Thawed2' in row.plate_dir:
+            imaging_round_id = 'R02'
+        elif 'Thawed' in row.plate_dir:
+            imaging_round_id = 'R01'
+        else:
+            imaging_round_id = 'R00'
+
+        dst_plate_dir = f'{parental_line}-{plate_id}-{ep_id}-{imaging_round_id}'
+
+        # construct the destination dirpath
+        dst_dirpath = os.path.join(*subdir_names, dst_plate_dir)
+
+        fov_id = '%02d' % int(row.fov_num)
+        dst_filename = f'{dst_plate_dir}-{row.exp_id}-{row.well_id}-{fov_id}-{row.target_name}'
+        
+        return dst_dirpath, dst_filename
+
+
+    @staticmethod
+    def tag_filepath(filepath, tag, ext):
+        '''
+        Append a tag and a file extension to a filepath
+        Example: 'data/MMStack-01.tif' -> 'data/MMStack-01_metadata.csv'
+        '''
+        # remove the existing extension (if any)
+        filepath, _ = os.path.splitext(filepath)
+        filepath = f'{filepath}_{tag}.{ext}'
+        return filepath
+
+
+    def parse_raw_tiff_metadata(self, row, src_root, dst_root):
+        '''
+        Parse the metadata from a raw TIFF file
+
+        row : a row of the `self.md_raw` dataframe
+        src_root : the root of the 'PlateMicroscopy' directory
+        dst_root : the destination 'oc-plate-microscopy' directory 
         '''
 
         src_filepath = self.src_filepath(row, src_root=src_root)
 
-        dst_dir = os.path.join(dst_root, row.plate_dir)
-        os.makedirs(dst_dir, exist_ok=True)
-
-        dst_filename = 'P%04d_%s_%s' % (row.plate_num, row.exp_id, row.filename)
-        dst_fileroot = os.path.join(dst_dir, dst_filename.replace('.ome.tif', ''))
+        # destination dirpath and filename (without file extension)
+        dst_dirpath, dst_filename = self.dst_filepath(row, kind='metadata')
+        dst_dirpath = os.path.join(dst_root, dst_dirpath)
+        dst_filepath = os.path.join(dst_dirpath, dst_filename)
+        os.makedirs(dst_dirpath, exist_ok=True)
 
         tiff = image.RawPipelineImage(src_filepath, verbose=False)
         tiff.parse_micromanager_metadata()
         tiff.validate_micromanager_metadata()
 
-        tiff.save_events(dst_fileroot)
-        tiff.save_metadata(dst_fileroot)
+        # save the parsing events and parsed metadata
+        path = self.tag_filepath(dst_filepath, tag='metadata-parsing-events', ext='csv')
+        tiff.save_events(path)
+
+        path = self.tag_filepath(dst_filepath, tag='mm-metadata', ext='csv')
+        tiff.save_mm_metadata(path)
+
+        path = self.tag_filepath(dst_filepath, tag='global-metadata', ext='json')
+        tiff.save_global_metadata(path)
 
 
-    def make_all_projections(self):
-        pass
+    def aggregate_filepaths(self, dst_root, kind='metadata', tag='metadata-parsing-events', ext='csv'):
+        '''
+        '''
+
+        paths = []
+        for _, row in self.md_raw.iterrows():
+            path = os.path.join(dst_root, *self.dst_filepath(row, kind=kind))
+            path = self.tag_filepath(path, tag=tag, ext=ext)
+            paths.append(path)
+            
+        return paths
 
 
     def get_experiments(self, plate_id, well_id, group='original'):

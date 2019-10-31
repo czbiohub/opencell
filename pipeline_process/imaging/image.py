@@ -43,19 +43,19 @@ class RawPipelineImage:
         self.events.append({'message': message, 'timestamp': timestamp()})
 
 
-    def save_events(self, dst_fileroot):
+    def save_events(self, dst_filepath):
         if not self.events:
             return
-        pd.DataFrame(data=self.events).to_csv('%s_events.csv' % dst_fileroot, index=False)
+        pd.DataFrame(data=self.events).to_csv(dst_filepath, index=False)
 
 
-    def save_metadata(self, dst_fileroot):
-        
-        with open('%s_global_metadata.json' % dst_fileroot, 'w') as file:
+    def save_global_metadata(self, dst_filepath):
+        with open(dst_filepath, 'w') as file:
             json.dump(self.global_metadata, file)
 
-        self.mm_metadata.to_csv('%s_raw_mm_metadata.csv' % dst_fileroot, index=False)
-        self.validated_mm_metadata.to_csv('%s_validated_mm_metadata.csv' % dst_fileroot, index=False)
+
+    def save_mm_metadata(self, dst_filepath):
+        self.mm_metadata.to_csv(dst_filepath, index=False)
 
 
     def calc_hash(self):
@@ -186,6 +186,7 @@ class RawPipelineImage:
 
         md = self.mm_metadata.copy()
 
+        # remove the error flag column
         errors = md['error']
         md = md.drop(labels='error', axis=1)
 
@@ -209,28 +210,39 @@ class RawPipelineImage:
             md[column] = md[column].apply(float)
 
         # check for two channels and an equal number of slices
+        # hint: many stacks have only channel_ind
         channel_inds = md.channel_ind.unique()
         if len(channel_inds) != 2:
-            self.event_logger('Unexpected number of channel indices found (%s)' % len(channel_inds))
+            self.event_logger('Unexpected number of channel_inds (%s)' % channel_inds)
         else:
             num_0 = (md.channel_ind==channel_inds[0]).sum()
             num_1 = (md.channel_ind==channel_inds[1]).sum()
             if num_0 != num_1:
                 self.event_logger('Channels have unequal number of slices: %s and %s' % (num_0, num_1))
 
+        # if there's one channel index, check for an even number of pages
+        if len(channel_inds) == 1 and np.mod(md.shape[0], 2) == 1:
+            self.event_logger('There is one channel_ind and an odd number of pages')
+
         # check that slice inds are contiguous
         # and that exposure time and laser power are consistent for each channel
         for channel_ind in channel_inds:
             md_channel = md.loc[md.channel_ind==channel_ind]
-
             steps = np.unique(np.diff(md_channel.slice_ind))
+
             if len(steps) > 1:
-                self.event_logger('The slice_inds are not contiguous for channel_ind %s' % channel_ind)
+                self.event_logger(
+                    'The slice_inds are not contiguous for channel_ind %s' % channel_ind)
+
+            if len(steps) == 1 and steps[0] != 1:
+                self.event_logger(
+                    'Unexpected slice_ind increment %s for channel_ind %s' % (steps[0], channel_ind))
 
             for column in float_columns:
                 steps = np.unique(np.diff(md_channel[column]))
                 if len(steps) > 1 or steps[0] != 0:
-                    self.event_logger('Inconsistent values found in column %s for channel_ind %s' % (column, channel_ind))
+                    self.event_logger(
+                        'Inconsistent values found in column %s for channel_ind %s' % (column, channel_ind))
 
         self.validated_mm_metadata = md
 

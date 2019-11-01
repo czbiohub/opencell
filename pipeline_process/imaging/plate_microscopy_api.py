@@ -85,7 +85,7 @@ class PlateMicroscopyAPI:
     
 
     @staticmethod
-    def parse_raw_filename(filename):
+    def parse_raw_tiff_filename(filename):
         '''
         Parse well_id, fov_num, and target name from a raw TIFF filename
         
@@ -146,7 +146,7 @@ class PlateMicroscopyAPI:
             for filename in filenames:
                 file_info = {}
                 try:
-                    file_info = self.parse_raw_filename(filename)
+                    file_info = self.parse_raw_tiff_filename(filename)
                 except:
                     print('Warning: unparse-able filename %s' % filename)
                 rows.append({'filename': filename, **file_info, **path_info})
@@ -159,7 +159,7 @@ class PlateMicroscopyAPI:
         md = md.rename(columns={'level_0': 'plate_dir', 'level_1': 'exp_dir', 'level_2': 'exp_subdir'})
 
         # parse the plate_num from the plate_dir
-        md['plate_num'] = [re.findall('^mNG96wp([0-9]{1,2})', s.split(os.sep)[0])[0] for s in md.plate_dir]
+        md['plate_num'] = [self.parse_src_plate_dir(plate_dir) for plate_dir in md.plate_dir]
 
         # the ML experiment ID
         md['exp_id'] = [exp_dir.split('_')[0] for exp_dir in md.exp_dir]
@@ -171,6 +171,16 @@ class PlateMicroscopyAPI:
 
         self.md = md
         self.construct_raw_metadata()
+
+
+    @staticmethod
+    def parse_src_plate_dir(plate_dir):
+        '''
+        Parse the plate number from a src plate_dir
+        Example: 'mNG96wp19' -> '19'
+        '''
+        plate_num = re.findall('^mNG96wp([0-9]{1,2})', plate_dir.split(os.sep)[0])[0]
+        return plate_num
 
 
     def construct_raw_metadata(self):
@@ -247,15 +257,46 @@ class PlateMicroscopyAPI:
         src_filepath = os.path.join(src_root, row.plate_dir, row.exp_dir, exp_subdir, row.filename)
         return src_filepath
 
+    
+    def dst_plate_dir(self, src_plate_dir):
+        '''
+        Construct a dst plate_dir from an src plate_dir
 
-    @staticmethod
-    def dst_filepath(row, kind=None, channel=None, axis=None):
+        Destination plate directory names are of the form 'mNG-P0001-E01-R00'
+        '''
+        
+        # parental line is always the mNeonGreen 1-10 line 
+        # (here abbreviated 'mNG' for 'split mNeonGreen')
+        parental_line = 'mNG'
+
+        # the plate design ID
+        plate_num = self.parse_src_plate_dir(src_plate_dir)
+        plate_id = 'P%04d' % int(plate_num)
+
+        # the electroporation ID 
+        # (always the same, since all plates have been electroporated once)
+        ep_id = 'E01'
+
+        # hackish way to determine the imaging round ID
+        # (zero for the first, post-sorting round)
+        if 'Thawed2' in src_plate_dir:
+            imaging_round_id = 'R02'
+        elif 'Thawed' in src_plate_dir:
+            imaging_round_id = 'R01'
+        else:
+            imaging_round_id = 'R00'
+
+        dst_plate_dir = f'{parental_line}-{plate_id}-{ep_id}-{imaging_round_id}'
+        return dst_plate_dir
+
+
+    def dst_filepath(self, row, kind=None, channel=None, axis=None):
         '''
         Construct the relative directory path and filename for a 'kind' of output file
 
-        The path is of the form {dst_root}/{dst_plate_dir}
+        The path is of the form {kind}/{channel}/{axis}/{dst_plate_dir}
 
-        dst_plate_dir is of the form 'smNG-P0001-E01-R00'
+        dst_plate_dir is of the form 'mNG-P0001-E01-R00'
         dst_filename is of the form '{dst_plate_dir}-ML0123-A01-S01-CLTA'
 
         Returns dst_dirpath and the dst_filename as a tuple
@@ -278,27 +319,8 @@ class PlateMicroscopyAPI:
                 raise ValueError("'%s' is not a valid axis" % axis)
             subdir_names.extend([channel, 'PROJ%s' % axis])
 
-        # parental line is always the mNeonGreen 1-10 line 
-        # (here abbreviated 'smNG' for 'split mNeonGreen')
-        parental_line = 'mNG'
-
-        # the plate design ID
-        plate_id = 'P%04d' % row.plate_num
-
-        # the electroporation ID 
-        # (always the same, since all plates have been electroporated once)
-        ep_id = 'E01'
-
-        # hackish way to determine the imaging round ID
-        # (zero for the first, post-sorting round)
-        if 'Thawed2' in row.plate_dir:
-            imaging_round_id = 'R02'
-        elif 'Thawed' in row.plate_dir:
-            imaging_round_id = 'R01'
-        else:
-            imaging_round_id = 'R00'
-
-        dst_plate_dir = f'{parental_line}-{plate_id}-{ep_id}-{imaging_round_id}'
+        # destination plate_dir name
+        dst_plate_dir = self.dst_plate_dir(row.plate_dir)
 
         # construct the destination dirpath
         dst_dirpath = os.path.join(*subdir_names, dst_plate_dir)
@@ -355,6 +377,11 @@ class PlateMicroscopyAPI:
 
     def aggregate_filepaths(self, dst_root, kind='metadata', tag='metadata-parsing-events', ext='csv'):
         '''
+        Aggregate filepaths for a particular kind of processed file
+        by generating these filepaths (which may not exist) from the rows of self.md_raw
+
+        For now, `kind` and `tag` must match the corresponding kwargs 
+        in the method that generated/will generate the processed file
         '''
 
         paths = []

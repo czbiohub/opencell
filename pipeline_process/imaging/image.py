@@ -28,7 +28,7 @@ class RawPipelineImage:
 
         '''
         self.events = []
-        self.global_metadata = {'timestamp': timestamp()}
+        self.global_metadata = {'processing_timestamp': timestamp()}
         
         self.verbose = verbose
         self.src_filepath = src_filepath
@@ -75,13 +75,7 @@ class RawPipelineImage:
         '''
         Open the stack using tifffile.TiffFile
         '''
-        loader = 'tifffile'
-        try:
-            self.tiff = tifffile.TiffFile(self.src_filepath)
-        except:
-            loader = 'skimage.external.tifffile'
-            self.tiff = skimage.external.tifffile.TiffFile(self.src_filepath)        
-        self.global_metadata['loader'] = loader
+        self.tiff = tifffile.TiffFile(self.src_filepath)
     
 
     def parse_micromanager_metadata(self):
@@ -121,10 +115,10 @@ class RawPipelineImage:
                 page_metadata_v1 = self._parse_mm_tag_schema_v1(mm_tag.value)
             except:
                 page_metadata_v1 = None
-                try:
-                    page_metadata_v2 = self._parse_mm_tag_schema_v2(mm_tag.value)
-                except:
-                    page_metadata_v2 = None
+            try:
+                page_metadata_v2 = self._parse_mm_tag_schema_v2(mm_tag.value)
+            except:
+                page_metadata_v2 = None
 
             page_metadata = {}
             metadata_schema = None
@@ -184,6 +178,15 @@ class RawPipelineImage:
         '''
         '''
 
+        # whether the MM metadata has two channel inds with an equal number of slices
+        self.has_valid_channel_inds = False
+
+        # whether each channel's MM metadata has slice_inds that increment by one
+        self.has_valid_slice_inds = False
+
+        # whether it's safe to split the TIFF into channels by splitting the pages in half
+        self.safe_to_split_in_half = False
+
         md = self.mm_metadata.copy()
 
         # remove the error flag column
@@ -195,10 +198,11 @@ class RawPipelineImage:
         md = md.dropna(how='any', subset=parsed_columns, axis=0)
 
         # check that the dropped rows had an error
+        # (note that 'error' means either there was no MM tag or it could not be parsed)
         num_error_rows = errors.sum()
         num_dropped_rows = self.mm_metadata.shape[0] - md.shape[0]
         if num_dropped_rows != num_error_rows:
-            self.event_logger('More rows with NAs were dropped than there were rows with errors')
+            self.event_logger('%s rows with NAs were dropped but %s rows had errors' % (num_dropped_rows, num_error_rows))
 
         # check that we can coerce the parsed columns as expected
         int_columns = ['slice_ind', 'channel_ind']
@@ -210,33 +214,39 @@ class RawPipelineImage:
             md[column] = md[column].apply(float)
 
         # check for two channels and an equal number of slices
-        # hint: many stacks have only channel_ind
         channel_inds = md.channel_ind.unique()
-        if len(channel_inds) != 2:
-            self.event_logger('Unexpected number of channel_inds (%s)' % channel_inds)
-        else:
+        if len(channel_inds) == 2:
             num_0 = (md.channel_ind==channel_inds[0]).sum()
             num_1 = (md.channel_ind==channel_inds[1]).sum()
-            if num_0 != num_1:
-                self.event_logger('Channels have unequal number of slices: %s and %s' % (num_0, num_1))
+            if num_0 == num_1:
+                self.has_valid_channel_inds = True
+            else:
+                self.event_logger('Channels have unequal number of slices: %s and %s' % (num_0, num_1))        
+        else:
+            self.event_logger('Unexpected number of channel_inds (%s)' % channel_inds)
 
         # if there's one channel index, check for an even number of pages
-        if len(channel_inds) == 1 and np.mod(md.shape[0], 2) == 1:
-            self.event_logger('There is one channel_ind and an odd number of pages')
+        if len(channel_inds) == 1:
+            if np.mod(md.shape[0], 2) == 0:
+                self.safe_to_split_in_half = True
+            else:
+                self.event_logger('There is one channel_ind and an odd number of pages')
 
-        # check that slice inds are contiguous
-        # and that exposure time and laser power are consistent for each channel
+        # in each channel, check that slice_ind increments by 1.0
+        # and that exposure time and laser power are consistent
         for channel_ind in channel_inds:
             md_channel = md.loc[md.channel_ind==channel_ind]
             steps = np.unique(np.diff(md_channel.slice_ind))
 
-            if len(steps) > 1:
-                self.event_logger(
-                    'The slice_inds are not contiguous for channel_ind %s' % channel_ind)
-
-            if len(steps) == 1 and steps[0] != 1:
+            # check that slice inds are contiguous
+            if len(steps) == 1 and steps[0] == 1:
+                self.has_valid_slice_inds = True
+            elif len(steps) == 1:
                 self.event_logger(
                     'Unexpected slice_ind increment %s for channel_ind %s' % (steps[0], channel_ind))
+            elif len(steps) > 1:
+                self.event_logger(
+                    'The slice_inds are not contiguous for channel_ind %s' % channel_ind)
 
             for column in float_columns:
                 steps = np.unique(np.diff(md_channel[column]))
@@ -247,37 +257,102 @@ class RawPipelineImage:
         self.validated_mm_metadata = md
 
 
-    def load_stack(self, channel_ind):
+    @staticmethod
+    def tag_and_coerce_metadata(row, tag):
         '''
-        Load the stack for one channel into a numpy array
+        Transform `row` to a dict, prepend the keys with `tag`,
+        and do some hackish type coercion
         '''
-        inds = np.argwhere(self.validated_mm_metadata.channel_ind==channel_ind).flatten()
-        inds.sort()
+        d = {}
+        for key, val in dict(row).items():
+            key = '%s_%s' % (tag, key)
+            try:
+                val = float(val)
+            except:
+                pass
+            d[key] = val
+        return d
 
-        im = np.array([self.tiff.pages[ind].asarray() for ind in inds])
-        return im
+
+    def split_channels(self):
+        '''
+        Split the pages by channel to create the z-stack for each channel
+        and, if possible, extract the channel-specific MM metadata (i.e., exposure time and laser power)
+
+        Logic
+        -----
+        In a perfect world, this would be easy: we would simple use the two unique channel_inds
+        to split the pages by channel (and verify the page order using the slice_inds).
+
+        Unfortunately, due to a bug, the MM metadata tag in some TIFFs is the same on every page
+        (this is notably true for 'disentangled' TIFFs from Plates 16,17,18).
+        In these cases, we split the tiff into channels simply by splitting the pages in half.
+
+        Sanity checks
+        -------------
+        When there are two channel_inds, we check for an even number of pages in each channel.
+        When there are no channel_inds, we check for an even number of pages.
+        In both cases, we must use self.validated_mm_metadata to perform these checks,
+        because some TIFFs have 'blank' leading or trailing pages with no data or tags.
+
+        Assignment of channels
+        ----------------------
+        When there are two valid channel_inds, the DAPI (405) stack is assigned
+        to the lower channel_ind  (which is either 0 or -1).
+        When there are no channel_inds, the DAPI stack is assigned to the first half of the pages.
+
+        '''
+
+        self.did_split_channels = True
+
+        self.stacks = {}
+        md = self.validated_mm_metadata.copy()
+
+        if self.has_valid_channel_inds:
+            min_ind, max_ind = md.channel_ind.min(), md.channel_ind.max()
+            for channel_ind, channel_name in zip((min_ind, max_ind), ('dapi', 'gfp')):
+                channel_md = md.loc[md.channel_ind==channel_ind]
+                self.global_metadata.update(
+                    self.tag_and_coerce_metadata(channel_md.iloc[0], tag=channel_name))
+                self.stacks[channel_name] = self.concat_pages(channel_md.page_ind.values)
+            
+        elif self.safe_to_split_in_half:
+            n = int(md.shape[0]/2)
+            self.stacks['dapi'] = self.concat_pages(md.iloc[:n].page_ind.values)
+            self.stacks['gfp'] = self.concat_pages(md.iloc[n:].page_ind.values)
+
+        else:
+            self.event_logger('Unable to safely split pages by channel')
+            self.did_split_channels = False
 
 
-    def project_stack(self, channel='dapi', axis='z', dst_filepath=None):
+    def concat_pages(self, page_inds):
         '''
-        Generate x-, y-, or z-projections
         '''
-        
-        channel_inds = self.validated_mm_metadata.channel_ind.unique()
-        if channel == 'dapi':
-            channel_ind = channel_inds.min()
-        if channel == 'gfp':
-            channel_ind = channel_inds.max()
+        stack = np.array([self.tiff.pages[ind].asarray() for ind in page_inds])
+        return stack
+
+
+    def project_stack(self, channel_name, axis, dst_filepath=None):
+        '''
+        Generate x-, y-, or z-projections and log the max and min intensities
+        '''
 
         axis_inds = {'x': 1, 'y': 2, 'z': 0}
         if axis not in axis_inds.keys():
             raise ValueError("Axis must be one of 'x', 'y', or 'z'")
         axis_ind = axis_inds[axis]
 
-        proj = self.load_stack(channel_ind).max(axis=axis_ind)
+        proj = self.stacks[channel_name].max(axis=axis_ind)
+
+        minmax = {
+            'min_intensity': int(proj.min()), 
+            'max_intensity': int(proj.max()),
+        }
+        self.global_metadata.update(self.tag_and_coerce_metadata(minmax, tag=channel_name))
+        
         if dst_filepath is not None:
             tifffile.imsave(dst_filepath, proj)
-
         return proj
 
 
@@ -290,7 +365,7 @@ class RawPipelineImage:
 
     def downsample(self, scale):
         '''
-        Downsample the stack
+        Downsample the stacks
         '''
         pass
 

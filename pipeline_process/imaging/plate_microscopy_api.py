@@ -280,17 +280,17 @@ class PlateMicroscopyAPI:
         # hackish way to determine the imaging round ID
         # (zero for the first, post-sorting round)
         if 'Thawed2' in src_plate_dir:
-            imaging_round_id = 'R02'
+            imaging_round_id = 'R03'
         elif 'Thawed' in src_plate_dir:
-            imaging_round_id = 'R01'
+            imaging_round_id = 'R02'
         else:
-            imaging_round_id = 'R00'
+            imaging_round_id = 'R01'
 
         dst_plate_dir = f'{parental_line}-{plate_id}-{ep_id}-{imaging_round_id}'
         return dst_plate_dir
 
 
-    def dst_filepath(self, row, kind=None, channel=None, axis=None):
+    def dst_filepath(self, row, dst_root=None, kind=None, channel=None, axis=None, makedirs=True):
         '''
         Construct the relative directory path and filename for a 'kind' of output file
 
@@ -304,11 +304,14 @@ class PlateMicroscopyAPI:
 
         '''
 
+        if dst_root is None:
+            dst_root = ''
+        
         kinds = ['metadata', 'projections', 'raw-stacks', 'cropped-stacks', 'processed-stacks']
         if kind not in kinds:
             raise ValueError('%s is not a valid destination kind' % kind)
-        
         subdir_names = [kind]
+
         # validate and create subdir names for projections directory
         # (channel and projection axis)
         if kind == 'projections':
@@ -323,12 +326,15 @@ class PlateMicroscopyAPI:
         dst_plate_dir = self.dst_plate_dir(row.plate_dir)
 
         # construct the destination dirpath
-        dst_dirpath = os.path.join(*subdir_names, dst_plate_dir)
-
+        dst_dirpath = os.path.join(dst_root, *subdir_names, dst_plate_dir)
+        if makedirs:
+            os.makedirs(dst_dirpath, exist_ok=True)
+        
+        # construct the destination filename
         fov_id = '%02d' % int(row.fov_num)
         dst_filename = f'{dst_plate_dir}-{row.exp_id}-{row.well_id}-{fov_id}-{row.target_name}'
         
-        return dst_dirpath, dst_filename
+        return os.path.join(dst_dirpath, dst_filename)
 
 
     @staticmethod
@@ -343,9 +349,12 @@ class PlateMicroscopyAPI:
         return filepath
 
 
-    def parse_raw_tiff_metadata(self, row, src_root, dst_root):
+    def process_raw_tiff(self, row, src_root, dst_root):
         '''
-        Parse the metadata from a raw TIFF file
+        Process a single raw TIFF
+            1) parse the micromanager and other metadata
+            2) split the tiff pages into DAPI and GFP channels
+            3) generate z-projections
 
         row : a row of the `self.md_raw` dataframe
         src_root : the root of the 'PlateMicroscopy' directory
@@ -354,25 +363,31 @@ class PlateMicroscopyAPI:
 
         src_filepath = self.src_filepath(row, src_root=src_root)
 
-        # destination dirpath and filename (without file extension)
-        dst_dirpath, dst_filename = self.dst_filepath(row, kind='metadata')
-        dst_dirpath = os.path.join(dst_root, dst_dirpath)
-        dst_filepath = os.path.join(dst_dirpath, dst_filename)
-        os.makedirs(dst_dirpath, exist_ok=True)
-
         tiff = image.RawPipelineImage(src_filepath, verbose=False)
         tiff.parse_micromanager_metadata()
         tiff.validate_micromanager_metadata()
 
-        # save the parsing events and parsed metadata
-        path = self.tag_filepath(dst_filepath, tag='metadata-parsing-events', ext='csv')
-        tiff.save_events(path)
+        # attempt to split the channels and project
+        tiff.split_channels()
+        if tiff.did_split_channels:
+            for channel in ['dapi', 'gfp']:
+                for axis in ['x', 'y', 'z']:
+                    dst_filepath = self.dst_filepath(
+                        row, dst_root=dst_root, kind='projections', channel=channel, axis=axis)
 
-        path = self.tag_filepath(dst_filepath, tag='mm-metadata', ext='csv')
-        tiff.save_mm_metadata(path)
+                    tag = '%s-PROJ%s' % (channel.upper(), axis.upper())
+                    dst_filepath = self.tag_filepath(dst_filepath, tag=tag, ext='tif')
+                    tiff.project_stack(channel_name=channel, axis=axis, dst_filepath=dst_filepath)
 
-        path = self.tag_filepath(dst_filepath, tag='global-metadata', ext='json')
-        tiff.save_global_metadata(path)
+        # save the parsing events and parsed global metadata
+        dst_filepath = self.dst_filepath(row, dst_root=dst_root, kind='metadata')
+        metadata_path = self.tag_filepath(dst_filepath, tag='raw-tiff-metadata', ext='json')
+        events_path = self.tag_filepath(dst_filepath, tag='raw-tiff-processing-events', ext='csv')
+        
+        tiff.save_global_metadata(metadata_path)
+        tiff.save_events(events_path)
+
+        return tiff
 
 
     def aggregate_filepaths(self, dst_root, kind='metadata', tag='metadata-parsing-events', ext='csv'):
@@ -386,7 +401,7 @@ class PlateMicroscopyAPI:
 
         paths = []
         for _, row in self.md_raw.iterrows():
-            path = os.path.join(dst_root, *self.dst_filepath(row, kind=kind))
+            path = self.dst_filepath(row, dst_root=dst_root, kind=kind)
             path = self.tag_filepath(path, tag=tag, ext=ext)
             paths.append(path)
             

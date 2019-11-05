@@ -386,8 +386,7 @@ class PlateMicroscopyAPI:
         
         tiff.save_global_metadata(metadata_path)
         tiff.save_events(events_path)
-
-        return tiff
+        tiff.tiff.close()
 
 
     def aggregate_filepaths(self, dst_root, kind='metadata', tag='metadata-parsing-events', ext='csv'):
@@ -396,7 +395,7 @@ class PlateMicroscopyAPI:
         by generating these filepaths (which may not exist) from the rows of self.md_raw
 
         For now, `kind` and `tag` must match the corresponding kwargs 
-        in the method that generated/will generate the processed file
+        in the method that generated/will generate the processed files
         '''
 
         paths = []

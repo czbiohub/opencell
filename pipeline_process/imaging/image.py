@@ -343,17 +343,19 @@ class RawPipelineImage:
             raise ValueError("Axis must be one of 'x', 'y', or 'z'")
         axis_ind = axis_inds[axis]
 
-        proj = self.stacks[channel_name].max(axis=axis_ind)
+        try:
+            proj = self.stacks[channel_name].max(axis=axis_ind)
+            minmax = {
+                'min_intensity': int(proj.min()), 
+                'max_intensity': int(proj.max()),
+            }
+            self.global_metadata.update(self.tag_and_coerce_metadata(minmax, tag=channel_name))
 
-        minmax = {
-            'min_intensity': int(proj.min()), 
-            'max_intensity': int(proj.max()),
-        }
-        self.global_metadata.update(self.tag_and_coerce_metadata(minmax, tag=channel_name))
-        
-        if dst_filepath is not None:
-            tifffile.imsave(dst_filepath, proj)
-        return proj
+            if dst_filepath is not None:
+                tifffile.imsave(dst_filepath, proj)
+
+        except:
+            self.event_logger('An error occured while %s-projecting the %s channel' % (axis, channel_name))
 
 
     def crop_stack(self):

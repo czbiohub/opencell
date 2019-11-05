@@ -98,6 +98,7 @@ def main():
         pass
 
     if args.process_raw_tiffs:
+        inspect_cached_metadata(args.src_dir, args.cache_dir)
         process_raw_tiffs(args.src_dir, args.dst_dir, args.cache_dir)
 
 

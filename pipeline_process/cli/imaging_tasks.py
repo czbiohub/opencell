@@ -140,8 +140,9 @@ def aggregate_processing_events(api, dst_root):
     dfs = [load_csv(path) for path in paths]
     with dask.diagnostics.ProgressBar():
         dfs = dask.compute(*dfs)
+
     df = pd.concat([df for df in dfs if df is not None])
-    df.to_csv(os.path.join(dst_root, '_aggregated-processing-events.csv'), index=False)
+    df.to_csv(os.path.join(dst_root, 'aggregated-processing-events.csv'), index=False)
 
 
 def aggregate_raw_tiff_metadata(api, dst_root):
@@ -152,9 +153,10 @@ def aggregate_raw_tiff_metadata(api, dst_root):
     ds = [load_json(path) for path in paths]
     with dask.diagnostics.ProgressBar():
         ds = dask.compute(*ds)
+
     df = pd.DataFrame(data=[d for d in ds if d is not None])
     df.drop(labels=['ij_metadata'], axis=1, inplace=True)
-    df.to_csv(os.path.join(dst_root, '_aggregated-raw-tiff-metadata.csv'), index=False)
+    df.to_csv(os.path.join(dst_root, 'aggregated-raw-tiff-metadata.csv'), index=False)
 
 
 def main():

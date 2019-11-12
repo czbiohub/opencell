@@ -31,25 +31,30 @@ def imshow_mask(im, mk, color=None, figsize=12):
     if not color:
         color = (.5, 0, 0)
 
-    im_rgb = skimage.color.label2rgb(mk > 0, image=utils.autogain(im), colors=(black, color))
+    im_rgb = skimage.color.label2rgb(mk, image=utils.autogain(im), colors=(black, color))
     imshow(im_rgb, figsize)
 
 
-def show_mask_props(mask, prop_name='area', label_color='red'):
+def show_mask_props(mask, prop_name='area', label_color='red', conn=1, fmt='%s'):
     '''
     Overlay the values of a regionprops property on the mask itself
     '''
 
-    # make sure the mask is a binary image
-    mask = ~~mask
+    try:
+        props = skimage.measure.regionprops(mask)
+    except TypeError:
+        print('Warning: mask was not labeled')
+        mask = (~~mask).astype(int)
+        mask = skimage.measure.label(mask > 0, connectivity=conn)
+        props = skimage.measure.regionprops(mask)
 
     # bounding box properties for plt.text
     bbox = dict(facecolor=label_color, alpha=0.5)
 
-    imshow(mask)
-    props = skimage.measure.regionprops(skimage.measure.label(mask))
+    imshow(mask > 0)
     for prop in props:
-        plt.text(prop.centroid[1], prop.centroid[0], getattr(prop, prop_name), bbox=bbox)
+        text = fmt % getattr(prop, prop_name)
+        plt.text(prop.centroid[1], prop.centroid[0], text, bbox=bbox)
 
 
 def make_rgb(imr=None, img=None, imb=None, im_bg=None, zaxis=0, gamma=None):

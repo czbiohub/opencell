@@ -22,24 +22,6 @@ from pipeline_process.imaging import plate_microscopy_api
 ESS_ROOT = '/gpfsML/ML_group/PlateMicroscopy/'
 
 
-@dask.delayed
-def load_json(path):
-    if not os.path.isfile(path):
-        return None
-    with open(path, 'r') as file:
-        d = json.load(file)
-    return d
-
-@dask.delayed
-def load_csv(path):
-    if not os.path.isfile(path):
-        return None
-    df = pd.read_csv(path)
-    df['filename'] = path.split(os.sep)[-1]
-    df['plate_dir'] = path.split(os.sep)[-2]
-    return df
-
-
 def parse_args():
     '''
     '''
@@ -95,6 +77,32 @@ def parse_args():
     return args
 
 
+@dask.delayed
+def load_json(path):
+    if not os.path.isfile(path):
+        return None
+    with open(path, 'r') as file:
+        d = json.load(file)
+    return d
+
+
+@dask.delayed
+def load_csv(path):
+    if not os.path.isfile(path):
+        return None
+    df = pd.read_csv(path)
+    df['filename'] = path.split(os.sep)[-1]
+    df['plate_dir'] = path.split(os.sep)[-2]
+    return df
+
+
+def execute_tasks(tasks):
+
+    with dask.diagnostics.ProgressBar():
+        results = dask.compute(*tasks)
+    return results
+
+
 def construct_and_cache_metadata(src_dir, cache_dir):
     '''
     '''
@@ -124,12 +132,9 @@ def process_raw_tiffs(src_dir, dst_dir, cache_dir):
 
     tasks = []
     for _, row in api.md_raw.iterrows():
-        task = dask.delayed(api.process_raw_tiff)(
-            row, src_root=api.root_dir, dst_root=dst_dir)
+        task = dask.delayed(api.process_raw_tiff)(row, src_root=api.root_dir, dst_root=dst_dir)
         tasks.append(task)
-
-    with dask.diagnostics.ProgressBar():
-        dask.compute(*tasks)
+    execute_tasks(tasks)
 
 
 def aggregate_processing_events(api, dst_root):
@@ -137,11 +142,10 @@ def aggregate_processing_events(api, dst_root):
     paths = api.aggregate_filepaths(
         dst_root, kind='metadata', tag='raw-tiff-processing-events', ext='csv')
 
-    dfs = [load_csv(path) for path in paths]
-    with dask.diagnostics.ProgressBar():
-        dfs = dask.compute(*dfs)
+    tasks = [load_csv(path) for path in paths]
+    results = execute_tasks(tasks)
 
-    df = pd.concat([df for df in dfs if df is not None])
+    df = pd.concat([df for df in results if df is not None])
     df.to_csv(os.path.join(dst_root, 'aggregated-processing-events.csv'), index=False)
 
 
@@ -150,13 +154,27 @@ def aggregate_raw_tiff_metadata(api, dst_root):
     paths = api.aggregate_filepaths(
         dst_root, kind='metadata', tag='raw-tiff-metadata', ext='json')
 
-    ds = [load_json(path) for path in paths]
-    with dask.diagnostics.ProgressBar():
-        ds = dask.compute(*ds)
+    tasks = [load_json(path) for path in paths]
+    results = execute_tasks(tasks)
 
-    df = pd.DataFrame(data=[d for d in ds if d is not None])
+    df = pd.DataFrame(data=[d for d in results if d is not None])
     df.drop(labels=['ij_metadata'], axis=1, inplace=True)
     df.to_csv(os.path.join(dst_root, 'aggregated-raw-tiff-metadata.csv'), index=False)
+
+
+def calculate_fov_features(api, dst_root, dragonfly_automation_path):
+
+    sys.path.append(dragonfly_automation_path)
+    from dragonfly_automation.fov_models import PipelineFOVScorer
+    scorer = PipelineFOVScorer(mode='training')
+ 
+    tasks = []
+    for _, row in api.md_raw.iterrows():
+        task = dask.delayed(api.calculate_fov_features)(row, dst_root, scorer)
+        tasks.append(task)
+    results = execute_tasks(tasks)
+
+    pd.DataFrame(data=results).to_csv(dst_root, 'aggregated-fov-features.csv', index=False)
 
 
 def main():

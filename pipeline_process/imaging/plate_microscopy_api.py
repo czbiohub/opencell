@@ -389,6 +389,22 @@ class PlateMicroscopyAPI:
         tiff.tiff.close()
 
 
+    def calculate_fov_features(self, row, dst_root, scorer):
+        '''
+        scorer : an instance of PipelineFOVScorer in 'training' mode
+        row : a row of self.md_raw
+        dst_root : the root destination to which z-projections were saved in process_raw_tiff
+        '''
+
+        # construct the filepath to the DAPI z-projection
+        filepath = self.dst_filepath(row, dst_root, kind='projections', channel='dapi', axis='z')
+        filepath = self.tag_filepath(filepath, tag='DAPI-PROJZ', ext='tif')
+
+        # calculate the features from the z-projection
+        features = scorer.process_existing_fov(filepath)
+        return features
+
+
     def aggregate_filepaths(self, dst_root, kind='metadata', tag='metadata-parsing-events', ext='csv'):
         '''
         Aggregate filepaths for a particular kind of processed file

@@ -363,7 +363,7 @@ class PlateMicroscopyAPI:
 
         src_filepath = self.src_filepath(row, src_root=src_root)
 
-        tiff = image.RawPipelineImage(src_filepath, verbose=False)
+        tiff = image.RawPipelineTIFF(src_filepath, verbose=False)
         tiff.parse_micromanager_metadata()
         tiff.validate_micromanager_metadata()
 

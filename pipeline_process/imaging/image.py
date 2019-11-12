@@ -17,21 +17,19 @@ def timestamp():
     return datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
 
-class RawPipelineImage:
+class MicroManagerTIFF:
 
     def __init__(self, src_filepath, verbose=True):
         '''
-        Processing methods for raw pipeline-like z-stacks
-
-        Assumptions
-        -----------
 
         '''
+
+        self.verbose = verbose
+        self.src_filepath = src_filepath
+        
         self.events = []
         self.global_metadata = {'processing_timestamp': timestamp()}
         
-        self.verbose = verbose
-        self.src_filepath = src_filepath
         self.open_tiff()
 
 
@@ -77,6 +75,46 @@ class RawPipelineImage:
         '''
         self.tiff = tifffile.TiffFile(self.src_filepath)
     
+
+    @staticmethod
+    def _parse_mm_tag_schema_v1(mm_tag):
+        '''
+        Parse a MicroManagerMetadata tag in the 'old' schema
+        (KC: I believe this schema corresponds to MicroManager 1.x)
+        '''
+        md = {
+            'slice_ind': mm_tag.get('SliceIndex'),
+            'frame_ind': mm_tag.get('FrameIndex'),
+            'channel_ind': mm_tag.get('ChannelIndex'),
+            'position_ind': mm_tag.get('PositionIndex'),
+            'exposure_time': mm_tag.get('AndorEMCCD-Exposure'),
+            'laser_status_405': mm_tag.get('AndorILE-A-Laser 405-Power Enable'),
+            'laser_power_405': mm_tag.get('AndorILE-A-Laser 405-Power Setpoint'),
+            'laser_status_488': mm_tag.get('AndorILE-A-Laser 488-Power Enable'),
+            'laser_power_488': mm_tag.get('AndorILE-A-Laser 488-Power Setpoint')
+        }
+        return md
+
+
+    @staticmethod
+    def _parse_mm_tag_schema_v2(mm_tag):
+        '''
+        Parse a MicroManagerMetadata tag in the 'new' schema
+        (KC: I believe this schema corresponds to MicroManager 2.x)
+        '''
+        md = {
+            'slice_ind': mm_tag.get('SliceIndex'),
+            'frame_ind': mm_tag.get('FrameIndex'),
+            'channel_ind': mm_tag.get('ChannelIndex'),
+            'position_ind': mm_tag.get('PositionIndex'),
+            'exposure_time': mm_tag.get('Andor EMCCD-Exposure')['PropVal'],
+            'laser_status_405': mm_tag.get('Andor ILE-A-Laser 405-Power Enable')['PropVal'],
+            'laser_power_405': mm_tag.get('Andor ILE-A-Laser 405-Power Setpoint')['PropVal'],
+            'laser_status_488': mm_tag.get('Andor ILE-A-Laser 488-Power Enable')['PropVal'],
+            'laser_power_488': mm_tag.get('Andor ILE-A-Laser 488-Power Setpoint')['PropVal']
+        }
+        return md
+
 
     def parse_micromanager_metadata(self):
         '''
@@ -138,44 +176,25 @@ class RawPipelineImage:
         self.global_metadata['metadata_schema'] = metadata_schema
 
 
-    @staticmethod
-    def _parse_mm_tag_schema_v1(mm_tag):
-        '''
-        Parse a MicroManagerMetadata tag in the 'old' schema
-        (KC: I believe this schema corresponds to MicroManager 1.x)
-        '''
-        md = {
-            'slice_ind': mm_tag['SliceIndex'],
-            'channel_ind': mm_tag['ChannelIndex'],
-            'exposure_time': mm_tag['AndorEMCCD-Exposure'],
-            'laser_status_405': mm_tag['AndorILE-A-Laser 405-Power Enable'],
-            'laser_power_405': mm_tag['AndorILE-A-Laser 405-Power Setpoint'],
-            'laser_status_488': mm_tag['AndorILE-A-Laser 488-Power Enable'],
-            'laser_power_488': mm_tag['AndorILE-A-Laser 488-Power Setpoint']
-        }
-        return md
 
-
-    @staticmethod
-    def _parse_mm_tag_schema_v2(mm_tag):
-        '''
-        Parse a MicroManagerMetadata tag in the 'new' schema
-        (KC: I believe this schema corresponds to MicroManager 2.x)
-        '''
-        md = {
-            'slice_ind': mm_tag['SliceIndex'],
-            'channel_ind': mm_tag['ChannelIndex'],
-            'exposure_time': mm_tag['Andor EMCCD-Exposure']['PropVal'],
-            'laser_status_405': mm_tag['Andor ILE-A-Laser 405-Power Enable']['PropVal'],
-            'laser_power_405': mm_tag['Andor ILE-A-Laser 405-Power Setpoint']['PropVal'],
-            'laser_status_488': mm_tag['Andor ILE-A-Laser 488-Power Enable']['PropVal'],
-            'laser_power_488': mm_tag['Andor ILE-A-Laser 488-Power Setpoint']['PropVal']
-        }
-        return md
-
+class RawPipelineImage(MicroManagerTIFF):
 
     def validate_micromanager_metadata(self):
         '''
+        Validate the parsed MicroManager metadata tags for a raw Pipeline-like TIFF file
+
+        Generates validated_mm_metadata and sets various flags
+        that determine whether and how to split the pages into the DAPI and GFP channels
+
+        Steps
+        ------
+        - drop rows with any NAs
+        - check that the dropped rows had a parsing error
+        - check for two channel_inds and an equal number of pages from each
+        - if there are no channel_inds, check for an even number of pages
+        - if there are two channel_inds, check that slice_inds
+          and exposure settings are consistent within each channel
+        
         '''
 
         # whether the MM metadata has two channel inds with an equal number of slices
@@ -276,11 +295,12 @@ class RawPipelineImage:
 
     def split_channels(self):
         '''
-        Split the pages by channel to create the z-stack for each channel
-        and, if possible, extract the channel-specific MM metadata (i.e., exposure time and laser power)
+        Split the pages of the pipeline-like TIFF into DAPI and GFP channels
+        to construct the z-stack for each channel and, if possible, 
+        extract the channel-specific MM metadata (i.e., exposure time and laser power)
 
-        Logic
-        -----
+        Overview
+        --------
         In a perfect world, this would be easy: we would simple use the two unique channel_inds
         to split the pages by channel (and verify the page order using the slice_inds).
 
@@ -288,18 +308,15 @@ class RawPipelineImage:
         (this is notably true for 'disentangled' TIFFs from Plates 16,17,18).
         In these cases, we split the tiff into channels simply by splitting the pages in half.
 
-        Sanity checks
-        -------------
-        When there are two channel_inds, we check for an even number of pages in each channel.
-        When there are no channel_inds, we check for an even number of pages.
-        In both cases, we must use self.validated_mm_metadata to perform these checks,
-        because some TIFFs have 'blank' leading or trailing pages with no data or tags.
+        Note that we use the flags set in self.validate_mm_metadata to determine
+        which of these methods to use.
 
         Assignment of channels
         ----------------------
-        When there are two valid channel_inds, the DAPI (405) stack is assigned
-        to the lower channel_ind  (which is either 0 or -1).
-        When there are no channel_inds, the DAPI stack is assigned to the first half of the pages.
+        When there are two valid channel_inds, the DAPI (405) stack is assigned 
+        to the lower channel_ind (which is either 0 or -1).
+        When there are no channel_inds, the DAPI stack is assigned 
+        to the first half of the pages.
 
         '''
 

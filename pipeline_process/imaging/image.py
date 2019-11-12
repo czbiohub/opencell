@@ -83,15 +83,15 @@ class MicroManagerTIFF:
         (KC: I believe this schema corresponds to MicroManager 1.x)
         '''
         md = {
-            'slice_ind': mm_tag.get('SliceIndex'),
-            'frame_ind': mm_tag.get('FrameIndex'),
-            'channel_ind': mm_tag.get('ChannelIndex'),
-            'position_ind': mm_tag.get('PositionIndex'),
-            'exposure_time': mm_tag.get('AndorEMCCD-Exposure'),
-            'laser_status_405': mm_tag.get('AndorILE-A-Laser 405-Power Enable'),
-            'laser_power_405': mm_tag.get('AndorILE-A-Laser 405-Power Setpoint'),
-            'laser_status_488': mm_tag.get('AndorILE-A-Laser 488-Power Enable'),
-            'laser_power_488': mm_tag.get('AndorILE-A-Laser 488-Power Setpoint')
+            'slice_ind': mm_tag['SliceIndex'],
+            'frame_ind': mm_tag['FrameIndex'],
+            'channel_ind': mm_tag['ChannelIndex'],
+            'position_ind': mm_tag['PositionIndex'],
+            'exposure_time': mm_tag['AndorEMCCD-Exposure'],
+            'laser_status_405': mm_tag['AndorILE-A-Laser 405-Power Enable'],
+            'laser_power_405': mm_tag['AndorILE-A-Laser 405-Power Setpoint'],
+            'laser_status_488': mm_tag['AndorILE-A-Laser 488-Power Enable'],
+            'laser_power_488': mm_tag['AndorILE-A-Laser 488-Power Setpoint']
         }
         return md
 
@@ -103,10 +103,10 @@ class MicroManagerTIFF:
         (KC: I believe this schema corresponds to MicroManager 2.x)
         '''
         md = {
-            'slice_ind': mm_tag.get('SliceIndex'),
-            'frame_ind': mm_tag.get('FrameIndex'),
-            'channel_ind': mm_tag.get('ChannelIndex'),
-            'position_ind': mm_tag.get('PositionIndex'),
+            'slice_ind': mm_tag['SliceIndex'],
+            'frame_ind': mm_tag['FrameIndex'],
+            'channel_ind': mm_tag['ChannelIndex'],
+            'position_ind': mm_tag['PositionIndex'],
             'exposure_time': mm_tag.get('Andor EMCCD-Exposure')['PropVal'],
             'laser_status_405': mm_tag.get('Andor ILE-A-Laser 405-Power Enable')['PropVal'],
             'laser_power_405': mm_tag.get('Andor ILE-A-Laser 405-Power Setpoint')['PropVal'],
@@ -177,7 +177,7 @@ class MicroManagerTIFF:
 
 
 
-class RawPipelineImage(MicroManagerTIFF):
+class RawPipelineTIFF(MicroManagerTIFF):
 
     def validate_micromanager_metadata(self):
         '''

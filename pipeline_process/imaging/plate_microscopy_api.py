@@ -349,7 +349,7 @@ class PlateMicroscopyAPI:
         return filepath
 
 
-    def process_raw_tiff(self, row, src_root, dst_root):
+    def process_raw_tiff(self, row, dst_root, src_root=None):
         '''
         Process a single raw TIFF
             1) parse the micromanager and other metadata
@@ -361,6 +361,9 @@ class PlateMicroscopyAPI:
         dst_root : the destination 'oc-plate-microscopy' directory 
         '''
 
+        if src_root is None:
+            src_root = self.root_dir
+    
         src_filepath = self.src_filepath(row, src_root=src_root)
 
         tiff = image.RawPipelineTIFF(src_filepath, verbose=False)

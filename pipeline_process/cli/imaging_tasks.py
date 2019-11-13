@@ -28,20 +28,25 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        '--src-dir', 
-        dest='src_dir', 
+        '--src-root', 
+        dest='src_root', 
         required=False, 
         default=ESS_ROOT)
 
     parser.add_argument(
-        '--dst-dir', 
-        dest='dst_dir', 
+        '--dst-root', 
+        dest='dst_root', 
         required=True)
 
     parser.add_argument(
         '--cache-dir', 
         dest='cache_dir', 
         required=True)
+
+    parser.add_argument(
+        '--dragonfly-automation-repo', 
+        dest='dragonfly_automation_repo', 
+        required=False)
 
     parser.add_argument(
         '--inspect', 
@@ -67,10 +72,17 @@ def parse_args():
         action='store_true',
         required=False)
 
+    parser.add_argument(
+        '--calculate-fov-features', 
+        dest='calculate_fov_features', 
+        action='store_true',
+        required=False)
+
     parser.set_defaults(inspect_cached_metadata=False)
     parser.set_defaults(construct_metadata=False)
     parser.set_defaults(process_raw_tiffs=False)
     parser.set_defaults(aggregate_parsed_metadata=False)
+    parser.set_defaults(calculate_fov_features=False)
 
 
     args = parser.parse_args()
@@ -103,20 +115,18 @@ def execute_tasks(tasks):
     return results
 
 
-def construct_and_cache_metadata(src_dir, cache_dir):
+def construct_and_cache_metadata(api):
     '''
     '''
-    api = plate_microscopy_api.PlateMicroscopyAPI(src_dir, cache_dir)
     api.cache_os_walk()
     api.construct_metadata()
     api.append_file_info()
     api.cache_metadata(overwrite=True)
 
 
-def inspect_cached_metadata(src_dir, cache_dir):
+def inspect_cached_metadata(api):
     '''
     '''
-    api = plate_microscopy_api.PlateMicroscopyAPI(src_dir, cache_dir)
     print(f'''
         Total metadata rows:            {api.md.shape[0]}
         metadata.is_raw.sum():          {api.md.is_raw.sum()}
@@ -124,15 +134,14 @@ def inspect_cached_metadata(src_dir, cache_dir):
     ''')
 
 
-def process_raw_tiffs(src_dir, dst_dir, cache_dir):
+def process_raw_tiffs(api, dst_root):
     '''
     Parse metadata and make projections for all raw TIFFs
     '''
-    api = plate_microscopy_api.PlateMicroscopyAPI(src_dir, cache_dir)
 
     tasks = []
     for _, row in api.md_raw.iterrows():
-        task = dask.delayed(api.process_raw_tiff)(row, src_root=api.root_dir, dst_root=dst_dir)
+        task = dask.delayed(api.process_raw_tiff)(row, dst_root=dst_root)
         tasks.append(task)
     execute_tasks(tasks)
 
@@ -162,9 +171,9 @@ def aggregate_raw_tiff_metadata(api, dst_root):
     df.to_csv(os.path.join(dst_root, 'aggregated-raw-tiff-metadata.csv'), index=False)
 
 
-def calculate_fov_features(api, dst_root, dragonfly_automation_path):
+def calculate_fov_features(api, dst_root, dragonfly_automation_repo):
 
-    sys.path.append(dragonfly_automation_path)
+    sys.path.append(dragonfly_automation_repo)
     from dragonfly_automation.fov_models import PipelineFOVScorer
     scorer = PipelineFOVScorer(mode='training')
  
@@ -178,26 +187,28 @@ def calculate_fov_features(api, dst_root, dragonfly_automation_path):
 
 
 def main():
+
     args = parse_args()
+    api = plate_microscopy_api.PlateMicroscopyAPI(args.src_root, args.cache_dir)
 
     if args.inspect_cached_metadata:
-        inspect_cached_metadata(args.src_dir, args.cache_dir)
+        inspect_cached_metadata(api)
 
     if args.construct_metadata:
         pass
 
     if args.process_raw_tiffs:
-        inspect_cached_metadata(args.src_dir, args.cache_dir)
-        process_raw_tiffs(args.src_dir, args.dst_dir, args.cache_dir)
+        inspect_cached_metadata(api)
+        process_raw_tiffs(api, args.dst_root)
 
     if args.aggregate_parsed_metadata:
-        api = plate_microscopy_api.PlateMicroscopyAPI(args.src_dir, args.cache_dir)
-
         print('Aggregating processing events')
-        aggregate_processing_events(api, args.dst_dir)
-
+        aggregate_processing_events(api, args.dst_root)
         print('Aggregating raw TIFF metadata')
-        aggregate_raw_tiff_metadata(api, args.dst_dir)
+        aggregate_raw_tiff_metadata(api, args.dst_root)
+
+    if args.calculate_fov_features:
+        calculate_fov_features(api, args.dst_root, args.dragonfly_automation_repo)
 
 
 if __name__ == '__main__':

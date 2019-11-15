@@ -61,19 +61,19 @@ def parse_args():
         required=False)
 
     parser.add_argument(
-        '--process-raw-tiffs', 
+        '--process-tiffs', 
         dest='process_raw_tiffs', 
         action='store_true',
         required=False)
 
     parser.add_argument(
-        '--aggregate-parsed-metadata', 
-        dest='aggregate_parsed_metadata', 
+        '--aggregate-events', 
+        dest='aggregate_processing_events', 
         action='store_true',
         required=False)
 
     parser.add_argument(
-        '--calculate-fov-features', 
+        '--calculate-features', 
         dest='calculate_fov_features', 
         action='store_true',
         required=False)
@@ -81,7 +81,7 @@ def parse_args():
     parser.set_defaults(inspect_cached_metadata=False)
     parser.set_defaults(construct_metadata=False)
     parser.set_defaults(process_raw_tiffs=False)
-    parser.set_defaults(aggregate_parsed_metadata=False)
+    parser.set_defaults(aggregate_processing_events=False)
     parser.set_defaults(calculate_fov_features=False)
 
 
@@ -176,7 +176,7 @@ def aggregate_processing_events(api, dst_root):
 
 def calculate_fov_features(api, dst_root, dragonfly_automation_repo):
     '''
-    
+
     '''
     sys.path.append(dragonfly_automation_repo)
     from dragonfly_automation.fov_models import PipelineFOVScorer
@@ -206,11 +206,8 @@ def main():
         inspect_cached_metadata(api)
         process_raw_tiffs(api, args.dst_root)
 
-    if args.aggregate_parsed_metadata:
-        print('Aggregating processing events')
+    if args.aggregate_processing_events:
         aggregate_processing_events(api, args.dst_root)
-        print('Aggregating raw TIFF metadata')
-        aggregate_raw_tiff_metadata(api, args.dst_root)
 
     if args.calculate_fov_features:
         calculate_fov_features(api, args.dst_root, args.dragonfly_automation_repo)

@@ -27,7 +27,7 @@ def load_and_downscale_2x(filepath):
     return im
 
 
-def autoscale(im, percentile=None, dtype='uint8', gamma=None):
+def autoscale(im, percentile=None, p=None, dtype='uint8', gamma=None):
     '''
     
     '''
@@ -35,6 +35,10 @@ def autoscale(im, percentile=None, dtype='uint8', gamma=None):
     MAX = {'uint8': 255, 'uint16': 65535}
     
     im = im.copy().astype(float)
+
+    if p is not None:
+        percentile = p
+
     if percentile is None:
         percentile = 0
 

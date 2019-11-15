@@ -114,7 +114,8 @@ def build_tile(
     show_labels=False, 
     label_column=None, 
     label_format=None,
-    im_loader=None):
+    im_loader=None,
+    plot=True):
     
     filepath_colummn = 'filename'
     if 'filepath' in data.columns:
@@ -173,8 +174,10 @@ def build_tile(
         rows.append(np.concatenate(tuple(cols), axis=1))
     tile = np.concatenate(tuple(rows), axis=0)
     
-    imshow(tile, figsize=figsize, cmap='gray', colorbar=False)
+    if not plot:
+        return tile
 
+    imshow(tile, figsize=figsize, cmap='gray', colorbar=False)
     bbox = dict(facecolor='white', edgecolor=None, alpha=0.5)
     if show_labels:
         for label in labels:

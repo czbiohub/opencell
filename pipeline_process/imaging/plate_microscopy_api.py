@@ -94,25 +94,27 @@ class PlateMicroscopyAPI:
         and it is the first well_id that is the 'real', pipeline-relevant, well_id
         
         Note that the target name sometimes includes the terminus that was tagged,
-        in the form of a trailing '-N', '-C', '_N', '_C'
+        in the form of a trailing '-N', '-C', '_N', '_C', '_Int', '-Int'
+
+        Also, two target names include a trailing '-A' or '-B' 
+        (these are 'HLA-A' and 'ARHGAP11A-B')
         '''
         
         well_id = '[A-H][1-9][0-2]?'
         fov_num = '[1-9][0-9]?'
-        target_name = r'[a-zA-Z0-9\-]+[\-|_]?[N|C]?'
-        raw_pattern = rf'^({well_id})_({fov_num})_({target_name}).ome.tif$'
+        target_name = r'[a-zA-Z0-9]+'
+        appendix = r'[\-|_][a-zA-Z]+'
+        raw_pattern = rf'^({well_id})_({fov_num})_({target_name})({appendix})?.ome.tif$'
 
         # in Jin filenames, the second well_id is not relevant
-        # also note that we do not attempt to parse the processed Jin filenames,
-        # because they are a mess
-        raw_jin_pattern = rf'^({well_id})_({fov_num})_Jin_(?:{well_id})_({target_name}).ome.tif$'
+        raw_jin_pattern = rf'^({well_id})_({fov_num})_Jin_(?:{well_id})_({target_name})({appendix})?.ome.tif$'
         
         filename_was_parsed = False
         for pattern in [raw_pattern, raw_jin_pattern]:
             result = re.match(pattern, filename)
             if result:
                 filename_was_parsed = True
-                well_id, fov_num, target_name = result.groups()
+                well_id, fov_num, target_name, appendix = result.groups()
                 break
 
         if not filename_was_parsed:
@@ -163,7 +165,7 @@ class PlateMicroscopyAPI:
                 if file_info is None:
                     file_info = {}
                     # only warn about unparseable filenames that appear to be raw
-                    if '.ome.tif' in filename:
+                    if '.ome.tif' in filename and 'MMStack' not in filename:
                         print('Warning: unparseable but seemingly raw filename %s' % filename)
 
                 rows.append({'filename': filename, **file_info, **path_info})
@@ -238,7 +240,8 @@ class PlateMicroscopyAPI:
         '''
         if not os.path.isdir(self.root_dir):
             print('Warning: cannot determine file info unless the partition is mounted')
-    
+            return
+
         md = self.md.replace(to_replace=np.nan, value='')
         for ind, row in md.iterrows():
             if not np.mod(ind, 10000):

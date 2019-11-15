@@ -127,6 +127,9 @@ def construct_and_cache_metadata(api):
     print('Appending file info')
     api.append_file_info()
 
+    print('Constructing raw metadata')
+    api.construct_raw_metadata()
+
     print('Caching metadata')
     api.cache_metadata(overwrite=True)
 

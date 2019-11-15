@@ -125,7 +125,7 @@ def construct_and_cache_metadata(api):
     api.construct_metadata()
 
     print('Appending file info')
-    api.append_file_info()
+    # api.append_file_info()
 
     print('Constructing raw metadata')
     api.construct_raw_metadata()
@@ -138,22 +138,27 @@ def inspect_cached_metadata(api):
     '''
     '''
     print(f'''
-        Total metadata rows:            {api.md.shape[0]}
-        metadata.is_raw.sum():          {api.md.is_raw.sum()}
-        Total parsed raw metadata rows: {api.md_raw.shape[0]}
+        All metadata rows:          {api.md.shape[0]}
+        metadata.is_raw.sum():      {api.md.is_raw.sum()}
+        Parsed raw metadata rows:   {api.md_raw.shape[0]}
     ''')
 
 
 def process_raw_tiffs(api, dst_root):
     '''
     Parse metadata and make projections for all raw TIFFs
+
+    Note that api.process_raw_tiff returns a dict of raw tiff metadata,
+    which we aggregate and save as a CSV
     '''
 
     tasks = []
     for _, row in api.md_raw.iterrows():
         task = dask.delayed(api.process_raw_tiff)(row, dst_root=dst_root)
         tasks.append(task)
-    execute_tasks(tasks)
+
+    results = execute_tasks(tasks)
+    pd.DataFrame(data=results).to_csv(os.path.join(dst_root, 'aggregated-raw-tiff-metadata.csv'), index=False)
 
 
 def aggregate_processing_events(api, dst_root):
@@ -168,21 +173,11 @@ def aggregate_processing_events(api, dst_root):
     df.to_csv(os.path.join(dst_root, 'aggregated-processing-events.csv'), index=False)
 
 
-def aggregate_raw_tiff_metadata(api, dst_root):
-
-    paths = api.aggregate_filepaths(
-        dst_root, kind='metadata', tag='raw-tiff-metadata', ext='json')
-
-    tasks = [load_json(path) for path in paths]
-    results = execute_tasks(tasks)
-
-    df = pd.DataFrame(data=[d for d in results if d is not None])
-    df.drop(labels=['ij_metadata'], axis=1, inplace=True)
-    df.to_csv(os.path.join(dst_root, 'aggregated-raw-tiff-metadata.csv'), index=False)
-
 
 def calculate_fov_features(api, dst_root, dragonfly_automation_repo):
-
+    '''
+    
+    '''
     sys.path.append(dragonfly_automation_repo)
     from dragonfly_automation.fov_models import PipelineFOVScorer
     scorer = PipelineFOVScorer(mode='training')
@@ -191,8 +186,8 @@ def calculate_fov_features(api, dst_root, dragonfly_automation_repo):
     for _, row in api.md_raw.iterrows():
         task = dask.delayed(api.calculate_fov_features)(row, dst_root, scorer)
         tasks.append(task)
-    results = execute_tasks(tasks)
 
+    results = execute_tasks(tasks)
     pd.DataFrame(data=results).to_csv(os.path.join(dst_root, 'aggregated-fov-features.csv'), index=False)
 
 

@@ -133,11 +133,10 @@ class MicroManagerTIFF:
                 ij_metadata = json.loads(ij_metadata)
             except:
                 self.event_logger('IJMetadata could not be parsed by json.loads')
-        self.global_metadata['ij_metadata'] = ij_metadata
 
-        rows = []
+        mm_metadata_rows = []
         for ind, page in enumerate(self.tiff.pages):
-            row = {
+            mm_metadata_row = {
                 'page_ind': ind,
                 'error': False
             }
@@ -145,8 +144,8 @@ class MicroManagerTIFF:
             mm_tag = page.tags.get('MicroManagerMetadata')
             if not isinstance(mm_tag, tifffile.tifffile.TiffTag):
                 self.event_logger('There was no MicroManagerMetadata tag found on page %s' % ind)
-                row['error'] = True
-                rows.append(row)
+                mm_metadata_row['error'] = True
+                mm_metadata_rows.append(mm_metadata_row)
                 continue
 
             try:
@@ -159,21 +158,21 @@ class MicroManagerTIFF:
                 page_metadata_v2 = None
 
             page_metadata = {}
-            metadata_schema = None
+            mm_metadata_version = None
             if page_metadata_v1 is not None:
-                metadata_schema = 'v1'
+                mm_metadata_version = 'v1'
                 page_metadata = page_metadata_v1
             elif page_metadata_v2 is not None:
-                metadata_schema = 'v2'
+                mm_metadata_version = 'v2'
                 page_metadata = page_metadata_v2
             else:
-                row['error'] = True
+                mm_metadata_row['error'] = True
                 self.event_logger('Unable to parse MicroManagerMetadata tag from page %s' % ind)
 
-            rows.append({**row, **page_metadata})
+            mm_metadata_rows.append({**mm_metadata_row, **page_metadata})
 
-        self.mm_metadata = pd.DataFrame(data=rows)
-        self.global_metadata['metadata_schema'] = metadata_schema
+        self.mm_metadata = pd.DataFrame(data=mm_metadata_rows)
+        self.global_metadata['mm_metadata_version'] = mm_metadata_version
 
 
 

@@ -36,7 +36,7 @@ def parse_args():
     parser.add_argument(
         '--dst-root', 
         dest='dst_root', 
-        required=True)
+        required=False)
 
     parser.add_argument(
         '--cache-dir', 
@@ -109,7 +109,6 @@ def load_csv(path):
 
 
 def execute_tasks(tasks):
-
     with dask.diagnostics.ProgressBar():
         results = dask.compute(*tasks)
     return results
@@ -118,9 +117,17 @@ def execute_tasks(tasks):
 def construct_and_cache_metadata(api):
     '''
     '''
-    api.cache_os_walk()
+    print('Caching os.walk results')
+    if not hasattr(api, 'os_walk'):
+        api.cache_os_walk()
+
+    print('Constructing metadata')    
     api.construct_metadata()
+
+    print('Appending file info')
     api.append_file_info()
+
+    print('Caching metadata')
     api.cache_metadata(overwrite=True)
 
 
@@ -183,7 +190,7 @@ def calculate_fov_features(api, dst_root, dragonfly_automation_repo):
         tasks.append(task)
     results = execute_tasks(tasks)
 
-    pd.DataFrame(data=results).to_csv(dst_root, 'aggregated-fov-features.csv', index=False)
+    pd.DataFrame(data=results).to_csv(os.path.join(dst_root, 'aggregated-fov-features.csv'), index=False)
 
 
 def main():
@@ -195,7 +202,7 @@ def main():
         inspect_cached_metadata(api)
 
     if args.construct_metadata:
-        pass
+        construct_and_cache_metadata(api)
 
     if args.process_raw_tiffs:
         inspect_cached_metadata(api)

@@ -15,17 +15,10 @@ import pandas as pd
 from . import image
 
 
-# hard-coded plate directory names of the 'original' image data
-PLATE_DIR_NAMES = {'P%04d' % num: 'mNG96wp%d' % num for num in range(1, 20)}
-
-# hard-coded plate directory names for 'thawed' image data
-THAWED_PLATE_DIR_NAMES = {'P%04d' % num: 'mNG96wp%d_Thawed' % num for num in range(1, 20)}
-
-
 class PlateMicroscopyAPI:
 
     
-    def __init__(self, root_dir=None, cache_dir=None, partition=None):
+    def __init__(self, root_dir=None, cache_dir=None):
         '''
         '''
 
@@ -35,6 +28,7 @@ class PlateMicroscopyAPI:
 
         self.cached_os_walk_filepath = os.path.join(self.cache_dir, 'os_walk.p')
         self.cached_metadata_filepath = os.path.join(self.cache_dir, 'all-metadata.csv')
+        self.cached_raw_metadata_filepath = os.path.join(self.cache_dir, 'raw-metadata.csv')
 
         if os.path.isfile(self.cached_os_walk_filepath):
             self.load_cached_os_walk()
@@ -52,20 +46,24 @@ class PlateMicroscopyAPI:
         if os.path.isfile(self.cached_os_walk_filepath):
             raise ValueError('Cached os_walk already exists')
     
-        os_walk = list(os.walk(self.root_dir))
+        self.os_walk = list(os.walk(self.root_dir))
         with open(self.cached_os_walk_filepath, 'wb') as file:
-            pickle.dump(os_walk, file)
+            pickle.dump(self.os_walk, file)
 
 
     def load_cached_metadata(self):
         self.md = pd.read_csv(self.cached_metadata_filepath)
-        self.construct_raw_metadata()
+        if os.path.isfile(self.cached_raw_metadata_filepath):
+            self.md_raw = pd.read_csv(self.cached_raw_metadata_filepath)
+        else:
+            self.construct_raw_metadata()
 
 
     def cache_metadata(self, overwrite=False):
         if not overwrite and os.path.isfile(self.cached_metadata_filepath):
             raise ValueError('Cached metadata already exists')
         self.md.to_csv(self.cached_metadata_filepath, index=False)
+        self.md_raw.to_csv(self.cached_raw_metadata_filepath, index=False)
 
 
     def check_max_depth(self):
@@ -92,20 +90,34 @@ class PlateMicroscopyAPI:
         For almost all filenames, the format is '{well_id}_{fov_num}_{target_name}.ome.tif'
         
         The exception is 'Jin' lines, which appear in plate6 and plate7;
-        here, the format is '{well_id}_{fov_num}_Jin_{well_id}_{target_name}.ome.tif'
+        here, the format is '{well_id}_{fov_num}_Jin_{well_id}_{target_name}.ome.tif',
+        and it is the first well_id that is the 'real', pipeline-relevant, well_id
         
-        (Note that this Jin-specific format is not adhered to 
-        in the 'Updated_PublicationQuality' directories)
+        Note that the target name sometimes includes the terminus that was tagged,
+        in the form of a trailing '-N', '-C', '_N', '_C'
         '''
         
-        filename = filename.split('.')[0]
-        well_id = filename.split('_')[0]
-        fov_num = filename.split('_')[1]
-        target_name = filename.split('_')[2]
+        well_id = '[A-H][1-9][0-2]?'
+        fov_num = '[1-9][0-9]?'
+        target_name = r'[a-zA-Z0-9\-]+[\-|_]?[N|C]?'
+        raw_pattern = rf'^({well_id})_({fov_num})_({target_name}).ome.tif$'
+
+        # in Jin filenames, the second well_id is not relevant
+        # also note that we do not attempt to parse the processed Jin filenames,
+        # because they are a mess
+        raw_jin_pattern = rf'^({well_id})_({fov_num})_Jin_(?:{well_id})_({target_name}).ome.tif$'
         
-        if target_name == 'Jin':
-            pass #gene_name = filename.split('_')[4]
-        
+        filename_was_parsed = False
+        for pattern in [raw_pattern, raw_jin_pattern]:
+            result = re.match(pattern, filename)
+            if result:
+                filename_was_parsed = True
+                well_id, fov_num, target_name = result.groups()
+                break
+
+        if not filename_was_parsed:
+            return None
+
         return {
             'well_id': well_id,
             'fov_num': fov_num,
@@ -128,7 +140,8 @@ class PlateMicroscopyAPI:
                 continue
 
             # ignore plate-level directories that are not of the form
-            # 'mnG96wp{num}' or 'mNG96wp{num}_Thawed'
+            # 'mnG96wp{num}' or 'mNG96wp{num}_Thawed',
+            # where num is an integer greater than 0
             rel_path = path.replace(self.root_dir, '')
             if not re.match('^mNG96wp[1-9]([0-9])?(_Thawed|/)', rel_path):
                 continue
@@ -144,11 +157,15 @@ class PlateMicroscopyAPI:
             
             # create a row for each file
             for filename in filenames:
-                file_info = {}
-                try:
-                    file_info = self.parse_raw_tiff_filename(filename)
-                except:
-                    print('Warning: unparse-able filename %s' % filename)
+                # parse the well_id, site_num, and target_name from the filename
+                # TODO: consider moving this to construct_raw_metadata
+                file_info = self.parse_raw_tiff_filename(filename)
+                if file_info is None:
+                    file_info = {}
+                    # only warn about unparseable filenames that appear to be raw
+                    if '.ome.tif' in filename:
+                        print('Warning: unparseable but seemingly raw filename %s' % filename)
+
                 rows.append({'filename': filename, **file_info, **path_info})
 
         md = pd.DataFrame(data=rows)
@@ -160,9 +177,6 @@ class PlateMicroscopyAPI:
 
         # parse the plate_num from the plate_dir
         md['plate_num'] = [self.parse_src_plate_dir(plate_dir) for plate_dir in md.plate_dir]
-
-        # the ML experiment ID
-        md['exp_id'] = [exp_dir.split('_')[0] for exp_dir in md.exp_dir]
 
         # flag all of the raw files
         # these are all TIFF files in experiment dirs of the form '^ML[0-9]{4}_[0-9]{8}$'
@@ -192,6 +206,8 @@ class PlateMicroscopyAPI:
         md_raw = self.md.loc[self.md.is_raw].copy()
 
         # parse the ML experiment ID from the experiment directory name
+        # (note that we already implicitly validated the form of the exp_dirs
+        # in construct_metadata when we generated the is_raw flags)
         md_raw['exp_id'] = [exp_dir.split('_')[0] for exp_dir in md_raw.exp_dir]
 
         # make sure the plate_num is a number
@@ -320,7 +336,7 @@ class PlateMicroscopyAPI:
                 raise ValueError("'%s' is not a valid channel" % channel)
             if axis not in ['X', 'Y', 'Z']:
                 raise ValueError("'%s' is not a valid axis" % axis)
-            subdir_names.extend([channel, 'PROJ%s' % axis])
+            subdir_names.extend([channel, 'PROJ-%s' % axis])
 
         # destination plate_dir name
         dst_plate_dir = self.dst_plate_dir(row.plate_dir)
@@ -378,7 +394,7 @@ class PlateMicroscopyAPI:
                     dst_filepath = self.dst_filepath(
                         row, dst_root=dst_root, kind='projections', channel=channel, axis=axis)
 
-                    tag = '%s-PROJ%s' % (channel.upper(), axis.upper())
+                    tag = '%s-PROJ-%s' % (channel.upper(), axis.upper())
                     dst_filepath = self.tag_filepath(dst_filepath, tag=tag, ext='tif')
                     tiff.project_stack(channel_name=channel, axis=axis, dst_filepath=dst_filepath)
 
@@ -401,7 +417,7 @@ class PlateMicroscopyAPI:
 
         # construct the filepath to the DAPI z-projection
         filepath = self.dst_filepath(row, dst_root, kind='projections', channel='dapi', axis='z')
-        filepath = self.tag_filepath(filepath, tag='DAPI-PROJZ', ext='tif')
+        filepath = self.tag_filepath(filepath, tag='DAPI-PROJ-Z', ext='tif')
 
         # calculate the features from the z-projection
         features = scorer.process_existing_fov(filepath)

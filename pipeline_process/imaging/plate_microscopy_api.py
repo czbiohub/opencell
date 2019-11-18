@@ -119,6 +119,8 @@ class PlateMicroscopyAPI:
 
         if not filename_was_parsed:
             return None
+
+        site_num = int(site_num)
         return well_id, site_num, target_name
 
 
@@ -205,18 +207,13 @@ class PlateMicroscopyAPI:
         # use the is_raw flag
         md_raw = self.md.loc[self.md.is_raw].copy()
 
-        # parse the ML experiment ID from the experiment directory name
-        # (note that we already implicitly validated the form of the exp_dirs
-        # in construct_metadata when we generated the is_raw flags)
-        md_raw['exp_id'] = [exp_dir.split('_')[0] for exp_dir in md_raw.exp_dir]
-
         for column in ['well_id', 'site_num', 'target_name', 'fov_id']:
             md_raw[column] = None
         
         dropped_inds = []
+        # parse the well_id, site_num, and target_name from the filename,
+        # and drop rows with unparseable filenames
         for ind, row in md_raw.iterrows():        
-
-            # parse the well_id, site_num, and target_name from the filename
             result = self.parse_raw_tiff_filename(row.filename)
             if not result:
                 if 'MMStack' not in row.filename:
@@ -227,7 +224,7 @@ class PlateMicroscopyAPI:
             well_id, site_num, target_name = result
             md_raw.at[ind, 'site_num'] = site_num
             md_raw.at[ind, 'target_name'] = target_name
-
+        
             # pad the well_id ('A1' -> 'A01')
             well_row, well_col = re.match('([A-H])([0-9]{1,2})', well_id).groups()
             md_raw.at[ind, 'well_id'] = '%s%02d' % (well_row, int(well_col))
@@ -235,9 +232,27 @@ class PlateMicroscopyAPI:
         print('Warning: dropping %s rows of unparseable raw metadata' % len(dropped_inds))
         md_raw.drop(dropped_inds, inplace=True)
 
+        # parental line is always the mNeonGreen 1-10 line 
+        # (here abbreviated 'mNG' for 'split mNeonGreen')
+        md_raw['parental_line'] = 'mNG'
+
+        # the electroporation ID is always the same
+        # (since all plates have been electroporated once)
+        md_raw['ep_id'] = 'E01'
+
+        # the ML experiment ID from the experiment directory name
+        # (note that we already implicitly validated the form of the exp_dirs
+        # in construct_metadata when we generated the is_raw column)
+        md_raw['exp_id'] = [exp_dir.split('_')[0] for exp_dir in md_raw.exp_dir]
+
+        # plate_id, round_id, site_id
+        md_raw['site_id'] = ['S%02d' % int(num) for num in md_raw.site_num]
+        md_raw['plate_id'] = ['P%04d' % num for num in md_raw.plate_num]
+        md_raw['imaging_round_id'] = ['R%02d' % num for num in md_raw.imaging_round_num]
+
         # construct an fov_id that should be globally unique
         for ind, row in md_raw.iterrows():
-            md_raw.at[ind, 'fov_id'] = '%s-%s-%s' % (row.exp_id, row.well_id, row.site_num)
+            md_raw.at[ind, 'fov_id'] = '%s-%s-%s' % (row.exp_id, row.well_id, row.site_id)
 
         # drop non-unique fov_ids
         n = md_raw.groupby('fov_id').count()
@@ -295,19 +310,7 @@ class PlateMicroscopyAPI:
 
         Destination plate directory names are of the form 'mNG-P0001-E01-R00'
         '''
-        
-        # parental line is always the mNeonGreen 1-10 line 
-        # (here abbreviated 'mNG' for 'split mNeonGreen')
-        parental_line = 'mNG'
-
-        # the electroporation ID is always the same
-        # (since all plates have been electroporated once)
-        ep_id = 'E01'
-
-        plate_id = 'P%04d' % row.plate_num
-        imaging_round_id = 'R%02d' % row.imaging_round_num
-
-        dst_plate_dir = f'{parental_line}-{plate_id}-{ep_id}-{imaging_round_id}'
+        dst_plate_dir = f'{row.parental_line}-{row.plate_id}-{row.ep_id}-{row.imaging_round_id}'
         return dst_plate_dir
 
 
@@ -351,8 +354,7 @@ class PlateMicroscopyAPI:
             os.makedirs(dst_dirpath, exist_ok=True)
         
         # construct the destination filename
-        site_id = 'S%02d' % int(row.site_num)
-        dst_filename = f'{dst_plate_dir}-{row.exp_id}-{row.well_id}-{site_id}-{row.target_name}'
+        dst_filename = f'{dst_plate_dir}-{row.exp_id}-{row.well_id}-{row.site_id}-{row.target_name}'
         
         return os.path.join(dst_dirpath, dst_filename)
 
@@ -416,7 +418,7 @@ class PlateMicroscopyAPI:
         return tiff_metadata
 
 
-    def calculate_fov_features(self, row, dst_root, scorer):
+    def calculate_fov_features(self, row, dst_root, pipeline_fov_scorer):
         '''
         scorer : an instance of PipelineFOVScorer in 'training' mode
         row : a row of self.md_raw
@@ -428,7 +430,7 @@ class PlateMicroscopyAPI:
         filepath = self.tag_filepath(filepath, tag='DAPI-PROJ-Z', ext='tif')
 
         # calculate the features from the z-projection
-        features = scorer.process_existing_fov(filepath)
+        features = pipeline_fov_scorer.process_existing_fov(filepath)
         features['fov_id'] = row.fov_id
         return features
 
@@ -449,25 +451,6 @@ class PlateMicroscopyAPI:
             paths.append(path)
             
         return paths
-
-
-    def get_experiments(self, plate_id, well_id, group='original'):
-        '''
-        Get all of the experiment names for a given sample
-        '''
-        pass
-
-
-    def get_filepaths(self, plate_id, well_id, group='original'):
-        '''
-        Parameters
-        ----------
-        plate_id : either a number or an id of the form 'P0001'
-        well_id : a well_id of the form 'A1' or 'A01'
-        group : the group or 'round' of imaging: 'original' | 'thawed' | 'all'
-        '''
-        pass
-
 
         
         

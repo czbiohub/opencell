@@ -180,11 +180,11 @@ def calculate_fov_features(api, dst_root, dragonfly_automation_repo):
     '''
     sys.path.append(dragonfly_automation_repo)
     from dragonfly_automation.fov_models import PipelineFOVScorer
-    scorer = PipelineFOVScorer(mode='training')
+    pipeline_fov_scorer = PipelineFOVScorer(mode='training')
  
     tasks = []
     for _, row in api.md_raw.iterrows():
-        task = dask.delayed(api.calculate_fov_features)(row, dst_root, scorer)
+        task = dask.delayed(api.calculate_fov_features)(row, dst_root, pipeline_fov_scorer)
         tasks.append(task)
 
     results = execute_tasks(tasks)

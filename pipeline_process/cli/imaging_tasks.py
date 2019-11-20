@@ -18,6 +18,13 @@ import dask.diagnostics
 
 from pipeline_process.imaging import plate_microscopy_api
 
+try:
+    sys.path.append('/Users/keith.cheveralls/projects/dragonfly-automation')
+    from dragonfly_automation.fov_models import PipelineFOVScorer
+except ImportError:
+    sys.path.append('/home/projects/dragonfly-automation')
+    from dragonfly_automation.fov_models import PipelineFOVScorer
+    
 
 ESS_ROOT = '/gpfsML/ML_group/PlateMicroscopy/'
 
@@ -42,11 +49,6 @@ def parse_args():
         '--cache-dir', 
         dest='cache_dir', 
         required=True)
-
-    parser.add_argument(
-        '--dragonfly-automation-repo', 
-        dest='dragonfly_automation_repo', 
-        required=False)
 
     parser.add_argument(
         '--inspect', 
@@ -174,12 +176,10 @@ def aggregate_processing_events(api, dst_root):
 
 
 
-def calculate_fov_features(api, dst_root, dragonfly_automation_repo):
+def calculate_fov_features(api, dst_root):
     '''
 
     '''
-    sys.path.append(dragonfly_automation_repo)
-    from dragonfly_automation.fov_models import PipelineFOVScorer
     pipeline_fov_scorer = PipelineFOVScorer(mode='training')
  
     tasks = []
@@ -210,7 +210,7 @@ def main():
         aggregate_processing_events(api, args.dst_root)
 
     if args.calculate_fov_features:
-        calculate_fov_features(api, args.dst_root, args.dragonfly_automation_repo)
+        calculate_fov_features(api, args.dst_root)
 
 
 if __name__ == '__main__':

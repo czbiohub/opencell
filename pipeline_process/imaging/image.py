@@ -181,6 +181,7 @@ class RawPipelineTIFF(MicroManagerTIFF):
     def validate_micromanager_metadata(self):
         '''
         Validate the parsed MicroManager metadata tags for a raw Pipeline-like TIFF file
+        (these are TIFFs found in the 'PlateMicroscopy' directory)
 
         Generates validated_mm_metadata and sets various flags
         that determine whether and how to split the pages into the DAPI and GFP channels

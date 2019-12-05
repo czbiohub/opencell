@@ -22,11 +22,11 @@ def read_and_validate_platemap(filepath):
     platemap.columns = ['well_id', 'target_name']
 
     # check for missing/unexpected well_ids
-    missing_well_ids = set(constants.WELL_IDS).difference(platemap.well_id)
+    missing_well_ids = set(constants.RAW_WELL_IDS).difference(platemap.well_id)
     if missing_well_ids:
         print('Warning: some well_ids are missing: %s' % missing_well_ids)
 
-    unexpected_well_ids = set(platemap.well_id).difference(constants.WELL_IDS)
+    unexpected_well_ids = set(platemap.well_id).difference(constants.RAW_WELL_IDS)
     if unexpected_well_ids:
         print('Warning: unexpected well_ids %s' % unexpected_well_ids)
 

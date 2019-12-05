@@ -242,7 +242,7 @@ class PlateOperations(object):
         designs.replace({pd.np.nan: None}, inplace=True)
 
         # check that we have the expected number of designs/wells
-        if designs.shape[0]!=len(constants.WELL_IDS):
+        if designs.shape[0]!=len(constants.DATABASE_WELL_IDS):
             raise ValueError('%s designs found; expected 96' % designs.shape[0])
 
         # drop the negative (empty) controls

@@ -2,6 +2,11 @@
 import enum
 
 
+# the parental line for plates 1-19
+# (this is mNeonGreen1-10 driven by SFFV promotor in HEK293)
+PARENTAL_LINE = 'czML0383'
+
+
 class TerminusTypeEnum(enum.Enum):
     N_TERMINUS = 'N_TERMINUS'
     C_TERMINUS = 'C_TERMINUS'

@@ -1,11 +1,3 @@
-'''
-Initialize and populate a new pipeline database
-from a set of 'snapshot' CSVs of various google spreadsheets
-
-Keith Cheveralls
-July 2019
-
-'''
 
 import os
 import sys
@@ -13,14 +5,22 @@ import sqlalchemy as db
 import sqlalchemy.orm
 import sqlalchemy.ext.declarative
 
+from opencell import constants, file_utils
 from opencell.database import models
 from opencell.database import operations as ops
-from opencell import file_utils
 
 
 def populate(url, drop_all=False, errors='warn'):
     '''
 
+    Initialize and populate the opencell database
+    from a set of 'snapshot' CSVs of various google spreadsheets
+
+    This loads the crispr designs, plates, electroporations, polyclonal lines,
+    for Plates 1-19
+
+    TODO: insert FACS results and microscopy datasets
+    
     errors : one of 'raise', 'warn', 'ignore'
     '''
     engine = db.create_engine(url)
@@ -44,15 +44,16 @@ def populate(url, drop_all=False, errors='warn'):
     # -----------------------------------------------------------------------------------
     #
     # create master cell line
+    # (this is the parental line for Plates 1-19)
     #
     # -----------------------------------------------------------------------------------
-    print('Inserting master cell line')
+    print('Inserting master cell line for plates 1-19')
 
-    master_nickname = 'mNG1-10'
+    master_nickname = constants.PARENTAL_LINE
     ops.get_or_create_master_cell_line(
         session, 
         nickname=master_nickname, 
-        notes='HEK-293 background', 
+        notes='mNG1-10 in HEK293', 
         create=True)
 
 
@@ -61,7 +62,7 @@ def populate(url, drop_all=False, errors='warn'):
     # Insert crispr designs from Library snapshot
     #
     # -----------------------------------------------------------------------------------
-    print('Inserting crispr designs')
+    print('Inserting crispr designs for plates 1-19')
 
     library_snapshot = file_utils.load_library_snapshot(
         '../data/2019-06-26_mNG11_HEK_library.csv')
@@ -78,7 +79,7 @@ def populate(url, drop_all=False, errors='warn'):
     # Insert electroporations and create polyclonal lines
     #
     # -----------------------------------------------------------------------------------
-    print('Inserting electroporations and polyclonal lines')
+    print('Inserting electroporations and polyclonal lines for plates 1-19')
 
     electroporation_history = file_utils.load_electroporation_history(
         '../data/2019-06-24_electroporations.csv')

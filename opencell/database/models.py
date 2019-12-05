@@ -494,7 +494,7 @@ class Image(Base):
 
     # many-to-one relationship with imaging_experiment
     imaging_experiment_id = db.Column(db.String, db.ForeignKey('imaging_experiment.id'))
-    imaging_experiment = db.orm.relationship('ImagingExperiment', back_populates='images')
+    imaging_experiment = db.orm.relationship('ImagingExperiment', backref='images')
 
     # file hash
     sha1_hash = db.Column(db.String)

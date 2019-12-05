@@ -12,7 +12,8 @@ import tifffile
 import numpy as np
 import pandas as pd
 
-from . import image
+from opencell import constants
+from opencell.imaging import image
 
 
 class PlateMicroscopyAPI:
@@ -232,9 +233,8 @@ class PlateMicroscopyAPI:
         print('Warning: dropping %s rows of unparseable raw metadata' % len(dropped_inds))
         md_raw.drop(dropped_inds, inplace=True)
 
-        # parental line is (so far) always czML0383,
-        # which is mNeonGreen1-10 driven by SFFV promotor in HEK293 
-        md_raw['parental_line'] = 'czML0383'
+        #the parental_line is the same for all plates in PlateMicroscopy
+        md_raw['parental_line'] = constants.PARENTAL_LINE
 
         # the electroporation ID is always the same
         # (since all plates have been electroporated once)

@@ -9,10 +9,10 @@ import FlowCytometryTools as fct
 from matplotlib import pyplot as plt
 from scipy import interpolate, optimize
 
-from pipeline_process.facs.unmixer import FACSUnmixer
-from pipeline_process.facs import utils as facs_utils
-from pipeline_process.facs import constants as facs_constants
-from pipeline_process import constants as common_constants
+from opencell.facs.unmixer import FACSUnmixer
+from opencell.facs import utils as facs_utils
+from opencell.facs import constants as facs_constants
+from opencell import constants as common_constants
 
 # FITC channel name
 FITC = facs_constants.FITC

@@ -1,6 +1,6 @@
 
 import numpy as np
-from pipeline_process.facs import constants as facs_constants
+from opencell.facs import constants as facs_constants
 FITC, SSCA, FSCA = facs_constants.FITC, facs_constants.SSCA, facs_constants.FSCA
 
 

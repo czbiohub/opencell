@@ -16,7 +16,7 @@ import pandas as pd
 
 import dask.diagnostics
 
-from pipeline_process.imaging import plate_microscopy_api
+from opencell.imaging import plate_microscopy_api
 
 try:
     sys.path.append('/Users/keith.cheveralls/projects/dragonfly-automation')

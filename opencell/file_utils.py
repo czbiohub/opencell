@@ -4,7 +4,99 @@ import re
 import pandas as pd
 
 from opencell import constants
+from opencell.database import utils
 
+def parseFloat(val):
+    try:
+        val = float(val)
+    except ValueError:
+        val = float(str(val).replace(',', ''))
+    return val
+
+
+# map from the column names in the cached CSVs to the column names 
+# expected by the database and/or by the methods in pipeline_db.operations 
+# (all required columns are included, even if their name is unchanged)
+LIBRARY_COLUMNS = {
+    'plate_id': 'plate_id',
+    'well_id': 'well_id',
+
+    'gene_name': 'target_name',
+    'family': 'target_family',
+
+    'enst_id': 'transcript_id',
+    'enst_note': 'transcript_notes', 
+
+    'hek_tpm': 'hek_tpm',
+
+    'terminus_to_tag': 'target_terminus',
+    'terminus_choice': 'terminus_notes',
+        
+    'protospacer_name': 'protospacer_name', 
+    'protospacer_note': 'protospacer_notes',
+    'protospacer_sequence': 'protospacer_sequence',
+
+    'ultramer_name': 'template_name',
+    'ultramer_note': 'template_notes',
+    'ultramer_sequence': 'template_sequence',
+}
+
+ELECTROPORATION_COLUMNS = {
+    'plate_id': 'plate_id',
+    'electroporation_date': 'date',
+    'comment': 'notes',
+}
+
+
+def load_library_snapshot(filename):
+    '''
+    Load and format/reorganize a CSV 'snapshot' of the library spreadsheet
+    
+    These 'snapshots' are of the google sheet created/maintained by Manu
+    that contains all info about plate and crispr design for plate 1 - plate 19.
+
+    The snapshot *must* contain the columns on the left side of the LIBRARY_COLUMNS
+    map (see above). 
+
+    '''
+
+    library = pd.read_csv(filename)
+    library.rename(columns=LIBRARY_COLUMNS, inplace=True)
+
+    # for clarity, format the plate_ids here
+    library['plate_id'] = library.plate_id.apply(utils.format_plate_design_id)
+
+    # parse the hek_tpm column, which should be float but has some strings with commas
+    # (e.g., '1,000' instead of '1000') 
+    library['hek_tpm'] = library.hek_tpm.apply(parseFloat)
+
+    # retain only the columns we need for the database
+    library = library[list(LIBRARY_COLUMNS.values())]
+
+    return library
+
+
+def load_electroporation_history(filename):
+    '''
+    Load and format a 'snapshot' of the list of electroporations
+    (this is a google sheet from Manu)
+
+    Expected columns: ('plate_id', 'date', 'notes')
+
+    '''
+
+    electroporations = pd.read_csv(filename)
+    electroporations.rename(columns=ELECTROPORATION_COLUMNS, inplace=True)
+
+    # format the plate_id
+    electroporations['plate_id'] = electroporations.plate_id.apply(
+        utils.format_plate_design_id)
+
+    # drop unneeded columns
+    electroporations = electroporations[list(ELECTROPORATION_COLUMNS.values())]
+ 
+    return electroporations
+    
 
 def read_and_validate_platemap(filepath):
     '''

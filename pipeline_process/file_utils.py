@@ -3,7 +3,7 @@ import sys
 import re
 import pandas as pd
 
-from pipeline_process.common import constants
+from pipeline_process import constants
 
 
 def read_and_validate_platemap(filepath):

@@ -232,13 +232,13 @@ class PlateMicroscopyAPI:
         print('Warning: dropping %s rows of unparseable raw metadata' % len(dropped_inds))
         md_raw.drop(dropped_inds, inplace=True)
 
-        # parental line is always the mNeonGreen 1-10 line 
-        # (here abbreviated 'mNG' for 'split mNeonGreen')
-        md_raw['parental_line'] = 'mNG'
+        # parental line is (so far) always czML0383,
+        # which is mNeonGreen1-10 driven by SFFV promotor in HEK293 
+        md_raw['parental_line'] = 'czML0383'
 
         # the electroporation ID is always the same
         # (since all plates have been electroporated once)
-        md_raw['ep_id'] = 'E01'
+        md_raw['ep_id'] = 'EP01'
 
         # the ML experiment ID from the experiment directory name
         # (note that we already implicitly validated the form of the exp_dirs
@@ -310,7 +310,7 @@ class PlateMicroscopyAPI:
 
         Destination plate directory names are of the form 'mNG-P0001-E01-R00'
         '''
-        dst_plate_dir = f'{row.parental_line}-{row.plate_id}-{row.ep_id}-{row.imaging_round_id}'
+        dst_plate_dir = f'{row.parental_line}-{row.plate_id}-{row.imaging_round_id}'
         return dst_plate_dir
 
 
@@ -367,7 +367,7 @@ class PlateMicroscopyAPI:
         '''
         # remove the existing extension (if any)
         filepath, _ = os.path.splitext(filepath)
-        filepath = f'{filepath}_{tag}.{ext}'
+        filepath = f'{filepath}-{tag}.{ext}'
         return filepath
 
 

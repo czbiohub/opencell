@@ -16,7 +16,7 @@ from opencell import constants
 from opencell.imaging import micromanager
 
 
-class PlateMicroscopyAPI:
+class PlateMicroscopyManager:
 
     
     def __init__(self, root_dir=None, cache_dir=None):

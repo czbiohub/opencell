@@ -16,7 +16,7 @@ import pandas as pd
 
 import dask.diagnostics
 
-from opencell.imaging import plate_microscopy_api
+from opencell.imaging.managers import PlateMicroscopyManager
 
 try:
     sys.path.append('/Users/keith.cheveralls/projects/dragonfly-automation')
@@ -116,56 +116,56 @@ def execute_tasks(tasks):
     return results
 
 
-def construct_and_cache_metadata(api):
+def construct_and_cache_metadata(manager):
     '''
     '''
     print('Caching os.walk results')
-    if not hasattr(api, 'os_walk'):
-        api.cache_os_walk()
+    if not hasattr(manager, 'os_walk'):
+        manager.cache_os_walk()
 
     print('Constructing metadata')    
-    api.construct_metadata()
+    manager.construct_metadata()
 
     print('Appending file info')
-    # api.append_file_info()
+    # manager.append_file_info()
 
     print('Constructing raw metadata')
-    api.construct_raw_metadata()
+    manager.construct_raw_metadata()
 
     print('Caching metadata')
-    api.cache_metadata(overwrite=True)
+    manager.cache_metadata(overwrite=True)
 
 
-def inspect_cached_metadata(api):
+def inspect_cached_metadata(manager):
     '''
     '''
     print(f'''
-        All metadata rows:          {api.md.shape[0]}
-        metadata.is_raw.sum():      {api.md.is_raw.sum()}
-        Parsed raw metadata rows:   {api.md_raw.shape[0]}
+        All metadata rows:          {manager.md.shape[0]}
+        metadata.is_raw.sum():      {manager.md.is_raw.sum()}
+        Parsed raw metadata rows:   {manager.md_raw.shape[0]}
     ''')
 
 
-def process_raw_tiffs(api, dst_root):
+def process_raw_tiffs(manager, dst_root):
     '''
     Parse metadata and make projections for all raw TIFFs
 
-    Note that api.process_raw_tiff returns a dict of raw tiff metadata,
+    Note that manager.process_raw_tiff returns a dict of raw tiff metadata,
     which we aggregate and save as a CSV
     '''
 
     tasks = []
-    for _, row in api.md_raw.iterrows():
-        task = dask.delayed(api.process_raw_tiff)(row, dst_root=dst_root)
+    for _, row in manager.md_raw.iterrows():
+        task = dask.delayed(manager.process_raw_tiff)(row, dst_root=dst_root)
         tasks.append(task)
 
     results = execute_tasks(tasks)
     pd.DataFrame(data=results).to_csv(os.path.join(dst_root, 'aggregated-raw-tiff-metadata.csv'), index=False)
 
 
-def aggregate_processing_events(api, dst_root):
+def aggregate_processing_events(manager, dst_root):
 
-    paths = api.aggregate_filepaths(
+    paths = manager.aggregate_filepaths(
         dst_root, kind='metadata', tag='raw-tiff-processing-events', ext='csv')
 
     tasks = [load_csv(path) for path in paths]
@@ -176,15 +176,15 @@ def aggregate_processing_events(api, dst_root):
 
 
 
-def calculate_fov_features(api, dst_root):
+def calculate_fov_features(manager, dst_root):
     '''
 
     '''
     pipeline_fov_scorer = PipelineFOVScorer(mode='training')
  
     tasks = []
-    for _, row in api.md_raw.iterrows():
-        task = dask.delayed(api.calculate_fov_features)(row, dst_root, pipeline_fov_scorer)
+    for _, row in manager.md_raw.iterrows():
+        task = dask.delayed(manager.calculate_fov_features)(row, dst_root, pipeline_fov_scorer)
         tasks.append(task)
 
     results = execute_tasks(tasks)
@@ -194,23 +194,23 @@ def calculate_fov_features(api, dst_root):
 def main():
 
     args = parse_args()
-    api = plate_microscopy_api.PlateMicroscopyAPI(args.src_root, args.cache_dir)
+    manager = PlateMicroscopyManager(args.src_root, args.cache_dir)
 
     if args.inspect_cached_metadata:
-        inspect_cached_metadata(api)
+        inspect_cached_metadata(manager)
 
     if args.construct_metadata:
-        construct_and_cache_metadata(api)
+        construct_and_cache_metadata(manager)
 
     if args.process_raw_tiffs:
-        inspect_cached_metadata(api)
-        process_raw_tiffs(api, args.dst_root)
+        inspect_cached_metadata(manager)
+        process_raw_tiffs(manager, args.dst_root)
 
     if args.aggregate_processing_events:
-        aggregate_processing_events(api, args.dst_root)
+        aggregate_processing_events(manager, args.dst_root)
 
     if args.calculate_fov_features:
-        calculate_fov_features(api, args.dst_root)
+        calculate_fov_features(manager, args.dst_root)
 
 
 if __name__ == '__main__':

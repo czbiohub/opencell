@@ -96,6 +96,9 @@ class CellLine(Base):
     children = db.orm.relationship('CellLine')
     parent = db.orm.relationship('CellLine', remote_side=[id])
 
+    # electroporation_line that generated the cell line (if any)
+    electroporation_line = db.orm.relationship('ElectroporationLine', uselist=False, back_populates='cell_line')
+
     def __repr__(self):
         return "<CellLine(id=%s, parent_id=%s, type='%s')>" % \
             (self.id, self.parent_id, self.line_type)
@@ -143,7 +146,6 @@ class PlateDesign(Base):
         Validate and maybe format the plate design id 
         '''
         return utils.format_plate_design_id(value)
-
 
 
 class CrisprDesign(Base):
@@ -369,9 +371,11 @@ class ElectroporationLine(Base):
 
     well_id = db.Column(well_id_enum, nullable=False)
 
+    # one-to-one mapping to CellLine
     cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'), primary_key=True)
-    cell_line = db.orm.relationship('CellLine', backref='electroporation')
+    cell_line = db.orm.relationship('CellLine', back_populates='electroporation_line')
 
+    # one-to-many mapping to Electroporation
     electroporation_id = db.Column(db.Integer, db.ForeignKey('electroporation.id'), primary_key=True)
     electroporation = db.orm.relationship('Electroporation', back_populates='electroporation_lines')
 

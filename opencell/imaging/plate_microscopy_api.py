@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 
 from opencell import constants
-from opencell.imaging import image
+from opencell.imaging import micromanager
 
 
 class PlateMicroscopyAPI:
@@ -388,7 +388,7 @@ class PlateMicroscopyAPI:
     
         src_filepath = self.src_filepath(row, src_root=src_root)
 
-        tiff = image.RawPipelineTIFF(src_filepath, verbose=False)
+        tiff = micromanager.RawPipelineTIFF(src_filepath, verbose=False)
         tiff.parse_micromanager_metadata()
         tiff.validate_micromanager_metadata()
 

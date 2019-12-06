@@ -91,8 +91,11 @@ class CellLine(Base):
         '''
         if parent_id is None and line_type!=constants.CellLineTypeEnum.PROGENITOR:
             raise ValueError('A parent_id is required for all derived cell lines')
+
         self.line_type = line_type
         self.parent_id = parent_id
+        self.name = name
+        self.notes = notes
 
     def __repr__(self):
         return "<CellLine(id=%s, parent_id=%s, type='%s')>" % \
@@ -510,7 +513,7 @@ class MicroscopyFOV(Base):
     # or 'R02' (thawed-plate imaging)
     imaging_round_id = db.Column(db.String, nullable=False)
 
-    # the original site number (this is essentially redundant/useless)
+    # the original site number (required to construct unique dst filenames)
     site_num = db.Column(db.Integer, nullable=False)
 
     # the path to the original raw TIFF, relative to the root_directory

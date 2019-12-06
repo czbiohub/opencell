@@ -7,10 +7,9 @@ class Config(object):
     Common configuration
     '''
 
-    # this directory (pipelineDB/pipeline_db/api)
     APP_DIR = os.path.abspath(os.path.dirname(__file__))
 
-    # project root is two levels up
+    # project root is two directory levels up
     PROJECT_ROOT = os.path.abspath(os.path.join(APP_DIR, os.pardir, os.pardir))
 
     CORS_ORIGINS = [

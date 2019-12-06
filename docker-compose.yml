@@ -5,22 +5,15 @@ services:
   dev_db:
     image: postgres
     restart: always
-    container_name: pipeline_db_container
+    container_name: opencelldb_container
     environment:
-      POSTGRES_DB: pipeline_db
+      POSTGRES_DB: opencelldb
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
     # 'bridge' is the default for docker run, but docker-compose requires it explicitly
     network_mode: "bridge" 
     ports:
       - 5433:5432 # out:in
-
-  adminer:
-    image: adminer
-    restart: always
-    container_name: adminer_container
-    ports:
-      - 8080:8080
 
   pgadmin:
     image: dpage/pgadmin4

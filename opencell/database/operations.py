@@ -31,17 +31,16 @@ def add_and_commit(session, instances, errors='raise'):
     if not isinstance(instances, list):
         instances = [instances]
 
-    try:
-        session.add_all(instances)
-        session.commit()
-        return True
-    except Exception as exception:
-        session.rollback()
-        if errors=='raise':
-            raise
-        if errors=='warn':
-            print('Error in add_and_commit: %s' % exception)
-            return False
+    for instance in instances:
+        try:
+            session.add(instance)
+            session.commit()
+        except Exception as exception:
+            session.rollback()
+            if errors=='raise':
+                raise
+            if errors=='warn':
+                print('Error in add_and_commit: %s' % exception)
 
     # except db.exc.IntegrityError:
     # except db.orm.exc.FlushError:

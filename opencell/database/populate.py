@@ -124,9 +124,9 @@ def populate_facs(session, errors='warn'):
         d[(row['plate_id'], row['well_id'])] = row
     facs_histograms = d
 
-    for ind, facs_row in facs_properties.iterrows():
-        plate_id = facs_row.plate_id
-        well_id = utils.format_well_id(facs_row.well_id)
+    for ind, row in facs_properties.iterrows():
+        plate_id = row.plate_id
+        well_id = utils.format_well_id(row.well_id)
 
         # the polyclonal line
         try:
@@ -137,9 +137,9 @@ def populate_facs(session, errors='warn'):
 
         # the histograms (dict of 'x', 'y_sample', 'y_fitted_ref')
         # note: keyed by unformatted well_id
-        histograms = facs_histograms.get((facs_row.plate_id, facs_row.well_id))
+        histograms = facs_histograms.get((plate_id, well_id))
 
-        facs_row = facs_row.drop(['plate_id', 'well_id'])
-        pcl_ops.insert_facs_results(session, histograms, facs_row, errors=errors)
+        row = row.drop(['plate_id', 'well_id'])
+        pcl_ops.insert_facs_results(session, histograms, row, errors=errors)
 
 

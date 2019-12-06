@@ -4,7 +4,7 @@ import enum
 
 # the parental line for plates 1-19
 # (this is mNeonGreen1-10 driven by SFFV promotor in HEK293)
-PARENTAL_LINE = 'czML0383'
+PARENTAL_LINE_NAME = 'czML0383'
 
 
 class TerminusTypeEnum(enum.Enum):
@@ -14,7 +14,7 @@ class TerminusTypeEnum(enum.Enum):
 
 
 class CellLineTypeEnum(enum.Enum):
-    MASTER = 'MASTER'
+    PROGENITOR = 'PROGENITOR'
     POLYCLONAL = 'POLYCLONAL'
     MONOCLONAL = 'MONOCLONAL'
 

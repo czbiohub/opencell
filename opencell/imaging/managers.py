@@ -234,7 +234,7 @@ class PlateMicroscopyManager:
         md_raw.drop(dropped_inds, inplace=True)
 
         #the parental_line is the same for all plates in PlateMicroscopy
-        md_raw['parental_line'] = constants.PARENTAL_LINE
+        md_raw['parental_line'] = constants.PARENTAL_LINE_NAME
 
         # the electroporation ID is always the same
         # (since all plates have been electroporated once)

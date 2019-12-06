@@ -60,54 +60,47 @@ def delete_and_commit(session, instances):
             raise
 
 
-def get_or_create_master_cell_line(session, nickname, notes=None, create=False):
+def get_or_create_progenitor_cell_line(session, name, notes=None, create=False):
     '''
-    Get or create a master cell line by manual entry
+    Get or create a progenitor cell line by manual entry
 
-    'Master' cell lines are strictly those used for electroporation;
+    'Progenitor' cell lines are strictly those used for electroporations;
     they are therefore the root nodes in the self-referential cell_line table
     (which contains predominately polyclonal and monoclonal lines).
 
-    The use of a human-readable nickname here is just for convenience and is intended
+    The use of a human-readable name here is just for convenience and is intended
     to facilitate the creation/retrieval of the progenitor cell lines used for electroporation 
     (of which we can assume there will be very few). 
 
     Parameters
     ----------
-    nickname : required human-readable and unique nickname for the cell_line
+    name : required human-readable and unique name for the cell_line
     notes : optional human-readable notes about the cell line
-    create : whether to create a master cell line with the given nickname 
-             if one does not already exist
+    create : whether to create a cell line with the given name if one does not already exist
         
     Returns
     -------
-    A CellLine instance corresponding to the master cell line
+    A CellLine instance corresponding to the progenitor cell line
 
     '''
 
-    # check whether the master cell line already exists
-    master_cell_line = session.query(models.MasterCellLine)\
-        .filter(models.MasterCellLine.nickname==nickname)\
+    # check whether the progenitor cell line already exists
+    cell_line = session.query(models.CellLine)\
+        .filter(models.CellLine.name==name)\
         .first()
 
-    if master_cell_line is not None:
-        print("Warning: a master cell line with nickname '%s' already exists" % nickname)
-        cell_line = master_cell_line.cell_line
+    if cell_line is not None:
+        print("Warning: a cell line with the name '%s' already exists" % name)
 
     elif create:
-        print("Creating master cell line with nickname '%s'" % nickname)
+        print("Creating progenitor cell line with name '%s'" % name)
+        cell_line = models.CellLine(name=name, notes=notes, line_type=constants.CellLineTypeEnum.PROGENITOR)
+        add_and_commit(session, cell_line, errors='raise')
 
-        # create a new entry in the cell line table
-        cell_line = models.CellLine(line_type=constants.CellLineTypeEnum.MASTER)
-
-        # create the master line itself
-        master_line = models.MasterCellLine(cell_line=cell_line, nickname=nickname, notes=notes)
-        
-        add_and_commit(session, master_line, errors='raise')
     else:
         cell_line = None
-        print("No master cell line with nickname '%s' found; use create=True to force its creation" \
-            % nickname)
+        print("No progenitor cell line with name '%s' found; use create=True to force its creation" \
+            % name)
 
     return cell_line
 
@@ -254,11 +247,7 @@ class PlateOperations(object):
         # create all designs and maybe warn about errors
         for ind, design in designs.iterrows(): # pylint: disable=unused-variable
             self.plate.crispr_designs.append(models.CrisprDesign(**design))
-            success = add_and_commit(session, self.plate, errors=errors)
-            if not success:
-                print('Error inserting a crispr design targeting %s' % design.target_name)
-
-
+            add_and_commit(session, self.plate, errors=errors)
 
 
 class ElectroporationOperations(object):

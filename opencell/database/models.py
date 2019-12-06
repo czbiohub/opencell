@@ -53,34 +53,13 @@ terminus_type_enum = db.Enum(constants.TerminusTypeEnum, name='terminus_type_enu
 cell_line_type_enum = db.Enum(constants.CellLineTypeEnum, name='cell_line_type_enum')
 
 
-class MasterCellLine(Base):
-    '''
-    Table of master cell lines
-    (cell lines on which electroporations were performed)
-    '''
-
-    __tablename__ = 'master_cell_line'
-
-    # human-readable nickname; this is also the primary key
-    nickname = db.Column(db.String, primary_key=True)
-
-    # optional human-readable notes
-    notes = db.Column(db.String)
-
-    # the id of this cell line in the cell_line table
-    cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'), nullable=False)
-    cell_line = db.orm.relationship('CellLine', backref='master_cell_line')
-
-    def __repr__(self):
-        return "<MasterCellLine(nickname='%s')>" % self.nickname
-
 
 class CellLine(Base):
     '''
-    All cell lines - master, polyclonal, and monoclonal
+    All cell lines - progenitor, polyclonal, and monoclonal
     
-    Master cell lines are included here so that parent_id exists for both polyclonal lines
-    that are direct descendents of a master cell line and for monoclonal lines 
+    Progenitor cell lines are included here so that parent_id exists for both polyclonal lines
+    that are direct descendents of a progenitor line and for monoclonal lines 
     (that are, at least for now, descendents of a polyclonal line)
 
     '''
@@ -89,9 +68,15 @@ class CellLine(Base):
 
     id = db.Column(db.Integer, primary_key=True)
     
-    # parent_id is only null for master cell lines
+    # parent_id is only null for progenitor cell lines
     parent_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'), nullable=True)
     line_type = db.Column(cell_line_type_enum, nullable=False)
+
+    # optional human-readable name
+    name = db.Column(db.String, nullable=True)
+
+    # optional human-readable notes
+    notes = db.Column(db.String, nullable=True)
 
     children = db.orm.relationship('CellLine')
     parent = db.orm.relationship('CellLine', remote_side=[id])
@@ -99,19 +84,19 @@ class CellLine(Base):
     # electroporation_line that generated the cell line (if any)
     electroporation_line = db.orm.relationship('ElectroporationLine', uselist=False, back_populates='cell_line')
 
-    def __repr__(self):
-        return "<CellLine(id=%s, parent_id=%s, type='%s')>" % \
-            (self.id, self.parent_id, self.line_type)
-
-    def __init__(self, line_type, parent_id=None):
+    def __init__(self, line_type, name=None, notes=None, parent_id=None):
         '''
         For simplicity, we only allow instantiation using an explicit parent_id,
         not by providing a list of children instances or a parent instance
         '''
-        if parent_id is None and line_type!=constants.CellLineTypeEnum.MASTER:
+        if parent_id is None and line_type!=constants.CellLineTypeEnum.PROGENITOR:
             raise ValueError('A parent_id is required for all derived cell lines')
         self.line_type = line_type
         self.parent_id = parent_id
+
+    def __repr__(self):
+        return "<CellLine(id=%s, parent_id=%s, type='%s')>" % \
+            (self.id, self.parent_id, self.line_type)
 
 
 class PlateDesign(Base):
@@ -334,7 +319,7 @@ class Electroporation(Base):
     plate_instance_id = db.Column(db.Integer, db.ForeignKey('plate_instance.id'), nullable=False)
     plate_instance = db.orm.relationship('PlateInstance', back_populates='electroporations')
 
-    # the id of the master cell line that was electroporated
+    # the id of the progenitor cell line (the line that was used in the electroporation)
     cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'), nullable=False)
     cell_line = db.orm.relationship('CellLine')
 

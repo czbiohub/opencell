@@ -45,16 +45,15 @@ def populate(url, drop_all=False, errors='warn'):
 
     # -----------------------------------------------------------------------------------
     #
-    # create master cell line
+    # create progenitor cell line
     # (this is the parental line for Plates 1-19)
+    # Note the hard-coded progenitor cell line name
     #
     # -----------------------------------------------------------------------------------
-    print('Inserting master cell line for plates 1-19')
-
-    master_nickname = constants.PARENTAL_LINE
-    ops.get_or_create_master_cell_line(
+    print('Inserting progenitor cell line for plates 1-19')
+    ops.get_or_create_progenitor_cell_line(
         session, 
-        nickname=master_nickname, 
+        name=constants.PARENTAL_LINE_NAME, 
         notes='mNG1-10 in HEK293', 
         create=True)
 
@@ -79,6 +78,7 @@ def populate(url, drop_all=False, errors='warn'):
     # -----------------------------------------------------------------------------------
     #
     # Insert electroporations and create polyclonal lines
+    # Note the hard-coded progenitor line name
     #
     # -----------------------------------------------------------------------------------
     print('Inserting electroporations and polyclonal lines for plates 1-19')
@@ -86,7 +86,7 @@ def populate(url, drop_all=False, errors='warn'):
     electroporation_history = file_utils.load_electroporation_history(
         '../data/2019-06-24_electroporations.csv')
 
-    master_line = ops.get_or_create_master_cell_line(session, master_nickname)
+    progenitor_line = ops.get_or_create_progenitor_cell_line(session, constants.PARENTAL_LINE_NAME)
     for ind, row in electroporation_history.iterrows():
         print('Inserting electroporation of %s' % row.plate_id)
 
@@ -97,7 +97,7 @@ def populate(url, drop_all=False, errors='warn'):
 
         ops.ElectroporationOperations.create_electroporation(
             session,
-            master_line,
+            progenitor_line,
             plate_instance,
             date=row.date,
             errors=errors)

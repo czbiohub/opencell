@@ -401,15 +401,25 @@ class PolyclonalLineOperations(object):
         add_and_commit(session, sequencing_results, errors=errors)
 
 
-    def insert_microscopy_fov(self, session, fov_attributes, errors='warn'):
+    def insert_microscopy_fovs(self, session, md_raw, errors='warn'):
         '''
+        Insert a set of microscopy FOVs for the cell line
+
+        md_raw : dataframe of raw FOV metadata with the following columns:
+        pml_id, imaging_round_id, site_num, raw_filepath
         '''
 
-        fov = models.MicroscopyFOV(
-            cell_line=self.cell_line,
-            **fov_attributes)
+        fovs = []
+        for ind, row in md_raw.iterrows():
+            columns = {
+                'pml_id': row.pml_id, 
+                'imaging_round_id': row.imaging_round_id, 
+                'site_num': row.site_num, 
+                'raw_filename': row.raw_filepath,
+            }
+            fovs.append(models.MicroscopyFOV(cell_line=self.cell_line, **columns))
 
-        add_and_commit(session, fov, errors=errors)
+        add_and_commit(session, fovs, errors=errors)
 
 
     def construct_json(self, session):

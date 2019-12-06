@@ -126,7 +126,7 @@ def load_microscopy_master_key(filepath):
     exp_md['date'] = pd.to_datetime(exp_md.legacy_id.apply(lambda s: s.split('_')[1]))
 
     # prepend the P to create the PML-style ID
-    exp_md['pml_id'] = ['P%s' % ml_id for ml_id in exp_md.id]
+    exp_md['pml_id'] = [f'P{ml_id}' for ml_id in exp_md.id]
 
     # columns to retain
     exp_md = exp_md[['pml_id', 'date', 'automation', 'imager', 'description', 'notes']]

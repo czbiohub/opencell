@@ -98,15 +98,15 @@ def load_electroporation_history(filename):
     return electroporations
     
 
-def load_microscopy_master_key():
+def load_microscopy_master_key(filepath):
     '''
-    This is a snapshot of the 'legacy' tab of the 'Pipeline-microscopy-master-key' google sheet
-    
-    These are all pipeline-related microscopy acquisitions prior to the transition to PML-based IDs
-    (which occurred at ML0196)
-    '''
+    Load and format a snapshot of the 'legacy' tab of the 'Pipeline-microscopy-master-key' google sheet
 
-    filepath = '../data/2019-12-05_Pipeline-microscopy-master-key_PlateMicroscopy-MLs-raw.csv'
+    These are all pipeline-related microscopy acquisitions prior to the transition to PML-based IDs
+    (which occurred at ML0196).
+
+    Note that these acquisitions have IDs of the form 'MLxxxx_YYYYMMDD'.
+    '''
 
     exp_md = pd.read_csv(filepath)
     exp_md = exp_md.rename(columns={c: c.replace(' ', '_').lower() for c in exp_md.columns})
@@ -119,13 +119,13 @@ def load_microscopy_master_key():
 
     exp_md = exp_md.drop(labels=[c for c in exp_md.columns if c.startswith('unnamed')], axis=1)
 
-    # separate the ID from the date
+    # separate the ML ID itself from the date
     exp_md['id'] = exp_md.legacy_id.apply(lambda s: s.split('_')[0])
 
-    # TODO: parse the date
-    exp_md['date'] = exp_md.legacy_id.apply(lambda s: s.split('_')[1])
+    # parse the date from the ML-style ID
+    exp_md['date'] = pd.to_datetime(exp_md.legacy_id.apply(lambda s: s.split('_')[1]))
 
-    # prepend the P to create the PML ID
+    # prepend the P to create the PML-style ID
     exp_md['pml_id'] = ['P%s' % ml_id for ml_id in exp_md.id]
 
     # columns to retain

@@ -320,7 +320,7 @@ class PlateMicroscopyAPI:
 
         The path is of the form {kind}/{channel}/{axis}/{dst_plate_dir}
 
-        dst_plate_dir is of the form 'mNG-P0001-E01-R01'
+        dst_plate_dir is of the form 'czML0383-P0001-R01'
         dst_filename is of the form '{dst_plate_dir}-ML0123-A01-S01-CLTA'
 
         Returns dst_dirpath and the dst_filename as a tuple

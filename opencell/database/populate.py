@@ -1,12 +1,14 @@
 
 import os
 import sys
+import json
+import pandas as pd
 import sqlalchemy as db
 import sqlalchemy.orm
 import sqlalchemy.ext.declarative
 
 from opencell import constants, file_utils
-from opencell.database import models
+from opencell.database import models, utils
 from opencell.database import operations as ops
 
 
@@ -20,7 +22,7 @@ def populate(url, drop_all=False, errors='warn'):
     for Plates 1-19
 
     TODO: insert FACS results and microscopy datasets
-    
+
     errors : one of 'raise', 'warn', 'ignore'
     '''
     engine = db.create_engine(url)
@@ -101,9 +103,43 @@ def populate(url, drop_all=False, errors='warn'):
             errors=errors)
 
 
-    # -----------------------------------------------------------------------------------
-    #
-    # cleanup
-    #
-    # -----------------------------------------------------------------------------------
-    session.close()
+def populate_facs(session, errors='warn'):
+    '''
+    Insert FACS results and histograms
+
+    '''
+
+    print('Inserting FACS results')
+    results_filepath = '../results/2019-07-16_all-facs-results.csv'
+    histograms_filepath = '../../opencell-off-git/results/2019-07-16_all-dists.json'
+
+    # load the cached FACS results
+    facs_properties = pd.read_csv(results_filepath)
+    with open(histograms_filepath, 'r') as file:
+        facs_histograms = json.load(file)
+
+    # key the histograms by tuples of (plate_id, well_id)
+    d = {}
+    for row in facs_histograms:
+        d[(row['plate_id'], row['well_id'])] = row
+    facs_histograms = d
+
+    for ind, facs_row in facs_properties.iterrows():
+        plate_id = facs_row.plate_id
+        well_id = utils.format_well_id(facs_row.well_id)
+
+        # the polyclonal line
+        try:
+            pcl_ops = ops.PolyclonalLineOperations.from_plate_well(session, plate_id, well_id)
+        except ValueError as error:
+            print(error)
+            continue
+
+        # the histograms (dict of 'x', 'y_sample', 'y_fitted_ref')
+        # note: keyed by unformatted well_id
+        histograms = facs_histograms.get((facs_row.plate_id, facs_row.well_id))
+
+        facs_row = facs_row.drop(['plate_id', 'well_id'])
+        pcl_ops.insert_facs_results(session, histograms, facs_row, errors=errors)
+
+

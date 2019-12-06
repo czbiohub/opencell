@@ -231,7 +231,7 @@ class CrisprDesign(Base):
     @db.orm.validates('well_id')
     def format_well_id(self, key, value):
         '''
-        Transform well_ids like 'A1' to 'A01'
+        Zero-pad well_ids ('A1' -> 'A01')
         '''
         return utils.format_well_id(value)
 
@@ -447,57 +447,107 @@ class SequencingResults(Base):
     hdr_modified = db.Column(db.Float)
 
 
-class ImagingExperiment(Base):
+class MicroscopyDataset(Base):
     '''
-    An imaging 'experiment'
-    These are imaging 'events' with ML-style IDs (e.g., ML0001, ML0002, etc)
+    A confocal microscopy dataset
+
+    These datasets are assumed to correspond to automated acquisitions
+    using the confocal (dragonfly) microscope that have PML-style IDs (e.g., PML0123)
+
+    These datasets almost always consist of images from many wells,
+    but by definition consist only of images from one imaging plate.
+
+    Note, however, that a single imaging plate may have wells from more than one pipeline plate.
 
     '''
 
-    __tablename__ = 'imaging_experiment'
+    __tablename__ = 'microscopy_dataset'
 
-    # the manually-defined ML-style experiment_id
-    id = db.Column(db.String, primary_key=True)
+    # the manually-defined pml_id (also called exp_id)
+    pml_id = db.Column(db.String, primary_key=True)
 
     # the manually-defined imaging date
     date = db.Column(db.Date, nullable=False)
 
-    # the primary user/imager
+    # the name of the primary imager
     user = db.Column(db.String, nullable=False)
 
-    # user-defined description of what plate/wells were imaged
+    # user-defined free-form description of what plates/wells were imaged
     description = db.Column(db.String)
 
-    # other user-defined notes/comments
-    user_notes = db.Column(db.String)
+    # either 'plate_microscopy' or 'raw_pipeline_microscopy'
+    # (the absolute path to these directories is context-dependent)
+    root_directory = db.Column(db.String)
+
+    @db.orm.validates('pml_id')
+    def validate_pml_id(self, key, value):
+        result = re.match(r'^PML[0-9]{4}$', value)
+        if result is None:
+            raise ValueError('Invalid pml_id %s' % value)
+        return value
+
+    @db.orm.validates('root_directory')
+    def validate_root_directory(self, key, value):
+        if value not in ['plate_microscopy', 'raw_pipeline_microscopy']:
+            raise ValueError('Invalid root_directory %s' % value)
+        return value
 
 
-class Image(Base):
+class MicroscopyFOV(Base):
     '''
-    A single z-stack of one field of view
+    A single confocal z-stack of one field of view (FOV)
 
     Notes
     -----
-    In the 'PlateMicroscopy' directory, one image here corresponds 
-    to a single raw TIFF stack in PlateMicroscopy, e.g.,
-    'mNG96wp19/ML0137_20190528/mNG96wp19_sortday1/A9_1_BAG6.ome.tif'
+    One entry in this table corresponds to a single raw TIFF stack
+    in the 'PlateMicroscopy' directory
+    For example: 'mNG96wp19/ML0137_20190528/mNG96wp19_sortday1/A9_1_BAG6.ome.tif'
 
     '''
 
-    __tablename__ = 'image'
+    __tablename__ = 'microscopy_fov'
 
     id = db.Column(db.Integer, primary_key=True)
 
     # many-to-one relationship with cell_line
     cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'))
-    cell_line = db.orm.relationship('CellLine', backref='images')
+    cell_line = db.orm.relationship('CellLine', backref='microscopy_fovs')
 
-    # many-to-one relationship with imaging_experiment
-    imaging_experiment_id = db.Column(db.String, db.ForeignKey('imaging_experiment.id'))
-    imaging_experiment = db.orm.relationship('ImagingExperiment', backref='images')
+    # many-to-one relationship with microscopy_dataset
+    pml_id = db.Column(db.String, db.ForeignKey('microscopy_dataset.pml_id'))
+    dataset = db.orm.relationship('MicroscopyDataset', backref='fovs')
 
-    # file hash
-    sha1_hash = db.Column(db.String)
+    # round_id is either 'R01' (initial post-sort imaging) 
+    # or 'R02' (thawed-plate imaging)
+    imaging_round_id = db.Column(db.String, nullable=False)
 
-    # TIFF stack filename
-    filename = db.Column(db.String)
+    # the original site number (this is essentially redundant/useless)
+    site_num = db.Column(db.Integer, nullable=False)
+
+    # the path to the original raw TIFF, relative to the root_directory
+    raw_filename = db.Column(db.String)
+
+    # because we image by plate, each well_id is imaged once per plate
+    # this fact can be expressed by the following constraint
+    # (assuming that each cell line appears in only one well on each imaging plate)
+    __table_args__ = (
+        db.UniqueConstraint(pml_id, cell_line_id, site_num),
+    )
+
+
+    @db.orm.validates('pml_id')
+    def validate_pml_id(self, key, value):
+        result = re.match(r'^PML[0-9]{4}$', value)
+        if result is None:
+            raise ValueError('Invalid pml_id %s' % value)
+        return value
+
+    @db.orm.validates('imaging_round_id')
+    def validate_imaging_round_id(self, key, value):
+        result = re.match(r'^R[0-9]{2}$', value)
+        if result is None:
+            raise ValueError('Invalid imaging_round_id %s' % value)
+        return value
+
+
+

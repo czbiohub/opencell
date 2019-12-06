@@ -349,14 +349,14 @@ class PolyclonalLineOperations(object):
         *assuming* that there is only one electroporation of one instance of the plate design. 
         '''
 
-        PI = models.PlateInstance
-        EP = models.Electroporation
+        pi = models.PlateInstance
+        ep = models.Electroporation
 
-        ep = session.query(EP).filter(
-            EP.plate_instance==session.query(PI).filter(PI.plate_design_id==design_id).first()
+        this_ep = session.query(ep).filter(
+            ep.plate_instance==session.query(pi).filter(pi.plate_design_id==design_id).first()
         ).first()
 
-        for line in ep.electroporation_lines:
+        for line in this_ep.electroporation_lines:
             if line.well_id==well_id:
                 return cls(line.cell_line)
         
@@ -400,7 +400,18 @@ class PolyclonalLineOperations(object):
 
         add_and_commit(session, sequencing_results, errors=errors)
 
-    
+
+    def insert_microscopy_fov(self, session, fov_attributes, errors='warn'):
+        '''
+        '''
+
+        fov = models.MicroscopyFOV(
+            cell_line=self.cell_line,
+            **fov_attributes)
+
+        add_and_commit(session, fov, errors=errors)
+
+
     def construct_json(self, session):
         '''
         Build the JSON array returned by the API's polyclonalline endpoint

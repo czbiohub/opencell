@@ -25,7 +25,7 @@ except ImportError:
     sys.path.append('/home/projects/dragonfly-automation')
     from dragonfly_automation.fov_models import PipelineFOVScorer
     
-
+# the location of the PlateMicroscopy directory on our ESS partition from `cap`
 ESS_ROOT = '/gpfsML/ML_group/PlateMicroscopy/'
 
 
@@ -148,7 +148,7 @@ def inspect_cached_metadata(manager):
 
 def process_raw_tiffs(manager, dst_root):
     '''
-    Parse metadata and make projections for all raw TIFFs
+    Parse metadata from, and make projections for, all raw TIFFs
 
     Note that manager.process_raw_tiff returns a dict of raw tiff metadata,
     which we aggregate and save as a CSV
@@ -161,19 +161,6 @@ def process_raw_tiffs(manager, dst_root):
 
     results = execute_tasks(tasks)
     pd.DataFrame(data=results).to_csv(os.path.join(dst_root, 'aggregated-raw-tiff-metadata.csv'), index=False)
-
-
-def aggregate_processing_events(manager, dst_root):
-
-    paths = manager.aggregate_filepaths(
-        dst_root, kind='metadata', tag='raw-tiff-processing-events', ext='csv')
-
-    tasks = [load_csv(path) for path in paths]
-    results = execute_tasks(tasks)
-
-    df = pd.concat([df for df in results if df is not None])
-    df.to_csv(os.path.join(dst_root, 'aggregated-processing-events.csv'), index=False)
-
 
 
 def calculate_fov_features(manager, dst_root):
@@ -189,6 +176,26 @@ def calculate_fov_features(manager, dst_root):
 
     results = execute_tasks(tasks)
     pd.DataFrame(data=results).to_csv(os.path.join(dst_root, 'aggregated-fov-features.csv'), index=False)
+
+
+
+def aggregate_processing_events(manager, dst_root):
+    '''
+    'Processing events' are events/errors that occurred in micromanager.RawPipelineTIFF
+    (which is called by process_raw_tiffs)
+
+    TODO: refactor this to eliminate the dependence on manager.aggregate_filepaths,
+    which no longer exists
+
+    '''
+    paths = manager.aggregate_filepaths(
+        dst_root, kind='metadata', tag='raw-tiff-processing-events', ext='csv')
+
+    tasks = [load_csv(path) for path in paths]
+    results = execute_tasks(tasks)
+
+    df = pd.concat([df for df in results if df is not None])
+    df.to_csv(os.path.join(dst_root, 'aggregated-processing-events.csv'), index=False)
 
 
 def main():

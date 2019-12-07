@@ -22,8 +22,6 @@ def populate(url, drop_all=False, errors='warn'):
     This loads the crispr designs, plates, electroporations, polyclonal lines,
     for Plates 1-19
 
-    TODO: insert FACS results and microscopy datasets
-
     errors : one of 'raise', 'warn', 'ignore'
     '''
     engine = db.create_engine(url)
@@ -88,7 +86,7 @@ def populate(url, drop_all=False, errors='warn'):
         '../data/2019-06-24_electroporations.csv')
 
     progenitor_line = ops.get_or_create_progenitor_cell_line(session, constants.PARENTAL_LINE_NAME)
-    for ind, row in electroporation_history.iterrows():
+    for _, row in electroporation_history.iterrows():
         print('Inserting electroporation of %s' % row.plate_id)
 
         # get the first (and, we assume, only) plate instance
@@ -123,14 +121,14 @@ def insert_facs(session, errors='warn'):
         d[(row['plate_id'], row['well_id'])] = row
     facs_histograms = d
 
-    for ind, row in facs_properties.iterrows():
+    for _, row in facs_properties.iterrows():
         plate_id = row.plate_id
         well_id = utils.format_well_id(row.well_id)
 
         # the polyclonal line
         try:
             pcl_ops = ops.PolyclonalLineOperations.from_plate_well(session, plate_id, well_id)
-        except ValueError as error:
+        except ValueError:
             print('No polyclonal line for (%s, %s)' % (plate_id, well_id))
             continue
 
@@ -139,7 +137,7 @@ def insert_facs(session, errors='warn'):
         histograms = facs_histograms.get((plate_id, well_id))
 
         row = row.drop(['plate_id', 'well_id'])
-        pcl_ops.insert_facs_results(session, histograms, row, errors=errors)
+        pcl_ops.insert_facs_result(session, histograms, row, errors=errors)
 
 
 def insert_microscopy_datasets(session, errors='warn'):
@@ -153,7 +151,7 @@ def insert_microscopy_datasets(session, errors='warn'):
     filepath = '../data/2019-12-05_Pipeline-microscopy-master-key_PlateMicroscopy-MLs-raw.csv'
     exp_md = file_utils.load_microscopy_master_key(filepath)
 
-    for ind, row in exp_md.iterrows():
+    for _, row in exp_md.iterrows():
         dataset = models.MicroscopyDataset(
             pml_id=row.pml_id, 
             date=row.date, 
@@ -180,10 +178,10 @@ def insert_plate_microscopy_fovs(session, cache_dir=None, errors='warn'):
     # generate the raw metadata
     pm.construct_metadata()
     pm.construct_raw_metadata()
-    md_raw = pm.md_raw.groupby(['plate_id', 'well_id'])
+    metadata = pm.md_raw.groupby(['plate_id', 'well_id'])
 
     plate_id = None
-    for group in md_raw.groups:
+    for group in metadata.groups:
         if plate_id is None or group[0] != plate_id:
             print('Inserting %s' % group[0])
         plate_id, well_id = group
@@ -194,5 +192,5 @@ def insert_plate_microscopy_fovs(session, cache_dir=None, errors='warn'):
             print('No polyclonal line for (%s, %s)' % group)
             continue
 
-        md_raw_crop = md_raw.get_group(group)
-        pcl_ops.insert_microscopy_fovs(session, md_raw_crop, errors='ignore')
+        group_metadata = metadata.get_group(group)
+        pcl_ops.insert_microscopy_fovs(session, group_metadata, errors='ignore')

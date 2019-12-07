@@ -41,6 +41,34 @@ class RawZStackProcessor:
         # create site_id from site_num
         self.site_id = 'S%02d' % int(self.site_num)
 
+        # placeholder for the models.MicroscopyFOV instance
+        # (if one is provided)
+        self.fov = None
+
+
+    @classmethod
+    def from_database(cls, fov):
+        '''
+        Initialize a processor given a microscopy_fov instance from opencelldb
+        '''
+
+        well_id = fov.cell_line.electroporation_line.well_id
+        plate_design = fov.cell_line.electroporation_line.electroporation.plate_instance.plate_design
+        crispr_design = [d for d in plate_design.crispr_designs if d.well_id==well_id].pop()
+
+        processor = cls(
+            pml_id=fov.dataset.pml_id,
+            parental_line=fov.cell_line.parent.name,
+            imaging_round_id=fov.imaging_round_id,
+            plate_id=plate_design.design_id,
+            well_id=well_id,
+            site_num=fov.site_num,
+            raw_filepath=fov.raw_filename,
+            target_name=crispr_design.target_name)
+
+        processor.fov = fov
+        return processor
+
 
     def src_filepath(self, src_root=None):
         '''
@@ -125,7 +153,7 @@ class RawZStackProcessor:
         return filepath
 
 
-    def process_raw_tiff(self, dst_root, src_root):
+    def process_raw_tiff(self, src_root, dst_root):
         '''
         Process a single raw TIFF
             1) parse the micromanager and other metadata
@@ -165,11 +193,10 @@ class RawZStackProcessor:
         return tiff.global_metadata
 
 
-    def calculate_fov_features(self, dst_root, pipeline_fov_scorer):
+    def calculate_fov_features(self, dst_root, fov_scorer):
         '''
-        scorer : an instance of PipelineFOVScorer in 'training' mode
-        row : a row of self.md_raw
         dst_root : the root destination to which z-projections were saved in process_raw_tiff
+        fov_scorer : an instance of PipelineFOVScorer in 'training' mode
         '''
 
         # construct the filepath to the DAPI z-projection
@@ -177,26 +204,9 @@ class RawZStackProcessor:
         filepath = self.tag_filepath(filepath, tag='DAPI-PROJ-Z', ext='tif')
 
         # calculate the features from the z-projection
-        features = pipeline_fov_scorer.process_existing_fov(filepath)
+        features = fov_scorer.process_existing_fov(filepath)
         return features
 
-
-    def aggregate_filepaths(self, rows, dst_root, kind='metadata', tag='metadata-parsing-events', ext='csv'):
-        '''
-        Aggregate filepaths for a particular kind of processed file
-        by generating these filepaths (which may not exist) from the `rows` dataframe
-
-        For now, `kind` and `tag` must match the corresponding kwargs 
-        in the method that generated/will generate the processed files
-        '''
-
-        paths = []
-        for ind, row in rows.iterrows():
-            path = self.dst_filepath(dst_root, kind=kind)
-            path = self.tag_filepath(path, tag=tag, ext=ext)
-            paths.append(path)
-            
-        return paths
 
         
         

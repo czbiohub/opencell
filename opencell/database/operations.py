@@ -94,7 +94,7 @@ def get_or_create_progenitor_cell_line(session, name, notes=None, create=False):
 
     elif create:
         print("Creating progenitor cell line with name '%s'" % name)
-        cell_line = models.CellLine(name=name, notes=notes, line_type=constants.CellLineTypeEnum.PROGENITOR)
+        cell_line = models.CellLine(name=name, notes=notes, line_type='PROGENITOR')
         add_and_commit(session, cell_line, errors='raise')
 
     else:
@@ -300,7 +300,7 @@ class ElectroporationOperations(object):
             
             cell_line = models.CellLine(
                 parent_id=electroporation.cell_line.id,
-                line_type=constants.CellLineTypeEnum.POLYCLONAL)
+                line_type='POLYCLONAL')
 
             ep_line = models.ElectroporationLine(
                 well_id=design.well_id,
@@ -351,7 +351,7 @@ class PolyclonalLineOperations(object):
         raise ValueError('No polyclonal line found for well %s of plate %s' % (well_id, design_id))
     
     
-    def insert_facs_results(self, session, histograms, scalars, errors='warn'):
+    def insert_facs_result(self, session, histograms, scalars, errors='warn'):
         '''
         Insert the processed FACS data for a single polyclonal cell line
 
@@ -359,44 +359,43 @@ class PolyclonalLineOperations(object):
         '''
 
         # drop any existing data
-        if self.cell_line.facs_results:
-            delete_and_commit(session, self.cell_line.facs_results)
+        if self.cell_line.facs_result:
+            delete_and_commit(session, self.cell_line.facs_result)
 
-        facs_results = models.FACSResults(
+        facs_result = models.FACSResult(
             cell_line=self.cell_line,
             histograms=histograms,
             **scalars)
 
-        add_and_commit(session, facs_results, errors=errors)
+        add_and_commit(session, facs_result, errors=errors)
 
     
-    def insert_sequencing_results(self, session, scalars, errors='warn'):
+    def insert_sequencing_result(self, session, scalars, errors='warn'):
         '''
         Insert a limited set of the sequencing results - just the HDR/all and HDR/modified ratios
-        TODO: insert more detailed results
         '''
 
         # drop any existing data
-        if self.cell_line.sequencing_results:
-            delete_and_commit(session, self.cell_line.sequencing_results)
+        if self.cell_line.sequencing_result:
+            delete_and_commit(session, self.cell_line.sequencing_result)
 
-        sequencing_results = models.SequencingResults(
+        sequencing_result = models.SequencingResult(
             cell_line=self.cell_line,
             **scalars)
 
-        add_and_commit(session, sequencing_results, errors=errors)
+        add_and_commit(session, sequencing_result, errors=errors)
 
 
-    def insert_microscopy_fovs(self, session, md_raw, errors='warn'):
+    def insert_microscopy_fovs(self, session, metadata, errors='warn'):
         '''
         Insert a set of microscopy FOVs for the cell line
 
-        md_raw : dataframe of raw FOV metadata with the following columns:
+        metadata : dataframe of raw FOV metadata with the following columns:
         pml_id, imaging_round_id, site_num, raw_filepath
         '''
 
         fovs = []
-        for ind, row in md_raw.iterrows():
+        for _, row in metadata.iterrows():
             columns = {
                 'pml_id': row.pml_id, 
                 'imaging_round_id': row.imaging_round_id, 

@@ -16,7 +16,7 @@ from opencell import constants
 from opencell.imaging import micromanager
 
 
-class RawFOVProcessor:
+class RawZStackProcessor:
 
     def __init__(
         self, 

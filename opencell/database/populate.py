@@ -10,6 +10,7 @@ import sqlalchemy.ext.declarative
 from opencell import constants, file_utils
 from opencell.database import models, utils
 from opencell.database import operations as ops
+from opencell.imaging.managers import PlateMicroscopyManager
 
 
 def populate(url, drop_all=False, errors='warn'):
@@ -103,13 +104,11 @@ def populate(url, drop_all=False, errors='warn'):
             errors=errors)
 
 
-def populate_facs(session, errors='warn'):
+def insert_facs(session, errors='warn'):
     '''
-    Insert FACS results and histograms
-
+    Insert FACS results and histograms for each polyclonal cell line
     '''
 
-    print('Inserting FACS results')
     results_filepath = '../results/2019-07-16_all-facs-results.csv'
     histograms_filepath = '../../opencell-off-git/results/2019-07-16_all-dists.json'
 
@@ -132,7 +131,7 @@ def populate_facs(session, errors='warn'):
         try:
             pcl_ops = ops.PolyclonalLineOperations.from_plate_well(session, plate_id, well_id)
         except ValueError as error:
-            print(error)
+            print('No polyclonal line for (%s, %s)' % (plate_id, well_id))
             continue
 
         # the histograms (dict of 'x', 'y_sample', 'y_fitted_ref')
@@ -143,3 +142,57 @@ def populate_facs(session, errors='warn'):
         pcl_ops.insert_facs_results(session, histograms, row, errors=errors)
 
 
+def insert_microscopy_datasets(session, errors='warn'):
+    '''
+    Insert pipeline microscopy datasets 
+    
+    Currently, only inserts datasets up to PML0179
+    (these datasets correspond to all datasets in the PlateMicroscopy directory)
+    '''
+
+    filepath = '../data/2019-12-05_Pipeline-microscopy-master-key_PlateMicroscopy-MLs-raw.csv'
+    exp_md = file_utils.load_microscopy_master_key(filepath)
+
+    for ind, row in exp_md.iterrows():
+        dataset = models.MicroscopyDataset(
+            pml_id=row.pml_id, 
+            date=row.date, 
+            user=row.imager, 
+            description=row.description,
+            root_directory='plate_microscopy')
+
+        ops.add_and_commit(session, dataset, errors='warn')
+
+
+def insert_plate_microscopy_fovs(session, cache_dir=None, errors='warn'):
+    '''
+    Insert all raw FOVs from the PlateMicroscopy directory
+
+    To speed things up, we group the FOVs by (plate_id, well_id)
+    so that all FOVs for each cell_line are inserted together
+
+    cache_dir : local directory in which the results of calling os.walk
+        on the PlateMicroscopy directory are cached
+    '''
+
+    pm = PlateMicroscopyManager(cache_dir=cache_dir)
+
+    # generate the raw metadata
+    pm.construct_metadata()
+    pm.construct_raw_metadata()
+    md_raw = pm.md_raw.groupby(['plate_id', 'well_id'])
+
+    plate_id = None
+    for group in md_raw.groups:
+        if plate_id is None or group[0] != plate_id:
+            print('Inserting %s' % group[0])
+        plate_id, well_id = group
+
+        try:
+            pcl_ops = ops.PolyclonalLineOperations.from_plate_well(session, plate_id, well_id)
+        except:
+            print('No polyclonal line for (%s, %s)' % group)
+            continue
+
+        md_raw_crop = md_raw.get_group(group)
+        pcl_ops.insert_microscopy_fovs(session, md_raw_crop, errors='ignore')

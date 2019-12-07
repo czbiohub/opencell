@@ -44,6 +44,10 @@ class PlateMicroscopyManager:
         with open(self.cached_os_walk_filepath, 'rb') as file:
             self.os_walk = pickle.load(file)
 
+        # the trailing slash is required to correctly remove
+        # the root_dir from the raw filepaths in construct_metadata
+        self.root_dir = '%s%s' % (self.os_walk[0][0], os.sep)
+
 
     def cache_os_walk(self):
         if os.path.isfile(self.cached_os_walk_filepath):
@@ -247,11 +251,23 @@ class PlateMicroscopyManager:
         # in construct_metadata when we generated the is_raw column)
         md_raw['exp_id'] = [exp_dir.split('_')[0] for exp_dir in md_raw.exp_dir]
 
+        # the PML ID, which denotes pipeline-ML microsopy acquisitions,
+        # and which is what acqusitions are keyed on in the database
+        md_raw['pml_id'] = [f'P{ml_id}' for ml_id in md_raw.exp_id]
+
         # plate_id, round_id, site_id
         md_raw['site_id'] = ['S%02d' % int(num) for num in md_raw.site_num]
         md_raw['plate_id'] = ['P%04d' % num for num in md_raw.plate_num]
         md_raw['imaging_round_id'] = ['R%02d' % num for num in md_raw.imaging_round_num]
 
+        # reconstruct the raw filepath (relative to the PlateMicroscopy directory)
+        for ind, row in md_raw.iterrows():
+            md_raw.at[ind, 'raw_filepath'] = os.path.join(
+                row.plate_dir, 
+                row.exp_dir, 
+                row.exp_subdir if not pd.isna(row.exp_subdir) else '',
+                row.filename)
+    
         # construct an fov_id that should be globally unique
         for ind, row in md_raw.iterrows():
             md_raw.at[ind, 'fov_id'] = '%s-%s-%s' % (row.exp_id, row.well_id, row.site_id)

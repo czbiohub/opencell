@@ -365,8 +365,7 @@ class PolyclonalLineOperations(object):
         facs_results = models.FACSResults(
             cell_line=self.cell_line,
             histograms=histograms,
-            **scalars
-        )
+            **scalars)
 
         add_and_commit(session, facs_results, errors=errors)
 
@@ -383,8 +382,7 @@ class PolyclonalLineOperations(object):
 
         sequencing_results = models.SequencingResults(
             cell_line=self.cell_line,
-            **scalars
-        )
+            **scalars)
 
         add_and_commit(session, sequencing_results, errors=errors)
 

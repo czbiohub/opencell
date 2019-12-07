@@ -162,9 +162,7 @@ class RawZStackProcessor:
         events_path = self.tag_filepath(dst_filepath, tag='raw-tiff-processing-events', ext='csv')
         tiff.save_events(events_path)
 
-        # append the fov_id to the tiff metadata
-        tiff_metadata = tiff.global_metadata
-        return tiff_metadata
+        return tiff.global_metadata
 
 
     def calculate_fov_features(self, dst_root, pipeline_fov_scorer):

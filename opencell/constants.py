@@ -1,22 +1,8 @@
 
-import enum
-
 
 # the parental line for plates 1-19
 # (this is mNeonGreen1-10 driven by SFFV promotor in HEK293)
 PARENTAL_LINE_NAME = 'czML0383'
-
-
-class TerminusTypeEnum(enum.Enum):
-    N_TERMINUS = 'N_TERMINUS'
-    C_TERMINUS = 'C_TERMINUS'
-    INTERNAL = 'INTERNAL'
-
-
-class CellLineTypeEnum(enum.Enum):
-    PROGENITOR = 'PROGENITOR'
-    POLYCLONAL = 'POLYCLONAL'
-    MONOCLONAL = 'MONOCLONAL'
 
 
 # well_ids that appear in various spreadsheets and raw datasets

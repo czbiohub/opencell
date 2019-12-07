@@ -273,6 +273,7 @@ class PlateMicroscopyManager:
             md_raw.at[ind, 'fov_id'] = '%s-%s-%s' % (row.exp_id, row.well_id, row.site_id)
 
         # drop non-unique fov_ids
+        # TODO: consider removing this since it is redundant with database constraints
         n = md_raw.groupby('fov_id').count()
         degenerate_fov_ids = n.loc[n.filename > 1].index
         md_raw = md_raw.loc[~md_raw.fov_id.isin(degenerate_fov_ids)]

@@ -97,7 +97,7 @@ class CellLine(Base):
         For simplicity, we only allow instantiation using an explicit parent_id,
         not by providing a list of children instances or a parent instance
         '''
-        if parent_id is None and line_type!=CellLineTypeEnum.PROGENITOR:
+        if parent_id is None and line_type!=CellLineTypeEnum.PROGENITOR.value:
             raise ValueError('A parent_id is required for all derived cell lines')
 
         self.line_type = line_type

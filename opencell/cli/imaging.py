@@ -132,7 +132,7 @@ def inspect_plate_microscopy_metadata(plate_microscopy_manager):
     ''')
 
 
-def insert_plate_microscopy_fovs(session, cache_dir=None, errors='warn'):
+def insert_plate_microscopy_metadata(session, cache_dir=None, errors='warn'):
     '''
     Insert all raw FOVs from the PlateMicroscopy directory
 
@@ -157,7 +157,7 @@ def insert_plate_microscopy_fovs(session, cache_dir=None, errors='warn'):
         plate_id, well_id = group
 
         try:
-            pcl_ops = ops.PolyclonalLineOperations.from_plate_well(session, plate_id, well_id)
+            pcl_ops = operations.PolyclonalLineOperations.from_plate_well(session, plate_id, well_id)
         except:
             print('No polyclonal line for (%s, %s)' % group)
             continue
@@ -250,7 +250,7 @@ def main():
 
     if args.insert_plate_microscopy_metadata:
         with operations.session_scope(db_url) as session:
-            insert_plate_microscopy_fovs(session, cache_dir=args.cache_dir, errors='warn')
+            insert_plate_microscopy_metadata(session, cache_dir=args.cache_dir, errors='warn')
 
     if args.process_raw_tiffs:
         with operations.session_scope(db_url) as session:

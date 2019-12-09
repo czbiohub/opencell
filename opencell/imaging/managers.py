@@ -44,9 +44,11 @@ class PlateMicroscopyManager:
         with open(self.cached_os_walk_filepath, 'rb') as file:
             self.os_walk = pickle.load(file)
 
-        # the trailing slash is required to correctly remove
-        # the root_dir from the raw filepaths in construct_metadata
-        self.root_dir = '%s%s' % (self.os_walk[0][0], os.sep)
+        # note that a trailing slash is required on self.root_dir 
+        # to correctly remove the root_dir from the raw filepaths in construct_metadata
+        self.root_dir = self.os_walk[0][0]
+        if self.root_dir[-1] != os.sep:
+            self.root_dir += os.sep
 
 
     def cache_os_walk(self):

@@ -168,8 +168,8 @@ class FACSHistograms(Resource):
         The FACS histograms for a given cell_line_id
         '''
         
-        facs_results = current_app.Session.query(models.FACSResults).filter(
-            models.FACSResults.cell_line_id==cell_line_id
+        facs_results = current_app.Session.query(models.FACSResult).filter(
+            models.FACSResult.cell_line_id==cell_line_id
         ).first()
 
         if facs_results:

@@ -10,7 +10,6 @@ import sqlalchemy.ext.declarative
 from opencell import constants, file_utils
 from opencell.database import models, utils
 from opencell.database import operations as ops
-from opencell.imaging.managers import PlateMicroscopyManager
 
 
 def populate(url, drop_all=False, errors='warn'):
@@ -101,6 +100,8 @@ def populate(url, drop_all=False, errors='warn'):
             date=row.date,
             errors=errors)
 
+    session.close()
+
 
 def insert_facs(session, results_filepath, histograms_filepath, errors='warn'):
     '''
@@ -157,38 +158,6 @@ def insert_plate_microscopy_datasets(session, errors='warn'):
             user=row.imager, 
             description=row.description,
             root_directory=root_directory)
+
         ops.add_and_commit(session, dataset, errors='warn')
 
-
-def insert_plate_microscopy_fovs(session, cache_dir=None, errors='warn'):
-    '''
-    Insert all raw FOVs from the PlateMicroscopy directory
-
-    To speed things up, we group the FOVs by (plate_id, well_id)
-    so that all FOVs for each cell_line are inserted together
-
-    cache_dir : local directory in which the results of calling os.walk
-        on the PlateMicroscopy directory are cached
-    '''
-
-    pm = PlateMicroscopyManager(cache_dir=cache_dir)
-
-    # generate the raw metadata
-    pm.construct_metadata()
-    pm.construct_raw_metadata()
-    metadata = pm.md_raw.groupby(['plate_id', 'well_id'])
-
-    plate_id = None
-    for group in metadata.groups:
-        if plate_id is None or group[0] != plate_id:
-            print('Inserting %s' % group[0])
-        plate_id, well_id = group
-
-        try:
-            pcl_ops = ops.PolyclonalLineOperations.from_plate_well(session, plate_id, well_id)
-        except:
-            print('No polyclonal line for (%s, %s)' % group)
-            continue
-
-        group_metadata = metadata.get_group(group)
-        pcl_ops.insert_microscopy_fovs(session, group_metadata, errors='ignore')

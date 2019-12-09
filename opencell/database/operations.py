@@ -10,7 +10,7 @@ from opencell import constants
 
 
 @contextmanager
-def orm_session(url, echo=False):
+def session_scope(url, echo=False):
 
     engine = db.create_engine(url, echo=echo)
     Session = db.orm.sessionmaker(bind=engine)
@@ -24,6 +24,15 @@ def orm_session(url, echo=False):
         raise
     finally:
         session.close()
+
+
+def add_all(session, rows):
+    try:
+        session.add_all(rows)
+        session.commit()
+    except Exception as exception:
+        session.rollback()
+        print('Error in add_all: %s' % str(exception))
 
 
 def add_and_commit(session, instances, errors='raise'):

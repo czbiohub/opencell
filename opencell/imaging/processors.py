@@ -41,9 +41,8 @@ class RawZStackProcessor:
         # create site_id from site_num
         self.site_id = 'S%02d' % int(self.site_num)
 
-        # placeholder for the models.MicroscopyFOV instance
-        # (if one is provided)
-        self.fov = None
+        # placeholder for the fov_id
+        self.fov_id = None
 
 
     @classmethod
@@ -66,7 +65,7 @@ class RawZStackProcessor:
             raw_filepath=fov.raw_filename,
             target_name=crispr_design.target_name)
 
-        processor.fov = fov
+        processor.fov_id = fov.id
         return processor
 
 
@@ -149,8 +148,19 @@ class RawZStackProcessor:
         '''
         # remove the existing extension (if any)
         filepath, _ = os.path.splitext(filepath)
-        filepath = f'{filepath}-{tag}.{ext}'
+        filepath = f'{filepath}_{tag}.{ext}'
         return filepath
+
+
+    def append_fov_id(self, d):
+        d['fov_id'] = self.fov_id
+        return d
+
+
+    @staticmethod
+    def sanitize_dict(d):
+        '''hackish way to make a shallow dict safe for json.dump'''
+        return json.loads(pd.Series(data=d).to_json())
 
 
     def process_raw_tiff(self, src_root, dst_root):
@@ -165,6 +175,9 @@ class RawZStackProcessor:
         '''
 
         src_filepath = self.src_filepath(src_root=src_root)
+
+        if not os.path.isfile(src_filepath):
+            return self.append_fov_id({})
 
         tiff = micromanager.RawPipelineTIFF(src_filepath, verbose=False)
         tiff.parse_micromanager_metadata()
@@ -190,7 +203,9 @@ class RawZStackProcessor:
         events_path = self.tag_filepath(dst_filepath, tag='raw-tiff-processing-events', ext='csv')
         tiff.save_events(events_path)
 
-        return tiff.global_metadata
+        metadata = self.append_fov_id(tiff.global_metadata)
+        metadata = self.sanitize_dict(metadata)
+        return metadata
 
 
     def calculate_fov_features(self, dst_root, fov_scorer):
@@ -205,6 +220,9 @@ class RawZStackProcessor:
 
         # calculate the features from the z-projection
         features = fov_scorer.process_existing_fov(filepath)
+
+        features = self.append_fov_id(features)
+        features = self.sanitize_dict(features)
         return features
 
 

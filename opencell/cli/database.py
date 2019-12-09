@@ -2,8 +2,10 @@
 import os
 import sys
 import json
+import argparse
 import pandas as pd
 import sqlalchemy as db
+
 import sqlalchemy.orm
 import sqlalchemy.ext.declarative
 
@@ -12,9 +14,55 @@ from opencell.database import models, utils
 from opencell.database import operations as ops
 
 
-def populate(url, drop_all=False, errors='warn'):
+def parse_args():
     '''
+    '''
+    parser = argparse.ArgumentParser()
 
+    # the location of the FACS results
+    parser.add_argument(
+        '--facs-results-dir',
+        dest='facs_results_dir')
+
+    # path to credentials JSON
+    parser.add_argument(
+        '--credentials', 
+        dest='credentials', 
+        required=True)
+
+    # CLI args whose presence in the command sets them to True
+    action_arg_names = [
+        'drop_all', 
+        'populate',
+        'insert_facs',
+    ]
+
+    for arg_name in action_arg_names:
+        parser.add_argument(
+            '--%s' % arg_name.replace('_', '-'), 
+            dest=arg_name,
+            action='store_true',
+            required=False)
+
+    for arg_name in action_arg_names:
+        parser.set_defaults(**{arg_name: False})
+
+    args = parser.parse_args()
+    return args
+
+
+def maybe_drop_and_create(engine, drop=False):
+
+    if drop:
+        print('Dropping all tables')
+        models.Base.metadata.drop_all(engine)
+
+    print('Creating all tables')
+    models.Base.metadata.create_all(engine)
+
+
+def populate(session, errors='warn'):
+    '''
     Initialize and populate the opencell database
     from a set of 'snapshot' CSVs of various google spreadsheets
 
@@ -23,23 +71,6 @@ def populate(url, drop_all=False, errors='warn'):
 
     errors : one of 'raise', 'warn', 'ignore'
     '''
-    engine = db.create_engine(url)
-
-    # -----------------------------------------------------------------------------------
-    #
-    # Set up tables and session
-    #
-    # -----------------------------------------------------------------------------------
-    if drop_all:
-        print('Dropping all tables')
-        models.Base.metadata.drop_all(engine)
-
-        print('Creating all tables')
-        models.Base.metadata.create_all(engine)
-
-    Session = db.orm.sessionmaker(bind=engine)
-    session = Session()
-
 
     # -----------------------------------------------------------------------------------
     #
@@ -54,7 +85,6 @@ def populate(url, drop_all=False, errors='warn'):
         name=constants.PARENTAL_LINE_NAME, 
         notes='mNG1-10 in HEK293', 
         create=True)
-
 
     # -----------------------------------------------------------------------------------
     #
@@ -71,7 +101,6 @@ def populate(url, drop_all=False, errors='warn'):
         print('Inserting crispr designs for %s' % plate_id)
         plate_ops = ops.PlateOperations.get_or_create_plate_design(session, plate_id)
         plate_ops.create_crispr_designs(session, library_snapshot, drop_existing=False, errors=errors)
-
 
     # -----------------------------------------------------------------------------------
     #
@@ -100,13 +129,14 @@ def populate(url, drop_all=False, errors='warn'):
             date=row.date,
             errors=errors)
 
-    session.close()
 
-
-def insert_facs(session, results_filepath, histograms_filepath, errors='warn'):
+def insert_facs(session, facs_results_dir, errors='warn'):
     '''
     Insert FACS results and histograms for each polyclonal cell line
     '''
+
+    results_filepath = os.path.join(facs_results_dir, '2019-07-16_all-facs-results.csv')
+    histograms_filepath = os.path.join(facs_results_dir, '2019-07-16_all-dists.json')
 
     # load the cached FACS results
     facs_properties = pd.read_csv(results_filepath)
@@ -161,3 +191,28 @@ def insert_plate_microscopy_datasets(session, errors='warn'):
 
         ops.add_and_commit(session, dataset, errors='warn')
 
+
+def main():
+
+    args = parse_args()
+
+    url = utils.url_from_credentials(args.credentials)
+    engine = db.create_engine(url)
+    Session = db.orm.sessionmaker(bind=engine)
+    session = Session()
+
+    if args.drop_all:
+        maybe_drop_and_create(engine, drop=True)
+    else:
+        maybe_drop_and_create(engine, drop=False)
+
+    if args.populate:
+        populate(session, errors='warn')
+        insert_plate_microscopy_datasets(session, errors='warn')
+
+    if args.insert_facs:
+        insert_facs(session, args.facs_results_dir, errors='warn')
+
+
+if __name__ == '__main__':
+    main()

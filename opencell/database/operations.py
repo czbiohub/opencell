@@ -253,15 +253,6 @@ class PlateOperations(object):
 class ElectroporationOperations(object):
     '''
     Operations that create or modify an electroporation event
-
-    Methods
-    -------
-    from_plate_design_id
-    create_electroporation
-    create_facs_dataset
-    create_imaging_experiment
-    create_clonal_cell_line
-
     '''
 
     def __init__(self, electroporation):

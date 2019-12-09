@@ -102,13 +102,10 @@ def populate(url, drop_all=False, errors='warn'):
             errors=errors)
 
 
-def insert_facs(session, errors='warn'):
+def insert_facs(session, results_filepath, histograms_filepath, errors='warn'):
     '''
     Insert FACS results and histograms for each polyclonal cell line
     '''
-
-    results_filepath = '../results/2019-07-16_all-facs-results.csv'
-    histograms_filepath = '../../opencell-off-git/results/2019-07-16_all-dists.json'
 
     # load the cached FACS results
     facs_properties = pd.read_csv(results_filepath)
@@ -140,13 +137,15 @@ def insert_facs(session, errors='warn'):
         pcl_ops.insert_facs_result(session, histograms, row, errors=errors)
 
 
-def insert_microscopy_datasets(session, errors='warn'):
+def insert_plate_microscopy_datasets(session, errors='warn'):
     '''
-    Insert pipeline microscopy datasets 
-    
-    Currently, only inserts datasets up to PML0179
-    (these datasets correspond to all datasets in the PlateMicroscopy directory)
+    Insert microscopy datasets found in the 'PlateMicroscopy' directory    
+    (these are datasets up to PML0179)
     '''
+
+    # datasets are all from the PlateMicroscopy directory, 
+    # so the root_directory is always the same
+    root_directory = 'plate_microscopy'
 
     filepath = '../data/2019-12-05_Pipeline-microscopy-master-key_PlateMicroscopy-MLs-raw.csv'
     exp_md = file_utils.load_microscopy_master_key(filepath)
@@ -157,8 +156,7 @@ def insert_microscopy_datasets(session, errors='warn'):
             date=row.date, 
             user=row.imager, 
             description=row.description,
-            root_directory='plate_microscopy')
-
+            root_directory=root_directory)
         ops.add_and_commit(session, dataset, errors='warn')
 
 

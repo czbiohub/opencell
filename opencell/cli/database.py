@@ -167,7 +167,7 @@ def insert_facs(session, facs_results_dir, errors='warn'):
 
         # the histograms (dict of 'x', 'y_sample', 'y_fitted_ref')
         # note: keyed by unformatted well_id
-        histograms = facs_histograms.get((plate_id, well_id))
+        histograms = facs_histograms.get((row.plate_id, row.well_id))
 
         row = row.drop(['plate_id', 'well_id'])
         pcl_ops.insert_facs_result(session, histograms, row, errors=errors)

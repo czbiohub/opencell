@@ -63,7 +63,7 @@ def create_app(args):
     def remove_session(error=None):
         app.Session.remove()
 
-    app.run(debug=True)
+    app.run(host='0.0.0.0', debug=True)
 
 
 def parse_args():

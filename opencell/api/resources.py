@@ -100,6 +100,9 @@ class PolyclonalLines(Resource):
         ('thumbnail-sized' means plots on the order of 100px wide)
         '''
 
+        if histograms is None:
+            return None
+
         # x-axis values can be safely rounded to ints
         histograms['x'] = [int(val) for val in histograms['x']]
 
@@ -145,16 +148,16 @@ class PolyclonalLines(Resource):
                 # the facs results (scalars and histograms)
                 # TODO: enforce one-to-one and drop the [0]
                 d['facs_results'], d['facs_histograms'] = {}, {}
-                if line.cell_line.facs_results:
-                    facs_results = line.cell_line.facs_results[0].as_dict()
-                    d['facs_histograms'] = self.simplify_facs_histograms(facs_results.pop('histograms'))    
-                    d['facs_results'] = self.simplify_scalars(facs_results)
+                if line.cell_line.facs_result:
+                    facs_result = line.cell_line.facs_result[0].as_dict()
+                    d['facs_histograms'] = self.simplify_facs_histograms(facs_result.pop('histograms'))    
+                    d['facs_results'] = self.simplify_scalars(facs_result)
 
                 # the sequencing ratios
                 d['sequencing_results'] = {}
-                if line.cell_line.sequencing_results:
+                if line.cell_line.sequencing_result:
                     d['sequencing_results'] = self.simplify_scalars(
-                        line.cell_line.sequencing_results[0].as_dict())
+                        line.cell_line.sequencing_result[0].as_dict())
                     
                 line_data.append(d)
         
@@ -168,13 +171,13 @@ class FACSHistograms(Resource):
         The FACS histograms for a given cell_line_id
         '''
         
-        facs_results = current_app.Session.query(models.FACSResult).filter(
+        facs_result = current_app.Session.query(models.FACSResult).filter(
             models.FACSResult.cell_line_id==cell_line_id
         ).first()
 
-        if facs_results:
+        if facs_result:
             d = {}
-            for key, value in facs_results.histograms.items():
+            for key, value in facs_result.histograms.items():
                 d[key] = value[::2]
             return jsonify(d)
         else:

@@ -1,4 +1,5 @@
 
+import argparse
 from flask import Flask
 from flask_cors import CORS
 from flask_restful import Api
@@ -31,7 +32,7 @@ def create_session_registry(url):
 
 
 
-def create_app():
+def create_app(args):
 
     app = Flask(__name__)
     app.config.from_object(settings.DevConfig)
@@ -48,8 +49,11 @@ def create_app():
     api.init_app(app)
 
 
-    url = utils.url_from_credentials(
-        app.config['DB_CREDENTIALS_FILEPATH'])
+    if args.credentials:
+        credentials = args.credentials
+    else:
+        credentials = app.config['DB_CREDENTIALS_FILEPATH']
+    url = utils.url_from_credentials(credentials)
 
     # create an instance of sqlalchemy's scoped_session registry
     app.Session = create_session_registry(url)
@@ -62,6 +66,14 @@ def create_app():
     app.run(debug=True)
 
 
+def parse_args():
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--credentials', dest='credentials')
+    return parser.parse_args()
+
+
 if __name__=='__main__':
-    create_app()
+    args = parse_args()
+    create_app(args)
     

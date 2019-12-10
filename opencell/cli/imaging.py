@@ -26,7 +26,7 @@ try:
     sys.path.append('/Users/keith.cheveralls/projects/dragonfly-automation')
     from dragonfly_automation.fov_models import PipelineFOVScorer
 except ImportError:
-    sys.path.append('/home/projects/dragonfly-automation')
+    sys.path.append('/gpfsML/ML_group/KC/projects/dragonfly-automation')
     from dragonfly_automation.fov_models import PipelineFOVScorer
     
 
@@ -177,7 +177,10 @@ def do_fov_tasks(session, task_name, result_name, plate_microscopy_dir=None, dst
     (that is, within the method wrapped by dask.delayed)
 
     TODO: handle multiple source directories 
-    (that is, plate_microscopy_dir and dragonfly_automation_data_dir)
+    (that is, plate_microscopy_dir and dragonfly_automation_dir)
+
+    TODO: logic to skip already-processed FOVs
+
     '''
 
     tasks = []
@@ -253,13 +256,19 @@ def main():
             insert_plate_microscopy_metadata(session, cache_dir=args.cache_dir, errors='warn')
 
     if args.process_raw_tiffs:
-        with operations.session_scope(db_url) as session:
-            do_fov_tasks(
-                session, 
-                task_name='process-raw-tiffs', 
-                result_name='raw-tiff-metadata',
-                plate_microscopy_dir=args.plate_microscopy_dir, 
-                dst_root=args.dst_root)
+
+        try:
+            with operations.session_scope(db_url) as session:
+                do_fov_tasks(
+                    session,
+                    task_name='process-raw-tiffs',
+                    result_name='raw-tiff-metadata',
+                    plate_microscopy_dir=args.plate_microscopy_dir,
+                    dst_root=args.dst_root)
+
+        except Exception as error:
+            with open('/gpfsML/ML_group/KC/%s_process_raw_tiffs_error.log' % timestamp(), 'w') as file:
+                file.write(str(error))
 
     if args.calculate_fov_features:
         with operations.session_scope(db_url) as session:
@@ -267,7 +276,6 @@ def main():
                 session, 
                 task_name='calculate-fov-features', 
                 result_name='fov-features',
-                plate_microscopy_dir=args.plate_microscopy_dir, 
                 dst_root=args.dst_root)
 
 

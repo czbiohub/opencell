@@ -35,14 +35,27 @@ class RawZStackProcessor:
         self.plate_id = plate_id
         self.well_id = well_id
         self.site_num = site_num
-        self.target_name = target_name
         self.raw_filepath = raw_filepath
+
+        # clean up the target_name (remove slashes and dashes)
+        self.target_name = self.sanitize_target_name(target_name)
 
         # create site_id from site_num
         self.site_id = 'S%02d' % int(self.site_num)
 
         # placeholder for the fov_id
         self.fov_id = None
+
+
+    @staticmethod
+    def sanitize_target_name(target_name):
+        '''
+        Create a filename-safe target_name by removing slashes and dashes
+        '''
+        forbidden_chars = ['-', '_', '/']
+        for char in forbidden_chars:
+            target_name = target_name.replace(char, '')
+        return target_name
 
 
     @classmethod

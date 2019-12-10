@@ -19,6 +19,11 @@ def parse_args():
     '''
     parser = argparse.ArgumentParser()
 
+    # the location of the cached opencell metadata
+    parser.add_argument(
+        '--data-dir',
+        dest='data_dir')
+
     # the location of the FACS results
     parser.add_argument(
         '--facs-results-dir',
@@ -61,7 +66,7 @@ def maybe_drop_and_create(engine, drop=False):
     models.Base.metadata.create_all(engine)
 
 
-def populate(session, errors='warn'):
+def populate(session, data_dir, errors='warn'):
     '''
     Initialize and populate the opencell database
     from a set of 'snapshot' CSVs of various google spreadsheets
@@ -94,7 +99,7 @@ def populate(session, errors='warn'):
     print('Inserting crispr designs for plates 1-19')
 
     library_snapshot = file_utils.load_library_snapshot(
-        '../data/2019-06-26_mNG11_HEK_library.csv')
+        os.path.join(data_dir, '2019-06-26_mNG11_HEK_library.csv'))
 
     plate_ids = sorted(set(library_snapshot.plate_id))
     for plate_id in plate_ids:
@@ -111,7 +116,7 @@ def populate(session, errors='warn'):
     print('Inserting electroporations and polyclonal lines for plates 1-19')
 
     electroporation_history = file_utils.load_electroporation_history(
-        '../data/2019-06-24_electroporations.csv')
+        os.path.join(data_dir, '2019-06-24_electroporations.csv'))
 
     progenitor_line = ops.get_or_create_progenitor_cell_line(session, constants.PARENTAL_LINE_NAME)
     for _, row in electroporation_history.iterrows():
@@ -168,7 +173,7 @@ def insert_facs(session, facs_results_dir, errors='warn'):
         pcl_ops.insert_facs_result(session, histograms, row, errors=errors)
 
 
-def insert_plate_microscopy_datasets(session, errors='warn'):
+def insert_plate_microscopy_datasets(session, data_dir, errors='warn'):
     '''
     Insert microscopy datasets found in the 'PlateMicroscopy' directory    
     (these are datasets up to PML0179)
@@ -178,7 +183,7 @@ def insert_plate_microscopy_datasets(session, errors='warn'):
     # so the root_directory is always the same
     root_directory = 'plate_microscopy'
 
-    filepath = '../data/2019-12-05_Pipeline-microscopy-master-key_PlateMicroscopy-MLs-raw.csv'
+    filepath = os.path.join(data_dir, '2019-12-05_Pipeline-microscopy-master-key_PlateMicroscopy-MLs-raw.csv')
     exp_md = file_utils.load_microscopy_master_key(filepath)
 
     for _, row in exp_md.iterrows():
@@ -193,7 +198,12 @@ def insert_plate_microscopy_datasets(session, errors='warn'):
 
 
 def main():
+    '''
 
+    Returns
+    -------
+
+    '''
     args = parse_args()
 
     url = utils.url_from_credentials(args.credentials)
@@ -207,8 +217,8 @@ def main():
         maybe_drop_and_create(engine, drop=False)
 
     if args.populate:
-        populate(session, errors='warn')
-        insert_plate_microscopy_datasets(session, errors='warn')
+        populate(session, args.data_dir, errors='warn')
+        insert_plate_microscopy_datasets(session, args.data_dir, errors='warn')
 
     if args.insert_facs:
         insert_facs(session, args.facs_results_dir, errors='warn')

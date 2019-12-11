@@ -20,7 +20,8 @@ class RawZStackProcessor:
 
     def __init__(
         self, 
-        pml_id, 
+        fov_id,
+        pml_id,
         parental_line, 
         imaging_round_id, 
         plate_id, 
@@ -29,6 +30,7 @@ class RawZStackProcessor:
         target_name,
         raw_filepath):
         
+        self.fov_id = fov_id
         self.pml_id = pml_id
         self.parental_line = parental_line
         self.imaging_round_id = imaging_round_id
@@ -69,6 +71,7 @@ class RawZStackProcessor:
         crispr_design = [d for d in plate_design.crispr_designs if d.well_id==well_id].pop()
 
         processor = cls(
+            fov_id=fov.id,
             pml_id=fov.dataset.pml_id,
             parental_line=fov.cell_line.parent.name,
             imaging_round_id=fov.imaging_round_id,
@@ -78,7 +81,6 @@ class RawZStackProcessor:
             raw_filepath=fov.raw_filename,
             target_name=crispr_design.target_name)
 
-        processor.fov_id = fov.id
         return processor
 
 

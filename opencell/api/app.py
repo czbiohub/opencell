@@ -31,7 +31,6 @@ def create_session_registry(url):
     return Session
 
 
-
 def create_app(args):
 
     app = Flask(__name__)
@@ -44,7 +43,8 @@ def create_app(args):
     api.add_resource(resources.Plates, '/plates')
     api.add_resource(resources.Plate, '/plates/<string:plate_id>')
     api.add_resource(resources.Electroporations, '/electroporations')
-    api.add_resource(resources.PolyclonalLines, '/polyclonallines')
+    api.add_resource(resources.PolyclonalLines, '/lines')
+    api.add_resource(resources.PolyclonalLine, '/lines/<int:cell_line_id>/')
     api.add_resource(resources.FACSHistograms, '/facshistograms/<int:cell_line_id>')
     api.init_app(app)
 
@@ -53,9 +53,9 @@ def create_app(args):
         credentials = args.credentials
     else:
         credentials = app.config['DB_CREDENTIALS_FILEPATH']
-    url = utils.url_from_credentials(credentials)
 
     # create an instance of sqlalchemy's scoped_session registry
+    url = utils.url_from_credentials(credentials)
     app.Session = create_session_registry(url)
 
     # required to close the session instance when a request is completed

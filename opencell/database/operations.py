@@ -6,6 +6,7 @@ import sqlalchemy as db
 
 from contextlib import contextmanager
 from opencell.database import models
+from opencell.imaging import processors
 from opencell import constants
 
 
@@ -326,8 +327,16 @@ class PolyclonalLineOperations(object):
     '''
     '''
 
-    def __init__(self, cell_line):
-        self.cell_line = cell_line
+    def __init__(self, line):
+        self.line = line
+
+
+    @classmethod
+    def from_line_id(cls, session, line_id):
+        '''
+        '''
+        line = session.query(models.CellLine).filter(models.CellLine.id==line_id).first()
+        return cls(line)
 
 
     @classmethod
@@ -351,6 +360,24 @@ class PolyclonalLineOperations(object):
         raise ValueError('No polyclonal line found for well %s of plate %s' % (well_id, design_id))
     
     
+    @classmethod
+    def from_target_name(cls, session, target_name):
+        '''
+        Convenience method to retrieve the cell line for the given target_name
+
+        If there is more than one cell_line for the target_name, 
+        then the PolyClonalLineOperations class is instantiated using the first such cell_line
+        '''
+        cd = session.query(models.CrisprDesign).filter(models.CrisprDesign.target_name==target_name).all()
+        if len(cd) > 1:
+            print('Warning: %s cell lines found for target %s' % (len(cd), target_name))
+        cd = cd[0]
+        
+        ep_lines = cd.plate_design.plate_instances[0].electroporations[0].electroporation_lines
+        ep_line = [line for line in ep_lines if line.well_id==cd.well_id][0]
+        return cls(ep_line.cell_line)
+
+
     def insert_facs_result(self, session, histograms, scalars, errors='warn'):
         '''
         Insert the processed FACS data for a single polyclonal cell line
@@ -359,11 +386,11 @@ class PolyclonalLineOperations(object):
         '''
 
         # drop any existing data
-        if self.cell_line.facs_result:
-            delete_and_commit(session, self.cell_line.facs_result)
+        if self.line.facs_result:
+            delete_and_commit(session, self.line.facs_result)
 
         facs_result = models.FACSResult(
-            cell_line=self.cell_line,
+            cell_line=self.line,
             histograms=histograms,
             **scalars)
 
@@ -376,11 +403,11 @@ class PolyclonalLineOperations(object):
         '''
 
         # drop any existing data
-        if self.cell_line.sequencing_result:
-            delete_and_commit(session, self.cell_line.sequencing_result)
+        if self.line.sequencing_result:
+            delete_and_commit(session, self.line.sequencing_result)
 
         sequencing_result = models.SequencingResult(
-            cell_line=self.cell_line,
+            cell_line=self.line,
             **scalars)
 
         add_and_commit(session, sequencing_result, errors=errors)
@@ -402,18 +429,111 @@ class PolyclonalLineOperations(object):
                 'site_num': row.site_num, 
                 'raw_filename': row.raw_filepath,
             }
-            fovs.append(models.MicroscopyFOV(cell_line=self.cell_line, **columns))
+            fovs.append(models.MicroscopyFOV(cell_line=self.line, **columns))
 
         add_and_commit(session, fovs, errors=errors)
 
 
-    def construct_json(self, session):
+    @staticmethod
+    def simplify_scalars(d):
         '''
-        Build the JSON array returned by the API's polyclonalline endpoint
-
-        This array is used to populate the datatable on the home page of the website
+        Simplify a dict of scalar values
         '''
-        raise NotImplementedError
+        for key, value in d.items():
+            if value is not None and not isinstance(value, str):
+                d[key] = '%0.2f' % value
+        return d
 
+
+    @staticmethod
+    def simplify_facs_histograms(histograms):
+        '''
+        Downsample and discretize the FACS histograms for a cell line
+        This is intended to reduce the payload size when the histograms 
+        will only be used to generate thumbnail/sparkline-like plots
+
+        Note that the scaling, rounding, and 2x-subsampling were empirically determined
+        as the most extreme downsampling that still yields satisfactory thumbnail-sized plots
+        ('thumbnail-sized' means plots on the order of 100px wide)
+        '''
+
+        if histograms is None:
+            return None
+
+        # x-axis values can be safely rounded to ints
+        histograms['x'] = [int(val) for val in histograms['x']]
+
+        # y-axis values (densities) must be scaled 
+        scale_factor = 1e6
+        for key in 'y_sample', 'y_ref_fitted':
+            histograms[key] = [int(val*scale_factor) for val in histograms[key]]
+
+        # finally, downsample by 2x
+        for key in histograms.keys():
+            histograms[key] = histograms[key][::2]
+
+        return histograms
+
+
+    def construct_json(self):
+        '''
+        Build the JSON object returned by the lines/ endpoint of the API
+        '''
+
+        ep = self.line.electroporation_line.electroporation
+
+        plate_id = ep.plate_instance.plate_design_id
+        well_id = self.line.electroporation_line.well_id
+
+        # the crispr design for this line
+        for design in ep.plate_instance.plate_design.crispr_designs:
+            if design.well_id == well_id:
+                break
+
+        # the crispr design
+        # (includes plate_design_id and well_id)
+        d = design.as_dict()
+
+        # append cell-line- and electroporation-specific fields 
+        d['cell_line_id'] = self.line.id
+        d['electroporation_date'] = ep.electroporation_date
+
+        # the facs results (scalars and histograms)
+        # TODO: enforce one-to-one and drop the [0]
+        d['facs_results'] = {}
+        d['facs_histograms'] = {}
+        if self.line.facs_result:
+            facs_result = self.line.facs_result[0].as_dict()
+            d['facs_histograms'] = self.simplify_facs_histograms(facs_result.pop('histograms'))    
+            d['facs_results'] = self.simplify_scalars(facs_result)
+
+        # the sequencing ratios
+        d['sequencing_results'] = {}
+        if self.line.sequencing_result:
+            d['sequencing_results'] = self.simplify_scalars(self.line.sequencing_result[0].as_dict())
+
+        # microscopy FOVs
+        d['fovs'] = []
+        for fov in self.line.microscopy_fovs:
+
+            p = processors.RawZStackProcessor(
+                fov_id=fov.id,
+                pml_id=fov.dataset.pml_id,
+                parental_line=fov.cell_line.parent.name,
+                imaging_round_id=fov.imaging_round_id,
+                plate_id=plate_id,
+                well_id=well_id,
+                site_num=fov.site_num,
+                raw_filepath=fov.raw_filename,
+                target_name=design.target_name)
+
+            d['fovs'].append({
+                'fov_id': fov.id,
+                'pml_id': fov.dataset.pml_id,
+                'src_filename': fov.raw_filename,
+                'dst_filename': p.dst_filepath(dst_root='root', kind='projections', channel='dapi', axis='z'),
+            })
+
+        return d
 
     

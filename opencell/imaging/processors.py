@@ -68,7 +68,7 @@ class RawZStackProcessor:
 
         well_id = fov.cell_line.electroporation_line.well_id
         plate_design = fov.cell_line.electroporation_line.electroporation.plate_instance.plate_design
-        crispr_design = [d for d in plate_design.crispr_designs if d.well_id==well_id].pop()
+        crispr_design = [d for d in plate_design.crispr_designs if d.well_id == well_id].pop()
 
         processor = cls(
             fov_id=fov.id,

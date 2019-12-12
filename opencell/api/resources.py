@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 from sqlalchemy import func
 from flask_restful import Resource, reqparse
@@ -5,9 +6,11 @@ from flask_restful import Resource, reqparse
 from flask import (
     current_app, 
     jsonify, 
-    request
+    request,
+    send_file,
 )
 
+from opencell.imaging.processors import RawZStackProcessor
 from opencell.database import models, operations
 from opencell.api.cache import cache
 
@@ -117,6 +120,41 @@ class PolyclonalLine(Resource):
         '''
         ops = operations.PolyclonalLineOperations.from_line_id(current_app.Session, cell_line_id)
         return jsonify(ops.construct_json())
+
+
+class MicroscopyFOV(Resource):
+
+    def get(self, fov_id, channel, kind):
+        
+        if kind == 'z-projection':
+            kind = 'projections'
+            axis = 'z'
+            tag = '%s-PROJ-Z' % channel.upper()
+            ext = 'tif'
+        elif kind == 'nrrd':
+            kind = 'nrrd'
+            axis = None
+            tag = '%s-CROPZ-CROPXY-NRRD' % channel.upper()
+            ext = 'nrrd'
+        else:
+            # TODO: return 404
+            pass
+    
+        fov = current_app.Session.query(models.MicroscopyFOV).filter(models.MicroscopyFOV.id == fov_id).first()
+        p = RawZStackProcessor.from_database(fov)
+        filepath = p.dst_filepath(
+            dst_root=current_app.config.get('opencell_microscopy_root'), 
+            kind=kind, 
+            channel=channel, 
+            axis=axis)
+    
+        filepath = p.tag_filepath(filepath, tag=tag, ext=ext)
+        filename = filepath.split(os.sep)[-1]
+
+        return send_file(
+            open(filepath, 'rb'),
+            as_attachment=True, 
+            attachment_filename=filename)
 
 
 class FACSHistograms(Resource):

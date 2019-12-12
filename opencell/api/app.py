@@ -41,11 +41,13 @@ def create_app(args):
 
     api = Api()
     api.add_resource(resources.Plates, '/plates')
-    api.add_resource(resources.Plate, '/plates/<string:plate_id>')
+    api.add_resource(resources.Plate, '/plates/<string:plate_id>/')
     api.add_resource(resources.Electroporations, '/electroporations')
     api.add_resource(resources.PolyclonalLines, '/lines')
     api.add_resource(resources.PolyclonalLine, '/lines/<int:cell_line_id>/')
-    api.add_resource(resources.FACSHistograms, '/facshistograms/<int:cell_line_id>')
+    api.add_resource(resources.FACSHistograms, '/facshistograms/<int:cell_line_id>/')
+    api.add_resource(resources.MicroscopyFOV, '/fovs/<int:fov_id>/<string:channel>/<string:kind>/')
+    
     api.init_app(app)
 
 
@@ -53,6 +55,9 @@ def create_app(args):
         credentials = args.credentials
     else:
         credentials = app.config['DB_CREDENTIALS_FILEPATH']
+
+    if args.opencell_microscopy_root:
+        app.config['opencell_microscopy_root'] = args.opencell_microscopy_root
 
     # create an instance of sqlalchemy's scoped_session registry
     url = utils.url_from_credentials(credentials)
@@ -70,6 +75,8 @@ def parse_args():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--credentials', dest='credentials')
+    parser.add_argument('--opencell-microscopy-root', dest='opencell_microscopy_root')
+
     return parser.parse_args()
 
 

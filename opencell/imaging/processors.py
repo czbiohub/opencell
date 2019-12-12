@@ -128,14 +128,14 @@ class RawZStackProcessor:
         if dst_root is None:
             dst_root = ''
         
-        kinds = ['metadata', 'projections', 'raw-stacks', 'cropped-stacks', 'processed-stacks']
+        kinds = ['metadata', 'projection', 'raw-stack', 'cropped-stack', 'processed-stack']
         if kind not in kinds:
             raise ValueError('%s is not a valid destination kind' % kind)
         subdir_names = [kind]
 
-        # validate and create subdir names for projections directory
+        # validate and create subdir names for projection directory
         # (channel and projection axis)
-        if kind == 'projections':
+        if kind == 'projection':
             if channel not in ['dapi', 'gfp', 'rgb']:
                 raise ValueError("'%s' is not a valid channel" % channel)
             if axis not in ['x', 'y', 'z']:
@@ -204,7 +204,7 @@ class RawZStackProcessor:
             for channel in ['dapi', 'gfp']:
                 for axis in ['x', 'y', 'z']:
                     dst_filepath = self.dst_filepath(
-                        dst_root=dst_root, kind='projections', channel=channel, axis=axis)
+                        dst_root=dst_root, kind='projection', channel=channel, axis=axis)
 
                     tag = '%s-PROJ-%s' % (channel.upper(), axis.upper())
                     dst_filepath = self.tag_filepath(dst_filepath, tag=tag, ext='tif')
@@ -230,7 +230,7 @@ class RawZStackProcessor:
         '''
 
         # construct the filepath to the DAPI z-projection
-        filepath = self.dst_filepath(dst_root, kind='projections', channel='dapi', axis='z')
+        filepath = self.dst_filepath(dst_root, kind='projection', channel='dapi', axis='z')
         filepath = self.tag_filepath(filepath, tag='DAPI-PROJ-Z', ext='tif')
 
         # calculate the features from the z-projection

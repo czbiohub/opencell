@@ -531,7 +531,7 @@ class PolyclonalLineOperations(object):
                 'fov_id': fov.id,
                 'pml_id': fov.dataset.pml_id,
                 'src_filename': fov.raw_filename,
-                'dst_filename': p.dst_filepath(dst_root='root', kind='projections', channel='dapi', axis='z'),
+                'dst_filename': p.dst_filepath(dst_root='root', kind='projection', channel='dapi', axis='z'),
             })
 
         return d

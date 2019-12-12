@@ -126,16 +126,15 @@ class MicroscopyFOV(Resource):
 
     def get(self, fov_id, channel, kind):
         
-        if kind == 'z-projection':
-            kind = 'projections'
+        # hard-coded for z-projections (and not x- or y-)
+        if kind == 'projection':
+            ext = 'tif'
             axis = 'z'
             tag = '%s-PROJ-Z' % channel.upper()
-            ext = 'tif'
         elif kind == 'nrrd':
-            kind = 'nrrd'
+            ext = 'nrrd'
             axis = None
             tag = '%s-CROPZ-CROPXY-NRRD' % channel.upper()
-            ext = 'nrrd'
         else:
             # TODO: return 404
             pass

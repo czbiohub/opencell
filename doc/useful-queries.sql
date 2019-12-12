@@ -18,4 +18,15 @@ inner join cell_line on cell_line.id = epl.cell_line_id
 left join microscopy_fov fov on cell_line.id = fov.cell_line_id
 where cd.plate_design_id = 'P0019';
 
+-- filter by existence of a json key (where `data` is a JSON-typed column)
+select * from microscopy_fov_result
+where data::jsonb ? 'num_nuclei';
 
+-- groupby a json value
+select data::json ->> 'num_nuclei' as n, count(*) as c from microscopy_fov_result
+group by n order by c desc;
+
+-- count kinds of fov results
+select kind, count(kind) from microscopy_fov_result
+left join microscopy_fov on microscopy_fov.id = microscopy_fov_result.fov_id
+group by kind;

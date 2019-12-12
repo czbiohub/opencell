@@ -181,6 +181,9 @@ def do_fov_tasks(session, task_name, result_name, plate_microscopy_dir=None, dst
 
     TODO: logic to skip already-processed FOVs
 
+    TODO: programatically generate the tasks given the name of the processor method
+        (like 'process_raw_tiff') and the *args for the method
+
     '''
 
     tasks = []

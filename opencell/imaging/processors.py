@@ -45,9 +45,6 @@ class RawZStackProcessor:
         # create site_id from site_num
         self.site_id = 'S%02d' % int(self.site_num)
 
-        # placeholder for the fov_id
-        self.fov_id = None
-
 
     @staticmethod
     def sanitize_target_name(target_name):

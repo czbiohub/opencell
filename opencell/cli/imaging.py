@@ -266,14 +266,16 @@ def main():
             with open(os.path.join(args.dst_root, '%s_process_raw_tiffs_error.log' % timestamp()), 'w') as file:
                 file.write(str(error))
 
+    # calculate FOV features and score
     if args.calculate_fov_features:
 
-        # load the FOV scorer (note the dependence on the path to dragonfly-automation repo)
-        fov_scorer = PipelineFOVScorer(mode='prediction')
+        # load and train the FOV scorer 
+        # (note the dependence on the path to dragonfly-automation repo)
+        fov_scorer = PipelineFOVScorer(mode='training')
         fov_scorer.load(os.path.join(DRAGONFLY_REPO, 'models', '2019-10-08'))
         fov_scorer.train()
 
-        method_name = 'calculate_fov_scores'
+        method_name = 'calculate_fov_features'
         method_kwargs = {
             'dst_root': args.dst_root,
             'fov_scorer': fov_scorer,

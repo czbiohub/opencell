@@ -220,7 +220,7 @@ class RawZStackProcessor:
         return metadata
 
 
-    def calculate_fov_features(self, dst_root, fov_scorer):
+    def calculate_fov_scores(self, dst_root, fov_scorer):
         '''
         dst_root : the root destination to which z-projections were saved in process_raw_tiff
         fov_scorer : an instance of PipelineFOVScorer in 'training' mode
@@ -231,11 +231,18 @@ class RawZStackProcessor:
         filepath = self.tag_filepath(filepath, tag='DAPI-PROJ-Z', ext='tif')
 
         # calculate the features from the z-projection
-        features = fov_scorer.process_existing_fov(filepath)
+        im = tifffile.imread(filepath)
+        log = fov_scorer.score_raw_fov(im)
 
-        features = self.append_fov_id(features)
-        features = self.sanitize_dict(features)
-        return features
+        # retain only these keys in the log dict
+        result = {key: log.get(key) for key in ['features', 'score', 'comment', 'error_info']}
+
+        # hack: sanitize the features dict to eliminate numpy dtypes
+        # (sanitize_dict should really be recursive)
+        result['features'] = self.sanitize_dict(result['features'])
+
+        result = self.append_fov_id(result)
+        return result
 
 
         

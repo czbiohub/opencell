@@ -23,10 +23,12 @@ from opencell.imaging.managers import PlateMicroscopyManager
 from opencell.imaging.processors import RawZStackProcessor
 
 try:
-    sys.path.append('/Users/keith.cheveralls/projects/dragonfly-automation')
+    DRAGONFLY_REPO ='/Users/keith.cheveralls/projects/dragonfly-automation' 
+    sys.path.append(DRAGONFLY_REPO)
     from dragonfly_automation.fov_models import PipelineFOVScorer
 except ImportError:
-    sys.path.append('/gpfsML/ML_group/KC/projects/dragonfly-automation')
+    DRAGONFLY_REPO = '/gpfsML/ML_group/KC/projects/dragonfly-automation'
+    sys.path.append(DRAGONFLY_REPO)
     from dragonfly_automation.fov_models import PipelineFOVScorer
     
 
@@ -166,12 +168,9 @@ def insert_plate_microscopy_metadata(session, cache_dir=None, errors='warn'):
         pcl_ops.insert_microscopy_fovs(session, group_metadata, errors='ignore')
 
 
-def do_fov_tasks(session, task_name, result_name, plate_microscopy_dir=None, dst_root=None):
+def do_fov_tasks(session, method_name, method_kwargs):
     '''
-    Perform some operation on all FOVs
-
-    Examples: parse metadata and make projections from all raw TIFFs,
-    calculate FOV features from all z-projections
+    Call a method of FOVProcessor on all, or a subset of, the raw FOVs
 
     TODO: figure out how to insert results into the database as they are generated
     (that is, within the method wrapped by dask.delayed)
@@ -181,8 +180,9 @@ def do_fov_tasks(session, task_name, result_name, plate_microscopy_dir=None, dst
 
     TODO: logic to skip already-processed FOVs
 
-    TODO: programatically generate the tasks given the name of the processor method
-        (like 'process_raw_tiff') and the *args for the method
+    NOTE: the method called must return a JSON-safe dict of 'results' that includes the fov_id,
+    because we need this id to insert the results into the database
+    (because the results are generated in parallel and then inserted afterwards, all at once)
 
     '''
 
@@ -190,30 +190,25 @@ def do_fov_tasks(session, task_name, result_name, plate_microscopy_dir=None, dst
     fovs = session.query(models.MicroscopyFOV).all()
     processors = [RawZStackProcessor.from_database(fov) for fov in fovs]
     
-    if task_name == 'process-raw-tiffs':
-        for processor in processors:
-            task = dask.delayed(processor.process_raw_tiff)(plate_microscopy_dir, dst_root)
-            tasks.append(task)
-
-    if task_name == 'calculate-fov-features':
-        fov_scorer = PipelineFOVScorer(mode='training')
-        for processor in processors:
-            task = dask.delayed(processor.calculate_fov_features)(dst_root, fov_scorer)
-            tasks.append(task)
+    for processor in processors:
+        task = dask.delayed(getattr(processor, method_name))(**method_kwargs)
+        tasks.append(task)
 
     # perform the tasks (using dask.compute)
     task_results = do_dask_tasks(tasks)
 
-    # cache the results locally
-    cache_filepath = os.path.join(dst_root, '%s_%s.csv' % (timestamp(), result_name))
-    pd.DataFrame(data=task_results).to_csv(cache_filepath, index=False)
-    print('Saved %s results to %s' % (task_name, cache_filepath))
+    # cache the results locally is possible
+    dst_root = method_kwargs.get('dst_root')
+    if dst_root is not None:
+        cache_filepath = os.path.join(dst_root, '%s_%s-results.csv' % (timestamp(), method_name))
+        pd.DataFrame(data=task_results).to_csv(cache_filepath, index=False)
+        print('Saved %s results to %s' % (method_name, cache_filepath))
 
-    print('Inserting %s results into the database' % task_name)
+    print('Inserting %s results into the database' % method_name)
     fov_results = []
     for task_result in task_results:
         fov_results.append(
-            models.MicroscopyFOVResult(fov_id=task_result['fov_id'], kind=result_name, data=task_result))
+            models.MicroscopyFOVResult(fov_id=task_result['fov_id'], method_name=method_name, data=task_result))
 
     operations.add_all(session, fov_results)
 
@@ -259,27 +254,32 @@ def main():
             insert_plate_microscopy_metadata(session, cache_dir=args.cache_dir, errors='warn')
 
     if args.process_raw_tiffs:
-
+        method_name = 'process_raw_tiff'
+        method_kwargs = {
+            'dst_root': args.dst_root,
+            'src_root': args.plate_microscopy_dir,
+        }
         try:
             with operations.session_scope(db_url) as session:
-                do_fov_tasks(
-                    session,
-                    task_name='process-raw-tiffs',
-                    result_name='raw-tiff-metadata',
-                    plate_microscopy_dir=args.plate_microscopy_dir,
-                    dst_root=args.dst_root)
-
+                do_fov_tasks(session, method_name, method_kwargs)
         except Exception as error:
-            with open('/gpfsML/ML_group/KC/%s_process_raw_tiffs_error.log' % timestamp(), 'w') as file:
+            with open(os.path.join(args.dst_root, '%s_process_raw_tiffs_error.log' % timestamp()), 'w') as file:
                 file.write(str(error))
 
     if args.calculate_fov_features:
+
+        # load the FOV scorer (note the dependence on the path to dragonfly-automation repo)
+        fov_scorer = PipelineFOVScorer(mode='prediction')
+        fov_scorer.load(os.path.join(DRAGONFLY_REPO, 'models', '2019-10-08'))
+        fov_scorer.train()
+
+        method_name = 'calculate_fov_scores'
+        method_kwargs = {
+            'dst_root': args.dst_root,
+            'fov_scorer': fov_scorer,
+        }
         with operations.session_scope(db_url) as session:
-            do_fov_tasks(
-                session, 
-                task_name='calculate-fov-features', 
-                result_name='fov-features',
-                dst_root=args.dst_root)
+            do_fov_tasks(session, method_name, method_kwargs)
 
 
 if __name__ == '__main__':

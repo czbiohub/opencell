@@ -63,9 +63,11 @@ def parse_args():
         'inspect_plate_microscopy_metadata', 
         'construct_plate_microscopy_metadata', 
         'insert_plate_microscopy_metadata',
-        'process_raw_tiffs', 
+        'process_raw_tiff', 
         'calculate_fov_features',
         'aggregate_processing_events',
+        'crop_cell_layer',
+        'generate_nrrd',
     ]
 
     for arg_name in action_arg_names:
@@ -189,7 +191,8 @@ def do_fov_tasks(session, method_name, method_kwargs):
     tasks = []
     fovs = session.query(models.MicroscopyFOV).all()
     processors = [RawZStackProcessor.from_database(fov) for fov in fovs]
-    
+
+
     for processor in processors:
         task = dask.delayed(getattr(processor, method_name))(**method_kwargs)
         tasks.append(task)
@@ -253,18 +256,20 @@ def main():
         with operations.session_scope(db_url) as session:
             insert_plate_microscopy_metadata(session, cache_dir=args.cache_dir, errors='warn')
 
-    if args.process_raw_tiffs:
+    # process all raw tiffs (and parse micromanager metadata)
+    if args.process_raw_tiff:
         method_name = 'process_raw_tiff'
         method_kwargs = {
             'dst_root': args.dst_root,
             'src_root': args.plate_microscopy_dir,
         }
-        try:
-            with operations.session_scope(db_url) as session:
+
+        with operations.session_scope(db_url) as session:
+            try:
                 do_fov_tasks(session, method_name, method_kwargs)
-        except Exception as error:
-            with open(os.path.join(args.dst_root, '%s_process_raw_tiffs_error.log' % timestamp()), 'w') as file:
-                file.write(str(error))
+            except Exception as error:
+                with open(os.path.join(args.dst_root, '%s_%s_error.log' % (timestamp(), method_name)), 'w') as file:
+                    file.write(str(error))
 
     # calculate FOV features and score
     if args.calculate_fov_features:
@@ -282,6 +287,35 @@ def main():
         }
         with operations.session_scope(db_url) as session:
             do_fov_tasks(session, method_name, method_kwargs)
+
+
+    if args.crop_cell_layer:
+        method_name = 'crop_cell_layer'
+        method_kwargs = {
+            'dst_root': args.dst_root,
+            'src_root': args.plate_microscopy_dir,
+        }
+
+        with operations.session_scope(db_url) as session:
+            try:
+                do_fov_tasks(session, method_name, method_kwargs)
+            except Exception as error:
+                with open(os.path.join(args.dst_root, '%s_%s_error.log' % (timestamp(), method_name)), 'w') as file:
+                    file.write(str(error))
+
+
+    if args.generate_nrrd:
+        method_name = 'generate_nrrd'
+        method_kwargs = {
+            'dst_root': args.dst_root,
+        }
+
+        with operations.session_scope(db_url) as session:
+            try:
+                do_fov_tasks(session, method_name, method_kwargs)
+            except Exception as error:
+                with open(os.path.join(args.dst_root, '%s_%s_error.log' % (timestamp(), method_name)), 'w') as file:
+                    file.write(str(error))
 
 
 if __name__ == '__main__':

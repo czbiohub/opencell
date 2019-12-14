@@ -3,6 +3,7 @@ import re
 import sys
 import glob
 import json
+import nrrd
 import pickle
 import skimage
 import hashlib
@@ -13,7 +14,7 @@ import numpy as np
 import pandas as pd
 
 from opencell import constants
-from opencell.imaging import micromanager
+from opencell.imaging import micromanager, utils
 
 
 class RawZStackProcessor:
@@ -81,6 +82,25 @@ class RawZStackProcessor:
         return processor
 
 
+    def z_step_size(self):
+        '''
+        Unpleasant method to determine the z-step size from the PML ID
+
+        This method encodes the facts that, prior to ML0123 (aka PML0123),
+        the step size was always 0.5um, and that starting at ML0123, 
+        the step size has always been 0.2um.
+
+        NOTE: this method is necessary because the z-step size is *not* encoded
+        in the MicroManager metadata or anywhere else
+        '''
+        z_step_size = 0.2
+        critical_pml_num = 123
+        pml_num = int(self.pml_id[3:])
+        if pml_num < critical_pml_num:
+            z_step_size = 0.5
+        return z_step_size
+
+
     def src_filepath(self, src_root=None):
         '''
         Construct the absolute filepath to a TIFF stack in the 'PlateMicroscopy' directory 
@@ -124,20 +144,23 @@ class RawZStackProcessor:
 
         if dst_root is None:
             dst_root = ''
-        
-        kinds = ['metadata', 'projection', 'raw-stack', 'cropped-stack', 'processed-stack']
+
+        kinds = ['metadata', 'projection', 'cropz', 'cropxy', 'nrrd']
         if kind not in kinds:
             raise ValueError('%s is not a valid destination kind' % kind)
         subdir_names = [kind]
 
         # validate and create subdir names for projection directory
         # (channel and projection axis)
-        if kind == 'projection':
-            if channel not in ['dapi', 'gfp', 'rgb']:
+        if channel is not None:
+            if channel not in ['dapi', 'gfp', 'composite']:
                 raise ValueError("'%s' is not a valid channel" % channel)
+            subdir_names.append(channel)
+        
+        if axis is not None:
             if axis not in ['x', 'y', 'z']:
                 raise ValueError("'%s' is not a valid axis" % axis)
-            subdir_names.extend([channel, axis])
+            subdir_names.append(axis)
 
         # destination plate_dir name
         dst_plate_dir = self.dst_plate_dir()
@@ -187,9 +210,10 @@ class RawZStackProcessor:
         '''
 
         src_filepath = self.src_filepath(src_root=src_root)
-
+        result = {'src_filepath': src_filepath}
         if not os.path.isfile(src_filepath):
-            return self.append_fov_id({})
+            result['error'] = 'File does not exist'
+            return self.append_fov_id(result)
 
         tiff = micromanager.RawPipelineTIFF(src_filepath, verbose=False)
         tiff.parse_micromanager_metadata()
@@ -237,3 +261,142 @@ class RawZStackProcessor:
         return result
 
 
+    def crop_cell_layer(self, src_root, dst_root):
+        '''
+        Crop the raw z-stack around the cell layer
+        '''
+
+        result = self.append_fov_id({})
+        src_filepath = self.src_filepath(src_root=src_root)
+        if not os.path.isfile(src_filepath):
+            result['error'] = 'src_filepath does not exist'
+            return result
+
+        # the depth (that is, width in z) of the cropped stack in um
+        crop_width = 13
+
+        # half the depth in number of z-slices
+        crop_width = np.ceil(crop_width/self.z_step_size()/2)
+
+        src_tiff = micromanager.RawPipelineTIFF(src_filepath, verbose=False)
+        src_tiff.parse_micromanager_metadata()
+        src_tiff.validate_micromanager_metadata()
+
+        # attempt to split the channels and project
+        src_tiff.split_channels()
+        if not src_tiff.did_split_channels:
+            src_tiff.tiff.close()
+            result['error'] = 'Raw TIFF could not be split'
+            return result
+    
+        # mean intensity in z of the Hoechst staining
+        profile = np.array([zslice.mean() for zslice in src_tiff.stacks['dapi']]).astype(float)
+        profile -= profile.mean()
+        profile[profile < 0] = 0
+        profile /= profile.sum()
+
+        # the index of the center of the cell layer
+        # (defined as the median of the mean-subtracted mean intensity profile)
+        center = np.argwhere(np.cumsum(profile) > .5).min()
+        min_ind = int(max(0, center - crop_width))
+        max_ind = int(min(len(profile) - 1, center + crop_width))
+
+        # log the crop parameters
+        result.update({
+            'num_slices': len(profile),
+            'center_ind': center,
+            'min_ind': min_ind,
+            'max_ind': max_ind,
+        })
+
+        # do the crop
+        for channel in ['dapi', 'gfp']:
+            stack = src_tiff.stacks[channel]
+            tag = '%s-CROPZ' % channel.upper()
+            dst_filepath = self.dst_filepath(dst_root=dst_root, kind='cropz', channel=channel)
+            dst_filepath = self.tag_filepath(dst_filepath, tag=tag, ext='tif')
+
+            try:
+                dst_tiff_file = tifffile.TiffWriter(dst_filepath)
+                for ind in np.arange(min_ind, max_ind + 1):
+                    dst_tiff_file.save(stack[ind, :, :])
+                dst_tiff_file.close()
+            except Exception as error:
+                result['error'] = 'Error writing cropped TIFF stack: %s' % str(error)
+
+        src_tiff.tiff.close()
+        return result
+
+
+    def generate_nrrd(self, dst_root):
+        '''
+        Generate NRRD files for the website by cropping a 600x600 ROI
+        from the cell-layer-cropped raw z-stacks
+
+        NOTE: for now, we crop the center of each FOV
+        '''
+
+        result = self.append_fov_id({})
+
+        # pixel size in microns
+        # (for 1024x1024 images from the Dragonfly's EMCCD with 63x objective)
+        pixel_size = 0.2
+
+        roi_size = 600
+        image_size = 1024
+        min_xy_ind = int(image_size/2 - roi_size/2)
+        max_xy_ind = int(image_size/2 + roi_size/2)
+        
+        # the number of z-slices that must be in each NRRD file
+        num_nrrd_slices = 60
+
+        for channel in ['dapi', 'gfp']:
+            channel_caps = channel.upper()
+        
+            # the path to the cropped raw z-stack
+            tag = '%s-CROPZ' % channel_caps
+            src_filepath = self.dst_filepath(dst_root=dst_root, kind='cropz', channel=channel)
+            src_filepath = self.tag_filepath(src_filepath, tag=tag, ext='tif')
+            if not os.path.isfile(src_filepath):
+                result['%s_error' % channel] = 'File does not exist'
+                continue
+    
+            stack = tifffile.imread(src_filepath)
+
+            # crop the 600x600 ROI from the center of the FOV
+            stack = stack[:, min_xy_ind:max_xy_ind, min_xy_ind:max_xy_ind]
+            
+            # move the z dimension from the first to the last axis
+            stack = np.moveaxis(stack, 0, -1)
+
+            # resample z to generate isotropic voxels
+            if self.z_step_size() != pixel_size:
+                z_scale = self.z_step_size()/pixel_size
+                stack = skimage.transform.rescale(stack, (1, 1, z_scale), multichannel=False, preserve_range=True)
+
+            # pad or crop the stack in z so that there are the required number of slices
+            num_slices = stack.shape[-1]
+            if num_slices < num_nrrd_slices:
+                pad = np.zeros((roi_size, roi_size, num_nrrd_slices - num_slices)).astype(stack.dtype)
+                stack = np.concatenate((stack, pad), axis=2)
+            elif num_slices > num_nrrd_slices:
+                num_extra = num_slices - num_nrrd_slices
+                crop_ind = int(np.floor(num_extra/2))
+                if np.mod(num_extra, 2) == 0:
+                    stack = stack[:, :, crop_ind:-crop_ind]
+                else:
+                    stack = stack[:, :, crop_ind:-(crop_ind + 1)]
+
+            # autogain
+            stack = utils.autoscale(stack, percentile=0.01, dtype='uint8')
+
+            # log the final stack shape
+            result['%s_stack_shape' % channel] = list(stack.shape)
+
+            # save the stack
+            tag = '%s-CROPXY' % tag   
+            dst_filepath = self.dst_filepath(dst_root=dst_root, kind='nrrd', channel=channel)
+            dst_filepath = self.tag_filepath(dst_filepath, tag=tag, ext='nrrd')
+            nrrd.write(dst_filepath, stack)
+
+        return result

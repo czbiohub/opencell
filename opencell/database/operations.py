@@ -368,11 +368,17 @@ class PolyclonalLineOperations(object):
         If there is more than one cell_line for the target_name, 
         then the PolyClonalLineOperations class is instantiated using the first such cell_line
         '''
-        cd = session.query(models.CrisprDesign).filter(models.CrisprDesign.target_name==target_name).all()
-        if len(cd) > 1:
-            print('Warning: %s cell lines found for target %s' % (len(cd), target_name))
-        cd = cd[0]
-        
+        cds = session.query(models.CrisprDesign)\
+                .filter(db.func.lower(models.CrisprDesign.target_name) == db.func.lower(target_name)).all()
+
+        if len(cds) > 1:
+            print('Warning: %s cell lines found for target %s' % (len(cds), target_name))
+
+        if len(cds) == 0:
+            print('Warning: no cells lines found for target %s' % target_name)
+            return
+
+        cd = cds[0]
         ep_lines = cd.plate_design.plate_instances[0].electroporations[0].electroporation_lines
         ep_line = [line for line in ep_lines if line.well_id==cd.well_id][0]
         return cls(ep_line.cell_line)

@@ -1,6 +1,8 @@
 import os
 import pandas as pd
-from sqlalchemy import func
+
+import sqlalchemy as db
+import sqlalchemy.func
 from flask_restful import Resource, reqparse
 
 from flask import (
@@ -96,7 +98,7 @@ class PolyclonalLines(Resource):
         lines = []
         if target_name:
             cds = current_app.Session.query(models.CrisprDesign)\
-                .filter(func.lower(models.CrisprDesign.target_name) == func.lower(target_name)).all()
+                .filter(db.func.lower(models.CrisprDesign.target_name) == db.func.lower(target_name)).all()
             for cd in cds:
                 ep_lines = cd.plate_design.plate_instances[0].electroporations[0].electroporation_lines
                 cell_lines = [line.cell_line for line in ep_lines if line.well_id == cd.well_id]

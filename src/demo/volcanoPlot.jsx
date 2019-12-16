@@ -171,7 +171,10 @@ export default class VolcanoPlot extends Component {
         // to speed up the rendering of the plot,
         // we drop all hits with a pvalue less than 0.5 
         // and randomly drop hits with a pvalue between 0.5 and 1
-        let data = msData.filter(d => d.target_name==this.props.targetName)[0].hits;
+        let data = msData.filter(d => d.target_name==this.props.targetName);
+        if (!data.length) return null;
+
+        data = data[0].hits;
         data = data.filter(d => {
             return (d.pvalue > 1) || (d.pvalue < 1 && d3.randomUniform(0, 1)() > .5);
         }).filter(d => d.pvalue > .5);
@@ -191,7 +194,7 @@ export default class VolcanoPlot extends Component {
 
 
     createScatterPlot () {
-
+        
         const pp = this.plotProps;
 
         // override manuallly defined widths
@@ -335,6 +338,11 @@ export default class VolcanoPlot extends Component {
 
 
     updateScatterPlot () {
+
+        if (!this.data) {
+            this.g.selectAll('.scatter-dot').remove();
+            return;
+        }
 
         const calcDotRadius = d => {
             // scatter plot dot size from pvalue and enrichment values

@@ -33,12 +33,15 @@ import pipelineMetadata from './data/20190816_pipeline-metadata.json';
 import '../common/common.css';
 import './Demo.css';
 
-
+const localApi = `http://localhost:5000`;
+const capApi = `http://cap.czbiohub.org:5001`;
 
 class App extends Component {
 
     constructor (props) {
         super(props);
+
+        this.apiUrl = capApi;
 
         this.state = {
 
@@ -46,6 +49,9 @@ class App extends Component {
 
             // default initial target
             targetName: 'LMNB1',
+            
+            fovId: null,
+            cellLineId: null,
 
             // 'Volume' or 'Slice'
             localizationMode: 'Slice',
@@ -93,19 +99,18 @@ class App extends Component {
     }
 
 
-    changeTarget (targetName) {
+    changeTarget (targetName, cellLineId, fovId) {
         
         // check that the target has changed
         if (targetName===this.state.targetName) return;
 
-        // check that we have both MS data and stacks for the target
-        if (!msData.filter(d => d.target_name===targetName).length || !nrrdFilepaths[targetName]) return;
-
         // reset appHasLoaded to false, since we now need to load new NRRD files
         this.setState({
             targetName,
+            cellLineId,
+            fovId,
             appHasLoaded: false, 
-            gfpMax: manualMetadata[targetName].gfp_max || 50,
+            gfpMax: manualMetadata[targetName]?.gfp_max || 50,
         });
 
     }
@@ -113,11 +118,13 @@ class App extends Component {
     onSearchChange (value) {
         // fired when the user hits enter in the header's target search text input
         // `value` is the value of the input
-        
-        const matches = this.allTargetNames.filter(name => name.startsWith(value.toUpperCase()));
-        if (matches.length===1) {
-            this.changeTarget(matches[0]);
-        }
+
+        let url = `${this.apiUrl}/lines?target_name=${value}`;
+        d3.json(url).then(data => {
+            const line = data[0];
+            if (!line) return;
+            this.changeTarget(line.target_name, line.cell_line_id, line.fovs[0].fov_id);
+        });
     }
 
 
@@ -133,10 +140,20 @@ class App extends Component {
         // ***WARNING***
         // the order of the channels in the `filepaths` array below matters,
         // because it is *independently* hard-coded in SliceViz and VolumeViz
-        const fileroot = nrrdFilepaths[this.state.targetName];
+        // const fileroot = nrrdFilepaths[this.state.targetName];
+        // const filepaths = [
+        //     `./demo-data/stacks/${fileroot}_C0.nrrd`,  // DAPI
+        //     `./demo-data/stacks/${fileroot}_C1.nrrd`,  // GFP
+        // ];
+
+        if (!this.state.fovId) {
+            this.setState({appHasLoaded: true});
+            return;
+        }
+
         const filepaths = [
-            `./demo-data/stacks/${fileroot}_C0.nrrd`,  // DAPI
-            `./demo-data/stacks/${fileroot}_C1.nrrd`,  // GFP
+            `${this.apiUrl}/fovs/dapi/nrrd/${this.state.fovId}`,
+            `${this.apiUrl}/fovs/gfp/nrrd/${this.state.fovId}`,
         ];
 
         console.log('before promise');
@@ -149,6 +166,7 @@ class App extends Component {
 
     
     componentDidMount() {
+
         // load the NRRD files
         this.loadStacks();
     }
@@ -219,7 +237,7 @@ class App extends Component {
                         className='pt0 pb3 w-100 protein-function-container'
                         style={{height: 175, overflow: 'auto', lineHeight: 1.33}}>
                         <div>
-                            <p>{uniprotMetadata[this.state.targetName].uniprot_function}</p>
+                            <p>{uniprotMetadata[this.state.targetName]?.uniprot_function}</p>
                         </div>
                     </div>
 
@@ -423,7 +441,7 @@ class App extends Component {
                                     accessor: row => parseFloat(row.pvalue).toFixed(2),
                                 }
                             ]}
-                            data={msData.filter(d => d.target_name==this.state.targetName)[0].hits}
+                            data={msData.filter(d => d.target_name==this.state.targetName)[0]?.hits}
                         />
                     </div>
                 </div>

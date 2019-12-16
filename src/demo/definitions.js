@@ -8,20 +8,20 @@ import uniprotMetadata from './data/uniprot_metadata.json';
 export const metadataDefinitions = [
     {   
         id: 'protein_name',
-        accessor: row => manualMetadata[row.targetName].protein_name || manualMetadata[row.targetName].description,
+        accessor: row => manualMetadata[row.targetName]?.protein_name || manualMetadata[row.targetName]?.description,
         Header: 'Protein name',
         units: null,
     },{
         id: 'target_family',
         accessor: row => {
-            let value = pipelineMetadata[row.targetName].target_family;
-            return value.charAt(0).toUpperCase() + value.slice(1);
+            let value = pipelineMetadata[row.targetName]?.target_family;
+            return value ? value.charAt(0).toUpperCase() + value.slice(1) : null;
         },
         Header: 'Family',
         units: '',
     },{
         id: 'uniprot_id',
-        accessor: row => uniprotMetadata[row.targetName].uniprot_id,
+        accessor: row => uniprotMetadata[row.targetName]?.uniprot_id,
         Header: 'Uniprot ID'
     }
     

@@ -62,6 +62,8 @@ class SliceViz extends Component {
         // only if this is the first update after the NRRD files loaded
         if (this.imData) return;
 
+        if (!this.props.volumes) return;
+
         const volume = this.props.volumes[0];
         this.shape = [volume.xLength, volume.yLength, volume.zLength];
         this.numPx = this.shape[0]*this.shape[1];
@@ -115,6 +117,8 @@ class SliceViz extends Component {
 
 
     displaySlice() {
+
+        if (!this.props.volumes) return;
 
         const scaleIntensity = (intensity, min, max) => {
             if (intensity < min) return 0;

@@ -1,10 +1,8 @@
 import os
 import pandas as pd
-
 import sqlalchemy as db
-import sqlalchemy.func
-from flask_restful import Resource, reqparse
 
+from flask_restful import Resource, reqparse
 from flask import (
     current_app, 
     jsonify, 
@@ -98,7 +96,7 @@ class PolyclonalLines(Resource):
         lines = []
         if target_name:
             cds = current_app.Session.query(models.CrisprDesign)\
-                .filter(db.func.lower(models.CrisprDesign.target_name) == db.func.lower(target_name)).all()
+                .filter(db.func.lower(models.CrisprDesign.target_name).startswith(target_name.lower())).all()
             for cd in cds:
                 ep_lines = cd.plate_design.plate_instances[0].electroporations[0].electroporation_lines
                 cell_lines = [line.cell_line for line in ep_lines if line.well_id == cd.well_id]
@@ -108,6 +106,9 @@ class PolyclonalLines(Resource):
             for ep in eps:
                 lines.extend([ep_line.cell_line for ep_line in ep.electroporation_lines])
 
+        # limit to the first ten lines to prevent returning giant payloads
+        lines = lines[:10] if len(lines) > 10 else lines
+    
         data = []
         for line in lines:
             ops = operations.PolyclonalLineOperations.from_line_id(current_app.Session, line.id)
@@ -136,7 +137,7 @@ class MicroscopyFOV(Resource):
         elif kind == 'nrrd':
             ext = 'nrrd'
             axis = None
-            tag = '%s-CROPZ-CROPXY-NRRD' % channel.upper()
+            tag = '%s-CROPZ-CROPXY' % channel.upper()
         else:
             # TODO: return 404
             pass

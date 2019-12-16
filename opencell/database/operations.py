@@ -519,27 +519,27 @@ class PolyclonalLineOperations(object):
             d['sequencing_results'] = self.simplify_scalars(self.line.sequencing_result[0].as_dict())
 
         # microscopy FOVs
-        d['fovs'] = []
+        all_fovs = []
         for fov in self.line.microscopy_fovs:
 
-            p = processors.RawZStackProcessor(
-                fov_id=fov.id,
-                pml_id=fov.dataset.pml_id,
-                parental_line=fov.cell_line.parent.name,
-                imaging_round_id=fov.imaging_round_id,
-                plate_id=plate_id,
-                well_id=well_id,
-                site_num=fov.site_num,
-                raw_filepath=fov.raw_filename,
-                target_name=design.target_name)
-
-            d['fovs'].append({
+            score_result = [r for r in fov.fov_results if r.method_name == 'calculate_fov_features']
+            score = None
+            if score_result:
+                score = score_result[0].data.get('score')
+    
+            all_fovs.append({
                 'fov_id': fov.id,
                 'pml_id': fov.dataset.pml_id,
                 'src_filename': fov.raw_filename,
-                'dst_filename': p.dst_filepath(dst_root='root', kind='projection', channel='dapi', axis='z'),
+                'score': score,
             })
 
+        # sort FOVs by score (unscored FOVs last)
+        all_fovs = sorted(
+            all_fovs, 
+            key=lambda row: row.get('score') if row.get('score') is not None else -2)
+
+        d['fovs'] = all_fovs[::-1]
         return d
 
     

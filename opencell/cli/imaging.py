@@ -192,7 +192,6 @@ def do_fov_tasks(session, method_name, method_kwargs):
     fovs = session.query(models.MicroscopyFOV).all()
     processors = [RawZStackProcessor.from_database(fov) for fov in fovs]
 
-
     for processor in processors:
         task = dask.delayed(getattr(processor, method_name))(**method_kwargs)
         tasks.append(task)
@@ -256,6 +255,7 @@ def main():
         with operations.session_scope(db_url) as session:
             insert_plate_microscopy_metadata(session, cache_dir=args.cache_dir, errors='warn')
 
+
     # process all raw tiffs (and parse micromanager metadata)
     if args.process_raw_tiff:
         method_name = 'process_raw_tiff'
@@ -270,6 +270,7 @@ def main():
             except Exception as error:
                 with open(os.path.join(args.dst_root, '%s_%s_error.log' % (timestamp(), method_name)), 'w') as file:
                     file.write(str(error))
+
 
     # calculate FOV features and score
     if args.calculate_fov_features:

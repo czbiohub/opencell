@@ -360,7 +360,15 @@ class RawZStackProcessor:
             if not os.path.isfile(src_filepath):
                 result['%s_error' % channel] = 'File does not exist'
                 continue
-    
+            
+            # the path to the nrrd file
+            tag = '%s-CROPXY' % tag   
+            dst_filepath = self.dst_filepath(dst_root=dst_root, kind='nrrd', channel=channel)
+            dst_filepath = self.tag_filepath(dst_filepath, tag=tag, ext='nrrd')
+            if os.path.isfile(dst_filepath):
+                result['%s_error' % channel] = 'NRRD file already exists'
+                continue
+
             stack = tifffile.imread(src_filepath)
 
             # crop the 600x600 ROI from the center of the FOV
@@ -394,9 +402,9 @@ class RawZStackProcessor:
             result['%s_stack_shape' % channel] = list(stack.shape)
 
             # save the stack
-            tag = '%s-CROPXY' % tag   
-            dst_filepath = self.dst_filepath(dst_root=dst_root, kind='nrrd', channel=channel)
-            dst_filepath = self.tag_filepath(dst_filepath, tag=tag, ext='nrrd')
-            nrrd.write(dst_filepath, stack)
+            try:
+                nrrd.write(dst_filepath, stack)
+            except IOError as error:
+                print('NRRD IOError: %s' % str(error))
 
         return result

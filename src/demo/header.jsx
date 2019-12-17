@@ -13,7 +13,8 @@ class Header extends Component {
 
     render () {
 
-        const metadataItems = metadataDefinitions.map(def => {
+        const headerDefs = ['protein_name', 'target_family', 'uniprot_id'];
+        const metadataItems = metadataDefinitions.filter(def => headerDefs.includes(def.id)).map(def => {
             return (
                 <MetadataItem
                     key={def.Header}

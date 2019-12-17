@@ -28,7 +28,7 @@ import msData from './data/20190816_ms-data.json';
 import nrrdFilepaths from './data/20190816_nrrd-filepaths.json';
 import manualMetadata from './data/manual_metadata.json';
 import uniprotMetadata from './data/uniprot_metadata.json';
-import pipelineMetadata from './data/20190816_pipeline-metadata.json';
+import pipelineMetadata from './data/20191217_all-pipeline-metadata.json';
 
 import '../common/common.css';
 import './Demo.css';
@@ -94,9 +94,10 @@ class App extends Component {
 
         // the list of all targets for which we have data;
         // these target names should also all appear in manualMetadata
-        this.allTargetNames = Object.keys(manualMetadata);
+        this.allTargetNames = Object.keys(pipelineMetadata);
     
     }
+
 
 
     changeTarget (targetName, cellLineId, fovId) {
@@ -449,16 +450,16 @@ class App extends Component {
 
 
                 {/* table of all targets */}
-                <div className="fl w-70 pt0 pl4 pb5">
+                <div className="fl w-90 pt0 pl4 pb5">
 
                     <div className="">
                         <div className="f3 container-header">All cell lines</div>
                     </div>
         
                     <ReactTable 
-                        pageSize={8}
+                        pageSize={10}
                         showPageSizeOptions={false}
-                        filterable={false}
+                        filterable={true}
                         columns={tableDefs}
                         data={this.allTargetNames.map(name => {
                             return {
@@ -469,13 +470,18 @@ class App extends Component {
                         getTrProps={(state, rowInfo, column) => {
                             const isActive = rowInfo ? rowInfo.original.isActive : false;
                             return {
-                                onClick: () => this.changeTarget(rowInfo.original.targetName),
+                                onClick: () => this.onSearchChange(rowInfo.original.targetName),
                                 style: {
                                     background: isActive ? '#ddd' : null,
                                     fontWeight: isActive ? 'bold' : 'normal'
                                 }
                             }
                         }}
+                        getPaginationProps={(state, rowInfo, column) => {
+                            return {
+                              style: {fontSize: 16}
+                            }
+                          }}
                     />
                 </div>
 

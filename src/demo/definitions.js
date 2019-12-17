@@ -9,11 +9,15 @@ export const metadataDefinitions = [
     {   
         id: 'protein_name',
         accessor: row => {
-            let name = (manualMetadata[row.targetName]?.protein_name ||
-            manualMetadata[row.targetName]?.description ||
-            uniprotMetadata[row.targetName]?.protein_name);
-            name = name ? name.slice(0, 40) : '';
-            return name;
+            let name = (
+                manualMetadata[row.targetName]?.protein_name ||
+                manualMetadata[row.targetName]?.description ||
+                uniprotMetadata[row.targetName]?.protein_name
+            );
+            name = name ? name : '';
+            name = name.split('(')[0].split(',')[0].trim();
+            name = name.length > 35 ? `${name.slice(0, 35)}...` : name;
+            return name
         },
         Header: 'Protein name',
         units: null,

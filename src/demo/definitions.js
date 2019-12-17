@@ -8,7 +8,7 @@ import uniprotMetadata from './data/uniprot_metadata.json';
 export const metadataDefinitions = [
     {   
         id: 'protein_name',
-        accessor: row => manualMetadata[row.targetName]?.protein_name || manualMetadata[row.targetName]?.description,
+        accessor: row => manualMetadata[row.targetName]?.protein_name || manualMetadata[row.targetName]?.description || uniprotMetadata[row.targetName]?.protein_name,
         Header: 'Protein name',
         units: null,
     },{

@@ -204,8 +204,8 @@ class VolumeViz extends Component {
 
         const colormaps = {
             viridis: new THREE.TextureLoader().load('threejs-textures/cm_viridis.png', this.renderVolume),
-            blue: new THREE.TextureLoader().load('threejs-textures/cm_blue_a.png', this.renderVolume),
-            gray: new THREE.TextureLoader().load('threejs-textures/cm_gray.png', this.renderVolume)
+            blue: new THREE.TextureLoader().load('threejs-textures/cm_blue_a_v2.png', this.renderVolume),
+            gray: new THREE.TextureLoader().load('threejs-textures/cm_gray_a.png', this.renderVolume)
         };
 
         // copied from the threejs example
@@ -230,7 +230,7 @@ class VolumeViz extends Component {
 
             // TODO: think about this: if `transparent` is true here, then the blue material 
             // is completely invisible - need to add alpha channel to the gray colormap?
-            //transparent: true,
+            transparent: true,
         });
 
         // semi-transparent blue-colormapped material for two-color mode 

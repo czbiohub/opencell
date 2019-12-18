@@ -415,7 +415,7 @@ class App extends Component {
                             enrichmentAccessor={row => parseFloat(row.enrichment)}
                             pvalueAccessor={row => parseFloat(row.pvalue)}
                             targetName={this.state.targetName}
-                            changeTarget={this.changeTarget}
+                            changeTarget={this.onSearchChange}
                             showLabels={this.state.volcanoShowLabels}
                             resetZoom={this.state.volcanoResetZoom}
                             labelColor={this.state.volcanoLabelColor}

@@ -481,7 +481,7 @@ class PolyclonalLineOperations(object):
         return histograms
 
 
-    def construct_json(self):
+    def construct_json(self, kind=None):
         '''
         Build the JSON object returned by the lines/ endpoint of the API
         '''
@@ -506,17 +506,23 @@ class PolyclonalLineOperations(object):
 
         # the facs results (scalars and histograms)
         # TODO: enforce one-to-one and drop the [0]
-        d['facs_results'] = {}
-        d['facs_histograms'] = {}
-        if self.line.facs_result:
-            facs_result = self.line.facs_result[0].as_dict()
-            d['facs_histograms'] = self.simplify_facs_histograms(facs_result.pop('histograms'))    
-            d['facs_results'] = self.simplify_scalars(facs_result)
+        if kind == 'all' or kind == 'facs':
+            d['facs_results'] = {}
+            d['facs_histograms'] = {}
+            if self.line.facs_result:
+                facs_result = self.line.facs_result[0].as_dict()
+                d['facs_histograms'] = self.simplify_facs_histograms(facs_result.pop('histograms'))    
+                d['facs_results'] = self.simplify_scalars(facs_result)
 
         # the sequencing ratios
-        d['sequencing_results'] = {}
-        if self.line.sequencing_result:
-            d['sequencing_results'] = self.simplify_scalars(self.line.sequencing_result[0].as_dict())
+        if kind == 'all' or kind == 'sequencing':
+            d['sequencing_results'] = {}
+            if self.line.sequencing_result:
+                d['sequencing_results'] = self.simplify_scalars(self.line.sequencing_result[0].as_dict())
+
+        # we're done unless we need the FOVs
+        if kind != 'all' and kind != 'microscopy':
+            return d
 
         # microscopy FOVs
         all_fovs = []

@@ -91,7 +91,12 @@ class PolyclonalLines(Resource):
         '''
 
         args = request.args
+        kind = args.get('kind')
         target_name = args.get('target_name')
+
+        if kind is not None and kind not in ['all', 'facs', 'sequencing', 'ms', 'microscopy']:
+            # TODO: return the right http error
+            pass
 
         lines = []
         if target_name:
@@ -107,12 +112,13 @@ class PolyclonalLines(Resource):
                 lines.extend([ep_line.cell_line for ep_line in ep.electroporation_lines])
 
         # limit to the first ten lines to prevent returning giant payloads
-        lines = lines[:10] if len(lines) > 10 else lines
+        if kind is not None:
+            lines = lines[:10] if len(lines) > 10 else lines
     
         data = []
         for line in lines:
             ops = operations.PolyclonalLineOperations.from_line_id(current_app.Session, line.id)
-            data.append(ops.construct_json())
+            data.append(ops.construct_json(kind=kind))
         return jsonify(data)
 
 

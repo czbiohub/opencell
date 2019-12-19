@@ -103,12 +103,6 @@ def load_csv(path):
     return df
 
 
-def do_dask_tasks(tasks):
-    with dask.diagnostics.ProgressBar():
-        results = dask.compute(*tasks)
-    return results
-
-
 def construct_plate_microscopy_metadata(plate_microscopy_manager):
     '''
     '''
@@ -184,6 +178,7 @@ def do_fov_task(Session, processor, method_name, method_kwargs):
         result = json.loads(pd.Series(data=result).to_json())
         row = models.MicroscopyFOVResult(fov_id=processor.fov_id, method_name=method_name, data=result)
         operations.add_and_commit(Session(), row, errors='raise')
+
     except sa.exc.SQLAlchemyError as error:
         result['fov_id'] = processor.fov_id
         result['database_error'] = str(error)
@@ -194,9 +189,6 @@ def do_fov_task(Session, processor, method_name, method_kwargs):
 def do_fov_tasks(Session, method_name, method_kwargs):
     '''
     Call a method of FOVProcessor on all, or a subset of, the raw FOVs
-
-    TODO: figure out how to insert results into the database as they are generated
-    (that is, within the method wrapped by dask.delayed)
 
     TODO: handle multiple source directories 
     (that is, plate_microscopy_dir and dragonfly_automation_dir)
@@ -220,13 +212,13 @@ def do_fov_tasks(Session, method_name, method_kwargs):
 
     # do the tasks
     with dask.diagnostics.ProgressBar():
-        task_results = dask.compute(*tasks)
+        results = dask.compute(*tasks)
 
     # cache the results locally is possible
     dst_root = method_kwargs.get('dst_root')
     if dst_root is not None:
         cache_filepath = os.path.join(dst_root, '%s_%s-results.csv' % (timestamp(), method_name))
-        pd.DataFrame(data=task_results).to_csv(cache_filepath, index=False)
+        pd.DataFrame(data=results).to_csv(cache_filepath, index=False)
         print('Saved %s results to %s' % (method_name, cache_filepath))
 
 
@@ -244,7 +236,8 @@ def aggregate_processing_events(dst_root):
 
     paths = []
     tasks = [load_csv(path) for path in paths]
-    results = do_dask_tasks(tasks)
+    with dask.diagnostics.ProgressBar():
+        results = dask.compute(*tasks)
 
     df = pd.concat([df for df in results if df is not None])
     df.to_csv(os.path.join(dst_root, 'aggregated-processing-events.csv'), index=False)

@@ -128,7 +128,15 @@ class RawZStackProcessor:
         return dst_plate_dir
 
 
-    def dst_filepath(self, dst_root=None, kind=None, channel=None, axis=None, tag=None, ext=None, makedirs=True):
+    def dst_filepath(
+        self, 
+        dst_root=None, 
+        kind=None, 
+        channel=None, 
+        axis=None, 
+        tag=None, 
+        ext=None, 
+        makedirs=True):
         '''
         Construct the relative directory path and filename for a 'kind' of output file
 
@@ -204,16 +212,15 @@ class RawZStackProcessor:
                     tag = '%s-PROJ-%s' % (channel.upper(), axis.upper())
                     dst_filepath = self.dst_filepath(
                         dst_root=dst_root, kind='projection', channel=channel, axis=axis, tag=tag, ext='tif')
-
                     tiff.project_stack(channel_name=channel, axis=axis, dst_filepath=dst_filepath)
 
         # the tiff file must be manually closed
         tiff.tiff.close()
 
         # save the parsing events
-        dst_filepath = self.dst_filepath(dst_root, kind='metadata')
-        events_path = self.tag_filepath(dst_filepath, tag='raw-tiff-processing-events', ext='csv')
-        tiff.save_events(events_path)
+        events_filepath = self.dst_filepath(
+            dst_root, kind='metadata', tag='raw-tiff-processing-events', ext='csv')
+        tiff.save_events(events_filepath)
 
         return tiff.global_metadata
 
@@ -267,31 +274,28 @@ class RawZStackProcessor:
 
         # the index of the center of the cell layer
         # (defined as the median of the mean-subtracted mean intensity profile)
-        center = np.argwhere(np.cumsum(profile) > .5).min()
-        min_ind = int(max(0, center - crop_width))
-        max_ind = int(min(len(profile) - 1, center + crop_width))
+        center_ind = np.argwhere(np.cumsum(profile) > .5).min()
+        min_ind = int(max(0, center_ind - crop_width))
+        max_ind = int(min(len(profile) - 1, center_ind + crop_width))
 
         # log the crop parameters
         result.update({
-            'num_slices': len(profile),
-            'center_ind': center,
+            'profile': profile,
             'min_ind': min_ind,
             'max_ind': max_ind,
+            'center_ind': center_ind,
         })
 
         # do the crop
         for channel in ['dapi', 'gfp']:
             stack = src_tiff.stacks[channel]
             tag = '%s-CROPZ' % channel.upper()
-            dst_filepath = self.dst_filepath(dst_root=dst_root, kind='cropz', channel=channel, tag=tag, ext='tif')
-
-            try:
-                dst_tiff_file = tifffile.TiffWriter(dst_filepath)
-                for ind in np.arange(min_ind, max_ind + 1):
-                    dst_tiff_file.save(stack[ind, :, :])
-                dst_tiff_file.close()
-            except Exception as error:
-                result['error'] = 'Error writing cropped TIFF stack: %s' % str(error)
+            dst_filepath = self.dst_filepath(
+                dst_root=dst_root, kind='cropz', channel=channel, tag=tag, ext='tif')
+            dst_tiff_file = tifffile.TiffWriter(dst_filepath)
+            for ind in np.arange(min_ind, max_ind + 1):
+                dst_tiff_file.save(stack[ind, :, :])
+            dst_tiff_file.close()
 
         src_tiff.tiff.close()
         return result
@@ -323,14 +327,17 @@ class RawZStackProcessor:
         
             # the path to the cropped raw z-stack
             tag = '%s-CROPZ' % channel.upper()
-            src_filepath = self.dst_filepath(dst_root=dst_root, kind='cropz', channel=channel, tag=tag, ext='tif')
+            src_filepath = self.dst_filepath(
+                dst_root=dst_root, kind='cropz', channel=channel, tag=tag, ext='tif')
             if not os.path.isfile(src_filepath):
                 result['%s_error' % channel] = 'File does not exist'
                 continue
-            
+
             # the path to the nrrd file
+            # TODO: include the coordinates of the crop like this: '-CROPXY-R000-C424'
             tag = '%s-CROPXY' % tag
-            dst_filepath = self.dst_filepath(dst_root=dst_root, kind='nrrd', channel=channel, tag=tag, ext='nrrd')
+            dst_filepath = self.dst_filepath(
+                dst_root=dst_root, kind='nrrd', channel=channel, tag=tag, ext='nrrd')
             if os.path.isfile(dst_filepath):
                 result['%s_error' % channel] = 'NRRD file already exists'
                 continue
@@ -346,13 +353,15 @@ class RawZStackProcessor:
             # resample z to generate isotropic voxels
             if self.z_step_size() != pixel_size:
                 z_scale = self.z_step_size()/pixel_size
-                stack = skimage.transform.rescale(stack, (1, 1, z_scale), multichannel=False, preserve_range=True)
+                stack = skimage.transform.rescale(
+                    stack, (1, 1, z_scale), multichannel=False, preserve_range=True)
 
             # pad or crop the stack in z so that there are the required number of slices
             num_slices = stack.shape[-1]
             if num_slices < num_nrrd_slices:
                 pad = np.zeros((roi_size, roi_size, num_nrrd_slices - num_slices)).astype(stack.dtype)
                 stack = np.concatenate((stack, pad), axis=2)
+
             elif num_slices > num_nrrd_slices:
                 num_extra = num_slices - num_nrrd_slices
                 crop_ind = int(np.floor(num_extra/2))
@@ -362,15 +371,13 @@ class RawZStackProcessor:
                     stack = stack[:, :, crop_ind:-(crop_ind + 1)]
 
             # autogain
+            # TODO: log the min/max used here
             stack = utils.autoscale(stack, percentile=0.01, dtype='uint8')
 
             # log the final stack shape
             result['%s_stack_shape' % channel] = list(stack.shape)
 
             # save the stack
-            try:
-                nrrd.write(dst_filepath, stack)
-            except IOError as error:
-                print('NRRD IOError: %s' % str(error))
+            nrrd.write(dst_filepath, stack)
 
         return result

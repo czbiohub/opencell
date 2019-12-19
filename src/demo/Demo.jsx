@@ -46,12 +46,10 @@ class App extends Component {
         this.state = {
 
             appHasLoaded: false,
-
-            // default initial target
-            targetName: 'LMNB1',
             
             fovId: null,
             cellLineId: null,
+            targetName: null,
 
             // 'Volume' or 'Slice'
             localizationMode: 'Slice',
@@ -167,6 +165,9 @@ class App extends Component {
 
     
     componentDidMount() {
+        
+        // initial target to display
+        this.onSearchChange('LMNB1');
 
         // load the NRRD files
         this.loadStacks();

@@ -170,7 +170,28 @@ def insert_plate_microscopy_metadata(session, cache_dir=None, errors='warn'):
         pcl_ops.insert_microscopy_fovs(session, group_metadata, errors='ignore')
 
 
-def do_fov_tasks(session, method_name, method_kwargs):
+@dask.delayed
+def do_fov_task(Session, processor, method_name, method_kwargs):
+
+    try:
+        result = getattr(processor, method_name)(**method_kwargs)
+    except Exception as error:
+        result = {'fov_id': processor.fov_id, 'error': str(error)}
+        return result
+
+    try:
+        # hackish way to make a dict safe for json.dump
+        result = json.loads(pd.Series(data=result).to_json())
+        row = models.MicroscopyFOVResult(fov_id=processor.fov_id, method_name=method_name, data=result)
+        operations.add_and_commit(Session(), row, errors='raise')
+    except sa.exc.SQLAlchemyError as error:
+        result['fov_id'] = processor.fov_id
+        result['database_error'] = str(error)
+
+    return result
+
+
+def do_fov_tasks(Session, method_name, method_kwargs):
     '''
     Call a method of FOVProcessor on all, or a subset of, the raw FOVs
 
@@ -189,15 +210,17 @@ def do_fov_tasks(session, method_name, method_kwargs):
     '''
 
     tasks = []
-    fovs = session.query(models.MicroscopyFOV).all()
+    fovs = Session.query(models.MicroscopyFOV).all()
     processors = [RawZStackProcessor.from_database(fov) for fov in fovs]
 
+    # create the dask tasks
     for processor in processors:
-        task = dask.delayed(getattr(processor, method_name))(**method_kwargs)
+        task = do_fov_task(Session, processor, method_name, method_kwargs)
         tasks.append(task)
 
-    # perform the tasks (using dask.compute)
-    task_results = do_dask_tasks(tasks)
+    # do the tasks
+    with dask.diagnostics.ProgressBar():
+        task_results = dask.compute(*tasks)
 
     # cache the results locally is possible
     dst_root = method_kwargs.get('dst_root')
@@ -205,14 +228,6 @@ def do_fov_tasks(session, method_name, method_kwargs):
         cache_filepath = os.path.join(dst_root, '%s_%s-results.csv' % (timestamp(), method_name))
         pd.DataFrame(data=task_results).to_csv(cache_filepath, index=False)
         print('Saved %s results to %s' % (method_name, cache_filepath))
-
-    print('Inserting %s results into the database' % method_name)
-    fov_results = []
-    for task_result in task_results:
-        fov_results.append(
-            models.MicroscopyFOVResult(fov_id=task_result['fov_id'], method_name=method_name, data=task_result))
-
-    operations.add_all(session, fov_results)
 
 
 def aggregate_processing_events(dst_root):
@@ -239,18 +254,24 @@ def main():
 
     args = parse_args()
 
-    db_url = None
+    # create a scoped_session for opencell database
     if args.credentials:
         db_url = db_utils.url_from_credentials(args.credentials)
+        engine = sa.create_engine(db_url)
+        session_factory = sa.orm.sessionmaker(bind=engine)
+        Session = sa.orm.scoped_session(session_factory)
 
+    # inspect cached plate microscopy metadata
     if args.inspect_plate_microscopy_metadata:
         manager = PlateMicroscopyManager(args.plate_microscopy_dir, args.cache_dir)
         inspect_plate_microscopy_metadata(manager)
 
+    # construct PlateMicroscopy metadata
     if args.construct_plate_microscopy_metadata:
         manager = PlateMicroscopyManager(args.plate_microscopy_dir, args.cache_dir)
         construct_plate_microscopy_metadata(manager)
 
+    # insert PlateMicroscopy metadata into the database
     if args.insert_plate_microscopy_metadata:
         with operations.session_scope(db_url) as session:
             insert_plate_microscopy_metadata(session, cache_dir=args.cache_dir, errors='warn')
@@ -264,12 +285,11 @@ def main():
             'src_root': args.plate_microscopy_dir,
         }
 
-        with operations.session_scope(db_url) as session:
-            try:
-                do_fov_tasks(session, method_name, method_kwargs)
-            except Exception as error:
-                with open(os.path.join(args.dst_root, '%s_%s_error.log' % (timestamp(), method_name)), 'w') as file:
-                    file.write(str(error))
+        try:
+            do_fov_tasks(Session, method_name, method_kwargs)
+        except Exception as error:
+            with open(os.path.join(args.dst_root, '%s_%s_error.log' % (timestamp(), method_name)), 'w') as file:
+                file.write(str(error))
 
 
     # calculate FOV features and score
@@ -286,8 +306,7 @@ def main():
             'dst_root': args.dst_root,
             'fov_scorer': fov_scorer,
         }
-        with operations.session_scope(db_url) as session:
-            do_fov_tasks(session, method_name, method_kwargs)
+        do_fov_tasks(Session, method_name, method_kwargs)
 
 
     if args.crop_cell_layer:
@@ -296,13 +315,11 @@ def main():
             'dst_root': args.dst_root,
             'src_root': args.plate_microscopy_dir,
         }
-
-        with operations.session_scope(db_url) as session:
-            try:
-                do_fov_tasks(session, method_name, method_kwargs)
-            except Exception as error:
-                with open(os.path.join(args.dst_root, '%s_%s_error.log' % (timestamp(), method_name)), 'w') as file:
-                    file.write(str(error))
+        try:
+            do_fov_tasks(Session, method_name, method_kwargs)
+        except Exception as error:
+            with open(os.path.join(args.dst_root, '%s_%s_error.log' % (timestamp(), method_name)), 'w') as file:
+                file.write(str(error))
 
 
     if args.generate_nrrd:
@@ -310,13 +327,11 @@ def main():
         method_kwargs = {
             'dst_root': args.dst_root,
         }
-
-        with operations.session_scope(db_url) as session:
-            try:
-                do_fov_tasks(session, method_name, method_kwargs)
-            except Exception as error:
-                with open(os.path.join(args.dst_root, '%s_%s_error.log' % (timestamp(), method_name)), 'w') as file:
-                    file.write(str(error))
+        try:
+            do_fov_tasks(Session, method_name, method_kwargs)
+        except Exception as error:
+            with open(os.path.join(args.dst_root, '%s_%s_error.log' % (timestamp(), method_name)), 'w') as file:
+                file.write(str(error))
 
 
 if __name__ == '__main__':

@@ -128,14 +128,15 @@ class RawZStackProcessor:
         return dst_plate_dir
 
 
-    def dst_filepath(self, dst_root=None, kind=None, channel=None, axis=None, makedirs=True):
+    def dst_filepath(self, dst_root=None, kind=None, channel=None, axis=None, tag=None, ext=None, makedirs=True):
         '''
         Construct the relative directory path and filename for a 'kind' of output file
 
         The path is of the form {kind}/{channel}/{axis}/{dst_plate_dir}
 
         dst_plate_dir is of the form 'czML0383-P0001-R01'
-        dst_filename is of the form '{dst_plate_dir}-ML0123-A01-S01-CLTA'
+        dst_filename is of the form '{dst_plate_dir}-ML0123-A01-S01-CLTA_{tag}'
+        tag is of the form 'DAPI-PROJZ' or 'DAPI-CROPZ-CROPXY001'
 
         Returns dst_dirpath and the dst_filename as a tuple
         (so that dst_dirpath can be created if it doesn't exist)
@@ -171,31 +172,8 @@ class RawZStackProcessor:
             os.makedirs(dst_dirpath, exist_ok=True)
         
         # construct the destination filename
-        dst_filename = f'{dst_plate_dir}-{self.pml_id}-{self.well_id}-{self.site_id}-{self.target_name}'
+        dst_filename = f'{dst_plate_dir}-{self.pml_id}-{self.well_id}-{self.site_id}-{self.target_name}_{tag}.{ext}'
         return os.path.join(dst_dirpath, dst_filename)
-
-
-    @staticmethod
-    def tag_filepath(filepath, tag, ext):
-        '''
-        Append a tag and a file extension to a filepath
-        Example: 'data/MMStack-01.tif' -> 'data/MMStack-01_metadata.csv'
-        '''
-        # remove the existing extension (if any)
-        filepath, _ = os.path.splitext(filepath)
-        filepath = f'{filepath}_{tag}.{ext}'
-        return filepath
-
-
-    def append_fov_id(self, d):
-        d['fov_id'] = self.fov_id
-        return d
-
-
-    @staticmethod
-    def sanitize_dict(d):
-        '''hackish way to make a shallow dict safe for json.dump'''
-        return json.loads(pd.Series(data=d).to_json())
 
 
     def process_raw_tiff(self, src_root, dst_root):
@@ -213,7 +191,6 @@ class RawZStackProcessor:
         result = {'src_filepath': src_filepath}
         if not os.path.isfile(src_filepath):
             result['error'] = 'File does not exist'
-            return self.append_fov_id(result)
 
         tiff = micromanager.RawPipelineTIFF(src_filepath, verbose=False)
         tiff.parse_micromanager_metadata()
@@ -224,11 +201,10 @@ class RawZStackProcessor:
         if tiff.did_split_channels:
             for channel in ['dapi', 'gfp']:
                 for axis in ['x', 'y', 'z']:
-                    dst_filepath = self.dst_filepath(
-                        dst_root=dst_root, kind='projection', channel=channel, axis=axis)
-
                     tag = '%s-PROJ-%s' % (channel.upper(), axis.upper())
-                    dst_filepath = self.tag_filepath(dst_filepath, tag=tag, ext='tif')
+                    dst_filepath = self.dst_filepath(
+                        dst_root=dst_root, kind='projection', channel=channel, axis=axis, tag=tag, ext='tif')
+
                     tiff.project_stack(channel_name=channel, axis=axis, dst_filepath=dst_filepath)
 
         # the tiff file must be manually closed
@@ -239,9 +215,7 @@ class RawZStackProcessor:
         events_path = self.tag_filepath(dst_filepath, tag='raw-tiff-processing-events', ext='csv')
         tiff.save_events(events_path)
 
-        metadata = self.append_fov_id(tiff.global_metadata)
-        metadata = self.sanitize_dict(metadata)
-        return metadata
+        return tiff.global_metadata
 
 
     def calculate_fov_features(self, dst_root, fov_scorer):
@@ -251,13 +225,9 @@ class RawZStackProcessor:
         '''
 
         # construct the filepath to the DAPI z-projection
-        filepath = self.dst_filepath(dst_root, kind='projection', channel='dapi', axis='z')
-        filepath = self.tag_filepath(filepath, tag='DAPI-PROJ-Z', ext='tif')
-
+        filepath = self.dst_filepath(
+            dst_root, kind='projection', channel='dapi', axis='z', tag='DAPI-PROJ-Z', ext='tif')
         result = fov_scorer.process_existing_fov(filepath)
-
-        result = self.append_fov_id(result)
-        result = self.sanitize_dict(result)
         return result
 
 
@@ -265,9 +235,9 @@ class RawZStackProcessor:
         '''
         Crop the raw z-stack around the cell layer
         '''
-
-        result = self.append_fov_id({})
+        
         src_filepath = self.src_filepath(src_root=src_root)
+        result = {'src_filepath': src_filepath}
         if not os.path.isfile(src_filepath):
             result['error'] = 'src_filepath does not exist'
             return result
@@ -313,8 +283,7 @@ class RawZStackProcessor:
         for channel in ['dapi', 'gfp']:
             stack = src_tiff.stacks[channel]
             tag = '%s-CROPZ' % channel.upper()
-            dst_filepath = self.dst_filepath(dst_root=dst_root, kind='cropz', channel=channel)
-            dst_filepath = self.tag_filepath(dst_filepath, tag=tag, ext='tif')
+            dst_filepath = self.dst_filepath(dst_root=dst_root, kind='cropz', channel=channel, tag=tag, ext='tif')
 
             try:
                 dst_tiff_file = tifffile.TiffWriter(dst_filepath)
@@ -336,8 +305,8 @@ class RawZStackProcessor:
         NOTE: for now, we crop the center of each FOV
         '''
 
-        result = self.append_fov_id({})
-
+        result = {}
+    
         # pixel size in microns
         # (for 1024x1024 images from the Dragonfly's EMCCD with 63x objective)
         pixel_size = 0.2
@@ -351,20 +320,17 @@ class RawZStackProcessor:
         num_nrrd_slices = 60
 
         for channel in ['dapi', 'gfp']:
-            channel_caps = channel.upper()
         
             # the path to the cropped raw z-stack
-            tag = '%s-CROPZ' % channel_caps
-            src_filepath = self.dst_filepath(dst_root=dst_root, kind='cropz', channel=channel)
-            src_filepath = self.tag_filepath(src_filepath, tag=tag, ext='tif')
+            tag = '%s-CROPZ' % channel.upper()
+            src_filepath = self.dst_filepath(dst_root=dst_root, kind='cropz', channel=channel, tag=tag, ext='tif')
             if not os.path.isfile(src_filepath):
                 result['%s_error' % channel] = 'File does not exist'
                 continue
             
             # the path to the nrrd file
-            tag = '%s-CROPXY' % tag   
-            dst_filepath = self.dst_filepath(dst_root=dst_root, kind='nrrd', channel=channel)
-            dst_filepath = self.tag_filepath(dst_filepath, tag=tag, ext='nrrd')
+            tag = '%s-CROPXY' % tag
+            dst_filepath = self.dst_filepath(dst_root=dst_root, kind='nrrd', channel=channel, tag=tag, ext='nrrd')
             if os.path.isfile(dst_filepath):
                 result['%s_error' % channel] = 'NRRD file already exists'
                 continue

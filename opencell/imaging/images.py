@@ -221,7 +221,9 @@ class RawPipelineTIFF(MicroManagerTIFF):
         num_error_rows = errors.sum()
         num_dropped_rows = self.mm_metadata.shape[0] - md.shape[0]
         if num_dropped_rows != num_error_rows:
-            self.event_logger('%s rows with NAs were dropped but %s rows had errors' % (num_dropped_rows, num_error_rows))
+            self.event_logger(
+                '%s rows with NAs were dropped but %s rows had errors' % \
+                    (num_dropped_rows, num_error_rows))
 
         # check that we can coerce the parsed columns as expected
         int_columns = ['slice_ind', 'channel_ind']
@@ -372,7 +374,8 @@ class RawPipelineTIFF(MicroManagerTIFF):
                 tifffile.imsave(dst_filepath, proj)
 
         except:
-            self.event_logger('An error occured while %s-projecting the %s channel' % (axis, channel_name))
+            self.event_logger(
+                'An error occured while %s-projecting the %s channel' % (axis, channel_name))
 
 
     def crop_stack(self):

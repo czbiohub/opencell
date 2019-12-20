@@ -19,8 +19,8 @@ import dask.diagnostics
 
 from opencell.database import models, operations
 from opencell.database import utils as db_utils
+from opencell.imaging.processors import FOVProcessor
 from opencell.imaging.managers import PlateMicroscopyManager
-from opencell.imaging.processors import RawZStackProcessor
 
 try:
     DRAGONFLY_REPO ='/Users/keith.cheveralls/projects/dragonfly-automation' 
@@ -203,7 +203,7 @@ def do_fov_tasks(Session, method_name, method_kwargs):
 
     tasks = []
     fovs = Session.query(models.MicroscopyFOV).all()
-    processors = [RawZStackProcessor.from_database(fov) for fov in fovs]
+    processors = [FOVProcessor.from_database(fov) for fov in fovs]
 
     # create the dask tasks
     for processor in processors:
@@ -224,7 +224,7 @@ def do_fov_tasks(Session, method_name, method_kwargs):
 
 def aggregate_processing_events(dst_root):
     '''
-    'Processing events' are events/errors that occurred in micromanager.RawPipelineTIFF
+    'Processing events' are events/errors that occurred in images.RawPipelineTIFF
     (which is called by process_raw_tiffs)
 
     TODO: refactor this to eliminate the dependence on manager.aggregate_filepaths,

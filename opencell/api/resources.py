@@ -10,7 +10,7 @@ from flask import (
     send_file,
 )
 
-from opencell.imaging.processors import RawZStackProcessor
+from opencell.imaging.processors import FOVProcessor
 from opencell.database import models, operations
 from opencell.api.cache import cache
 
@@ -149,7 +149,7 @@ class MicroscopyFOV(Resource):
             pass
     
         fov = current_app.Session.query(models.MicroscopyFOV).filter(models.MicroscopyFOV.id == fov_id).first()
-        p = RawZStackProcessor.from_database(fov)
+        p = FOVProcessor.from_database(fov)
         filepath = p.dst_filepath(
             dst_root=current_app.config.get('opencell_microscopy_root'), 
             kind=kind, 

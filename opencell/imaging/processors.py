@@ -14,10 +14,10 @@ import numpy as np
 import pandas as pd
 
 from opencell import constants
-from opencell.imaging import micromanager, utils
+from opencell.imaging import images, utils
 
 
-class RawZStackProcessor:
+class FOVProcessor:
 
     def __init__(
         self, 
@@ -193,6 +193,10 @@ class RawZStackProcessor:
 
         src_root : the root of the 'PlateMicroscopy' directory
         dst_root : the destination 'oc-plate-microscopy' directory 
+
+        NOTE: the `tiff.global_metadata` object returned by this method
+        is modified by all of the `RawPipelineTIFF methods called below
+        (including by `project_stack`, which appends the min/max intensities)
         '''
 
         src_filepath = self.src_filepath(src_root=src_root)
@@ -200,7 +204,7 @@ class RawZStackProcessor:
         if not os.path.isfile(src_filepath):
             result['error'] = 'File does not exist'
 
-        tiff = micromanager.RawPipelineTIFF(src_filepath, verbose=False)
+        tiff = images.RawPipelineTIFF(src_filepath, verbose=False)
         tiff.parse_micromanager_metadata()
         tiff.validate_micromanager_metadata()
 
@@ -255,7 +259,7 @@ class RawZStackProcessor:
         # half the depth in number of z-slices
         crop_width = np.ceil(crop_width/self.z_step_size()/2)
 
-        src_tiff = micromanager.RawPipelineTIFF(src_filepath, verbose=False)
+        src_tiff = images.RawPipelineTIFF(src_filepath, verbose=False)
         src_tiff.parse_micromanager_metadata()
         src_tiff.validate_micromanager_metadata()
 

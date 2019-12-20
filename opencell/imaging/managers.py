@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 
 from opencell import constants
-from opencell.imaging import micromanager
+from opencell.imaging import images
 
 
 class PlateMicroscopyManager:

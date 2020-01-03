@@ -41,14 +41,14 @@ class FOVProcessor:
         self.raw_filepath = raw_filepath
 
         # clean up the target_name (remove slashes and dashes)
-        self.target_name = self.sanitize_target_name(target_name)
+        self.target_name = self.clean_target_name(target_name)
 
         # create site_id from site_num
         self.site_id = 'S%02d' % int(self.site_num)
 
 
     @staticmethod
-    def sanitize_target_name(target_name):
+    def clean_target_name(target_name):
         '''
         Create a filename-safe target_name by removing slashes and dashes
         '''
@@ -133,54 +133,46 @@ class FOVProcessor:
         dst_root=None, 
         kind=None, 
         channel=None, 
-        axis=None, 
-        tag=None, 
         ext=None, 
         makedirs=True):
         '''
         Construct the relative directory path and filename for a 'kind' of output file
 
-        The path is of the form {kind}/{channel}/{axis}/{dst_plate_dir}
-
+        The path is of the form {kind}/{dst_plate_dir}
         dst_plate_dir is of the form 'czML0383-P0001-R01'
-        dst_filename is of the form '{dst_plate_dir}-ML0123-A01-S01-CLTA_{tag}'
-        tag is of the form 'DAPI-PROJZ' or 'DAPI-CROPZ-CROPXY001'
+        dst_filename is of the form '{dst_plate_dir}-ML0123-A01-S01-CLTA_{kind}-{channel}'
 
         Returns dst_dirpath and the dst_filename as a tuple
         (so that dst_dirpath can be created if it doesn't exist)
+
+        TODO: extend this method so that it can generate unique filenames
+        for each ROI from the same FOV
 
         '''
 
         if dst_root is None:
             dst_root = ''
 
-        kinds = ['metadata', 'projection', 'cropz', 'cropxy', 'nrrd']
+        kinds = ['metadata', 'proj', 'cropz', 'cropxy', 'nrrd']
         if kind not in kinds:
             raise ValueError('%s is not a valid destination kind' % kind)
-        subdir_names = [kind]
+        appendix = kind.upper()
 
-        # validate and create subdir names for projection directory
-        # (channel and projection axis)
         if channel is not None:
-            if channel not in ['dapi', 'gfp', 'composite']:
+            if channel not in ['dapi', 'gfp', 'rgb']:
                 raise ValueError("'%s' is not a valid channel" % channel)
-            subdir_names.append(channel)
-        
-        if axis is not None:
-            if axis not in ['x', 'y', 'z']:
-                raise ValueError("'%s' is not a valid axis" % axis)
-            subdir_names.append(axis)
+            appendix = '%s-%s' % (appendix, channel.upper())
 
         # destination plate_dir name
         dst_plate_dir = self.dst_plate_dir()
 
         # construct the destination dirpath
-        dst_dirpath = os.path.join(dst_root, *subdir_names, dst_plate_dir)
+        dst_dirpath = os.path.join(dst_root, kind, dst_plate_dir)
         if makedirs:
             os.makedirs(dst_dirpath, exist_ok=True)
         
         # construct the destination filename
-        dst_filename = f'{dst_plate_dir}-{self.pml_id}-{self.well_id}-{self.site_id}-{self.target_name}_{tag}.{ext}'
+        dst_filename = f'{dst_plate_dir}-{self.pml_id}-{self.well_id}-{self.site_id}-{self.target_name}_{appendix}.{ext}'
         return os.path.join(dst_dirpath, dst_filename)
 
 
@@ -200,9 +192,9 @@ class FOVProcessor:
         '''
 
         src_filepath = self.src_filepath(src_root=src_root)
-        result = {'src_filepath': src_filepath}
+        metadata = {'src_filepath': src_filepath}
         if not os.path.isfile(src_filepath):
-            result['error'] = 'File does not exist'
+            metadata['error'] = 'File does not exist'
 
         tiff = images.RawPipelineTIFF(src_filepath, verbose=False)
         tiff.parse_micromanager_metadata()
@@ -212,34 +204,34 @@ class FOVProcessor:
         tiff.split_channels()
         if tiff.did_split_channels:
             for channel in ['dapi', 'gfp']:
-                for axis in ['x', 'y', 'z']:
-                    tag = '%s-PROJ-%s' % (channel.upper(), axis.upper())
-                    dst_filepath = self.dst_filepath(
-                        dst_root=dst_root, kind='projection', channel=channel, axis=axis, tag=tag, ext='tif')
-                    tiff.project_stack(channel_name=channel, axis=axis, dst_filepath=dst_filepath)
+                dst_filepath = self.dst_filepath(
+                    dst_root=dst_root, kind='proj', channel=channel, ext='tif')
+                tiff.project_stack(channel_name=channel, axis='z', dst_filepath=dst_filepath)
 
         # the tiff file must be manually closed
         tiff.tiff.close()
 
-        # save the parsing events
-        events_filepath = self.dst_filepath(
-            dst_root, kind='metadata', tag='raw-tiff-processing-events', ext='csv')
-        tiff.save_events(events_filepath)
+        metadata.update(tiff.global_metadata)
 
-        return tiff.global_metadata
+        # return the parsed raw TIFF metadata and the parsing events (if any)
+        result = {'metadata': metadata, 'events': tiff.events}
+        return result
 
 
     def calculate_fov_features(self, dst_root, fov_scorer):
         '''
-        dst_root : the root destination to which z-projections were saved in process_raw_tiff
+        Calculate the features and score for the FOV
+        using the PipelineFOVScorer module from the dragonfly-automation project
+
+        dst_root : the root directory in which z-projections were saved in process_raw_tiff
         fov_scorer : an instance of PipelineFOVScorer in 'training' mode
         '''
 
         # construct the filepath to the DAPI z-projection
-        filepath = self.dst_filepath(
-            dst_root, kind='projection', channel='dapi', axis='z', tag='DAPI-PROJ-Z', ext='tif')
+        filepath = self.dst_filepath(dst_root, kind='proj', channel='dapi', ext='tif')
         result = fov_scorer.process_existing_fov(filepath)
         return result
+
 
 
     def crop_cell_layer(self, src_root, dst_root):
@@ -293,9 +285,8 @@ class FOVProcessor:
         # do the crop
         for channel in ['dapi', 'gfp']:
             stack = src_tiff.stacks[channel]
-            tag = '%s-CROPZ' % channel.upper()
             dst_filepath = self.dst_filepath(
-                dst_root=dst_root, kind='cropz', channel=channel, tag=tag, ext='tif')
+                dst_root=dst_root, kind='cropz', channel=channel, ext='tif')
             dst_tiff_file = tifffile.TiffWriter(dst_filepath)
             for ind in np.arange(min_ind, max_ind + 1):
                 dst_tiff_file.save(stack[ind, :, :])
@@ -330,18 +321,16 @@ class FOVProcessor:
         for channel in ['dapi', 'gfp']:
         
             # the path to the cropped raw z-stack
-            tag = '%s-CROPZ' % channel.upper()
             src_filepath = self.dst_filepath(
-                dst_root=dst_root, kind='cropz', channel=channel, tag=tag, ext='tif')
+                dst_root=dst_root, kind='cropz', channel=channel, ext='tif')
             if not os.path.isfile(src_filepath):
                 result['%s_error' % channel] = 'File does not exist'
                 continue
 
             # the path to the nrrd file
             # TODO: include the coordinates of the crop like this: '-CROPXY-R000-C424'
-            tag = '%s-CROPXY' % tag
             dst_filepath = self.dst_filepath(
-                dst_root=dst_root, kind='nrrd', channel=channel, tag=tag, ext='nrrd')
+                dst_root=dst_root, kind='nrrd', channel=channel, ext='nrrd')
             if os.path.isfile(dst_filepath):
                 result['%s_error' % channel] = 'NRRD file already exists'
                 continue
@@ -385,3 +374,5 @@ class FOVProcessor:
             nrrd.write(dst_filepath, stack)
 
         return result
+
+

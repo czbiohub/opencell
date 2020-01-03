@@ -571,10 +571,9 @@ class MicroscopyFOVResult(Base):
 
     timestamp = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
  
-    # the name of the method that generated the result 
-    # ('process_raw_tiff', 'calculate_fov_features', etc)
+    # the kind or type of the result ('raw-tiff-metadata', 'fov-features', etc)
     # (eventually, this should be changed to an enum)
-    method_name = db.Column(db.String)
+    kind = db.Column(db.String)
 
     # the result data
     data = db.Column(db.types.JSON)

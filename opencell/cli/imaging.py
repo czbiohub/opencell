@@ -65,7 +65,6 @@ def parse_args():
         'insert_plate_microscopy_metadata',
         'process_raw_tiff', 
         'calculate_fov_features',
-        'aggregate_processing_events',
         'crop_cell_layer',
         'generate_nrrd',
     ]
@@ -163,84 +162,97 @@ def insert_plate_microscopy_metadata(session, cache_dir=None, errors='warn'):
         group_metadata = metadata.get_group(group)
         pcl_ops.insert_microscopy_fovs(session, group_metadata, errors=errors)
 
-
+    
 @dask.delayed
-def do_fov_task(Session, processor, method_name, method_kwargs):
+def do_fov_task(
+    Session, 
+    fov_processor, 
+    fov_operator, 
+    processor_method_name, 
+    processor_method_kwargs,
+    operator_method_name):
+    '''
+    fov_processor : an instance of the imaging.processor.FOVProcessor class
+    fov_operator : an instance of the database.operations.MicroscopyFOVOperations class
+    '''
 
+    error_log = {'fov_id': fov_processor.fov_id, 'method': processor_method_name}
+
+    # attempt to call the processing method
     try:
-        result = getattr(processor, method_name)(**method_kwargs)
+        result = getattr(fov_processor, processor_method_name)(**processor_method_kwargs)
     except Exception as error:
-        result = {'fov_id': processor.fov_id, 'error': str(error)}
-        return result
+        error_log['processing_error'] = str(error)
+        return error_log
 
+    # attempt to insert the processing result into the database
     try:
-        # hackish way to make a dict safe for json.dump
-        result = json.loads(pd.Series(data=result).to_json())
-        row = models.MicroscopyFOVResult(fov_id=processor.fov_id, method_name=method_name, data=result)
-        operations.add_and_commit(Session(), row, errors='raise')
+        getattr(fov_operator, operator_method_name)(Session(), result)
+    except Exception as error:
+        error_log['database_error'] = str(error)
 
-    except sa.exc.SQLAlchemyError as error:
-        result['fov_id'] = processor.fov_id
-        result['database_error'] = str(error)
-
-    return result
+    return error_log
 
 
-def do_fov_tasks(Session, method_name, method_kwargs):
+
+def do_fov_tasks(Session, method_name, method_kwargs, fovs=None):
     '''
     Call a method of FOVProcessor on all, or a subset of, the raw FOVs
+
+    Parameters
+    ----------
+    method_name : the name of the FOVProcessor method to call
+    method_kwargs : the kwargs for the method (no args are allowed)
+    fovs : optional list of FOVs to be processed (if None, all FOVs are processed)
 
     TODO: handle multiple source directories 
     (that is, plate_microscopy_dir and dragonfly_automation_dir)
 
     TODO: logic to skip already-processed FOVs
-
-    NOTE: the method called must return a JSON-safe dict of 'results' that includes the fov_id,
-    because we need this id to insert the results into the database
-    (because the results are generated in parallel and then inserted afterwards, all at once)
-
     '''
 
-    tasks = []
-    fovs = Session.query(models.MicroscopyFOV).all()
-    processors = [FOVProcessor.from_database(fov) for fov in fovs]
+    # valid methods and their corresponding FOVOperations method
+    method_defs = {
+        'process_raw_tiff': 'insert_raw_tiff_metadata',
+        'calculate_fov_features': 'insert_fov_features',
+        'crop_corner_rois': 'insert_rois',
+        'crop_best_roi': 'insert_rois',
+        'generate_thumbnails': 'insert_thumbnails',
+        'generate_ijclean': 'insert_ijclean',
+    }
+
+    # the name of the FOVOperations method that inserts the results of the processor method
+    operator_method_name = method_defs.get(method_name)
+
+    # if a list of FOVs was not provided, select all FOVs
+    if fovs is None:
+        fovs = Session.query(models.MicroscopyFOV).all()
+
+    # instantiate a processor and operations class for each FOV
+    # (note the awkward nomenclature mismatch here; 
+    # we call an instance of the FOVOperations class an `fov_operator`)
+    fov_processors = [FOVProcessor.from_database(fov) for fov in fovs]
+    fov_operators = [operations.MicroscopyFOVOperations(fov.id) for fov in fovs]
 
     # create the dask tasks
-    for processor in processors:
-        task = do_fov_task(Session, processor, method_name, method_kwargs)
+    tasks = []
+    for fov_processor, fov_operator in zip(fov_processors, fov_operators):
+        task = do_fov_task(
+            Session, fov_processor, fov_operator, method_name, method_kwargs, operator_method_name)
         tasks.append(task)
 
     # do the tasks
     with dask.diagnostics.ProgressBar():
-        results = dask.compute(*tasks)
+        error_logs = dask.compute(*tasks)
 
-    # cache the results locally is possible
+    # cache the errors locally if possible
+    # TODO: check whether any errors actually occurred
     dst_root = method_kwargs.get('dst_root')
     if dst_root is not None:
-        cache_filepath = os.path.join(dst_root, '%s_%s-results.csv' % (timestamp(), method_name))
-        pd.DataFrame(data=results).to_csv(cache_filepath, index=False)
-        print('Saved %s results to %s' % (method_name, cache_filepath))
+        cache_filepath = os.path.join(dst_root, '%s_%s-errors.csv' % (timestamp(), method_name))
+        pd.DataFrame(data=error_logs).to_csv(cache_filepath, index=False)
+        print('Saved %s errors to %s' % (method_name, cache_filepath))
 
-
-def aggregate_processing_events(dst_root):
-    '''
-    'Processing events' are events/errors that occurred in images.RawPipelineTIFF
-    (which is called by process_raw_tiffs)
-
-    TODO: refactor this to eliminate the dependence on manager.aggregate_filepaths,
-    which no longer exists
-
-    '''
-    # paths = manager.aggregate_filepaths(
-    #     dst_root, kind='metadata', tag='raw-tiff-processing-events', ext='csv')
-
-    paths = []
-    tasks = [load_csv(path) for path in paths]
-    with dask.diagnostics.ProgressBar():
-        results = dask.compute(*tasks)
-
-    df = pd.concat([df for df in results if df is not None])
-    df.to_csv(os.path.join(dst_root, 'aggregated-processing-events.csv'), index=False)
 
 
 def main():

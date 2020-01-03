@@ -40,6 +40,7 @@ def parse_args():
         'drop_all', 
         'populate',
         'insert_facs',
+        'insert_microscopy'
     ]
 
     for arg_name in action_arg_names:
@@ -218,11 +219,12 @@ def main():
 
     if args.populate:
         populate(session, args.data_dir, errors='warn')
-        insert_plate_microscopy_datasets(session, args.data_dir, errors='warn')
 
     if args.insert_facs:
         insert_facs(session, args.facs_results_dir, errors='warn')
 
+    if args.insert_microscopy:
+        insert_plate_microscopy_datasets(session, args.data_dir, errors='warn')
 
 if __name__ == '__main__':
     main()

@@ -161,7 +161,7 @@ def insert_plate_microscopy_metadata(session, cache_dir=None, errors='warn'):
             continue
 
         group_metadata = metadata.get_group(group)
-        pcl_ops.insert_microscopy_fovs(session, group_metadata, errors='ignore')
+        pcl_ops.insert_microscopy_fovs(session, group_metadata, errors=errors)
 
 
 @dask.delayed

@@ -182,15 +182,16 @@ def do_fov_task(
     try:
         result = getattr(fov_processor, processor_method_name)(**processor_method_kwargs)
     except Exception as error:
-        error_log['processing_error'] = str(error)
+        error_log['kind'] = 'processing'
+        error_log['message'] = str(error)
         return error_log
 
     # attempt to insert the processing result into the database
     try:
         getattr(fov_operator, operator_method_name)(Session(), result)
     except Exception as error:
-        error_log['database_error'] = str(error)
-
+        error_log['kind'] = 'database'
+        error_log['message'] = str(error)
     return error_log
 
 
@@ -243,16 +244,16 @@ def do_fov_tasks(Session, method_name, method_kwargs, fovs=None):
 
     # do the tasks
     with dask.diagnostics.ProgressBar():
-        error_logs = dask.compute(*tasks)
+        errors = dask.compute(*tasks)
 
     # cache the errors locally if possible
-    # TODO: check whether any errors actually occurred
-    dst_root = method_kwargs.get('dst_root')
-    if dst_root is not None:
-        cache_filepath = os.path.join(dst_root, '%s_%s-errors.csv' % (timestamp(), method_name))
-        pd.DataFrame(data=error_logs).to_csv(cache_filepath, index=False)
-        print('Saved %s errors to %s' % (method_name, cache_filepath))
-
+    errors = pd.DataFrame(data=errors)
+    if 'message' in list(errors.columns):
+        dst_root = method_kwargs.get('dst_root')
+        if dst_root is not None:
+            cache_filepath = os.path.join(dst_root, '%s_%s-errors.csv' % (timestamp(), method_name))
+            errors.to_csv(cache_filepath, index=False)
+            print('Error log for %s saved to %s' % (method_name, cache_filepath))
 
 
 def main():

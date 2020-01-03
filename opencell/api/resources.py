@@ -101,7 +101,8 @@ class PolyclonalLines(Resource):
         lines = []
         if target_name:
             cds = current_app.Session.query(models.CrisprDesign)\
-                .filter(db.func.lower(models.CrisprDesign.target_name).startswith(target_name.lower())).all()
+                .filter(db.func.lower(models.CrisprDesign.target_name)\
+                .startswith(target_name.lower())).all()
             for cd in cds:
                 ep_lines = cd.plate_design.plate_instances[0].electroporations[0].electroporation_lines
                 cell_lines = [line.cell_line for line in ep_lines if line.well_id == cd.well_id]
@@ -136,27 +137,24 @@ class MicroscopyFOV(Resource):
     def get(self, fov_id, channel, kind):
         
         # hard-coded for z-projections (and not x- or y-)
-        if kind == 'projection':
+        if kind == 'proj':
             ext = 'tif'
-            axis = 'z'
-            tag = '%s-PROJ-Z' % channel.upper()
         elif kind == 'nrrd':
             ext = 'nrrd'
-            axis = None
-            tag = '%s-CROPZ-CROPXY' % channel.upper()
         else:
             # TODO: return 404
             pass
     
-        fov = current_app.Session.query(models.MicroscopyFOV).filter(models.MicroscopyFOV.id == fov_id).first()
-        p = FOVProcessor.from_database(fov)
-        filepath = p.dst_filepath(
+        fov = current_app.Session.query(models.MicroscopyFOV)\
+            .filter(models.MicroscopyFOV.id == fov_id).first()
+
+        processor = FOVProcessor.from_database(fov)
+        filepath = processor.dst_filepath(
             dst_root=current_app.config.get('opencell_microscopy_root'), 
             kind=kind, 
             channel=channel, 
-            axis=axis)
+            ext=ext)
     
-        filepath = p.tag_filepath(filepath, tag=tag, ext=ext)
         filename = filepath.split(os.sep)[-1]
 
         return send_file(

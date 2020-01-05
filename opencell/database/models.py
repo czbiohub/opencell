@@ -518,10 +518,13 @@ class MicroscopyFOV(Base):
     dataset = db.orm.relationship('MicroscopyDataset', backref='fovs')
 
     # one-to-many relationship with FOV results
-    fov_results = db.orm.relationship('MicroscopyFOVResult', back_populates='fov')
+    results = db.orm.relationship('MicroscopyFOVResult', back_populates='fov')
 
     # one-to-many relationship with FOV ROIs
-    fov_rois = db.orm.relationship('MicroscopyFOVROI', back_populates='fov')
+    rois = db.orm.relationship('MicroscopyFOVROI', back_populates='fov')
+
+    # one-to-many relationship with thumbnails
+    thumbnails = db.orm.relationship('Thumbnail', back_populates='fov')
 
     # round_id is either 'R01' (initial post-sort imaging) 
     # or 'R02' (thawed-plate imaging)
@@ -567,7 +570,7 @@ class MicroscopyFOVResult(Base):
 
     id = db.Column(db.Integer, primary_key=True)
     fov_id = db.Column(db.Integer, db.ForeignKey('microscopy_fov.id'))
-    fov = db.orm.relationship('MicroscopyFOV', back_populates='fov_results', uselist=False)
+    fov = db.orm.relationship('MicroscopyFOV', back_populates='results', uselist=False)
 
     timestamp = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
  
@@ -597,33 +600,44 @@ class MicroscopyFOVROI(Base):
 
     id = db.Column(db.Integer, primary_key=True)
     fov_id = db.Column(db.Integer, db.ForeignKey('microscopy_fov.id'))
-    fov = db.orm.relationship('MicroscopyFOV', back_populates='fov_rois', uselist=False)
-    thumbnails = db.orm.relationship('Thumbnail')
 
-    position_row = db.Column(db.Integer)
-    position_col = db.Column(db.Integer)
-    position_z = db.Column(db.Integer)
+    fov = db.orm.relationship('MicroscopyFOV', back_populates='rois', uselist=False)
+    thumbnails = db.orm.relationship('Thumbnail', back_populates='roi')
 
-    width_row = db.Column(db.Integer)
-    width_col = db.Column(db.Integer)
-    width_z = db.Column(db.Integer)
+    # kind of ROI: either 'corner', 'top-scoring', 'single-nucleus', 'single-cell'
+    kind = db.Column(db.String)
 
-    # the min/max intensity and gamma used to downsample the ROI
-    min_intensity = db.Column(db.Integer)
-    max_intensity = db.Column(db.Integer)
-    gamma = db.Column(db.Float)
+    # the xy coordinates of the ROI (the position of its top left corner and its width/height)
+    num_rows = db.Column(db.Integer)
+    num_cols = db.Column(db.Integer)
+    top_left_row = db.Column(db.Integer)
+    top_left_col = db.Column(db.Integer)
+
+    # all other ROI-specific metadata, including the z-coordinates of the crop, 
+    # the z-coordinate of the center of the cell layer, 
+    # and the min/max values used to downsample the intensities
+    props = db.Column(db.types.JSON)
+
+    # require the x-y crop coordinates to be unique per FOV
+    # (there's no reason to allow multiple ROIs with the same xy, but different z, coords)
+    __table_args__ = (
+        db.UniqueConstraint(fov_id, top_left_row, top_left_col, num_rows, num_cols),
+    )
 
 
 class Thumbnail(Base):
     '''
-    An image thumbnail of either an ROI
+    An image thumbnail of either an ROI or an FOV
     '''
 
     __tablename__ = 'thumbnail'
 
     id = db.Column(db.Integer, primary_key=True)
+    fov_id = db.Column(db.Integer, db.ForeignKey('microscopy_fov.id'))
     roi_id = db.Column(db.Integer, db.ForeignKey('microscopy_fov_roi.id'))
-    roi = db.orm.relationship('MicroscopyFOVROI', back_populates='thumbnails')
+
+    fov = db.orm.relationship('MicroscopyFOV', back_populates='thumbnails', uselist=False)
+    roi = db.orm.relationship('MicroscopyFOVROI', back_populates='thumbnails', uselist=False)
 
     # the size (in pixels) of the thumbnail image (which is assumed to be square)
     size = db.Column(db.Integer)

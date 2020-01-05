@@ -529,7 +529,7 @@ class PolyclonalLineOperations:
         all_fovs = []
         for fov in self.line.microscopy_fovs:
 
-            score_result = [r for r in fov.fov_results if r.method_name == 'calculate_fov_features']
+            score_result = [r for r in fov.results if r.method_name == 'calculate_fov_features']
             score = None
             if score_result:
                 score = score_result[0].data.get('score')
@@ -538,6 +538,7 @@ class PolyclonalLineOperations:
                 'fov_id': fov.id,
                 'pml_id': fov.dataset.pml_id,
                 'src_filename': fov.raw_filename,
+                'rois': fov.all_roi_props,
                 'score': score,
             })
 
@@ -586,7 +587,6 @@ class MicroscopyFOVOperations:
         '''
 
         result = self.to_jsonable(result)
-
         metadata = result.get('metadata')
         events = result.get('events')
 
@@ -606,6 +606,8 @@ class MicroscopyFOVOperations:
 
     def insert_fov_features(self, session, result):
         '''
+        Insert FOV features
+        result : dict returned by FOVProcessor.calculate_fov_features
         '''
         result = self.to_jsonable(result)        
         row = models.MicroscopyFOVResult(
@@ -615,14 +617,34 @@ class MicroscopyFOVOperations:
         add_and_commit(session, row, errors='raise')
 
 
-    def insert_rois(self, session, roi_props):
+    def insert_corner_rois(self, session, result):
         '''
+        Insert the four ROIs cropped from each corner of an FOV
+        result : a list of roi_props (possibly empty)
         '''
-        pass
+
+        all_roi_props = result
+
+        rois = []
+        for roi_props in all_roi_props:
+            roi_props = self.to_jsonable(roi_props)
+            roi = models.MicroscopyFOVROI(
+                fov_id=self.fov_id,
+                kind='corner',
+                props=roi_props,
+                num_rows=roi_props['shape'][0],
+                num_cols=roi_props['shape'][1],
+                top_left_row=roi_props['position'][0],
+                top_left_col=roi_props['position'][1]
+            )
+            rois.append(roi)
+
+        add_and_commit(session, rois, errors='raise')
 
 
     def insert_thumbnails(self, session, thumbnails):
         pass
+
 
 
 class MicroscopyROIOperations:

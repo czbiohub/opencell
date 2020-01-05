@@ -65,8 +65,7 @@ def parse_args():
         'insert_plate_microscopy_metadata',
         'process_raw_tiff', 
         'calculate_fov_features',
-        'crop_cell_layer',
-        'generate_nrrd',
+        'crop_corner_rois',
     ]
 
     for arg_name in action_arg_names:
@@ -216,8 +215,8 @@ def do_fov_tasks(Session, method_name, method_kwargs, fovs=None):
     method_defs = {
         'process_raw_tiff': 'insert_raw_tiff_metadata',
         'calculate_fov_features': 'insert_fov_features',
-        'crop_corner_rois': 'insert_rois',
-        'crop_best_roi': 'insert_rois',
+        'crop_corner_rois': 'insert_corner_rois',
+        'crop_best_roi': 'insert_best_roi',
         'generate_thumbnails': 'insert_thumbnails',
         'generate_ijclean': 'insert_ijclean',
     }
@@ -294,7 +293,7 @@ def main():
         try:
             do_fov_tasks(Session, method_name, method_kwargs)
         except Exception as error:
-            with open(os.path.join(args.dst_root, '%s_%s_error.log' % (timestamp(), method_name)), 'w') as file:
+            with open(os.path.join(args.dst_root, '%s_%s_uncaught_exception.log' % (timestamp(), method_name)), 'w') as file:
                 file.write(str(error))
 
 
@@ -315,8 +314,8 @@ def main():
         do_fov_tasks(Session, method_name, method_kwargs)
 
 
-    if args.crop_cell_layer:
-        method_name = 'crop_cell_layer'
+    if args.crop_corner_rois:
+        method_name = 'crop_corner_rois'
         method_kwargs = {
             'dst_root': args.dst_root,
             'src_root': args.plate_microscopy_dir,
@@ -324,20 +323,10 @@ def main():
         try:
             do_fov_tasks(Session, method_name, method_kwargs)
         except Exception as error:
-            with open(os.path.join(args.dst_root, '%s_%s_error.log' % (timestamp(), method_name)), 'w') as file:
+            with open(os.path.join(args.dst_root, '%s_%s_uncaught_exception.log' % (timestamp(), method_name)), 'w') as file:
                 file.write(str(error))
+            raise
 
-
-    if args.generate_nrrd:
-        method_name = 'generate_nrrd'
-        method_kwargs = {
-            'dst_root': args.dst_root,
-        }
-        try:
-            do_fov_tasks(Session, method_name, method_kwargs)
-        except Exception as error:
-            with open(os.path.join(args.dst_root, '%s_%s_error.log' % (timestamp(), method_name)), 'w') as file:
-                file.write(str(error))
 
 
 if __name__ == '__main__':

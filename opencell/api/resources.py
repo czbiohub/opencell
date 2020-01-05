@@ -135,8 +135,11 @@ class PolyclonalLine(Resource):
 class MicroscopyFOV(Resource):
 
     def get(self, fov_id, channel, kind):
+        '''
+        Return either the z-projection (as a 2D TIFF) or the cropped stack (as an NRRD file)
+        for a single FOV using Flask's send_file method
+        '''
         
-        # hard-coded for z-projections (and not x- or y-)
         if kind == 'proj':
             ext = 'tif'
         elif kind == 'nrrd':
@@ -148,6 +151,11 @@ class MicroscopyFOV(Resource):
         fov = current_app.Session.query(models.MicroscopyFOV)\
             .filter(models.MicroscopyFOV.id == fov_id).first()
 
+        if not fov:
+            # this means the fov_id was not valid
+            # TODO: return 404?
+            pass
+
         processor = FOVProcessor.from_database(fov)
         filepath = processor.dst_filepath(
             dst_root=current_app.config.get('opencell_microscopy_root'), 
@@ -155,12 +163,38 @@ class MicroscopyFOV(Resource):
             channel=channel, 
             ext=ext)
     
-        filename = filepath.split(os.sep)[-1]
-
-        return send_file(
+        file = send_file(
             open(filepath, 'rb'),
             as_attachment=True, 
-            attachment_filename=filename)
+            attachment_filename=filepath.split(os.sep)[-1])
+
+        return file
+
+
+class MicroscopyFOVROI(Resource):
+
+    def get(self, roi_id, channel):
+        '''
+        Get the stack for a given roi_id as a tiled PNG
+        '''
+
+        roi = current_app.Session.query(models.MicroscopyFOVROI)\
+            .filter(models.MicroscopyFOVROI.id == roi_id).first()
+
+        processor = FOVProcessor.from_database(roi.fov)
+        filepath = processor.dst_filepath(
+            dst_root=current_app.config.get('opencell_microscopy_root'),
+            roi_id=roi_id,
+            channel=channel,
+            kind='tile', 
+            ext='png')
+
+        file = send_file(
+            open(filepath, 'rb'),
+            as_attachment=True, 
+            attachment_filename=filepath.split(os.sep)[-1])
+
+        return file
 
 
 class FACSHistograms(Resource):

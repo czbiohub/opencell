@@ -631,11 +631,7 @@ class MicroscopyFOVOperations:
             roi = models.MicroscopyFOVROI(
                 fov_id=self.fov_id,
                 kind='corner',
-                props=roi_props,
-                num_rows=roi_props['shape'][0],
-                num_cols=roi_props['shape'][1],
-                top_left_row=roi_props['position'][0],
-                top_left_col=roi_props['position'][1]
+                props=roi_props
             )
             rois.append(roi)
 

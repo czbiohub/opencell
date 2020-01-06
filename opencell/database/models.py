@@ -579,7 +579,7 @@ class MicroscopyFOVResult(Base):
     kind = db.Column(db.String)
 
     # the result data
-    data = db.Column(db.types.JSON)
+    data = db.Column(postgresql.JSONB)
 
 
 class MicroscopyFOVROI(Base):
@@ -607,22 +607,10 @@ class MicroscopyFOVROI(Base):
     # kind of ROI: either 'corner', 'top-scoring', 'single-nucleus', 'single-cell'
     kind = db.Column(db.String)
 
-    # the xy coordinates of the ROI (the position of its top left corner and its width/height)
-    num_rows = db.Column(db.Integer)
-    num_cols = db.Column(db.Integer)
-    top_left_row = db.Column(db.Integer)
-    top_left_col = db.Column(db.Integer)
-
-    # all other ROI-specific metadata, including the z-coordinates of the crop, 
-    # the z-coordinate of the center of the cell layer, 
-    # and the min/max values used to downsample the intensities
-    props = db.Column(db.types.JSON)
-
-    # require the x-y crop coordinates to be unique per FOV
-    # (there's no reason to allow multiple ROIs with the same xy, but different z, coords)
-    __table_args__ = (
-        db.UniqueConstraint(fov_id, top_left_row, top_left_col, num_rows, num_cols),
-    )
+    # all ROI-specific metadata, including the ROI oordinates (position and shape), 
+    # the z-coordinate of the center of the cell layer,  and the min/max values 
+    # used to downsample the intensities from uint16 to uint8
+    props = db.Column(postgresql.JSONB)
 
 
 class Thumbnail(Base):

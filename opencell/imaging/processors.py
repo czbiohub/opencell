@@ -30,7 +30,7 @@ class FOVProcessor:
         site_num, 
         target_name,
         raw_filepath,
-        all_roi_props):
+        all_roi_rows):
         
         self.fov_id = fov_id
         self.pml_id = pml_id
@@ -41,8 +41,8 @@ class FOVProcessor:
         self.site_num = site_num
         self.raw_filepath = raw_filepath
 
-        # array of props for all ROIs cropped from the FOV
-        self.all_roi_props = all_roi_props
+        # array of dicts for all ROIs cropped from the FOV
+        self.all_roi_rows = all_roi_rows
 
         # clean up the target_name (remove slashes and dashes)
         self.target_name = self.clean_target_name(target_name)
@@ -73,7 +73,7 @@ class FOVProcessor:
         crispr_design = [d for d in plate_design.crispr_designs if d.well_id == well_id].pop()
 
         # roi_props for all ROIs cropped from this FOV (will often be empty)
-        all_roi_props = [roi.as_dict() for roi in fov.rois]
+        all_roi_rows = [roi.as_dict() for roi in fov.rois]
 
         processor = cls(
             fov_id=fov.id,
@@ -85,7 +85,7 @@ class FOVProcessor:
             site_num=fov.site_num,
             raw_filepath=fov.raw_filename,
             target_name=crispr_design.target_name,
-            all_roi_props=all_roi_props)
+            all_roi_rows=all_roi_rows)
 
         return processor
 
@@ -142,7 +142,7 @@ class FOVProcessor:
         kind=None, 
         channel=None, 
         roi_id=None,
-        roi_coords=None,
+        roi_props=None,
         ext=None, 
         makedirs=True):
         '''
@@ -166,24 +166,18 @@ class FOVProcessor:
             raise ValueError('%s is not a valid destination kind' % kind)
         appendix = kind.upper()
 
-        # retrieve the roi_coords given an roi_id
+        # retrieve the roi_props if an roi_id was provided
         if roi_id is not None:
-            props = [props for props in self.all_roi_props if props['id'] == roi_id]
-            if not props:
+            row = [row for row in self.all_roi_rows if row['id'] == roi_id]
+            if not row:
                 raise ValueError('ROI %s is not an ROI of FOV %s' % (roi_id, self.fov_id))
-            props = props.pop()
-            roi_coords = (
-                props['top_left_row'], 
-                props['top_left_col'],
-                props['num_rows'], 
-                props['num_cols']
-            )
+            roi_props = row.pop()['props']
 
-        # append the ROI coords if any are provided
+        # append the ROI coords if roi_props exists
         # (we don't validate these, but we assume they correspond to 
         # (top_left_row, top_left_col, num_rows, num_cols))
-        if kind == 'nrrd' and roi_coords is not None:
-            for coord in roi_coords:
+        if kind in ['nrrd', 'tile'] and roi_props is not None:
+            for coord in roi_props['xy_coords']:
                 appendix = '%s-%04d' % (appendix, coord)
 
         # append the channel last, so that when sorting files,
@@ -296,8 +290,16 @@ class FOVProcessor:
 
         # the top and bottom of the cell layer, relative to its center, in microns
         # (these are empirical estimates/guesses)
-        cell_layer_top = 8
-        cell_layer_bottom = -6
+        cell_layer_bottom = -7
+        cell_layer_top = 7
+
+        # the step size of the final stack
+        # (this is set to correspond to the xy pixel size,
+        # so that the voxels of the resampled stack will be isotropic)    
+        target_step_size = 0.2
+
+        # the number of slices the final stack must have
+        required_num_slices = (cell_layer_top - cell_layer_bottom)/target_step_size
 
         all_roi_props = []
 
@@ -317,31 +319,32 @@ class FOVProcessor:
         roi_shape = (roi_size, roi_size, abs_top_ind - abs_bottom_ind)
 
         # the position of the top left corner of each of the ROIs
-        roi_positions = [
+        roi_top_left_positions = [
             (left_ind, left_ind, abs_bottom_ind),
             (left_ind, right_ind, abs_bottom_ind),
             (right_ind, left_ind, abs_bottom_ind),
             (right_ind, right_ind, abs_bottom_ind)
         ]
 
-        for roi_position in roi_positions:
+        for roi_position in roi_top_left_positions:
 
+            num_rows, num_cols, num_z = roi_shape
+            row_ind, col_ind, z_ind = roi_position
+        
             # construct the ROI props
             roi_props = {
                 'position': roi_position, 
                 'shape': roi_shape,
                 'center': center_ind,
+                'xy_coords': (row_ind, col_ind, num_rows, num_cols),
             }
 
-            num_rows, num_cols, num_z = roi_shape
-            row_ind, col_ind, z_ind = roi_position
-        
             for channel in ['dapi', 'gfp']:
                 dst_filepath = self.dst_filepath(
                     dst_root, 
                     kind='nrrd', 
                     channel=channel, 
-                    roi_coords=(row_ind, col_ind, num_rows, num_cols), 
+                    roi_props=roi_props, 
                     ext='nrrd')
 
                 # crop the raw stack
@@ -350,14 +353,12 @@ class FOVProcessor:
 
                 cropped_stack = cropped_stack.copy()
 
-                # resample the stack so that it has the required step size and number of slices
-                # (the required step size of 0.2um corresponds to the xy pixel size,
-                # so that the voxels of the resampled stack will be isotropic)             
+                # resample the stack so that it has the required step size and number of slices         
                 cropped_stack, did_resample_stack = self.resample_stack(
                     cropped_stack, 
                     actual_step_size=self.z_step_size(),
-                    target_step_size=0.2, 
-                    target_num_slices=60)
+                    target_step_size=target_step_size, 
+                    required_num_slices=required_num_slices)
 
                 # the did_resample_stack flag will always be the same for both channels
                 roi_props['stacks_resampled'] = did_resample_stack
@@ -429,7 +430,7 @@ class FOVProcessor:
 
 
     @staticmethod
-    def resample_stack(stack, actual_step_size, target_step_size, target_num_slices):
+    def resample_stack(stack, actual_step_size, target_step_size, required_num_slices):
         '''
         Resample and possibly crop or pad a z-stack so that it has the specified step size
         and number of z-slices
@@ -437,7 +438,7 @@ class FOVProcessor:
         stack : 3D numpy array with dimensions (x, y, z)
         actual_step_size : the z-step size of the original stack (in microns)
         target_step_size : the z-step size after resampling (in microns)
-        target_num_slices : the number of z-slices the resampled stack must have
+        required_num_slices : the number of z-slices the resampled stack must have
         '''
     
         did_resample_stack = False
@@ -454,12 +455,12 @@ class FOVProcessor:
 
         # pad or crop the stack in z so that there are the required number of slices
         num_rows, num_cols, num_slices = stack.shape
-        if num_slices < target_num_slices:
-            pad = np.zeros((num_rows, num_cols, target_num_slices - num_slices)).astype(stack.dtype)
+        if num_slices < required_num_slices:
+            pad = np.zeros((num_rows, num_cols, required_num_slices - num_slices)).astype(stack.dtype)
             stack = np.concatenate((stack, pad), axis=2)
 
-        elif num_slices > target_num_slices:
-            num_extra = num_slices - target_num_slices
+        elif num_slices > required_num_slices:
+            num_extra = num_slices - required_num_slices
             crop_ind = int(np.floor(num_extra/2))
             if np.mod(num_extra, 2) == 0:
                 stack = stack[:, :, crop_ind:-crop_ind]

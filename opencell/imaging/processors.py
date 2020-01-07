@@ -5,6 +5,7 @@ import glob
 import json
 import nrrd
 import pickle
+import imageio
 import skimage
 import hashlib
 import datetime
@@ -290,7 +291,7 @@ class FOVProcessor:
 
         # the top and bottom of the cell layer, relative to its center, in microns
         # (these are empirical estimates/guesses)
-        cell_layer_bottom = -7
+        cell_layer_bottom = -6
         cell_layer_top = 7
 
         # the step size of the final stack
@@ -342,10 +343,10 @@ class FOVProcessor:
             for channel in ['dapi', 'gfp']:
                 dst_filepath = self.dst_filepath(
                     dst_root, 
-                    kind='nrrd', 
+                    kind='tile', 
                     channel=channel, 
                     roi_props=roi_props, 
-                    ext='nrrd')
+                    ext='png')
 
                 # crop the raw stack
                 cropped_stack = tiff.stacks[channel][
@@ -374,7 +375,8 @@ class FOVProcessor:
                 # save the stack itself
                 # TODO: what to do when the file already exists?
                 if not os.path.isfile(dst_filepath):
-                    nrrd.write(dst_filepath, cropped_stack)
+                    tile = self.stack_to_tile(cropped_stack, num_cols=10)
+                    imageio.imsave(dst_filepath, tile)
 
             all_roi_props.append(roi_props)
     
@@ -491,3 +493,28 @@ class FOVProcessor:
         return stack, int(minn), int(maxx)
 
 
+    @staticmethod
+    def stack_to_tile(stack, num_cols):
+        '''
+        Transform a z-stack into a 2D array of z-slices
+
+        stack : 3D numpy array with dimensions (x, y, z)
+        num_cols : the number of columns in the tile
+        '''
+    
+        num_slices = stack.shape[-1]
+        num_extra_slices = int(num_cols * np.ceil(num_slices/num_cols) - num_slices)
+        extra_slices = np.zeros((*stack.shape[:2], num_extra_slices), dtype=stack.dtype)
+        stack = np.concatenate((stack, extra_slices), axis=2)
+        
+        num_slices = stack.shape[-1]
+        num_rows = int(num_slices/num_cols)
+
+        rows = []
+        for row_ind in range(num_rows):
+            row = np.concatenate(
+                [stack[:, :, col_ind + row_ind*num_cols] for col_ind in range(num_cols)], axis=1)
+            rows.append(row)
+        tile = np.concatenate(rows, axis=0)
+    
+        return tile

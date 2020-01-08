@@ -41,7 +41,7 @@ class App extends Component {
     constructor (props) {
         super(props);
 
-        this.apiUrl = capApi;
+        this.apiUrl = localApi;
 
         this.state = {
 
@@ -118,12 +118,54 @@ class App extends Component {
         // fired when the user hits enter in the header's target search text input
         // `value` is the value of the input
 
-        let url = `${this.apiUrl}/lines?target_name=${value}`;
-        d3.json(url).then(data => {
-            const line = data[0];
-            if (!line) return;
-            this.changeTarget(line.target_name, line.cell_line_id, line.fovs[0].fov_id);
+        let url = `${this.apiUrl}/lines?target_name=${value}&kind=microscopy`;
+        d3.json(url).then(lines => {
+            for (const line of lines) {
+                if (line && line.fovs.length) {
+                    this.changeTarget(line.target_name, line.cell_line_id, line.fovs[0].rois[0].id);
+                    break;
+                }
+            }
         });
+    }
+
+
+    loadPNG(url, onLoad) {
+
+        const imSize = 600;
+        const numSlices = 65;
+        const pngWidth = imSize;
+        const pngHeight = imSize*numSlices;
+
+        const volume = {
+            xLength: imSize,
+            yLength: imSize,
+            zLength: numSlices,
+            data: new Uint8Array(pngWidth*pngHeight),
+        };
+
+        const img = new Image;
+
+        // this is required to avoid the 'tainted canvas' error
+        img.setAttribute('crossOrigin', '');
+
+        img.onload = function () {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.setAttribute('width', pngWidth);
+            canvas.setAttribute('height', pngHeight);
+            context.drawImage(img, 0, 0);
+
+            const imageData = context.getImageData(0, 0, pngWidth, pngHeight);
+            for (let ind = 0; ind < volume.data.length; ind++) {
+                volume.data[ind] = imageData.data[ind*4];
+            }
+            
+            onLoad(volume);
+        };
+
+        img.src = url;
+
     }
 
 
@@ -131,8 +173,9 @@ class App extends Component {
 
         const loadStack = (filepath) => {
             return new Promise((resolve, reject) => {
-                const loader = new NRRDLoader();
-                loader.load(filepath, volume => resolve(volume));
+                //const loader = new NRRDLoader();
+                //loader.load(filepath, volume => resolve(volume));
+                this.loadPNG(filepath, volume => resolve(volume));
             });
         }
 
@@ -151,8 +194,8 @@ class App extends Component {
         }
 
         const filepaths = [
-            `${this.apiUrl}/fovs/dapi/nrrd/${this.state.fovId}`,
-            `${this.apiUrl}/fovs/gfp/nrrd/${this.state.fovId}`,
+            `${this.apiUrl}/rois/dapi/tile/${this.state.fovId}`,
+            `${this.apiUrl}/rois/gfp/tile/${this.state.fovId}`,
         ];
 
         console.log('before promise');

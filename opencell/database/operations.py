@@ -529,7 +529,7 @@ class PolyclonalLineOperations:
         all_fovs = []
         for fov in self.line.microscopy_fovs:
 
-            score_result = [r for r in fov.results if r.method_name == 'calculate_fov_features']
+            score_result = [r for r in fov.results if r.kind == 'fov-features']
             score = None
             if score_result:
                 score = score_result[0].data.get('score')
@@ -538,7 +538,7 @@ class PolyclonalLineOperations:
                 'fov_id': fov.id,
                 'pml_id': fov.dataset.pml_id,
                 'src_filename': fov.raw_filename,
-                'rois': fov.all_roi_props,
+                'rois': [roi.as_dict() for roi in fov.rois],
                 'score': score,
             })
 
@@ -558,8 +558,9 @@ class MicroscopyFOVOperations:
     FOV-associated metadata includes the raw tiff metadata, FOV features, and thumbnails,
     FOV 'children' include the ROIs cropped from each FOV
 
-    NOTE: instances of this class cannot be associated with an instance of models.MicroscopyFOV
-    (as, e.g., PolyclonalLineOperations instances are associated with an instance of models.CellLine)
+    NOTE: instances of this class cannot be associated with instances of models.MicroscopyFOV
+    (in the way that, for example, PolyclonalLineOperations instances 
+    are associated with instances of models.CellLine)
     because they may be passed to dask.delayed-wrapped methods
 
     '''

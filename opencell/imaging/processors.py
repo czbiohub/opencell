@@ -302,8 +302,6 @@ class FOVProcessor:
         # the number of slices the final stack must have
         required_num_slices = (cell_layer_top - cell_layer_bottom)/target_step_size
 
-        all_roi_props = []
-
         # attempt to load and split the TIFF
         tiff = self.load_raw_tiff(src_root)
         if tiff is None:
@@ -327,6 +325,7 @@ class FOVProcessor:
             (right_ind, right_ind, abs_bottom_ind)
         ]
 
+        all_roi_props = []
         for roi_position in roi_top_left_positions:
 
             num_rows, num_cols, num_z = roi_shape
@@ -354,7 +353,7 @@ class FOVProcessor:
 
                 cropped_stack = cropped_stack.copy()
 
-                # resample the stack so that it has the required step size and number of slices         
+                # resample the stack so that it has the required step size and number of slices
                 cropped_stack, did_resample_stack = self.resample_stack(
                     cropped_stack, 
                     actual_step_size=self.z_step_size(),
@@ -375,7 +374,8 @@ class FOVProcessor:
                 # save the stack itself
                 # TODO: what to do when the file already exists?
                 if not os.path.isfile(dst_filepath):
-                    tile = self.stack_to_tile(cropped_stack, num_cols=10)
+                    cropped_stack = np.moveaxis(cropped_stack, -1, 0)
+                    tile = np.concatenate([zslice for zslice in cropped_stack], axis=0)            
                     imageio.imsave(dst_filepath, tile)
 
             all_roi_props.append(roi_props)
@@ -494,7 +494,7 @@ class FOVProcessor:
 
 
     @staticmethod
-    def stack_to_tile(stack, num_cols):
+    def stack_to_tile2d(stack, num_cols):
         '''
         Transform a z-stack into a 2D array of z-slices
 

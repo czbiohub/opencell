@@ -305,6 +305,8 @@ def main():
         try:
             do_fov_tasks(Session, method_name, method_kwargs)
         except Exception as error:
+            print('FATAL ERROR: an uncaught exception occurred in %s' % method_name)
+            print(str(error))
             with open(os.path.join(args.dst_root, '%s_%s_uncaught_exception.log' % (timestamp(), method_name)), 'w') as file:
                 file.write(str(error))
 
@@ -342,6 +344,8 @@ def main():
         try:
             do_fov_tasks(Session, method_name, method_kwargs, fovs=fovs_to_crop)
         except Exception as error:
+            print('FATAL ERROR: an uncaught exception occurred in %s' % method_name)
+            print(str(error))
             with open(os.path.join(args.dst_root, '%s_%s_uncaught_exception.log' % (timestamp(), method_name)), 'w') as file:
                 file.write(str(error))
             raise

@@ -472,7 +472,8 @@ class MicroscopyDataset(Base):
     # the name of the primary imager
     user = db.Column(db.String, nullable=False)
 
-    # user-defined free-form description of what plates/wells were imaged
+    # user-defined free-form description of what plates/wells were imaged,
+    # whether the plate was thawed or not, etc
     description = db.Column(db.String)
 
     # either 'plate_microscopy' or 'raw_pipeline_microscopy'
@@ -511,7 +512,7 @@ class MicroscopyFOV(Base):
 
     # many-to-one relationship with cell_line
     cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'))
-    cell_line = db.orm.relationship('CellLine', backref='microscopy_fovs')
+    cell_line = db.orm.relationship('CellLine', backref='fovs')
 
     # many-to-one relationship with microscopy_dataset
     pml_id = db.Column(db.String, db.ForeignKey('microscopy_dataset.pml_id'))
@@ -570,9 +571,9 @@ class MicroscopyFOVResult(Base):
 
     id = db.Column(db.Integer, primary_key=True)
     fov_id = db.Column(db.Integer, db.ForeignKey('microscopy_fov.id'))
-    fov = db.orm.relationship('MicroscopyFOV', back_populates='results', uselist=False)
-
     timestamp = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
+
+    fov = db.orm.relationship('MicroscopyFOV', back_populates='results', uselist=False)
  
     # the kind or type of the result ('raw-tiff-metadata', 'fov-features', etc)
     # (eventually, this should be changed to an enum)
@@ -600,6 +601,7 @@ class MicroscopyFOVROI(Base):
 
     id = db.Column(db.Integer, primary_key=True)
     fov_id = db.Column(db.Integer, db.ForeignKey('microscopy_fov.id'))
+    timestamp = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
 
     fov = db.orm.relationship('MicroscopyFOV', back_populates='rois', uselist=False)
     thumbnails = db.orm.relationship('Thumbnail', back_populates='roi')

@@ -2,6 +2,7 @@ import os
 import re
 import enum
 import json
+import numpy as np
 import pandas as pd
 import sqlalchemy as db
 
@@ -439,6 +440,32 @@ class PolyclonalLineOperations:
             fovs.append(models.MicroscopyFOV(cell_line=self.line, **columns))
 
         add_and_commit(session, fovs, errors=errors)
+
+
+    def get_top_scoring_fovs(self, session, ntop):
+        '''
+        Get the n highest-scored FOVs
+        '''
+        scores = []
+        for fov in self.line.fovs:
+            score = None
+            result = [result for result in fov.results if result.kind == 'fov-features']
+            if result:
+                score = result[0].data.get('score')
+            scores.append(score)
+    
+        # sort the FOVs by score
+        scores = np.array(scores)
+        mask = ~pd.isna(scores)
+        scores[~mask] = -2
+        inds = np.argsort(np.array(scores))[::-1]
+
+        # drop inds without a score
+        inds = inds[mask[inds]]
+
+        # the two highest-scoring FOVs
+        top_fovs = [self.line.fovs[ind] for ind in inds[:ntop]]
+        return top_fovs
 
 
     @staticmethod

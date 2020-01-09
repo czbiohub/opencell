@@ -30,3 +30,13 @@ group by n order by c desc;
 select kind, count(kind) from microscopy_fov_result
 left join microscopy_fov on microscopy_fov.id = microscopy_fov_result.fov_id
 group by kind;
+
+-- drop all rows from all microscopy-related tables
+TRUNCATE microscopy_dataset CASCADE;
+
+-- rename a column
+ALTER TABLE table_name RENAME COLUMN column_name TO new_column_name;
+
+-- replace a string in a column
+UPDATE microscopy_fov_result
+SET column = REPLACE (column, 'old-string', 'new-string');

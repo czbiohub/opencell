@@ -195,14 +195,14 @@ def do_fov_task(
 
 
 
-def do_fov_tasks(Session, method_name, method_kwargs, fovs=None):
+def do_fov_tasks(Session, processor_method_name, processor_method_kwargs, fovs=None):
     '''
     Call a method of FOVProcessor on all, or a subset of, the raw FOVs
 
     Parameters
     ----------
-    method_name : the name of the FOVProcessor method to call
-    method_kwargs : the kwargs for the method (no args are allowed)
+    processor_method_name : the name of the FOVProcessor method to call
+    processor_method_kwargs : the kwargs for the method (no args are allowed)
     fovs : optional list of FOVs to be processed (if None, all FOVs are processed)
 
     TODO: handle multiple source directories 
@@ -211,8 +211,8 @@ def do_fov_tasks(Session, method_name, method_kwargs, fovs=None):
     TODO: logic to skip already-processed FOVs
     '''
 
-    # valid methods and their corresponding FOVOperations method
-    method_defs = {
+    # the FOVOperations method corresponding to each FOVProcessor method
+    operator_method_names = {
         'process_raw_tiff': 'insert_raw_tiff_metadata',
         'calculate_fov_features': 'insert_fov_features',
         'crop_corner_rois': 'insert_corner_rois',
@@ -222,7 +222,7 @@ def do_fov_tasks(Session, method_name, method_kwargs, fovs=None):
     }
 
     # the name of the FOVOperations method that inserts the results of the processor method
-    operator_method_name = method_defs.get(method_name)
+    operator_method_name = operator_method_names.get(processor_method_name)
 
     # if a list of FOVs was not provided, select all FOVs
     if fovs is None:
@@ -238,7 +238,12 @@ def do_fov_tasks(Session, method_name, method_kwargs, fovs=None):
     tasks = []
     for fov_processor, fov_operator in zip(fov_processors, fov_operators):
         task = do_fov_task(
-            Session, fov_processor, fov_operator, method_name, method_kwargs, operator_method_name)
+            Session, 
+            fov_processor, 
+            fov_operator, 
+            processor_method_name, 
+            processor_method_kwargs, 
+            operator_method_name)
         tasks.append(task)
 
     # do the tasks
@@ -246,13 +251,14 @@ def do_fov_tasks(Session, method_name, method_kwargs, fovs=None):
         errors = dask.compute(*tasks)
 
     # cache the errors locally if possible
-    errors = pd.DataFrame(data=errors)
+    errors = pd.DataFrame(data=errors).dropna()
     if 'message' in list(errors.columns):
-        dst_root = method_kwargs.get('dst_root')
+        dst_root = processor_method_kwargs.get('dst_root')
         if dst_root is not None:
-            cache_filepath = os.path.join(dst_root, '%s_%s-errors.csv' % (timestamp(), method_name))
+            cache_filepath = os.path.join(dst_root, '%s_%s-errors.csv' % \
+                (timestamp(), processor_method_name))
             errors.to_csv(cache_filepath, index=False)
-            print('Error log for %s saved to %s' % (method_name, cache_filepath))
+            print('Error log for %s saved to %s' % (processor_method_name, cache_filepath))
 
 
 def main():

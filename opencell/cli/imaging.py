@@ -40,19 +40,20 @@ def parse_args():
     '''
     '''
     parser = argparse.ArgumentParser()
-    parser.add_argument(dest='dst_root')
+
+    # the location of the 'opencell-microscopy' directory
+    parser.add_argument('--dst-root', dest='dst_root')
 
     # the location of the PlateMicroscopy directory
-    parser.add_argument(
-        '--plate-microscopy-dir',
-        dest='plate_microscopy_dir')
+    parser.add_argument('--plate-microscopy-dir', dest='plate_microscopy_dir')
 
+    # the location of the directory in which to cache the PlateMicroscopy metadata
     parser.add_argument(
         '--cache-dir', 
         dest='cache_dir', 
         required=False)
 
-    # path to credentials JSON
+    # path to JSON file with database credentials
     parser.add_argument(
         '--credentials', 
         dest='credentials', 
@@ -63,7 +64,7 @@ def parse_args():
         'inspect_plate_microscopy_metadata', 
         'construct_plate_microscopy_metadata', 
         'insert_plate_microscopy_metadata',
-        'process_raw_tiff', 
+        'process_raw_tiffs', 
         'calculate_fov_features',
         'crop_corner_rois',
     ]
@@ -195,14 +196,14 @@ def do_fov_task(
 
 
 
-def do_fov_tasks(Session, method_name, method_kwargs, fovs=None):
+def do_fov_tasks(Session, processor_method_name, processor_method_kwargs, fovs=None):
     '''
     Call a method of FOVProcessor on all, or a subset of, the raw FOVs
 
     Parameters
     ----------
-    method_name : the name of the FOVProcessor method to call
-    method_kwargs : the kwargs for the method (no args are allowed)
+    processor_method_name : the name of the FOVProcessor method to call
+    processor_method_kwargs : the kwargs for the method (no args are allowed)
     fovs : optional list of FOVs to be processed (if None, all FOVs are processed)
 
     TODO: handle multiple source directories 
@@ -211,8 +212,8 @@ def do_fov_tasks(Session, method_name, method_kwargs, fovs=None):
     TODO: logic to skip already-processed FOVs
     '''
 
-    # valid methods and their corresponding FOVOperations method
-    method_defs = {
+    # the FOVOperations method corresponding to each FOVProcessor method
+    operator_method_names = {
         'process_raw_tiff': 'insert_raw_tiff_metadata',
         'calculate_fov_features': 'insert_fov_features',
         'crop_corner_rois': 'insert_corner_rois',
@@ -222,11 +223,13 @@ def do_fov_tasks(Session, method_name, method_kwargs, fovs=None):
     }
 
     # the name of the FOVOperations method that inserts the results of the processor method
-    operator_method_name = method_defs.get(method_name)
+    operator_method_name = operator_method_names.get(processor_method_name)
 
     # if a list of FOVs was not provided, select all FOVs
     if fovs is None:
         fovs = Session.query(models.MicroscopyFOV).all()
+
+    print("Running method '%s' on %s FOVs" % (processor_method_name, len(fovs)))
 
     # instantiate a processor and operations class for each FOV
     # (note the awkward nomenclature mismatch here; 
@@ -238,7 +241,12 @@ def do_fov_tasks(Session, method_name, method_kwargs, fovs=None):
     tasks = []
     for fov_processor, fov_operator in zip(fov_processors, fov_operators):
         task = do_fov_task(
-            Session, fov_processor, fov_operator, method_name, method_kwargs, operator_method_name)
+            Session, 
+            fov_processor, 
+            fov_operator, 
+            processor_method_name, 
+            processor_method_kwargs, 
+            operator_method_name)
         tasks.append(task)
 
     # do the tasks
@@ -246,13 +254,17 @@ def do_fov_tasks(Session, method_name, method_kwargs, fovs=None):
         errors = dask.compute(*tasks)
 
     # cache the errors locally if possible
-    errors = pd.DataFrame(data=errors)
+    errors = pd.DataFrame(data=errors).dropna()
     if 'message' in list(errors.columns):
-        dst_root = method_kwargs.get('dst_root')
+        dst_root = processor_method_kwargs.get('dst_root')
         if dst_root is not None:
-            cache_filepath = os.path.join(dst_root, '%s_%s-errors.csv' % (timestamp(), method_name))
+            cache_filepath = os.path.join(dst_root, '%s_%s-errors.csv' % \
+                (timestamp(), processor_method_name))
             errors.to_csv(cache_filepath, index=False)
-            print('Error log for %s saved to %s' % (method_name, cache_filepath))
+            print("Errors occurred for method '%s' and an error log was saved to %s" % \
+                (processor_method_name, cache_filepath))
+    else:
+        print("No errors occurred for method '%s'" % processor_method_name)
 
 
 def main():
@@ -263,6 +275,8 @@ def main():
     if args.credentials:
         db_url = db_utils.url_from_credentials(args.credentials)
         engine = sa.create_engine(db_url)
+        models.Base.metadata.create_all(engine)
+    
         session_factory = sa.orm.sessionmaker(bind=engine)
         Session = sa.orm.scoped_session(session_factory)
 
@@ -283,7 +297,7 @@ def main():
 
 
     # process all raw tiffs (and parse micromanager metadata)
-    if args.process_raw_tiff:
+    if args.process_raw_tiffs:
         method_name = 'process_raw_tiff'
         method_kwargs = {
             'dst_root': args.dst_root,
@@ -293,6 +307,8 @@ def main():
         try:
             do_fov_tasks(Session, method_name, method_kwargs)
         except Exception as error:
+            print('FATAL ERROR: an uncaught exception occurred in %s' % method_name)
+            print(str(error))
             with open(os.path.join(args.dst_root, '%s_%s_uncaught_exception.log' % (timestamp(), method_name)), 'w') as file:
                 file.write(str(error))
 
@@ -320,13 +336,21 @@ def main():
             'dst_root': args.dst_root,
             'src_root': args.plate_microscopy_dir,
         }
+
+        # only crop ROIs from the two highest-scoring FOVs per line
+        fovs_to_crop = []
+        for line in Session.query(models.CellLine).all():
+            ops = operations.PolyclonalLineOperations(line)
+            fovs_to_crop.extend(ops.get_top_scoring_fovs(Session, ntop=2))
+
         try:
-            do_fov_tasks(Session, method_name, method_kwargs)
+            do_fov_tasks(Session, method_name, method_kwargs, fovs=fovs_to_crop)
         except Exception as error:
+            print('FATAL ERROR: an uncaught exception occurred in %s' % method_name)
+            print(str(error))
             with open(os.path.join(args.dst_root, '%s_%s_uncaught_exception.log' % (timestamp(), method_name)), 'w') as file:
                 file.write(str(error))
             raise
-
 
 
 if __name__ == '__main__':

@@ -376,7 +376,7 @@ class ElectroporationLine(Base):
     electroporation = db.orm.relationship('Electroporation', back_populates='electroporation_lines')
 
 
-class FACSResult(Base):
+class FACSDataset(Base):
     '''
     A single FACS dataset, consisting of 
         1) the sample and fitted reference histograms
@@ -395,56 +395,31 @@ class FACSResult(Base):
 
     '''
 
-    __tablename__ = 'facs_result'
+    __tablename__ = 'facs_dataset'
 
     cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'), primary_key=True)
-    cell_line = db.orm.relationship('CellLine', backref='facs_result')
+    cell_line = db.orm.relationship('CellLine', backref='facs_dataset')
 
     # histograms
     histograms = db.Column(postgresql.JSONB)
 
-    # extracted properties/features    
-    scalar_columns = [
-        'fitted_offset',
-        'left_right_boundary',
-        'area',
-        'raw_mean',
-        'raw_std',
-        'raw_median',
-        'raw_percentile99',
-        'rel_mean_linear',
-        'rel_mean_log',
-        'rel_mean_hlog',
-        'rel_median_linear',
-        'rel_median_log',
-        'rel_median_hlog',
-        'rel_percentile99_linear',
-        'rel_percentile99_log',
-        'rel_percentile99_hlog',
-    ]
-
-# programmatically create all of the numeric columns
-for column in FACSResult.scalar_columns:
-    setattr(FACSResult, column, db.Column(db.Float))
+    # extracted properties (area, median intensity, etc)    
+    scalars = db.Column(postgresql.JSONB)
 
 
-class SequencingResult(Base):
+class SequencingDataset(Base):
     '''
-    The final processed sequencing result for a single polyclonal cell line
-
-    TODO: finish implementing this!
+    Some processed results from the sequencing dataset for a single polyclonal cell line
     '''
 
-    __tablename__ = 'sequencing_result'
+    __tablename__ = 'sequencing_dataset'
 
     cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'), primary_key=True)
-    cell_line = db.orm.relationship('CellLine', backref='sequencing_result')
+    cell_line = db.orm.relationship('CellLine', backref='sequencing_dataset')
 
-    # percent HDR of all sequenced alleles
-    hdr_all = db.Column(db.Float)
-
-    # percent HDR of all modified alleles
-    hdr_modified = db.Column(db.Float)
+    # extracted properties 
+    # (percent HDR among all alleles and modified alleles)
+    scalars = db.Column(postgresql.JSONB)
 
 
 class MicroscopyDataset(Base):
@@ -472,7 +447,8 @@ class MicroscopyDataset(Base):
     # the name of the primary imager
     user = db.Column(db.String, nullable=False)
 
-    # user-defined free-form description of what plates/wells were imaged
+    # user-defined free-form description of what plates/wells were imaged,
+    # whether the plate was thawed or not, etc
     description = db.Column(db.String)
 
     # either 'plate_microscopy' or 'raw_pipeline_microscopy'
@@ -511,7 +487,7 @@ class MicroscopyFOV(Base):
 
     # many-to-one relationship with cell_line
     cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'))
-    cell_line = db.orm.relationship('CellLine', backref='microscopy_fovs')
+    cell_line = db.orm.relationship('CellLine', backref='fovs')
 
     # many-to-one relationship with microscopy_dataset
     pml_id = db.Column(db.String, db.ForeignKey('microscopy_dataset.pml_id'))
@@ -570,9 +546,9 @@ class MicroscopyFOVResult(Base):
 
     id = db.Column(db.Integer, primary_key=True)
     fov_id = db.Column(db.Integer, db.ForeignKey('microscopy_fov.id'))
-    fov = db.orm.relationship('MicroscopyFOV', back_populates='results', uselist=False)
-
     timestamp = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
+
+    fov = db.orm.relationship('MicroscopyFOV', back_populates='results', uselist=False)
  
     # the kind or type of the result ('raw-tiff-metadata', 'fov-features', etc)
     # (eventually, this should be changed to an enum)
@@ -600,6 +576,7 @@ class MicroscopyFOVROI(Base):
 
     id = db.Column(db.Integer, primary_key=True)
     fov_id = db.Column(db.Integer, db.ForeignKey('microscopy_fov.id'))
+    timestamp = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
 
     fov = db.orm.relationship('MicroscopyFOV', back_populates='rois', uselist=False)
     thumbnails = db.orm.relationship('Thumbnail', back_populates='roi')

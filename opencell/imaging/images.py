@@ -178,13 +178,21 @@ class MicroManagerTIFF:
 
 class RawPipelineTIFF(MicroManagerTIFF):
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # the channels we expect to find in a Pipeline-like TIFF
+        self.laser_405 = '405'
+        self.laser_488 = '488'
+
+
     def validate_micromanager_metadata(self):
         '''
         Validate the parsed MicroManager metadata tags for a raw Pipeline-like TIFF file
         (these are TIFFs found in the 'PlateMicroscopy' directory)
 
         Generates validated_mm_metadata and sets various flags
-        that determine whether and how to split the pages into the DAPI and GFP channels
+        that determine whether and how to split the pages into the 405 and 488 channels
 
         Steps
         ------
@@ -286,7 +294,7 @@ class RawPipelineTIFF(MicroManagerTIFF):
         '''
         d = {}
         for key, val in dict(row).items():
-            key = '%s_%s' % (tag, key)
+            key = '%s_%s' % (key, tag)
             try:
                 val = float(val)
             except:
@@ -297,7 +305,7 @@ class RawPipelineTIFF(MicroManagerTIFF):
 
     def split_channels(self):
         '''
-        Split the pages of the pipeline-like TIFF into DAPI and GFP channels
+        Split the pages of the pipeline-like TIFF into 405 and 488 channels
         to construct the z-stack for each channel and, if possible, 
         extract the channel-specific MM metadata (i.e., exposure time and laser power)
 
@@ -315,9 +323,9 @@ class RawPipelineTIFF(MicroManagerTIFF):
 
         Assignment of channels
         ----------------------
-        When there are two valid channel_inds, the DAPI (405) stack is assigned 
+        When there are two valid channel_inds, the 405 laser is assigned 
         to the lower channel_ind (which is either 0 or -1).
-        When there are no channel_inds, the DAPI stack is assigned 
+        When there are no channel_inds, the 405 laser is assigned 
         to the first half of the pages.
 
         '''
@@ -329,7 +337,8 @@ class RawPipelineTIFF(MicroManagerTIFF):
 
         if self.has_valid_channel_inds:
             min_ind, max_ind = md.channel_ind.min(), md.channel_ind.max()
-            for channel_ind, channel_name in zip((min_ind, max_ind), ('dapi', 'gfp')):
+            first_channel, second_channel = self.laser_405, self.laser_488
+            for channel_ind, channel_name in zip((min_ind, max_ind), (first_channel, second_channel)):
                 channel_md = md.loc[md.channel_ind==channel_ind]
                 self.global_metadata.update(
                     self.tag_and_coerce_metadata(channel_md.iloc[0], tag=channel_name))
@@ -337,8 +346,8 @@ class RawPipelineTIFF(MicroManagerTIFF):
             
         elif self.safe_to_split_in_half:
             n = int(md.shape[0]/2)
-            self.stacks['dapi'] = self.concat_pages(md.iloc[:n].page_ind.values)
-            self.stacks['gfp'] = self.concat_pages(md.iloc[n:].page_ind.values)
+            self.stacks[self.laser_405] = self.concat_pages(md.iloc[:n].page_ind.values)
+            self.stacks[self.laser_488] = self.concat_pages(md.iloc[n:].page_ind.values)
 
         else:
             self.event_logger('Unable to safely split pages by channel')

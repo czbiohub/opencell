@@ -25,7 +25,6 @@ class FOVProcessor:
         fov_id,
         pml_id,
         parental_line, 
-        imaging_round_id, 
         plate_id, 
         well_id, 
         site_num, 
@@ -36,7 +35,6 @@ class FOVProcessor:
         self.fov_id = fov_id
         self.pml_id = pml_id
         self.parental_line = parental_line
-        self.imaging_round_id = imaging_round_id
         self.plate_id = plate_id
         self.well_id = well_id
         self.site_num = site_num
@@ -84,7 +82,6 @@ class FOVProcessor:
             fov_id=fov.id,
             pml_id=fov.dataset.pml_id,
             parental_line=fov.cell_line.parent.name,
-            imaging_round_id=fov.imaging_round_id,
             plate_id=plate_design.design_id,
             well_id=well_id,
             site_num=fov.site_num,
@@ -135,9 +132,9 @@ class FOVProcessor:
         '''
         Construct a dst plate_dir from an src plate_dir
 
-        Destination plate directory names are of the form 'czML0383-P0001-R01'
+        Destination plate directory names are of the form 'czML0383-P0001'
         '''
-        dst_plate_dir = f'{self.parental_line}-{self.plate_id}-{self.imaging_round_id}'
+        dst_plate_dir = f'{self.parental_line}-{self.plate_id}'
         return dst_plate_dir
 
 
@@ -199,7 +196,7 @@ class FOVProcessor:
             os.makedirs(dst_dirpath, exist_ok=True)
         
         # construct the destination filename
-        dst_filename = f'{dst_plate_dir}-{self.pml_id}-{self.well_id}-{self.site_id}-{self.target_name}_{appendix}.{ext}'
+        dst_filename = f'{dst_plate_dir}-{self.well_id}-{self.pml_id}-{self.site_id}-{self.target_name}_{appendix}.{ext}'
         return os.path.join(dst_dirpath, dst_filename)
 
 

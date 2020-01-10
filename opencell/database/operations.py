@@ -433,12 +433,11 @@ class PolyclonalLineOperations:
         for _, row in metadata.iterrows():
             columns = {
                 'pml_id': row.pml_id, 
-                'imaging_round_id': row.imaging_round_id, 
                 'site_num': row.site_num, 
                 'raw_filename': row.raw_filepath,
+                'imaging_round_id': row.imaging_round_id, 
             }
             fovs.append(models.MicroscopyFOV(cell_line=self.line, **columns))
-
         add_and_commit(session, fovs, errors=errors)
 
 

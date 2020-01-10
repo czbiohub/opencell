@@ -275,6 +275,8 @@ def main():
     if args.credentials:
         db_url = db_utils.url_from_credentials(args.credentials)
         engine = sa.create_engine(db_url)
+        models.Base.metadata.create_all(engine)
+    
         session_factory = sa.orm.sessionmaker(bind=engine)
         Session = sa.orm.scoped_session(session_factory)
 

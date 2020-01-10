@@ -376,7 +376,7 @@ class ElectroporationLine(Base):
     electroporation = db.orm.relationship('Electroporation', back_populates='electroporation_lines')
 
 
-class FACSResult(Base):
+class FACSDataset(Base):
     '''
     A single FACS dataset, consisting of 
         1) the sample and fitted reference histograms
@@ -395,56 +395,31 @@ class FACSResult(Base):
 
     '''
 
-    __tablename__ = 'facs_result'
+    __tablename__ = 'facs_dataset'
 
     cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'), primary_key=True)
-    cell_line = db.orm.relationship('CellLine', backref='facs_result')
+    cell_line = db.orm.relationship('CellLine', backref='facs_dataset')
 
     # histograms
     histograms = db.Column(postgresql.JSONB)
 
-    # extracted properties/features    
-    scalar_columns = [
-        'fitted_offset',
-        'left_right_boundary',
-        'area',
-        'raw_mean',
-        'raw_std',
-        'raw_median',
-        'raw_percentile99',
-        'rel_mean_linear',
-        'rel_mean_log',
-        'rel_mean_hlog',
-        'rel_median_linear',
-        'rel_median_log',
-        'rel_median_hlog',
-        'rel_percentile99_linear',
-        'rel_percentile99_log',
-        'rel_percentile99_hlog',
-    ]
-
-# programmatically create all of the numeric columns
-for column in FACSResult.scalar_columns:
-    setattr(FACSResult, column, db.Column(db.Float))
+    # extracted properties (area, median intensity, etc)    
+    scalars = db.Column(postgresql.JSONB)
 
 
-class SequencingResult(Base):
+class SequencingDataset(Base):
     '''
-    The final processed sequencing result for a single polyclonal cell line
-
-    TODO: finish implementing this!
+    Some processed results from the sequencing dataset for a single polyclonal cell line
     '''
 
-    __tablename__ = 'sequencing_result'
+    __tablename__ = 'sequencing_dataset'
 
     cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'), primary_key=True)
-    cell_line = db.orm.relationship('CellLine', backref='sequencing_result')
+    cell_line = db.orm.relationship('CellLine', backref='sequencing_dataset')
 
-    # percent HDR of all sequenced alleles
-    hdr_all = db.Column(db.Float)
-
-    # percent HDR of all modified alleles
-    hdr_modified = db.Column(db.Float)
+    # extracted properties 
+    # (percent HDR among all alleles and modified alleles)
+    scalars = db.Column(postgresql.JSONB)
 
 
 class MicroscopyDataset(Base):

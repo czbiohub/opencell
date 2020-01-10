@@ -170,8 +170,8 @@ def insert_facs(session, facs_results_dir, errors='warn'):
         # note: keyed by unformatted well_id
         histograms = facs_histograms.get((row.plate_id, row.well_id))
 
-        row = row.drop(['plate_id', 'well_id'])
-        pcl_ops.insert_facs_result(session, histograms, row, errors=errors)
+        scalars = dict(row.drop(['plate_id', 'well_id']))
+        pcl_ops.insert_facs_dataset(session, histograms=histograms, scalars=scalars, errors=errors)
 
 
 def insert_plate_microscopy_datasets(session, data_dir, errors='warn'):

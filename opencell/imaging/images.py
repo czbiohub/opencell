@@ -182,8 +182,8 @@ class RawPipelineTIFF(MicroManagerTIFF):
         super().__init__(*args, **kwargs)
 
         # the channels we expect to find in a Pipeline-like TIFF
-        self.laser_405 = 'L405'
-        self.laser_488 = 'L488'
+        self.laser_405 = '405'
+        self.laser_488 = '488'
 
 
     def validate_micromanager_metadata(self):

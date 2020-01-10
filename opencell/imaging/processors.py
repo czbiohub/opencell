@@ -151,12 +151,12 @@ class FOVProcessor:
         Construct the relative directory path and filename for a given 'kind' of output file
 
         The full path is of the form '{kind}/{dst_plate_dir}/{dst_filename}'
-        dst_plate_dir is of the form 'czML0383-P0001-R01'
-        dst_filename is of the form '{dst_plate_dir}-ML0123-A01-S01-CLTA_{kind}-{channel}'
+        dst_plate_dir is of the form 'czML0383-P0001'
+        dst_filename is of the form 'czML0383-P0001-A01-PML0123-S01_CLTA_{kind}-{channel}'
         
         If `kind` is 'crop' and if roi_coords are provided,
         then the roi_coords are included in the filename:
-        'czML00383-P0001-R01-ML0123-A01-S01-CLTA_ROI-0424-0000-0600-0600-L405'
+        'czML00383-P0001-A01-PML0123-S01_CLTA_CROP-0424-0000-0600-0600-CH405'
 
         '''
 
@@ -185,7 +185,7 @@ class FOVProcessor:
         # append the channel last, so that when sorting files,
         # the two channels of each FOV OR ROI remain adjacent to one another
         if channel is not None:
-            appendix = '%s-%s' % (appendix, channel.upper())
+            appendix = '%s-CH%s' % (appendix, channel)
 
         # destination plate_dir name
         dst_plate_dir = self.dst_plate_dir()
@@ -196,7 +196,7 @@ class FOVProcessor:
             os.makedirs(dst_dirpath, exist_ok=True)
         
         # construct the destination filename
-        dst_filename = f'{dst_plate_dir}-{self.well_id}-{self.pml_id}-{self.site_id}-{self.target_name}_{appendix}.{ext}'
+        dst_filename = f'{dst_plate_dir}-{self.well_id}-{self.pml_id}-{self.site_id}_{self.target_name}_{appendix}.{ext}'
         return os.path.join(dst_dirpath, dst_filename)
 
 
@@ -269,7 +269,7 @@ class FOVProcessor:
         '''
 
         # construct the filepath to the z-projection of the Hoechst staining
-        filepath = self.dst_filepath(dst_root, kind='proj', channel='L405', ext='tif')
+        filepath = self.dst_filepath(dst_root, kind='proj', channel='405', ext='tif')
         result = fov_scorer.process_existing_fov(filepath)
         return result
 

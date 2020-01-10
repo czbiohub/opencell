@@ -136,18 +136,15 @@ class MicroscopyFOV(Resource):
 
     def get(self, fov_id, channel, kind):
         '''
-        Return either the z-projection (as a 2D TIFF) or the cropped stack (as an NRRD file)
+        Return the specified kind of processed data
         for a single FOV using Flask's send_file method
+
+        Currently, only works for kind = 'proj'
         '''
-        
+
         if kind == 'proj':
             ext = 'tif'
-        elif kind == 'nrrd':
-            ext = 'nrrd'
-        else:
-            # TODO: return 404
-            pass
-    
+            
         fov = current_app.Session.query(models.MicroscopyFOV)\
             .filter(models.MicroscopyFOV.id == fov_id).first()
 
@@ -176,6 +173,9 @@ class MicroscopyFOVROI(Resource):
     def get(self, roi_id, channel, kind):
         '''
         Get the stack for a given roi_id as a tiled PNG
+
+        Note that, for now, `kind` is hard-coded
+
         '''
 
         roi = current_app.Session.query(models.MicroscopyFOVROI)\
@@ -186,7 +186,7 @@ class MicroscopyFOVROI(Resource):
             dst_root=current_app.config.get('opencell_microscopy_root'),
             roi_id=roi_id,
             channel=channel,
-            kind='tile', 
+            kind='crop', 
             ext='png')
 
         file = send_file(

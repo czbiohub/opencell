@@ -553,7 +553,7 @@ class PolyclonalLineOperations:
 
         # microscopy FOVs
         all_fovs = []
-        for fov in self.line.microscopy_fovs:
+        for fov in self.line.fovs:
 
             score_result = [r for r in fov.results if r.kind == 'fov-features']
             score = None

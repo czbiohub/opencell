@@ -8,9 +8,11 @@ const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
 const config = {
 
-    entry: [
-        './src/index.jsx'
-    ],
+    entry: {
+        home: './src/home/index.jsx',
+        dashboard: './src/dashboard/index.jsx',
+        demo: './src/demo/index.jsx',
+    },
 
     module: {
         rules: [
@@ -38,11 +40,33 @@ const config = {
     },
 
     plugins: [
-        new HtmlWebpackPlugin({template: './static/index.html'}),
-        new MiniCssExtractPlugin({filename: '[chunkhash]-bundle.css'}),
 
+        new HtmlWebpackPlugin({
+            title: 'Home',
+            template: './static/index.html',
+            filename: './index.html',
+            chunks: ['home']
+        }),
+        new HtmlWebpackPlugin({
+            title: 'Dashboard',
+            template: './static/index.html',
+            filename: './dashboard/index.html',
+            chunks: ['dashboard']
+        }),
+        new HtmlWebpackPlugin({
+            title: 'Demo',
+            template: './static/index.html',
+            filename: './demo/index.html',
+            chunks: ['demo']
+        }),
+        new MiniCssExtractPlugin({
+            filename: '[chunkhash]-bundle.css',
+            chunks: ['home'],
+        }),
+    
         // note that the `to` path is relative to the output path defined above
-        new CopyPlugin([{ from: 'static/images', to: 'images' }])
+        new CopyPlugin([{from: 'static/logos', to: 'demo/logos'}]),
+        new CopyPlugin([{from: 'static/threejs-textures', to: 'demo/threejs-textures'}])
     ]
 
 };

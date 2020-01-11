@@ -3,6 +3,9 @@ import * as d3 from 'd3';
 import React, { Component } from 'react';
 import ReactTable from 'react-table';
 
+import { Button, Radio, RadioGroup, MenuItem } from "@blueprintjs/core";
+import { Select } from "@blueprintjs/select";
+
 import ButtonGroup from './buttonGroup.jsx';
 import Slider from './slider.jsx';
 
@@ -12,20 +15,16 @@ import Header from './header.jsx';
 import SliceViz from './sliceViz.jsx';
 import VolumeViz from './volumeViz.jsx';
 import VolcanoPlot from './volcanoPlot.jsx';
-
-
 import FACSPlot from '../common/facsPlot.jsx';
 import ExpressionPlot from '../common/expressionPlot.jsx';
 
-
 import 'tachyons';
 import 'react-table/react-table.css';
+import "@blueprintjs/core/lib/css/blueprint.css";
 
-import { NRRDLoader } from 'three/examples/jsm/loaders/NRRDLoader';
 import { metadataDefinitions } from './definitions.js';
 
 import msData from './data/20190816_ms-data.json';
-import nrrdFilepaths from './data/20190816_nrrd-filepaths.json';
 import manualMetadata from './data/manual_metadata.json';
 import uniprotMetadata from './data/uniprot_metadata.json';
 import pipelineMetadata from './data/20191217_all-pipeline-metadata.json';
@@ -47,7 +46,8 @@ class App extends Component {
 
             appHasLoaded: false,
             
-            fovId: null,
+            roiId: null,
+            roiIds: [],
             cellLineId: null,
             targetName: null,
 
@@ -98,7 +98,7 @@ class App extends Component {
 
 
 
-    changeTarget (targetName, cellLineId, fovId) {
+    changeTarget (targetName, cellLineId, roiIds) {
         
         // check that the target has changed
         if (targetName===this.state.targetName) return;
@@ -107,12 +107,13 @@ class App extends Component {
         this.setState({
             targetName,
             cellLineId,
-            fovId,
+            roiIds,
+            roiId: roiIds[0],
             appHasLoaded: false, 
             gfpMax: manualMetadata[targetName]?.gfp_max || 50,
         });
-
     }
+
 
     onSearchChange (value) {
         // fired when the user hits enter in the header's target search text input
@@ -122,7 +123,10 @@ class App extends Component {
         d3.json(url).then(lines => {
             for (const line of lines) {
                 if (line && line.fovs.length) {
-                    this.changeTarget(line.target_name, line.cell_line_id, line.fovs[0].rois[0].id);
+                    this.changeTarget(
+                        line.target_name, 
+                        line.cell_line_id, 
+                        line.fovs[0].rois.map(roi => roi.id));
                     break;
                 }
             }
@@ -132,8 +136,11 @@ class App extends Component {
 
     loadPNG(url, onLoad) {
 
+        // hard-coded xy size and number of z-slices
+        // WARNING: these must match the stack to be loaded
         const imSize = 600;
         const numSlices = 65;
+
         const pngWidth = imSize;
         const pngHeight = imSize*numSlices;
 
@@ -173,29 +180,21 @@ class App extends Component {
 
         const loadStack = (filepath) => {
             return new Promise((resolve, reject) => {
-                //const loader = new NRRDLoader();
-                //loader.load(filepath, volume => resolve(volume));
                 this.loadPNG(filepath, volume => resolve(volume));
             });
+        }
+
+        if (!this.state.roiId) {
+            this.setState({appHasLoaded: true});
+            return;
         }
 
         // ***WARNING***
         // the order of the channels in the `filepaths` array below matters,
         // because it is *independently* hard-coded in SliceViz and VolumeViz
-        // const fileroot = nrrdFilepaths[this.state.targetName];
-        // const filepaths = [
-        //     `./demo-data/stacks/${fileroot}_C0.nrrd`,  // DAPI
-        //     `./demo-data/stacks/${fileroot}_C1.nrrd`,  // GFP
-        // ];
-
-        if (!this.state.fovId) {
-            this.setState({appHasLoaded: true});
-            return;
-        }
-
         const filepaths = [
-            `${this.apiUrl}/rois/dapi/tile/${this.state.fovId}`,
-            `${this.apiUrl}/rois/gfp/tile/${this.state.fovId}`,
+            `${this.apiUrl}/rois/405/crop/${this.state.roiId}`,
+            `${this.apiUrl}/rois/488/crop/${this.state.roiId}`,
         ];
 
         console.log('before promise');
@@ -220,7 +219,7 @@ class App extends Component {
     componentDidUpdate(prevProps, prevState, snapshot) {
 
         // reload the NRRD files
-        if (prevState.targetName!==this.state.targetName) {
+        if (prevState.roiId!==this.state.roiId) {
             this.loadStacks();
         }
 
@@ -229,6 +228,19 @@ class App extends Component {
 
 
     render() {
+
+        function renderItem (item, props) {
+            if (!props.modifiers.matchesPredicate) return null;
+            return (
+                <MenuItem
+                    active={props.modifiers.active}
+                    key={item}
+                    label={item}
+                    text={item}
+                    onClick={props.handleClick}
+                />
+            );
+        };
 
         let localizationContent;
         if (this.state.localizationMode==='Volume') {
@@ -371,6 +383,22 @@ class App extends Component {
                                     activeValue={this.state.localizationChannel}
                                     onClick={value => this.setState({localizationChannel: value})}/>
                             </div>
+                            <div className="dib pr3">
+                            <span>ROI: </span>
+                            <Select 
+                                items={this.state.roiIds} 
+                                itemRenderer={renderItem} 
+                                filterable={false}
+                                onItemSelect={roiId => this.setState({roiId})}
+                                activeItem={this.state.roiId}
+                            >
+                                <Button 
+                                    className="bp3-button-custom"
+                                    text={this.state.roiId}
+                                    rightIcon="double-caret-vertical"
+                                />
+                            </Select>
+                        </div>
                         </div>
                     </div>
 

@@ -40,14 +40,13 @@ class App extends Component {
     constructor (props) {
         super(props);
 
-        this.apiUrl = localApi;
+        this.apiUrl = capApi;
 
         this.state = {
 
             appHasLoaded: false,
             
             roiId: null,
-            roiIds: [],
             cellLineId: null,
             targetName: null,
 
@@ -93,22 +92,28 @@ class App extends Component {
         // the list of all targets for which we have data;
         // these target names should also all appear in manualMetadata
         this.allTargetNames = Object.keys(pipelineMetadata);
+
+        this.rois = [];
     
     }
 
 
 
-    changeTarget (targetName, cellLineId, roiIds) {
+    changeTarget (cellLine) {
         
+        const targetName = cellLine.target_name;
+
         // check that the target has changed
         if (targetName===this.state.targetName) return;
+
+        const rois = [...cellLine.fovs[0].rois, ...cellLine.fovs[1].rois];
+        this.rois = rois;
 
         // reset appHasLoaded to false, since we now need to load new NRRD files
         this.setState({
             targetName,
-            cellLineId,
-            roiIds,
-            roiId: roiIds[0],
+            cellLineId: cellLine.cell_line_id,
+            roiId: rois[0].id,
             appHasLoaded: false, 
             gfpMax: manualMetadata[targetName]?.gfp_max || 50,
         });
@@ -123,10 +128,7 @@ class App extends Component {
         d3.json(url).then(lines => {
             for (const line of lines) {
                 if (line && line.fovs.length) {
-                    this.changeTarget(
-                        line.target_name, 
-                        line.cell_line_id, 
-                        line.fovs[0].rois.map(roi => roi.id));
+                    this.changeTarget(line);
                     break;
                 }
             }
@@ -197,11 +199,9 @@ class App extends Component {
             `${this.apiUrl}/rois/488/crop/${this.state.roiId}`,
         ];
 
-        console.log('before promise');
         Promise.all(filepaths.map(loadStack)).then(volumes => {
             this.volumes = volumes;
             this.setState({appHasLoaded: true});
-            console.log('volumes loaded');
         });
     }
 
@@ -229,14 +229,14 @@ class App extends Component {
 
     render() {
 
-        function renderItem (item, props) {
+        function renderROIItem (roi, props) {
             if (!props.modifiers.matchesPredicate) return null;
             return (
                 <MenuItem
                     active={props.modifiers.active}
-                    key={item}
-                    label={item}
-                    text={item}
+                    key={roi.id}
+                    label={`(FOV ${roi.fov_id})`}
+                    text={`ROI ${roi.id}`}
                     onClick={props.handleClick}
                 />
             );
@@ -384,17 +384,16 @@ class App extends Component {
                                     onClick={value => this.setState({localizationChannel: value})}/>
                             </div>
                             <div className="dib pr3">
-                            <span>ROI: </span>
                             <Select 
-                                items={this.state.roiIds} 
-                                itemRenderer={renderItem} 
+                                items={this.rois} 
+                                itemRenderer={renderROIItem} 
                                 filterable={false}
-                                onItemSelect={roiId => this.setState({roiId})}
-                                activeItem={this.state.roiId}
+                                onItemSelect={roi => this.setState({appHasLoaded: false, roiId: roi.id})}
+                                activeItem={this.rois.filter(roi => roi.id === this.state.roiId)[0]}
                             >
                                 <Button 
                                     className="bp3-button-custom"
-                                    text={this.state.roiId}
+                                    text={`ROI ${this.state.roiId}`}
                                     rightIcon="double-caret-vertical"
                                 />
                             </Select>

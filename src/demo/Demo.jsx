@@ -98,7 +98,6 @@ class App extends Component {
     }
 
 
-
     changeTarget (cellLine) {
         
         const targetName = cellLine.target_name;
@@ -205,28 +204,26 @@ class App extends Component {
         });
     }
 
-    
+
     componentDidMount() {
         
         // initial target to display
-        this.onSearchChange('LMNB1');
+        const urlParams = new URLSearchParams(window.location.search);
+        this.onSearchChange(urlParams.get('target') || 'LMNB1');
 
         // load the NRRD files
         this.loadStacks();
     }
 
-    
-    componentDidUpdate(prevProps, prevState, snapshot) {
 
-        // reload the NRRD files
+    componentDidUpdate(prevProps, prevState, snapshot) {
+        // reload the z-stacks only if the roi has changed
         if (prevState.roiId!==this.state.roiId) {
             this.loadStacks();
         }
-
-        //console.log(this.state.gfpMax);
     }
 
-
+    
     render() {
 
         function renderROIItem (roi, props) {

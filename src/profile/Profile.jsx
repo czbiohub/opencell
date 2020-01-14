@@ -28,12 +28,10 @@ import msData from '../demo/data/20190816_ms-data.json';
 import manualMetadata from '../demo/data/manual_metadata.json';
 import uniprotMetadata from '../demo/data/uniprot_metadata.json';
 
+import settings from '../common/settings.js';
+
 import '../common/common.css';
 import './Profile.css';
-
-const localApi = `http://localhost:5000`;
-const capApi = `http://cap.czbiohub.org:5001`;
-const apiUrl = capApi;
 
 
 class App extends Component {
@@ -41,7 +39,7 @@ class App extends Component {
     constructor (props) {
         super(props);
 
-        this.apiUrl = apiUrl;
+        this.apiUrl = settings.apiRoot;
 
         this.state = {
 
@@ -127,7 +125,7 @@ class App extends Component {
         // fired when the user hits enter in the header's target search text input
         // `value` is the value of the input
 
-        let url = `${this.apiUrl}/lines?target_name=${value}&kind=microscopy`;
+        let url = `${this.apiUrl}/lines?target_name=${value}&kind=all`;
         d3.json(url).then(lines => {
             for (const line of lines) {
                 if (line && line.fovs.length) {
@@ -287,18 +285,17 @@ class App extends Component {
 
                     <div
                         className='pt0 pb3 w-100 protein-function-container'
-                        style={{height: 175, overflow: 'auto', lineHeight: 1.33}}>
+                        style={{height: 100, overflow: 'auto', lineHeight: 1.33}}>
                         <div>
                             <p>{uniprotMetadata[this.state.targetName]?.uniprot_function}</p>
                         </div>
                     </div>
 
 
+                    {/* expression scatterplot*/}
                     <div className="pt4 bb b--black-10">
                         <div className="f3 container-header">Expression level</div>
                     </div>
-
-                    {/* tpm-GFP scatterplot*/}
                     <div 
                         className="fl pt3 pb3 w-100 expression-plot-container" 
                         style={{marginLeft: -20, marginTop: 0}}>
@@ -306,15 +303,12 @@ class App extends Component {
                     </div>
 
 
-                    {/* 
                     <div className="bb b--black-10">
                         <div className="f3 container-header">FACS histograms</div>
                     </div> 
-                    */}
-
+                   
                     {/* FACS plot controls */}
-                    {/* <div className="pt3 pb2">
-
+                    <div className="pt3 pb2">
                         <div className='fl w-100 pb3'>
                             <div className='dib pr4'>
                                 <ButtonGroup 
@@ -331,23 +325,20 @@ class App extends Component {
                                     onClick={value => this.setState({facsShowAnnotations: value})}/>
                             </div>
                         </div>
-                    </div> */}
-
+                    </div>
 
                     {/* FACS plot itself*/}
-                    {/*
                     <div 
                         className="fl pt3 w-100 facs-container" 
-                        style={{marginLeft: -20, marginTop: 0}}>
+                        style={{marginLeft: -20, marginTop: -20}}>
                         <FACSPlot 
                             width={400}
                             height={300}
                             isSparkline={false}
-                            showGFP={this.state.facsShowGFP=='On'}
-                            targetName={this.state.targetName}
-                            data={this.cellLine.facs_histograms}/>
+                            cellLineId={this.state.cellLineId}
+                            showGFP={this.state.facsShowGFP==='On'}/>
                     </div>
-                    */}
+                   
                 </div>
 
 

@@ -5,6 +5,8 @@ import chroma from 'chroma-js';
 import XYFrame from "semiotic/lib/XYFrame"
 import ResponsiveXYFrame from "semiotic/lib/ResponsiveXYFrame"
 
+import settings from '../common/settings.js';
+
 
 class FACSPlot extends Component {
     //
@@ -71,9 +73,6 @@ class FACSPlot extends Component {
         // default hard-coded props for the XYFrame
         this.frameProps = {  
             
-            // line data is constructed in constructLineData
-            lines: [],
-            
             // tight margin for sparkline mode
             margin: this.props.isSparkline ? tightMargin : wideMargin,
 
@@ -97,15 +96,13 @@ class FACSPlot extends Component {
 
             foregroundGraphics: this.props.isSparkline ? null : foregroundGraphics,
         };
+
     }
 
-    constructLineData () {
 
-        // figure out where the data has come from (either via props or from fetchData)
-        const data = this.props.data ? this.props.data : this.fetchedData;
+    constructLineData (data) {
 
         if (!data || !data.x) {
-            this.frameProps.lines = [];
             return;
         }
 
@@ -140,23 +137,18 @@ class FACSPlot extends Component {
             coord.y = coord.y < 0 ? 0 : coord.y;
         });
 
-        // data to pass to XYFrame
-        this.frameProps.lines = [sampleLine, refLine];
-        if (this.props.showGFP) this.frameProps.lines.push(gfpLine);
-        
-        // plot size (though only the height will be used by ResponsiveXYFrame)
-        const height = this.props.height ? this.props.height : this.props.width * this.aspectRatio;
-        this.frameProps.size = [this.props.width, height];
+        // line data to pass to XYFrame
+        this.lines = {sample: sampleLine, ref: refLine, gfp: gfpLine};
 
     }
 
 
-    fetchData () {
+    fetchAndConstructData () {
 
-        fetch(`http://localhost:5000/facshistograms/${this.props.cellLineId}`)
+        fetch(`${settings.apiRoot}/lines/${this.props.cellLineId}?kind=facs`)
             .then(result => result.json())
             .then(data => {
-                    this.fetchedData = fetchedData;
+                    this.constructLineData(data.facs_histograms);
                     this.setState({loaded: true});
                 },
                 error => console.log(error)
@@ -167,14 +159,12 @@ class FACSPlot extends Component {
     componentDidMount () {
 
         // only fetch the data if it was not passed as a prop
-        if (!this.props.data) {
-            this.fetchData();
-        } else {
+        if (this.props.data) {
+            this.constructLineData(props.data);
             this.setState({loaded: true});
-            this.constructLineData();
-
+        } else if (this.props.cellLineId) {
+            this.fetchAndConstructData();
         }
-
     }
 
 
@@ -182,13 +172,8 @@ class FACSPlot extends Component {
 
         // re-fetch the data only if it was not passed as a prop and if the cellLineId has changed
         if (this.props.cellLineId!==prevProps.cellLineId) {
-            this.fetchData();
+            this.fetchAndConstructData();
         }
-
-        // TODO: it's ineffecient to construct the line data on every update
-        // (should only be done when the target has changed)
-        this.constructLineData();
-
     }
 
 
@@ -197,12 +182,20 @@ class FACSPlot extends Component {
         if (!this.state.loaded) return null;
         
         // HACK: if constructLineData failed, we should not render the plot
-        if (!this.frameProps.lines.length) return null;
+        if (!this.lines) return null;
+
+        // plot size (though only the height will be used by ResponsiveXYFrame)
+        const height = this.props.height ? this.props.height : this.props.width * this.aspectRatio;
+        const size = [this.props.width, height];
+    
+        const lines = [this.lines.sample, this.lines.ref];
+        if (this.props.showGFP) lines.push(this.lines.gfp);
 
         return (
             <ResponsiveXYFrame 
                 responsiveWidth={true} 
-                lines={this.frameProps.lines} 
+                lines={lines} 
+                size={size}
                 {...this.frameProps}/>
         );
     }

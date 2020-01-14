@@ -58,7 +58,7 @@ export const columnDefs = [
         accessor: d => {
             // hack-ish way to display the date in the form '%Y-%m-%d'
             const date = new Date(d.electroporation_date); 
-            return date.toJSON() ? date.toJSON().slice(0, 10) : 'missing date';
+            return date.toJSON() ? date.toJSON().slice(0, 10) : 'ND';
         },
     },{
         Header: 'Gene name',
@@ -130,7 +130,7 @@ export const columnDefs = [
                 key={row.value} 
                 cellLineId={row.value}
                 isSparkline={true}
-                data={row.original.facs_histograms}
+                showGFP={true}
                 width={100}/>
         },
         // to color the background by the area

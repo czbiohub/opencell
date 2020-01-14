@@ -169,9 +169,11 @@ class PlateWell extends Component {
             content = this.props.data && (
                 <div style={{paddingTop: 10}}>
                     <FACSPlot 
+                        showGFP={true}
                         isSparkline={true}
                         width={this.state.width}
-                        data={this.props.data.facs_histograms}/>
+                        cellLineId={this.props.data.cell_line_id}
+                    />
                 </div>
             );
 

@@ -17,6 +17,8 @@ import 'tachyons';
 import "@blueprintjs/core/lib/css/blueprint.css";
 // import "blueprintjs/select/lib/css/blueprint-select.css";
 
+import settings from '../common/settings.js';
+
 import '../common/common.css';
 import './Dashboard.css';
 
@@ -49,11 +51,8 @@ export default class Dashboard extends Component {
 
     
     componentDidMount() {
-        
-        const capApi = 'http://cap.czbiohub.org:5001';
-        const localApi = 'http://localhost:5000';
 
-        fetch(`${capApi}/lines`)
+        fetch(`${settings.apiRoot}/lines`)
             .then(result => result.json())
             .then(data => {
                 this.setState({data});
@@ -103,9 +102,7 @@ export default class Dashboard extends Component {
         const filterValues = this.state.filterValues;
         filterValues[def.accessor] = value;
         this.setState({filterValues});
-
     }
-
 
 
     render() {
@@ -149,7 +146,7 @@ export default class Dashboard extends Component {
 
                 {/* header */}
                 <div className="bb b--black-20">
-                    <div className="f3 b">Pipeline dashboard</div>
+                    <div className="f3 b">Opencell dashboard</div>
                 </div> 
 
                 {/* top menu bar

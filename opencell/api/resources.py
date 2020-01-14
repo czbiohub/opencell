@@ -138,8 +138,10 @@ class PolyclonalLine(Resource):
     def get(self, cell_line_id):
         '''
         '''
+        args = request.args
+        kind = args.get('kind')
         ops = operations.PolyclonalLineOperations.from_line_id(current_app.Session, cell_line_id)
-        return jsonify(ops.construct_json())
+        return jsonify(ops.construct_json(kind=kind))
 
 
 class MicroscopyFOV(Resource):
@@ -206,30 +208,3 @@ class MicroscopyFOVROI(Resource):
 
         return file
 
-
-class FACSHistograms(Resource):
-
-    def get(self, cell_line_id):
-        '''
-        The FACS histograms for a given cell_line_id
-        '''
-        
-        facs_result = current_app.Session.query(models.FACSResult).filter(
-            models.FACSResult.cell_line_id == cell_line_id
-        ).first()
-
-        if facs_result:
-            d = {}
-            for key, value in facs_result.histograms.items():
-                d[key] = value[::2]
-            return jsonify(d)
-        else:
-            return None
-
-        # # coerce to ints to save space
-        # facs['histograms']['x'] = [
-        #     int(val) for val in facs['histograms']['x']]
-        # facs['histograms']['y_sample'] = [
-        #     int(val*1e6) for val in facs['histograms']['y_sample']]
-        # facs['histograms']['y_ref_fitted'] = [
-        #     int(val*1e6) for val in facs['histograms']['y_ref_fitted']]

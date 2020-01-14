@@ -43,14 +43,14 @@ def create_app(args):
     api.add_resource(resources.Plates, '/plates')
     api.add_resource(resources.Plate, '/plates/<string:plate_id>/')
     api.add_resource(resources.Electroporations, '/electroporations')
+
     api.add_resource(resources.PolyclonalLines, '/lines')
-    api.add_resource(resources.PolyclonalLine, '/lines/<int:cell_line_id>/')
-    api.add_resource(resources.FACSHistograms, '/facshistograms/<int:cell_line_id>/')
+    api.add_resource(resources.PolyclonalLine, '/lines/<int:cell_line_id>')
+
     api.add_resource(resources.MicroscopyFOV, '/fovs/<string:channel>/<string:kind>/<int:fov_id>')
     api.add_resource(resources.MicroscopyFOVROI, '/rois/<string:channel>/<string:kind>/<int:roi_id>')
     
     api.init_app(app)
-
 
     if args.credentials:
         credentials = args.credentials

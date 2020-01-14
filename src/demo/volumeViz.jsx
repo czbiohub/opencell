@@ -59,7 +59,7 @@ class VolumeViz extends Component {
         this.initViz();
 
         // if the data (NRRD files) have loaded
-        if (this.props.appHasLoaded) {
+        if (this.props.stacksLoaded) {
             this.maybeCreateMaterial();
             this.updateUniforms(['u_data', 'u_clim']);
         }
@@ -70,10 +70,10 @@ class VolumeViz extends Component {
 
         // HACK: if the app hasn't loaded, the user has changed targets,
         // which means we are waiting for the NRRD files to load,
-        // and this method will fire again once they do (and appHasLoaded is set to true)
+        // and this method will fire again once they do (and stacksLoaded is set to true)
         // Here, we go around react and use a state-independent flag to remember this fact
         // in order to reload the texture when this method is called again after the NRRD files have loaded
-        if (!this.props.appHasLoaded) {
+        if (!this.props.stacksLoaded) {
             this.reloadTexture = true;
             return;
         }

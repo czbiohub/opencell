@@ -13,12 +13,12 @@ class Header extends Component {
 
     render () {
 
-        const headerDefs = ['protein_name', 'target_family', 'uniprot_id'];
+        const headerDefs = ['protein_name', 'target_family', 'uniprot_id', 'plate_id', 'well_id'];
         const metadataItems = metadataDefinitions.filter(def => headerDefs.includes(def.id)).map(def => {
             return (
                 <MetadataItem
                     key={def.Header}
-                    value={def.accessor({targetName: this.props.targetName})}
+                    value={def.accessor(this.props.cellLine)}
                     label={def.Header}
                     units={def.units}
                 />
@@ -52,7 +52,7 @@ class Header extends Component {
 
                         {/* target name */}
                         <div className='fl dib'>
-                            <div className="blue pt3" style={{fontSize: 66}}>{this.props.targetName}</div>
+                            <div className="blue pt3" style={{fontSize: 66}}>{this.props.cellLine.target_name}</div>
                         </div>
 
                         {/* stats */}

@@ -37,7 +37,7 @@ class SliceViz extends Component {
     
     componentDidMount() {
         this.initViz();
-        if (this.props.appHasLoaded) {
+        if (this.props.stacksLoaded) {
             this.maybeInitData();
             this.displaySlice();
         }
@@ -46,7 +46,7 @@ class SliceViz extends Component {
 
     componentDidUpdate (prevProps) {
 
-        if (!this.props.appHasLoaded) return;
+        if (!this.props.stacksLoaded) return;
 
         this.maybeInitData();
 

@@ -27,24 +27,26 @@ import { metadataDefinitions } from './definitions.js';
 import msData from './data/20190816_ms-data.json';
 import manualMetadata from './data/manual_metadata.json';
 import uniprotMetadata from './data/uniprot_metadata.json';
-import pipelineMetadata from './data/20191217_all-pipeline-metadata.json';
 
 import '../common/common.css';
 import './Demo.css';
 
 const localApi = `http://localhost:5000`;
 const capApi = `http://cap.czbiohub.org:5001`;
+const apiUrl = localApi;
+
 
 class App extends Component {
 
     constructor (props) {
         super(props);
 
-        this.apiUrl = capApi;
+        this.apiUrl = apiUrl;
 
         this.state = {
 
-            appHasLoaded: false,
+            linesLoaded: false,
+            stacksLoaded: false,
             
             roiId: null,
             cellLineId: null,
@@ -84,15 +86,15 @@ class App extends Component {
             dapiMin: 5,
             dapiMax: 50,
             zIndex: 30,
+
         };
+
 
         this.changeTarget = this.changeTarget.bind(this);
         this.onSearchChange = this.onSearchChange.bind(this);
 
-        // the list of all targets for which we have data;
-        // these target names should also all appear in manualMetadata
-        this.allTargetNames = Object.keys(pipelineMetadata);
-
+        this.allCellLines = [];
+        this.cellLine = {};
         this.rois = [];
     
     }
@@ -106,14 +108,16 @@ class App extends Component {
         if (targetName===this.state.targetName) return;
 
         const rois = [...cellLine.fovs[0].rois, ...cellLine.fovs[1].rois];
-        this.rois = rois;
 
-        // reset appHasLoaded to false, since we now need to load new NRRD files
+        this.rois = rois;
+        this.cellLine = cellLine;
+
+        // reset stacksLoaded to false, since we now need to load new z-stacks
         this.setState({
             targetName,
             cellLineId: cellLine.cell_line_id,
             roiId: rois[0].id,
-            appHasLoaded: false, 
+            stacksLoaded: false, 
             gfpMax: manualMetadata[targetName]?.gfp_max || 50,
         });
     }
@@ -186,7 +190,7 @@ class App extends Component {
         }
 
         if (!this.state.roiId) {
-            this.setState({appHasLoaded: true});
+            this.setState({stacksLoaded: true});
             return;
         }
 
@@ -200,19 +204,23 @@ class App extends Component {
 
         Promise.all(filepaths.map(loadStack)).then(volumes => {
             this.volumes = volumes;
-            this.setState({appHasLoaded: true});
+            this.setState({stacksLoaded: true});
         });
     }
 
 
     componentDidMount() {
-        
+
+        let url = `${this.apiUrl}/lines`;
+        d3.json(url).then(lines => {
+            this.allCellLines = lines;     
+            this.setState({linesLoaded: true});
+        });
+
         // initial target to display
         const urlParams = new URLSearchParams(window.location.search);
         this.onSearchChange(urlParams.get('target') || 'LMNB1');
-
-        // load the NRRD files
-        this.loadStacks();
+        
     }
 
 
@@ -223,17 +231,17 @@ class App extends Component {
         }
     }
 
-    
+
     render() {
 
         function renderROIItem (roi, props) {
             if (!props.modifiers.matchesPredicate) return null;
             return (
                 <MenuItem
-                    active={props.modifiers.active}
                     key={roi.id}
-                    label={`(FOV ${roi.fov_id})`}
                     text={`ROI ${roi.id}`}
+                    label={`(FOV ${roi.fov_id})`}
+                    active={props.modifiers.active}
                     onClick={props.handleClick}
                 />
             );
@@ -241,17 +249,10 @@ class App extends Component {
 
         let localizationContent;
         if (this.state.localizationMode==='Volume') {
-            localizationContent = <VolumeViz
-                volumes={this.volumes}
-                {...this.state}
-            />
+            localizationContent = <VolumeViz volumes={this.volumes} {...this.state}/>
         }
-    
         if (this.state.localizationMode==='Slice') {
-            localizationContent = <SliceViz
-                volumes={this.volumes}
-                {...this.state}
-            />
+            localizationContent = <SliceViz volumes={this.volumes} {...this.state}/>
         }
 
         // append gene_name to metadataDefinitions 
@@ -260,10 +261,11 @@ class App extends Component {
             {   
                 id: 'gene_name',
                 Header: 'Gene name',
-                accessor: row => row.targetName,
+                accessor: row => row.target_name,
             },
             ...metadataDefinitions,
         ];
+
 
         return (
 
@@ -273,12 +275,8 @@ class App extends Component {
             {/* main container */}
             <div className="w-100 pl4 pr4">
 
-
                 {/* page header and metadata */}
-                <Header 
-                    targetName={this.state.targetName}
-                    onSearchChange={this.onSearchChange}/>
-
+                <Header cellLine={this.cellLine} onSearchChange={this.onSearchChange}/>
 
                 {/* Expression scatterplot and FACS histograms */}
                 <div className="fl w-25 dib pl3 pr4 pt0">
@@ -347,7 +345,7 @@ class App extends Component {
                             isSparkline={false}
                             showGFP={this.state.facsShowGFP=='On'}
                             targetName={this.state.targetName}
-                            data={pipelineMetadata[this.state.targetName].facs_histograms}/>
+                            data={this.cellLine.facs_histograms}/>
                     </div>
                     */}
                 </div>
@@ -385,7 +383,7 @@ class App extends Component {
                                 items={this.rois} 
                                 itemRenderer={renderROIItem} 
                                 filterable={false}
-                                onItemSelect={roi => this.setState({appHasLoaded: false, roiId: roi.id})}
+                                onItemSelect={roi => this.setState({stacksLoaded: false, roiId: roi.id})}
                                 activeItem={this.rois.filter(roi => roi.id === this.state.roiId)[0]}
                             >
                                 <Button 
@@ -529,16 +527,13 @@ class App extends Component {
                         showPageSizeOptions={false}
                         filterable={true}
                         columns={tableDefs}
-                        data={this.allTargetNames.map(name => {
-                            return {
-                                targetName: name, 
-                                isActive: this.state.targetName===name
-                            };
+                        data={this.allCellLines.map(line => {
+                            return {...line, isActive: this.state.targetName===line.target_name};
                         })}
                         getTrProps={(state, rowInfo, column) => {
                             const isActive = rowInfo ? rowInfo.original.isActive : false;
                             return {
-                                onClick: () => this.onSearchChange(rowInfo.original.targetName),
+                                onClick: () => this.onSearchChange(rowInfo.original.target_name),
                                 style: {
                                     background: isActive ? '#ddd' : null,
                                     fontWeight: isActive ? 'bold' : 'normal'
@@ -546,16 +541,14 @@ class App extends Component {
                             }
                         }}
                         getPaginationProps={(state, rowInfo, column) => {
-                            return {
-                              style: {fontSize: 16}
-                            }
+                            return {style: {fontSize: 16}}
                           }}
                     />
                 </div>
 
             </div>
 
-            {this.state.appHasLoaded ? (null) : (<div className='loading-overlay'/>)}
+            {this.state.linesLoaded & this.state.stacksLoaded ? (null) : (<div className='loading-overlay'/>)}
 
             </div>
 

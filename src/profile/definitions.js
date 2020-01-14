@@ -1,6 +1,5 @@
-
-import manualMetadata from './data/manual_metadata.json';
-import uniprotMetadata from './data/uniprot_metadata.json';
+import manualMetadata from '../demo/data/manual_metadata.json';
+import uniprotMetadata from '../demo/data/uniprot_metadata.json';
 
 
 // column defs for the datatable; also used by header.jsx

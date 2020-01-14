@@ -4,7 +4,7 @@ import React, { Component } from 'react';
 import classNames from 'classnames';
 
 import 'tachyons';
-import './Demo.css';
+import './Profile.css';
 
 
 class ButtonGroup extends Component {

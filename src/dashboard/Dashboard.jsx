@@ -50,10 +50,10 @@ export default class Dashboard extends Component {
     
     componentDidMount() {
         
-        const api_on_cap = 'http://cap.czbiohub.org:5001';
-        const local_api = 'http://localhost:5000';
+        const capApi = 'http://cap.czbiohub.org:5001';
+        const localApi = 'http://localhost:5000';
 
-        fetch(`${local_api}/lines`)
+        fetch(`${capApi}/lines`)
             .then(result => result.json())
             .then(data => {
                 this.setState({data});

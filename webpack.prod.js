@@ -1,6 +1,6 @@
-
 const path = require('path');
 const webpack = require('webpack');
+const CopyPlugin = require('copy-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
@@ -9,7 +9,7 @@ const config = {
     entry: {
         home: './src/home/index.jsx',
         dashboard: './src/dashboard/index.jsx',
-        demo: './src/demo/index.jsx',
+        profile: './src/profile/index.jsx',
     },
 
     module: {
@@ -22,7 +22,7 @@ const config = {
                 test: /\.css$/,
                 use: [
                     MiniCssExtractPlugin.loader,
-                    'css-loader' // why is this here?
+                    'css-loader'
                 ]
             }
         ]
@@ -33,20 +33,11 @@ const config = {
     },
 
     output: {
-        path: path.resolve(__dirname, 'dev'),
-        filename: '[name].bundle.js',
-        publicPath: '/',
-    },
-
-    devServer: {
-        contentBase: './static',
+        path: path.resolve(__dirname, 'dist'),
+        filename: '[chunkhash]-bundle.js',
     },
 
     plugins: [
-        new MiniCssExtractPlugin({
-            filename: '[name].bundle.css',
-            chunks: ['home'],
-        }),
 
         new HtmlWebpackPlugin({
             title: 'Home',
@@ -61,11 +52,19 @@ const config = {
             chunks: ['dashboard']
         }),
         new HtmlWebpackPlugin({
-            title: 'Demo',
+            title: 'Profile',
             template: './static/index.html',
-            filename: './demo/index.html',
-            chunks: ['demo']
-        })
+            filename: './profile/index.html',
+            chunks: ['profile']
+        }),
+        new MiniCssExtractPlugin({
+            filename: '[chunkhash]-bundle.css',
+            chunks: ['home'],
+        }),
+    
+        // note that the `to` path is relative to the output path defined above
+        new CopyPlugin([{from: 'static/logos', to: 'profile/logos'}]),
+        new CopyPlugin([{from: 'static/threejs-textures', to: 'profile/threejs-textures'}])
     ]
 
 };

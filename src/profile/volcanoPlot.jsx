@@ -6,10 +6,10 @@ import ReactDOM from 'react-dom';
 import chroma from 'chroma-js';
 
 import 'tachyons';
-import './Demo.css';
+import './Profile.css';
 
-import msData from './data/20190816_ms-data.json';
-import msMetadata from './data/20191009_ms-metadata.json';
+import msData from '../demo/data/20190816_ms-data.json';
+import msMetadata from '../demo/data/20191009_ms-metadata.json';
 
 
 export default class VolcanoPlot extends Component {

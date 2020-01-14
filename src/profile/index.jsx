@@ -1,11 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 
-import Demo from './Demo';
+import Profile from './Profile';
 
 
 ReactDOM.render(
-	<Demo/>, 
+	<Profile/>, 
 	document.getElementById('root')
 );
 

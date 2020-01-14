@@ -24,16 +24,16 @@ import "@blueprintjs/core/lib/css/blueprint.css";
 
 import { metadataDefinitions } from './definitions.js';
 
-import msData from './data/20190816_ms-data.json';
-import manualMetadata from './data/manual_metadata.json';
-import uniprotMetadata from './data/uniprot_metadata.json';
+import msData from '../demo/data/20190816_ms-data.json';
+import manualMetadata from '../demo/data/manual_metadata.json';
+import uniprotMetadata from '../demo/data/uniprot_metadata.json';
 
 import '../common/common.css';
-import './Demo.css';
+import './Profile.css';
 
 const localApi = `http://localhost:5000`;
 const capApi = `http://cap.czbiohub.org:5001`;
-const apiUrl = localApi;
+const apiUrl = capApi;
 
 
 class App extends Component {

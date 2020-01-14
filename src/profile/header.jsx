@@ -1,8 +1,5 @@
-
 import React, {Component} from 'react';
-
 import {metadataDefinitions} from './definitions.js';
-
 
 class Header extends Component {
 

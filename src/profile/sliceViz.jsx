@@ -3,7 +3,7 @@ import * as d3 from 'd3';
 import React, { Component } from 'react';
 
 import 'tachyons';
-import './Demo.css';
+import './Profile.css';
 
 
 class SliceViz extends Component {

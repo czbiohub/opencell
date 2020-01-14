@@ -27,7 +27,7 @@ export default class Navbar extends Component {
                         <a href="./dashboard">Dashboard</a>
                     </div>
                     <div className='dib pl3 pr3'>
-                        <a href="./demo">Demo</a>
+                        <a href="./profile">Profile</a>
                     </div>
 
                 </div>

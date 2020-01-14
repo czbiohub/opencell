@@ -1,8 +1,9 @@
 node_modules/
 prod/
-
+dist/
 .idea/
 .vscode/
+
 build
 .DS_Store
 *.tgz
@@ -11,3 +12,6 @@ yarn-debug.log*
 yarn-error.log*
 /.changelog
 .npm/
+
+.ipynb_checkpoints
+__pycache__/

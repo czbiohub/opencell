@@ -8,7 +8,8 @@ const config = {
 
     entry: {
         home: './src/home/index.jsx',
-        dashboard: './src/dashboard/index.jsx'
+        dashboard: './src/dashboard/index.jsx',
+        profile: './src/profile/index.jsx',
     },
 
     module: {
@@ -50,14 +51,20 @@ const config = {
         new HtmlWebpackPlugin({
             title: 'Home',
             template: './static/index.html',
-            filename: './dev/index.html',
+            filename: './index.html',
             chunks: ['home']
         }),
         new HtmlWebpackPlugin({
             title: 'Dashboard',
             template: './static/index.html',
-            filename: './dev/dashboard/index.html',
+            filename: './dashboard/index.html',
             chunks: ['dashboard']
+        }),
+        new HtmlWebpackPlugin({
+            title: 'Profile',
+            template: './static/index.html',
+            filename: './profile/index.html',
+            chunks: ['profile']
         })
     ]
 

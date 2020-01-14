@@ -49,7 +49,11 @@ export default class Dashboard extends Component {
 
     
     componentDidMount() {
-        fetch('http://localhost:5000/polyclonallines')
+        
+        const capApi = 'http://cap.czbiohub.org:5001';
+        const localApi = 'http://localhost:5000';
+
+        fetch(`${capApi}/lines`)
             .then(result => result.json())
             .then(data => {
                 this.setState({data});

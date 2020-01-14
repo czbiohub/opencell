@@ -169,6 +169,7 @@ class PlateWell extends Component {
             content = this.props.data && (
                 <div style={{paddingTop: 10}}>
                     <FACSPlot 
+                        isSparkline={true}
                         width={this.state.width}
                         data={this.props.data.facs_histograms}/>
                 </div>

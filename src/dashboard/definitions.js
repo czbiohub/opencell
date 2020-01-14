@@ -129,6 +129,7 @@ export const columnDefs = [
             return <FACSPlot 
                 key={row.value} 
                 cellLineId={row.value}
+                isSparkline={true}
                 data={row.original.facs_histograms}
                 width={100}/>
         },

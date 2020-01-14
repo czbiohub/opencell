@@ -532,9 +532,16 @@ class PolyclonalLineOperations:
         # (includes plate_design_id and well_id)
         d = design.as_dict()
 
+        # keys to drop
+        keys_to_drop = [
+            'template_sequence', 
+            'protospacer_name', 
+            'protospacer_sequence'
+        ]
+        for key in keys_to_drop: d.pop(key)
+
         # append cell-line- and electroporation-specific fields 
         d['cell_line_id'] = self.line.id
-        d['electroporation_date'] = ep.electroporation_date
 
         # the facs results (scalars and histograms)
         # TODO: enforce one-to-one and drop the [0]

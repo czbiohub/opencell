@@ -1,4 +1,5 @@
 import os
+import urllib
 import pandas as pd
 import sqlalchemy as db
 
@@ -13,6 +14,15 @@ from flask import (
 from opencell.imaging.processors import FOVProcessor
 from opencell.database import models, operations
 from opencell.api.cache import cache
+
+
+# copied from https://stackoverflow.com/questions/24816799/how-to-use-flask-cache-with-flask-restful
+def cache_key():
+   args = request.args
+   key = request.path + '?' + urllib.parse.urlencode([
+     (k, v) for k in sorted(args) for v in sorted(args.getlist(k))
+   ])
+   return key
 
 
 class Plates(Resource):
@@ -83,7 +93,7 @@ class Electroporations(Resource):
 
 class PolyclonalLines(Resource):
 
-    @cache.cached(timeout=1)
+    @cache.cached(timeout=3600, key_prefix=cache_key)
     def get(self):
         '''
         All polyclonal lines 

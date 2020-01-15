@@ -17,6 +17,7 @@ import VolumeViz from './volumeViz.jsx';
 import VolcanoPlot from './volcanoPlot.jsx';
 import FACSPlot from '../common/facsPlot.jsx';
 import ExpressionPlot from '../common/expressionPlot.jsx';
+import AnnotationsForm from './annotations.jsx';
 
 import 'tachyons';
 import 'react-table/react-table.css';
@@ -40,6 +41,7 @@ class App extends Component {
         super(props);
 
         this.apiUrl = settings.apiRoot;
+        this.urlParams = new URLSearchParams(window.location.search);
 
         this.state = {
 
@@ -216,8 +218,7 @@ class App extends Component {
         });
 
         // initial target to display
-        const urlParams = new URLSearchParams(window.location.search);
-        this.onSearchChange(urlParams.get('target') || 'LMNB1');
+        this.onSearchChange(this.urlParams.get('target') || 'LMNB1');
         
     }
 
@@ -428,6 +429,15 @@ class App extends Component {
                 </div>
 
 
+                {this.urlParams.get('annotations')!=='yes' ? (null) : (
+                    <div className="fl w-33 dib pl3 pb3">
+                        <div className="bb b--black-10">
+                            <div className="f3 container-header">Annotations</div>
+                        </div>                
+                        <AnnotationsForm cellLineId={this.state.cellLineId}/>
+                    </div>
+                )}
+
 
                 {/* mass spec data (scatter plot and list of interactors) */}
                 <div className="fl w-33 dib pl3">
@@ -478,6 +488,7 @@ class App extends Component {
                             labelColor={this.state.volcanoLabelColor}
                         />
                     </div>
+
                     {/* table of top MS hits */}
                     <div className='fl w-100' style={{visibility: 'hidden'}}>
                         <div className='f3 container-header'>Top hits</div>

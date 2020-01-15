@@ -10,14 +10,13 @@ import './Profile.css';
 class ButtonGroup extends Component {
 
     constructor (props) {
-
         super(props);
         this.state = {};
-
     }
 
     
     render() {
+
         const buttons = this.props.values.map(value => {
             return (
                 <SimpleButton 

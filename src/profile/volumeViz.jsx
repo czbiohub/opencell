@@ -58,7 +58,7 @@ class VolumeViz extends Component {
         // data-independent threejs initialization
         this.initViz();
 
-        // if the data (NRRD files) have loaded
+        // if the stacks (as PNG tiles) have loaded
         if (this.props.stacksLoaded) {
             this.maybeCreateMaterial();
             this.updateUniforms(['u_data', 'u_clim']);
@@ -69,10 +69,10 @@ class VolumeViz extends Component {
     componentDidUpdate(prevProps) {
 
         // HACK: if the app hasn't loaded, the user has changed targets,
-        // which means we are waiting for the NRRD files to load,
+        // which means we are waiting for the z-stacks to load,
         // and this method will fire again once they do (and stacksLoaded is set to true)
         // Here, we go around react and use a state-independent flag to remember this fact
-        // in order to reload the texture when this method is called again after the NRRD files have loaded
+        // in order to reload the texture when this method is called again after the stacks have loaded
         if (!this.props.stacksLoaded) {
             this.reloadTexture = true;
             return;
@@ -90,9 +90,9 @@ class VolumeViz extends Component {
         } else {
             this.updateUniforms(['u_clim']);
         }
-
     }
 
+    
     updateUniforms(fields) {
 
         if (fields.includes('u_data')) {

@@ -6,18 +6,20 @@ import ReactTable from 'react-table';
 import { Button, Radio, RadioGroup, MenuItem } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
 
-import ButtonGroup from './buttonGroup.jsx';
 import Slider from './slider.jsx';
+import ButtonGroup from './buttonGroup.jsx';
 
 import Navbar from '../common/navbar.jsx';
-
 import Header from './header.jsx';
+
 import SliceViz from './sliceViz.jsx';
 import VolumeViz from './volumeViz.jsx';
-import VolcanoPlot from './volcanoPlot.jsx';
+
 import FACSPlot from '../common/facsPlot.jsx';
 import ExpressionPlot from '../common/expressionPlot.jsx';
+
 import AnnotationsForm from './annotations.jsx';
+import VolcanoPlotContainer from './volcanoPlotContainer.jsx';
 
 import 'tachyons';
 import 'react-table/react-table.css';
@@ -25,7 +27,6 @@ import "@blueprintjs/core/lib/css/blueprint.css";
 
 import { metadataDefinitions } from './definitions.js';
 
-import msData from '../demo/data/20190816_ms-data.json';
 import manualMetadata from '../demo/data/manual_metadata.json';
 import uniprotMetadata from '../demo/data/uniprot_metadata.json';
 
@@ -61,9 +62,6 @@ class App extends Component {
             // 'Volcano' or 'Table'
             msDisplayMode: 'Volcano',
 
-            // 'Significance' or 'Function'
-            volcanoLabelColor: 'Significance',
-
             // 'None', 'Family', 'Status'
             msColorMode: 'Status',
 
@@ -72,13 +70,6 @@ class App extends Component {
 
             // whether to show the annotations (median/max intensity etc)
             facsShowAnnotations: 'On',
-
-            // label mode for volcano plot
-            volcanoShowLabels: 'When zoomed',
-
-            // whether to reset the zoom 
-            // this is a hack: volcanoPlot just listens for changes to this value
-            volcanoResetZoom: false,
 
             // HACK: these values must match the initial values hard-coded in the sliders below
             gfpMin: 0,
@@ -429,92 +420,28 @@ class App extends Component {
                 </div>
 
 
-                {this.urlParams.get('annotations')!=='yes' ? (null) : (
+                {this.urlParams.get('annotations')!=='yes' ? (
+
+                    <div className="fl w-33 dib pl3">
+                        <div className="bb b--black-10">
+                            <div className="f3 container-header">Interactions</div>
+                        </div>
+                        <VolcanoPlotContainer
+                            targetName={this.state.targetName}
+                            changeTarget={name => this.onSearchChange(name)}
+                        />
+                    </div>
+
+                ) : (
+
                     <div className="fl w-33 dib pl3 pb3">
                         <div className="bb b--black-10">
                             <div className="f3 container-header">Annotations</div>
                         </div>                
                         <AnnotationsForm cellLineId={this.state.cellLineId}/>
                     </div>
+                    
                 )}
-
-
-                {/* mass spec data (scatter plot and list of interactors) */}
-                <div className="fl w-33 dib pl3">
-    
-                    <div className="bb b--black-10">
-                        <div className="f3 container-header">Interactions</div>
-                    </div>
-
-                    {/* display controls */}
-                    <div className="pt3 pb2">
-
-                        {/* Top row - scatterplot controls */}
-                        <div className='fl w-100 pb3'>
-                            <div className='dib pr4'>
-                                <ButtonGroup 
-                                    label='Label color' 
-                                    values={['Significance', 'Function']}
-                                    activeValue={this.state.volcanoLabelColor}
-                                    onClick={value => this.setState({volcanoLabelColor: value})}/>
-                            </div>
-                            <div className='dib pr4'>
-                                <ButtonGroup 
-                                    label='Show labels' 
-                                    values={['Always', 'Never', 'On zoom']}
-                                    activeValue={this.state.volcanoShowLabels}
-                                    onClick={value => this.setState({volcanoShowLabels: value})}/>
-                            </div>
-                            <div className='fr dib'>
-                                <div 
-                                    className='f6 simple-button' 
-                                    onClick={() => this.setState({volcanoResetZoom: !this.state.volcanoResetZoom})}>
-                                    {'Reset zoom'}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* volcano plot
-                    the hack-ish absolute margins here are to better align the svg itself*/}
-                    <div className="fl w-100 scatterplot-container" style={{marginLeft: -20, marginTop: 10}}>
-                        <VolcanoPlot
-                            enrichmentAccessor={row => parseFloat(row.enrichment)}
-                            pvalueAccessor={row => parseFloat(row.pvalue)}
-                            targetName={this.state.targetName}
-                            changeTarget={this.onSearchChange}
-                            showLabels={this.state.volcanoShowLabels}
-                            resetZoom={this.state.volcanoResetZoom}
-                            labelColor={this.state.volcanoLabelColor}
-                        />
-                    </div>
-
-                    {/* table of top MS hits */}
-                    <div className='fl w-100' style={{visibility: 'hidden'}}>
-                        <div className='f3 container-header'>Top hits</div>
-                        <ReactTable
-                            pageSize={5}
-                            filterable={false}
-                            showPagination={false}
-                            columns={[
-                                {
-                                    Header: 'Gene ID',
-                                    accessor: 'gene_id',
-                                },{
-                                    id: 'enrichment',
-                                    Header: 'Enrichment',
-                                    accessor: row => parseFloat(row.enrichment).toFixed(2),
-                                },{
-                                    id: 'pvalue',
-                                    Header: '-log p-value',
-                                    accessor: row => parseFloat(row.pvalue).toFixed(2),
-                                }
-                            ]}
-                            data={msData.filter(d => d.target_name==this.state.targetName)[0]?.hits}
-                        />
-                    </div>
-                </div>
-
 
 
                 {/* table of all targets */}

@@ -46,6 +46,7 @@ def create_app(args):
 
     api.add_resource(resources.PolyclonalLines, '/lines')
     api.add_resource(resources.PolyclonalLine, '/lines/<int:cell_line_id>')
+    api.add_resource(resources.CellLineAnnotation, '/annotations/<int:cell_line_id>')
 
     api.add_resource(resources.MicroscopyFOV, '/fovs/<string:channel>/<string:kind>/<int:fov_id>')
     api.add_resource(resources.MicroscopyFOVROI, '/rois/<string:channel>/<string:kind>/<int:roi_id>')

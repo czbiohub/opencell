@@ -9,6 +9,7 @@ from flask import (
     jsonify, 
     request,
     send_file,
+    abort
 )
 
 from opencell.imaging.processors import FOVProcessor
@@ -208,3 +209,49 @@ class MicroscopyFOVROI(Resource):
 
         return file
 
+
+class CellLineAnnotation(Resource):
+
+    def get(self, cell_line_id):
+        '''
+        '''
+
+        line = current_app.Session.query(models.CellLine)\
+            .filter(models.CellLine.id == cell_line_id).first()
+
+        if line.annotation is not None:
+            return jsonify({
+                'comment': line.annotation.comment, 
+                'categories': line.annotation.categories
+            })
+
+        abort(404)
+
+
+    def put(self, cell_line_id):
+        '''
+        '''
+        data = request.get_json()
+
+        line = current_app.Session.query(models.CellLine)\
+            .filter(models.CellLine.id == cell_line_id).first()
+
+        annotation = line.annotation    
+        if annotation is None:
+            annotation = models.CellLineAnnotation(cell_line_id=cell_line_id)
+        
+        annotation.comment = data.get('comment')
+        annotation.categories = data.get('categories')
+
+        try:
+            operations.add_and_commit(
+                current_app.Session,
+                annotation,
+                errors='raise')
+        except Exception as error:
+            abort(500, str(error))  
+      
+        return jsonify({
+                'comment': line.annotation.comment, 
+                'categories': line.annotation.categories
+        })

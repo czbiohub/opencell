@@ -90,7 +90,11 @@ class CellLine(Base):
     parent = db.orm.relationship('CellLine', remote_side=[id])
 
     # electroporation_line that generated the cell line (if any)
-    electroporation_line = db.orm.relationship('ElectroporationLine', uselist=False, back_populates='cell_line')
+    electroporation_line = db.orm.relationship('ElectroporationLine', back_populates='cell_line', uselist=False)
+
+    # manual annotation
+    annotation = db.orm.relationship('CellLineAnnotation', back_populates='cell_line', uselist=False)
+
 
     def __init__(self, line_type, name=None, notes=None, parent_id=None):
         '''
@@ -612,3 +616,25 @@ class Thumbnail(Base):
 
     # thumbnail itself as a base64-encoded PNG file
     data = db.Column(db.String)
+
+
+class CellLineAnnotation(Base):
+    '''
+    '''
+
+    __tablename__ = 'cell_line_annotation'
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # one-to-one relationship with cell_line
+    cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'))
+    cell_line = db.orm.relationship('CellLine', back_populates='annotation', uselist=False)
+
+    date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
+
+    # free-form comments
+    comment = db.Column(db.String)
+
+    # the list of categories to which the cell line belongs
+    categories = db.Column(postgresql.JSONB)
+

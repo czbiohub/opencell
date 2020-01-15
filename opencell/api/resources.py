@@ -111,12 +111,20 @@ class PolyclonalLines(Resource):
 
         lines = []
         if target_name:
-            cds = current_app.Session.query(models.CrisprDesign)\
-                .filter(db.func.lower(models.CrisprDesign.target_name)\
-                .startswith(target_name.lower())).all()
-            for cd in cds:
-                ep_lines = cd.plate_design.plate_instances[0].electroporations[0].electroporation_lines
-                cell_lines = [line.cell_line for line in ep_lines if line.well_id == cd.well_id]
+        
+            # first look for an exact match
+            designs = current_app.Session.query(models.CrisprDesign)\
+                    .filter(db.func.lower(models.CrisprDesign.target_name) == target_name.lower()).all()
+    
+            # if no exact matches, use startswith
+            if not designs:
+                designs = current_app.Session.query(models.CrisprDesign)\
+                    .filter(db.func.lower(models.CrisprDesign.target_name)\
+                    .startswith(target_name.lower())).all()
+    
+            for design in designs:
+                ep_lines = design.plate_design.plate_instances[0].electroporations[0].electroporation_lines
+                cell_lines = [line.cell_line for line in ep_lines if line.well_id == design.well_id]
                 lines.append(cell_lines[0])
         else:
             eps = current_app.Session.query(models.Electroporation).all()

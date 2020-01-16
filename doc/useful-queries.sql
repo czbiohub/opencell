@@ -26,6 +26,10 @@ where data::jsonb ? 'num_nuclei';
 select data::json ->> 'num_nuclei' as n, count(*) as c from microscopy_fov_result
 group by n order by c desc;
 
+-- groupby the 2nd element of an array in a json object
+select count(fov_id) as n, (props::json ->> 'position')::json ->> 2 as p from microscopy_fov_roi
+group by p order by n desc;
+
 -- count kinds of fov results
 select kind, count(kind) from microscopy_fov_result
 left join microscopy_fov on microscopy_fov.id = microscopy_fov_result.fov_id

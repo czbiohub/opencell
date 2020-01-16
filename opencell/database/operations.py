@@ -528,66 +528,58 @@ class PolyclonalLineOperations:
             if design.well_id == well_id:
                 break
 
-        # the crispr design
-        # (includes plate_design_id and well_id)
-        d = design.as_dict()
+        # top-level attributes from the crispr design
+        attrs = ['target_name', 'target_family', 'transcript_id', 'well_id']
+        data = {attr: getattr(design, attr) for attr in attrs}
 
-        # keys to drop
-        keys_to_drop = [
-            'template_sequence', 
-            'protospacer_name', 
-            'protospacer_sequence'
-        ]
-        for key in keys_to_drop: d.pop(key)
+        data['plate_id'] = design.plate_design_id
+        data['cell_line_id'] = self.line.id
 
-        # append cell-line- and electroporation-specific fields 
-        d['cell_line_id'] = self.line.id
+        # all of the core 'scalar' properties/features/results
+        scalars = {'hek_tpm': design.hek_tpm}
 
-        # the facs results (scalars and histograms)
-        # TODO: enforce one-to-one and drop the [0]
-        if kind == 'all' or kind == 'facs':
-            d['facs_results'] = {}
-            d['facs_histograms'] = {}
-            if self.line.facs_dataset:
-                facs_dataset = self.line.facs_dataset[0]
-                d['facs_histograms'] = self.simplify_facs_histograms(facs_dataset.histograms)    
-                d['facs_results'] = self.simplify_scalars(facs_dataset.scalars)
+        # the sequencing percentages
+        if self.line.sequencing_dataset:
+            sequencing_dataset = self.line.sequencing_dataset[0]
+            scalars['hdr_all'] = sequencing_dataset.scalars.get('hdr_all')
+            scalars['hdr_modified'] = sequencing_dataset.scalars.get('hdr_modified')
 
-        # the sequencing ratios
-        if kind == 'all' or kind == 'sequencing':
-            d['sequencing_results'] = {}
-            if self.line.sequencing_dataset:
-                sequencing_dataset = self.line.sequencing_dataset[0]
-                d['sequencing_results'] = self.simplify_scalars(sequencing_dataset.scalars)
+        # the FACS area and relative median intensity
+        facs_dataset = None
+        if self.line.facs_dataset:
+            facs_dataset = self.line.facs_dataset[0]
+            scalars['facs_area'] = facs_dataset.scalars.get('area')
+            scalars['facs_intensity'] = facs_dataset.scalars.get('rel_median_log')
 
-        # we're done unless we need the FOVs
-        if kind != 'all' and kind != 'microscopy':
-            return d
+        # the FACS histograms
+        if kind in ['all', 'facs'] and facs_dataset is not None:
+            data['facs_histograms'] = self.simplify_facs_histograms(facs_dataset.histograms)    
 
         # microscopy FOVs
-        all_fovs = []
-        for fov in self.line.fovs:
+        if kind in ['all', 'microscopy']:
+            all_fovs = []
+            for fov in self.line.fovs:
+                score_result = [r for r in fov.results if r.kind == 'fov-features']
+                score = None
+                if score_result:
+                    score = score_result[0].data.get('score')
+        
+                all_fovs.append({
+                    'fov_id': fov.id,
+                    'pml_id': fov.dataset.pml_id,
+                    'src_filename': fov.raw_filename,
+                    'rois': [roi.as_dict() for roi in fov.rois],
+                    'score': score,
+                })
 
-            score_result = [r for r in fov.results if r.kind == 'fov-features']
-            score = None
-            if score_result:
-                score = score_result[0].data.get('score')
-    
-            all_fovs.append({
-                'fov_id': fov.id,
-                'pml_id': fov.dataset.pml_id,
-                'src_filename': fov.raw_filename,
-                'rois': [roi.as_dict() for roi in fov.rois],
-                'score': score,
-            })
+            # sort FOVs by score (unscored FOVs last)
+            all_fovs = sorted(
+                all_fovs, 
+                key=lambda row: row.get('score') if row.get('score') is not None else -2)
+            data['fovs'] = all_fovs[::-1]
 
-        # sort FOVs by score (unscored FOVs last)
-        all_fovs = sorted(
-            all_fovs, 
-            key=lambda row: row.get('score') if row.get('score') is not None else -2)
-
-        d['fovs'] = all_fovs[::-1]
-        return d
+        data['scalars'] = scalars
+        return data
 
     
 class MicroscopyFOVOperations:

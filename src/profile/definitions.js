@@ -9,6 +9,7 @@ export const metadataDefinitions = [
     {   
         id: 'protein_name',
         accessor: row => {
+            const maxLength = 20; // previously was 35
             let name = (
                 manualMetadata[row.target_name]?.protein_name ||
                 manualMetadata[row.target_name]?.description ||
@@ -16,7 +17,7 @@ export const metadataDefinitions = [
             );
             name = name ? name : '';
             name = name.split('(')[0].split(',')[0].trim();
-            name = name.length > 35 ? `${name.slice(0, 35)}...` : name;
+            name = name.length > maxLength ? `${name.slice(0, maxLength)}...` : name;
             return name
         },
         Header: 'Protein name',
@@ -35,7 +36,7 @@ export const metadataDefinitions = [
         Header: 'Uniprot ID'
     },{
         id: 'plate_id',
-        accessor: row => row.plate_design_id,
+        accessor: row => row.plate_id,
         Header: 'Plate ID',
         units: null,
     },{
@@ -45,20 +46,29 @@ export const metadataDefinitions = [
         units: null,
     },{
         id: 'hek_tpm',
-        accessor: row => Math.round(row.hek_tpm),
+        accessor: row => Math.round(row.scalars?.hek_tpm),
         Header: 'Expression (tpm)',
         units: 'tpm',
-    },
-    // {
-    //     id: 'facs_intensity',
-    //     accessor: row => row.facs_results.rel_median_log,
-    //     Header: 'FACS intensity (log a.u.)',
-    //     units: 'log a.u.',
-    // },{
-    //     id: 'facs_area',
-    //     accessor: row => Math.round(row.facs_results.area*100),
-    //     Header: 'FACS area (%)',
-    //     units: '%',
-    // },
+    },{
+        id: 'facs_intensity',
+        accessor: row => row.scalars?.facs_intensity?.toFixed(2),
+        Header: 'FACS intensity (log a.u.)',
+        units: 'log a.u.',
+    },{
+        id: 'facs_area',
+        accessor: row => Math.round(row.scalars?.facs_area*100),
+        Header: 'FACS area (%)',
+        units: '%',
+    },{
+        id: 'hdr_all',
+        accessor: row => Math.round(100*row.scalars?.hdr_all),
+        Header: 'HDR/all',
+        units: '%',
+    },{
+        id: 'hdr_modified',
+        accessor: row => Math.round(100*row.scalars?.hdr_modified),
+        Header: 'HDR/modified',
+        units: '%',
+    }
 ];
 

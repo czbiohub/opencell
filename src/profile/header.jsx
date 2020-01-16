@@ -10,7 +10,7 @@ class Header extends Component {
 
     render () {
 
-        const headerDefs = ['protein_name', 'target_family', 'uniprot_id', 'plate_id', 'well_id'];
+        const headerDefs = ['protein_name', 'uniprot_id', 'plate_id', 'well_id', 'hdr_all', 'hdr_modified'];
         const metadataItems = metadataDefinitions.filter(def => headerDefs.includes(def.id)).map(def => {
             return (
                 <MetadataItem

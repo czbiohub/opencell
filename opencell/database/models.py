@@ -38,8 +38,11 @@ class Base(object):
             value = getattr(self, column.name)
             if isinstance(value, enum.Enum):
                 value = value.value
-            if pd.isna(value):
-                value = None
+            try:
+                if pd.isna(value):
+                    value = None
+            except ValueError:
+                pass
             d[column.name] = value
         return d
 

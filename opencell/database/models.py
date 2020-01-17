@@ -638,3 +638,5 @@ class CellLineAnnotation(Base):
     # the list of categories to which the cell line belongs
     categories = db.Column(postgresql.JSONB)
 
+    # the client-side timestamp, app state, etc
+    client_metadata = db.Column(postgresql.JSONB)

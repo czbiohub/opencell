@@ -230,7 +230,8 @@ class CellLineAnnotation(Resource):
         if line.annotation is not None:
             return jsonify({
                 'comment': line.annotation.comment, 
-                'categories': line.annotation.categories
+                'categories': line.annotation.categories,
+                'client_metadata': line.annotation.client_metadata,
             })
 
         abort(404)
@@ -250,6 +251,11 @@ class CellLineAnnotation(Resource):
         
         annotation.comment = data.get('comment')
         annotation.categories = data.get('categories')
+    
+        annotation.client_metadata = {
+            'last_modified': data.get('timestamp'),
+            'displayed_fov_ids': data.get('fov_ids'),
+        }
 
         try:
             operations.add_and_commit(
@@ -259,7 +265,4 @@ class CellLineAnnotation(Resource):
         except Exception as error:
             abort(500, str(error))  
       
-        return jsonify({
-                'comment': line.annotation.comment, 
-                'categories': line.annotation.categories
-        })
+        return jsonify(annotation.as_dict())

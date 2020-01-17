@@ -41,6 +41,10 @@ TRUNCATE microscopy_dataset CASCADE;
 -- rename a column
 ALTER TABLE table_name RENAME COLUMN column_name TO new_column_name;
 
+-- add a column to an existing table
+ALTER TABLE table_name ADD COLUMN column_name data_type;
+
 -- replace a string in a column
 UPDATE microscopy_fov_result
 SET column = REPLACE (column, 'old-string', 'new-string');
+

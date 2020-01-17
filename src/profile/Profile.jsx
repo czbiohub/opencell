@@ -362,13 +362,13 @@ class App extends Component {
                                     onClick={value => this.setState({localizationChannel: value})}/>
                             </div>
                             <div className="dib pr3">
-                            <Select 
-                                items={this.rois} 
-                                itemRenderer={renderROIItem} 
-                                filterable={false}
-                                onItemSelect={roi => this.setState({stacksLoaded: false, roiId: roi.id})}
-                                activeItem={this.rois.filter(roi => roi.id === this.state.roiId)[0]}
-                            >
+                                <Select 
+                                    items={this.rois} 
+                                    itemRenderer={renderROIItem} 
+                                    filterable={false}
+                                    onItemSelect={roi => this.setState({stacksLoaded: false, roiId: roi.id})}
+                                    activeItem={this.rois.filter(roi => roi.id === this.state.roiId)[0]}
+                                >
                                 <Button 
                                     className="bp3-button-custom"
                                     text={`ROI ${this.state.roiId}`}
@@ -437,10 +437,14 @@ class App extends Component {
                     <div className="fl w-33 dib pl3 pb3">
                         <div className="bb b--black-10">
                             <div className="f3 container-header">Annotations</div>
-                        </div>                
-                        <AnnotationsForm cellLineId={this.state.cellLineId}/>
+                        </div>       
+                        {/* note that fovIds should include only the *displayed* FOVs */}
+                        <AnnotationsForm 
+                            cellLineId={this.state.cellLineId} 
+                            fovIds={this.rois.map(roi => roi.fov_id)}
+                        />
                     </div>
-                    
+
                 )}
 
 

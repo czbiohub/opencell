@@ -14,13 +14,18 @@ import './Profile.css';
 /// human-readable category labels
 // (the categories themselves are lower_camel_case versions of these labels)
 const localizationLabels = [
-    'Nuclear', 'Nuclear membrane', 'Nucleolus', 'Nuclear punctae', 
-    'Cytoplasmic', 'Vesicles', 'Membrane', 'Cytoskeleton', 
-    'ER', 'Golgi', 'Mitochondria', 'Centrosome', 'Big aggregates', 'Small aggregates'
+    'Nuclear', 'Nuclear membrane', 'Nuclear punctae', 'Chromatin',
+    'Nucleolus', 'Nucleolus-GC', 'Nucleolus-FC/DFC', 'Nucleolar ring',
+    'Membrane', 'Cytoplasmic', 'Cytoskeleton', 
+    'ER', 'Golgi', 'Mitochondria', 'Centrosome', 'Vesicles',
+    'Big aggregates', 'Small aggregates', 'Diffuse', 'Textured',
+    'Cell contact', 'Nucleus-cytoplasm variation'
 ];
 
 const qcLabels = [
-    'Pretty', 'Interesting', 'No GFP', 'Rare GFP', 'Heterogeneous GFP',
+    'Pretty', 'Interesting', 
+    'No GFP', 'Low GFP', 'Heterogeneous GFP', 'Low HDR',
+    'Re-sort', 'Over-exposed', 'Disk artifact', 'Cross-contamination',
 ];
 
 
@@ -46,7 +51,7 @@ class CheckboxGroup extends Component {
     render() {
 
         const checkboxes = this.props.labels.map(label => {
-            const category = label.toLowerCase().replace(' ', '_');
+            const category = label.toLowerCase().replace(/(-| |\\|\/)/g, '_');
             return (
                 <Checkbox
                     label={label}
@@ -111,6 +116,8 @@ class AnnotationsForm extends Component {
         const data = {
             comment: this.state.comment,
             categories: this.state.categories,
+            fov_ids: [...new Set(this.props.fovIds)],
+            timestamp: (new Date()).toString(),
         };
 
         putData(`${settings.apiRoot}/annotations/${this.props.cellLineId}`, data)

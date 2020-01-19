@@ -103,13 +103,14 @@ class PolyclonalLines(Resource):
 
         args = request.args
         kind = args.get('kind')
+        plate_id = args.get('plate_id')
         target_name = args.get('target_name')
 
         if kind is not None and kind not in ['all', 'facs', 'sequencing', 'ms', 'microscopy']:
             # TODO: return the right http error
             pass
-
-        lines = []
+        
+        designs = None
         if target_name:
         
             # first look for an exact match
@@ -121,11 +122,24 @@ class PolyclonalLines(Resource):
                 designs = current_app.Session.query(models.CrisprDesign)\
                     .filter(db.func.lower(models.CrisprDesign.target_name)\
                     .startswith(target_name.lower())).all()
-    
+
+            # filter by plate_id
+            if plate_id:
+                designs = [design for design in designs if design.plate_design_id == plate_id]
+
+        # if a plate_id but not target_name was provided
+        elif plate_id:
+            designs = current_app.Session.query(models.CrisprDesign)\
+                    .filter(models.CrisprDesign.plate_design_id == plate_id).all()
+            
+        lines = []
+        if designs is not None:
             for design in designs:
                 ep_lines = design.plate_design.plate_instances[0].electroporations[0].electroporation_lines
                 cell_lines = [line.cell_line for line in ep_lines if line.well_id == design.well_id]
                 lines.append(cell_lines[0])
+
+        # all polyclonal lines
         else:
             eps = current_app.Session.query(models.Electroporation).all()
             for ep in eps:

@@ -198,6 +198,15 @@ def insert_plate_microscopy_datasets(session, data_dir, errors='warn'):
         ops.add_and_commit(session, dataset, errors='warn')
 
 
+def insert_raw_pipeline_microscopy_datasets(session, data_dir):
+    '''
+    Insert microscopy datasets found in the 'raw-pipeline-microscopy' directory
+    (these are datasets acquired using the dragonfly-automation scripts)
+    '''
+    root_directory = 'raw_pipeline_microscopy'
+
+
+
 def main():
     '''
 

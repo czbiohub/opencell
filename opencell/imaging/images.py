@@ -387,22 +387,32 @@ class RawPipelineTIFF(MicroManagerTIFF):
                 'An error occured while %s-projecting the %s channel' % (axis, channel_name))
 
 
-    def crop_stack(self):
+    def find_cell_layer(self, channel, rel_bottom, rel_top, step_size):
         '''
-        Crop the stacks in z around the cell layer
-        '''
-        pass
+        Find the top and bottom of the cell layer
 
+        stack : a 3D numpy array with dimensions (z, x, y)
+            (assumed to be a z-stack of Hoechst staining)
+        rel_bottom, rel_top : the position of the bottom and top of the cell layer,
+            relative to the center of the cell layer, in microns
 
-    def downsample(self, scale):
         '''
-        Downsample the stacks
-        '''
-        pass
 
+        stack = self.stacks[channel]
 
-    def to_uint8(self):
-        '''
-        '''
-        pass
-        
+        # z-profile of the mean intensity in the Hoechst channel
+        raw_profile = np.array([zslice.mean() for zslice in stack]).astype(float)
+        profile = raw_profile - raw_profile.mean()
+        profile[profile < 0] = 0
+        profile /= profile.sum()
+
+        # the index of the center of the cell layer
+        # (defined as the median of the mean-subtracted mean intensity profile)
+        center_ind = np.argwhere(np.cumsum(profile) > .5).min()
+
+        # absolute position, in number of z-slices, of the top and bottom of the cell layer 
+        # (rel_bottom is assumed to be negative)
+        bottom_ind = int(center_ind + np.floor(rel_bottom/step_size))
+        top_ind = int(center_ind + np.ceil(rel_top/step_size))
+
+        return bottom_ind, top_ind, center_ind, raw_profile

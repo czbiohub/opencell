@@ -214,6 +214,7 @@ class FOVProcessor:
             if tiff.did_split_channels:
                 return tiff
             else:
+                print('Warning: could not split the TIFF')
                 tiff.tiff.close()
     
 
@@ -228,7 +229,7 @@ class FOVProcessor:
         dst_root : the destination 'oc-plate-microscopy' directory 
 
         NOTE: the `tiff.global_metadata` object returned by this method
-        is modified by all of the `RawPipelineTIFF methods called below
+        is modified by all of the `RawPipelineTIFF` methods called below
         (including by `project_stack`, which appends the min/max intensities)
         '''
 
@@ -306,23 +307,25 @@ class FOVProcessor:
         required_num_slices = 65
 
         # the z coords of the cell layer (calculated using the Hoechst staining from the entire FOV)
-        cell_layer_bottom_ind, cell_layer_top_ind, cell_layer_center_ind = self.find_cell_layer(
-            tiff.stacks[tiff.laser_405], 
+        bottom_ind, top_ind, center_ind, profile = tiff.find_cell_layer(
             rel_bottom=cell_layer_rel_bottom, 
             rel_top=cell_layer_rel_top,
             step_size=self.z_step_size())
 
+        # clamp the bottom ind to zero
+        bottom_ind = max(0, bottom_ind)
+
         # the shape of each ROI
-        roi_shape = (roi_size, roi_size, cell_layer_top_ind - cell_layer_bottom_ind)
+        roi_shape = (roi_size, roi_size, top_ind - bottom_ind)
 
         # the position of the top left corner of each of the four ROIs
         min_ind = 0
         max_ind = fov_size - roi_size
         roi_top_left_positions = [
-            (min_ind, min_ind, cell_layer_bottom_ind),
-            (min_ind, max_ind, cell_layer_bottom_ind),
-            (max_ind, min_ind, cell_layer_bottom_ind),
-            (max_ind, max_ind, cell_layer_bottom_ind)
+            (min_ind, min_ind, bottom_ind),
+            (min_ind, max_ind, bottom_ind),
+            (max_ind, min_ind, bottom_ind),
+            (max_ind, max_ind, bottom_ind)
         ]
 
         all_roi_props = []
@@ -331,7 +334,7 @@ class FOVProcessor:
                 'shape': roi_shape,
                 'position': roi_position, 
                 'xy_coords': (*roi_position[:2], *roi_shape[:2]),
-                'cell_layer_center_ind': cell_layer_center_ind,
+                'cell_layer_center_ind': center_ind,
                 'target_step_size': target_step_size,
                 'original_step_size': self.z_step_size(),
                 'required_num_slices': required_num_slices,
@@ -339,7 +342,6 @@ class FOVProcessor:
 
             roi_props = self.crop_and_save_roi(roi_props, tiff, dst_root)
             all_roi_props.append(roi_props)
-    
         return all_roi_props
 
 
@@ -415,36 +417,6 @@ class FOVProcessor:
         tiff = self.load_raw_tiff(src_root)
         if not tiff:
             return
-
-
-    @staticmethod
-    def find_cell_layer(stack, rel_bottom, rel_top, step_size):
-        '''
-        Find the top and bottom of the cell layer
-
-        stack : a 3D numpy array with dimensions (z, x, y)
-            (assumed to be a z-stack of Hoechst staining)
-        rel_bottom, rel_top : the position of the bottom and top of the cell layer,
-            relative to the center of the cell layer, in microns
-
-        '''
-
-        # z-profile of the mean intensity in the Hoechst channel
-        raw_profile = np.array([zslice.mean() for zslice in stack]).astype(float)
-        profile = raw_profile - raw_profile.mean()
-        profile[profile < 0] = 0
-        profile /= profile.sum()
-
-        # the index of the center of the cell layer
-        # (defined as the median of the mean-subtracted mean intensity profile)
-        center_ind = np.argwhere(np.cumsum(profile) > .5).min()
-
-        # absolute position, in number of z-slices, of the top and bottom of the cell layer 
-        # (rel_bottom_ind is assumed to be negative)
-        abs_bottom_ind = int(max(0, center_ind + np.floor(rel_bottom/step_size)))
-        abs_top_ind = int(min(len(profile) - 1, center_ind + np.ceil(rel_top/step_size)))
-
-        return abs_bottom_ind, abs_top_ind, center_ind
 
 
     @staticmethod

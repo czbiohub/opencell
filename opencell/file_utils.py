@@ -98,7 +98,7 @@ def load_electroporation_history(filename):
     return electroporations
     
 
-def load_microscopy_master_key(filepath):
+def load_legacy_microscopy_master_key(filepath):
     '''
     Load and format a snapshot of the 'legacy' tab of the 'Pipeline-microscopy-master-key' google sheet
 

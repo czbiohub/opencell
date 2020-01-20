@@ -19,39 +19,41 @@ def parse_args():
     '''
     parser = argparse.ArgumentParser()
 
-    # the location of the cached opencell metadata
-    parser.add_argument(
-        '--data-dir',
-        dest='data_dir')
-
-    # the location of the FACS results
-    parser.add_argument(
-        '--facs-results-dir',
-        dest='facs_results_dir')
-
     # path to credentials JSON
     parser.add_argument(
         '--credentials', 
         dest='credentials', 
         required=True)
 
+    # the path to the directory of snapshot/cached opencell metadata
+    parser.add_argument(
+        '--data-dir',
+        dest='data_dir')
+
+    # the path to the directory of cached FACS results
+    parser.add_argument(
+        '--facs-results-dir',
+        dest='facs_results_dir')
+
+    # the filepath to a snapshot of the 'pipeline-microscopy-master-key' google sheet
+    parser.add_argument(
+        '--microscopy-master-key',
+        dest='microscopy_master_key')
+
     # CLI args whose presence in the command sets them to True
-    action_arg_names = [
+    action_arg_dests = [
+        'update',
         'drop_all', 
         'populate',
         'insert_facs',
-        'insert_microscopy'
+        'insert_plate_microscopy_datasets',
+        'insert_pipeline_microscopy_datasets',
     ]
 
-    for arg_name in action_arg_names:
-        parser.add_argument(
-            '--%s' % arg_name.replace('_', '-'), 
-            dest=arg_name,
-            action='store_true',
-            required=False)
-
-    for arg_name in action_arg_names:
-        parser.set_defaults(**{arg_name: False})
+    for dest in action_arg_dests:
+        flag = '--%s' % dest.replace('_', '-')
+        parser.add_argument(flag, dest=dest, action='store_true', required=False)
+        parser.set_defaults(**{dest: False})
 
     args = parser.parse_args()
     return args
@@ -174,37 +176,28 @@ def insert_facs(session, facs_results_dir, errors='warn'):
         pcl_ops.insert_facs_dataset(session, histograms=histograms, scalars=scalars, errors=errors)
 
 
-def insert_plate_microscopy_datasets(session, data_dir, errors='warn'):
+def insert_microscopy_datasets(session, metadata, root_directory, update=False, errors='warn'):
     '''
-    Insert microscopy datasets found in the 'PlateMicroscopy' directory    
-    (these are datasets up to PML0179)
     '''
+    for _, row in metadata.iterrows():
+        dataset = session.query(models.MicroscopyDataset)\
+            .filter(models.MicroscopyDataset.pml_id == row.pml_id).all()
+        if dataset:
+            if update:
+                dataset = dataset.pop()
+                print('Warning: updating existing entry for %s' % row.pml_id)
+            else:
+                print('Warning: dataset %s already exists' % row.pml_id)
+                continue
+        else:
+            dataset = models.MicroscopyDataset(pml_id=row.pml_id)
+            print('Inserting new dataset %s' % row.pml_id)
 
-    # datasets are all from the PlateMicroscopy directory, 
-    # so the root_directory is always the same
-    root_directory = 'plate_microscopy'
-
-    filepath = os.path.join(data_dir, '2019-12-05_Pipeline-microscopy-master-key_PlateMicroscopy-MLs-raw.csv')
-    exp_md = file_utils.load_microscopy_master_key(filepath)
-
-    for _, row in exp_md.iterrows():
-        dataset = models.MicroscopyDataset(
-            pml_id=row.pml_id, 
-            date=row.date, 
-            user=row.imager, 
-            description=row.description,
-            root_directory=root_directory)
-
-        ops.add_and_commit(session, dataset, errors='warn')
-
-
-def insert_raw_pipeline_microscopy_datasets(session, data_dir):
-    '''
-    Insert microscopy datasets found in the 'raw-pipeline-microscopy' directory
-    (these are datasets acquired using the dragonfly-automation scripts)
-    '''
-    root_directory = 'raw_pipeline_microscopy'
-
+        dataset.date = row.date
+        dataset.user = row.imager
+        dataset.description = row.description
+        dataset.root_directory = root_directory
+        ops.add_and_commit(session, dataset, errors=errors)
 
 
 def main():
@@ -232,8 +225,34 @@ def main():
     if args.insert_facs:
         insert_facs(session, args.facs_results_dir, errors='warn')
 
-    if args.insert_microscopy:
-        insert_plate_microscopy_datasets(session, args.data_dir, errors='warn')
+
+    # insert the 'legacy' pipeline microscopy datasets found in the 'PlateMicroscopy' directory
+    # (these are datasets up to PML0179)
+    if args.insert_plate_microscopy_datasets:
+        filepath = os.path.join(
+            args.data_dir, 
+            '2019-12-05_Pipeline-microscopy-master-key_PlateMicroscopy-MLs-raw.csv')
+        metadata = file_utils.load_legacy_microscopy_master_key(filepath)
+        insert_microscopy_datasets(
+            session, 
+            metadata, 
+            root_directory='plate_microscopy', 
+            update=False,
+            errors='warn')
+
+
+    # insert pipeline microscopy datasets found in the 'raw-pipeline-microscopy' directory
+    # (these datasets start at PML0196 and were acquired using the dragonfly-automation scripts)
+    if args.insert_pipeline_microscopy_datasets:
+        metadata = pd.read_csv(args.microscopy_master_key)
+        metadata.rename(columns={'id': 'pml_id'}, inplace=True)
+        insert_microscopy_datasets(
+            session, 
+            metadata, 
+            root_directory='raw_pipeline_microscopy', 
+            update=args.update,
+            errors='warn')
+
 
 if __name__ == '__main__':
     main()

@@ -172,10 +172,15 @@ def insert_raw_pipeline_microscopy_fovs(session, root_dir, pml_id, errors='warn'
 
     metadata = pd.read_csv(os.path.join(root_dir, pml_id, 'fov-metadata.csv'))
 
-    # the filepath to the raw (but renamed) TIFF file
-    # (should be of the form '{pml_id}/raw_data/{filename_prependix}__{original_filename}')
+    # drop rows that were manually flagged
+    if np.any(metadata.manually_flagged):
+        print('Warning: dropping %s manually flagged FOVs' % metadata.manually_flagged.sum())
+        metadata = metadata.loc[~metadata.manually_flagged]
+    print('Inserting %s FOVs from %s' % (metadata.shape[0], pml_id))
+
+    # the filepath to the raw TIFF file
     metadata['raw_filepath'] = [
-        os.path.join(row.src_dirpath, row.dst_filename) for ind, row in metadata.iterrows()]
+        os.path.join(row.src_dirpath, row.src_filename) for ind, row in metadata.iterrows()]
 
     metadata = metadata.groupby(['plate_id', 'pipeline_well_id'])
     for group in metadata.groups:

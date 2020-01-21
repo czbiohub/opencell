@@ -108,29 +108,29 @@ def load_legacy_microscopy_master_key(filepath):
     Note that these acquisitions have IDs of the form 'MLxxxx_YYYYMMDD'.
     '''
 
-    exp_md = pd.read_csv(filepath)
-    exp_md = exp_md.rename(columns={c: c.replace(' ', '_').lower() for c in exp_md.columns})
+    md = pd.read_csv(filepath)
+    md = md.rename(columns={c: c.replace(' ', '_').lower() for c in md.columns})
 
-    exp_md = exp_md.rename(columns={
+    md = md.rename(columns={
         'id': 'legacy_id', 
         'automated_acquisition?': 'automation', 
         'acquisition_notes': 'notes',
         'primary_imager': 'imager',})
 
-    exp_md = exp_md.drop(labels=[c for c in exp_md.columns if c.startswith('unnamed')], axis=1)
+    md = md.drop(labels=[c for c in md.columns if c.startswith('unnamed')], axis=1)
 
     # separate the ML ID itself from the date
-    exp_md['id'] = exp_md.legacy_id.apply(lambda s: s.split('_')[0])
+    md['ml_id'] = md.legacy_id.apply(lambda s: s.split('_')[0])
 
     # parse the date from the ML-style ID
-    exp_md['date'] = pd.to_datetime(exp_md.legacy_id.apply(lambda s: s.split('_')[1]))
+    md['date'] = pd.to_datetime(md.legacy_id.apply(lambda s: s.split('_')[1]))
 
     # prepend the P to create the PML-style ID
-    exp_md['pml_id'] = [f'P{ml_id}' for ml_id in exp_md.id]
+    md['pml_id'] = [f'P{ml_id}' for ml_id in md.ml_id]
 
     # columns to retain
-    exp_md = exp_md[['pml_id', 'date', 'automation', 'imager', 'description', 'notes']]
-    return exp_md
+    md = md[['pml_id', 'date', 'automation', 'imager', 'description', 'notes']]
+    return md
 
 
 def read_and_validate_platemap(filepath):

@@ -451,13 +451,6 @@ class MicroscopyDataset(Base):
     # the manually-defined imaging date
     date = db.Column(db.Date, nullable=False)
 
-    # the name of the primary imager
-    user = db.Column(db.String, nullable=False)
-
-    # user-defined free-form description of what plates/wells were imaged,
-    # whether the plate was thawed or not, etc
-    description = db.Column(db.String)
-
     # either 'plate_microscopy' or 'raw_pipeline_microscopy'
     # (the absolute path to these directories is context-dependent)
     root_directory = db.Column(db.String)

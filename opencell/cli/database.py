@@ -194,8 +194,6 @@ def insert_microscopy_datasets(session, metadata, root_directory, update=False, 
             print('Inserting new dataset %s' % row.pml_id)
 
         dataset.date = row.date
-        dataset.user = row.imager
-        dataset.description = row.description
         dataset.root_directory = root_directory
         ops.add_and_commit(session, dataset, errors=errors)
 

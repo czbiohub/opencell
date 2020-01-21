@@ -501,13 +501,16 @@ class MicroscopyFOV(Base):
     dataset = db.orm.relationship('MicroscopyDataset', backref='fovs')
 
     # one-to-many relationship with FOV results
-    results = db.orm.relationship('MicroscopyFOVResult', back_populates='fov')
+    results = db.orm.relationship(
+        'MicroscopyFOVResult', back_populates='fov', cascade='all, delete-orphan')
 
     # one-to-many relationship with FOV ROIs
-    rois = db.orm.relationship('MicroscopyFOVROI', back_populates='fov')
+    rois = db.orm.relationship(
+        'MicroscopyFOVROI', back_populates='fov', cascade='all, delete-orphan')
 
     # one-to-many relationship with thumbnails
-    thumbnails = db.orm.relationship('Thumbnail', back_populates='fov')
+    thumbnails = db.orm.relationship(
+        'Thumbnail', back_populates='fov', cascade='all, delete-orphan')
 
     # round_id is either 'R01' (initial post-sort imaging) 
     # or 'R02' (thawed-plate imaging)

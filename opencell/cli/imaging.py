@@ -47,37 +47,34 @@ def parse_args():
     # the location of the PlateMicroscopy directory
     parser.add_argument('--plate-microscopy-dir', dest='plate_microscopy_dir')
 
+    # the location of the raw-pipeline-microscopy directory
+    parser.add_argument('--raw-pipeline-microscopy-dir', dest='raw_pipeline_microscopy_dir')
+
+    # the pml_id whose FOVs are to be inserted or processed
+    parser.add_argument('--pml-id', dest='pml_id')
+
     # the location of the directory in which to cache the PlateMicroscopy metadata
-    parser.add_argument(
-        '--cache-dir', 
-        dest='cache_dir', 
-        required=False)
+    parser.add_argument('--cache-dir', dest='cache_dir', required=False)
 
     # path to JSON file with database credentials
-    parser.add_argument(
-        '--credentials', 
-        dest='credentials', 
-        required=False)
+    parser.add_argument('--credentials', dest='credentials', required=False)
     
     # CLI args whose presence in the command sets them to True
-    action_arg_names = [
+    action_arg_dests = [
         'inspect_plate_microscopy_metadata', 
         'construct_plate_microscopy_metadata', 
-        'insert_plate_microscopy_metadata',
+        'insert_plate_microscopy_fovs',
+        'insert_fovs',
         'process_raw_tiffs', 
         'calculate_fov_features',
         'crop_corner_rois',
+        'update',
     ]
 
-    for arg_name in action_arg_names:
-        parser.add_argument(
-            '--%s' % arg_name.replace('_', '-'), 
-            dest=arg_name,
-            action='store_true',
-            required=False)
-
-    for arg_name in action_arg_names:
-        parser.set_defaults(**{arg_name: False})
+    for dest in action_arg_dests:
+        flag = '--%s' % dest.replace('_', '-')
+        parser.add_argument(flag, dest=dest, action='store_true', required=False)
+        parser.set_defaults(**{dest: False})
 
     args = parser.parse_args()
     return args
@@ -129,7 +126,7 @@ def inspect_plate_microscopy_metadata(plate_microscopy_manager):
     ''')
 
 
-def insert_plate_microscopy_metadata(session, cache_dir=None, errors='warn'):
+def insert_plate_microscopy_fovs(session, cache_dir=None, errors='warn'):
     '''
     Insert all raw FOVs from the PlateMicroscopy directory
 
@@ -152,17 +149,46 @@ def insert_plate_microscopy_metadata(session, cache_dir=None, errors='warn'):
         if plate_id is None or group[0] != plate_id:
             print('Inserting %s' % group[0])
         plate_id, well_id = group
+        group_metadata = metadata.get_group(group)
 
         try:
             pcl_ops = operations.PolyclonalLineOperations.from_plate_well(session, plate_id, well_id)
         except:
             print('No polyclonal line for (%s, %s)' % group)
             continue
-
-        group_metadata = metadata.get_group(group)
         pcl_ops.insert_microscopy_fovs(session, group_metadata, errors=errors)
 
-    
+
+def insert_raw_pipeline_microscopy_fovs(session, root_dir, pml_id, errors='warn'):
+    '''
+    Insert all raw FOVs from a single raw-pipeline-microscopy dataset
+
+    (Note that there is substantial code duplication between this method 
+    and insert_plate_microscopy_fovs above)
+
+    root_dir : the path to the 'raw-pipeline-microscopy' directory
+    pml_id : the ID of the dataset whose FOVs are to be inserted
+    '''
+
+    metadata = pd.read_csv(os.path.join(root_dir, pml_id, 'fov-metadata.csv'))
+
+    # the filepath to the raw (but renamed) TIFF file
+    # (should be of the form '{pml_id}/raw_data/{filename_prependix}__{original_filename}')
+    metadata['raw_filepath'] = [
+        os.path.join(row.src_dirpath, row.dst_filename) for ind, row in metadata.iterrows()]
+
+    metadata = metadata.groupby(['plate_id', 'pipeline_well_id'])
+    for group in metadata.groups:
+        plate_id, well_id = group
+        group_metadata = metadata.get_group(group)
+        try:
+            pcl_ops = operations.PolyclonalLineOperations.from_plate_well(session, plate_id, well_id)
+        except:
+            print('No polyclonal line for (%s, %s)' % group)
+            continue
+        pcl_ops.insert_microscopy_fovs(session, group_metadata, errors=errors)
+
+
 @dask.delayed
 def do_fov_task(
     Session, 
@@ -196,18 +222,18 @@ def do_fov_task(
 
 
 
-def do_fov_tasks(Session, processor_method_name, processor_method_kwargs, fovs=None):
+def do_fov_tasks(Session, args, processor_method_name, processor_method_kwargs, fovs=None):
     '''
     Call a method of FOVProcessor on all, or a subset of, the raw FOVs
 
     Parameters
     ----------
+    Session : 
+    args : the parsed command-line arguments
+        (from which we obtain the paths to the 'plat_microscopy' and 'raw_pipeline_microscopy' dirs)
     processor_method_name : the name of the FOVProcessor method to call
     processor_method_kwargs : the kwargs for the method (no args are allowed)
     fovs : optional list of FOVs to be processed (if None, all FOVs are processed)
-
-    TODO: handle multiple source directories 
-    (that is, plate_microscopy_dir and dragonfly_automation_dir)
 
     TODO: logic to skip already-processed FOVs
     '''
@@ -229,13 +255,17 @@ def do_fov_tasks(Session, processor_method_name, processor_method_kwargs, fovs=N
     if fovs is None:
         fovs = Session.query(models.MicroscopyFOV).all()
 
-    print("Running method '%s' on %s FOVs" % (processor_method_name, len(fovs)))
-
     # instantiate a processor and operations class for each FOV
     # (note the awkward nomenclature mismatch here; 
     # we call an instance of the FOVOperations class an `fov_operator`)
     fov_processors = [FOVProcessor.from_database(fov) for fov in fovs]
     fov_operators = [operations.MicroscopyFOVOperations(fov.id) for fov in fovs]
+
+    # set the src_roots
+    for fov_processor in fov_processors:
+        fov_processor.set_src_roots(
+            plate_microscopy_dir=args.plate_microscopy_dir, 
+            raw_pipeline_microscopy_dir=args.raw_pipeline_microscopy_dir)
 
     # create the dask tasks
     tasks = []
@@ -250,26 +280,32 @@ def do_fov_tasks(Session, processor_method_name, processor_method_kwargs, fovs=N
         tasks.append(task)
 
     # do the tasks
+    print("Running method '%s' on %s FOVs" % (processor_method_name, len(fovs)))
     with dask.diagnostics.ProgressBar():
         errors = dask.compute(*tasks)
 
     # cache the errors locally if possible
     errors = pd.DataFrame(data=errors).dropna()
     if 'message' in list(errors.columns):
+        print("Errors occurred while running method '%s'" % processor_method_name)
         dst_root = processor_method_kwargs.get('dst_root')
         if dst_root is not None:
             cache_filepath = os.path.join(dst_root, '%s_%s-errors.csv' % \
                 (timestamp(), processor_method_name))
             errors.to_csv(cache_filepath, index=False)
-            print("Errors occurred for method '%s' and an error log was saved to %s" % \
-                (processor_method_name, cache_filepath))
+            print("Error log was saved to %s" % cache_filepath)
+        else:
+            print('Argument `dst_root` was not specified, so no error log was saved')
     else:
-        print("No errors occurred for method '%s'" % processor_method_name)
+        print("No errors occurred while running method '%s'" % processor_method_name)
 
 
 def main():
 
     args = parse_args()
+
+    if args.dst_root:
+        os.makedirs(args.dst_root, exist_ok=True)
 
     # create a scoped_session for opencell database
     if args.credentials:
@@ -280,32 +316,41 @@ def main():
         session_factory = sa.orm.sessionmaker(bind=engine)
         Session = sa.orm.scoped_session(session_factory)
 
-    # inspect cached plate microscopy metadata
-    if args.inspect_plate_microscopy_metadata:
-        manager = PlateMicroscopyManager(args.plate_microscopy_dir, args.cache_dir)
-        inspect_plate_microscopy_metadata(manager)
+    # if a pml_id was provided, only process the FOVs from that dataset
+    fovs = None
+    if args.pml_id:
+        dataset = Session.query(models.MicroscopyDataset)\
+            .filter(models.MicroscopyDataset.pml_id == args.pml_id).first()
+        fovs = dataset.fovs
 
-    # construct PlateMicroscopy metadata
+    # construct the PlateMicroscopy metadata
+    # (this is a dataframe of FOV metadata with one row per FOV)
     if args.construct_plate_microscopy_metadata:
         manager = PlateMicroscopyManager(args.plate_microscopy_dir, args.cache_dir)
         construct_plate_microscopy_metadata(manager)
 
-    # insert PlateMicroscopy metadata into the database
-    if args.insert_plate_microscopy_metadata:
+    # inspect the cached PlateMicroscopy metadata
+    if args.inspect_plate_microscopy_metadata:
+        manager = PlateMicroscopyManager(args.plate_microscopy_dir, args.cache_dir)
+        inspect_plate_microscopy_metadata(manager)
+
+    # insert all FOVs from the 'PlateMicroscopy' directory
+    if args.insert_plate_microscopy_fovs:
         with operations.session_scope(db_url) as session:
-            insert_plate_microscopy_metadata(session, cache_dir=args.cache_dir, errors='warn')
+            insert_plate_microscopy_fovs(session, cache_dir=args.cache_dir, errors='warn')
 
+    # insert the FOVs from a dataset in the 'raw-pipeline-microscopy' directory
+    if args.insert_fovs:
+        with operations.session_scope(db_url) as session:
+            insert_raw_pipeline_microscopy_fovs(
+                session, args.raw_pipeline_microscopy_dir, pml_id=args.pml_id, errors='warn')
 
-    # process all raw tiffs (and parse micromanager metadata)
+    # process all raw tiffs
     if args.process_raw_tiffs:
         method_name = 'process_raw_tiff'
-        method_kwargs = {
-            'dst_root': args.dst_root,
-            'src_root': args.plate_microscopy_dir,
-        }
-
+        method_kwargs = {'dst_root': args.dst_root}
         try:
-            do_fov_tasks(Session, method_name, method_kwargs)
+            do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
         except Exception as error:
             print('FATAL ERROR: an uncaught exception occurred in %s' % method_name)
             print(str(error))
@@ -325,18 +370,14 @@ def main():
         method_name = 'calculate_fov_features'
         method_kwargs = {
             'dst_root': args.dst_root,
-            'fov_scorer': fov_scorer,
-        }
-        do_fov_tasks(Session, method_name, method_kwargs)
+            'fov_scorer': fov_scorer}
+        do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
 
 
     if args.crop_corner_rois:
         method_name = 'crop_corner_rois'
-        method_kwargs = {
-            'dst_root': args.dst_root,
-            'src_root': args.plate_microscopy_dir,
-        }
-
+        method_kwargs = {'dst_root': args.dst_root}
+    
         # only crop ROIs from the two highest-scoring FOVs per line
         fovs_to_crop = []
         for line in Session.query(models.CellLine).all():
@@ -344,7 +385,7 @@ def main():
             fovs_to_crop.extend(ops.get_top_scoring_fovs(Session, ntop=2))
 
         try:
-            do_fov_tasks(Session, method_name, method_kwargs, fovs=fovs_to_crop)
+            do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs_to_crop)
         except Exception as error:
             print('FATAL ERROR: an uncaught exception occurred in %s' % method_name)
             print(str(error))

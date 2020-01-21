@@ -434,7 +434,7 @@ class PolyclonalLineOperations:
         pml_id, imaging_round_id, site_num, raw_filepath
         '''
 
-        fovs = []
+        fovs = self.line.fovs
         for _, row in metadata.iterrows():
             columns = {
                 'pml_id': row.pml_id, 

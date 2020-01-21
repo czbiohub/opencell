@@ -29,6 +29,7 @@ class FOVProcessor:
         well_id, 
         site_num, 
         target_name,
+        src_type,
         raw_filepath,
         all_roi_rows):
         
@@ -38,6 +39,12 @@ class FOVProcessor:
         self.plate_id = plate_id
         self.well_id = well_id
         self.site_num = site_num
+
+        # the root directory type
+        # (either 'plate_microscopy' or 'raw_pipeline_microscopy')
+        self.src_type = src_type
+
+        # the path to the raw TIFF, relative to src_root
         self.raw_filepath = raw_filepath
 
         # array of dicts for all ROIs cropped from the FOV
@@ -48,6 +55,21 @@ class FOVProcessor:
 
         # create site_id from site_num
         self.site_id = 'S%02d' % int(self.site_num)
+
+
+    def set_src_roots(self, plate_microscopy_dir, raw_pipeline_microscopy_dir):
+        '''
+        Set the absolute paths to the 'PlateMicroscopy'
+        and 'raw-pipeline-microscopy' directories
+        
+        On ESS, these should be 
+        '/gpfsML/ML_group/PlateMicroscopy/'
+        '/gpfsML/ML_group/raw-pipeline-microscopy/'
+        '''
+        self.src_roots = {
+            'plate_microscopy': plate_microscopy_dir,
+            'raw_pipeline_microscopy': raw_pipeline_microscopy_dir
+        }
 
 
     @staticmethod
@@ -85,6 +107,7 @@ class FOVProcessor:
             plate_id=plate_design.design_id,
             well_id=well_id,
             site_num=fov.site_num,
+            src_type=fov.dataset.root_directory,
             raw_filepath=fov.raw_filename,
             target_name=crispr_design.target_name,
             all_roi_rows=all_roi_rows)
@@ -111,19 +134,13 @@ class FOVProcessor:
         return z_step_size
 
 
-    def src_filepath(self, src_root=None):
+    def src_filepath(self):
         '''
-        Construct the absolute filepath to a TIFF stack in the 'PlateMicroscopy' directory 
-        from a row of metadata (works for raw and processed TIFFs)
-
-        Returns a path of the form (relative to src_root):
-        'mNG96wp15/ML0125_20190424/mNG96wp15_sortday2/C11_4_SLC35F2.ome.tif'
-
-        src_root is the absolute path to the 'PlateMicroscopy' directory
-        (e.g., on `cap`, '/gpfsML/ML_group/PlateMicroscopy/')
+        Construct the absolute filepath to a TIFF stack
+        in either the 'PlateMicroscopy' or 'raw-pipeline-microscopy' directory 
         '''
 
-        src_root = '' if src_root is None else src_root
+        src_root = self.src_roots.get(self.src_type) or ''
         src_filepath = os.path.join(src_root, self.raw_filepath)
         return src_filepath
 
@@ -200,12 +217,12 @@ class FOVProcessor:
         return os.path.join(dst_dirpath, dst_filename)
 
 
-    def load_raw_tiff(self, src_root):
+    def load_raw_tiff(self):
         '''
         Convenience method to open and parse a raw TIFF and attempt to split it by channel
         Returns None if the file does not exist or cannot be split by channel
         '''
-        src_filepath = self.src_filepath(src_root=src_root)
+        src_filepath = self.src_filepath()
         if os.path.isfile(src_filepath):
             tiff = images.RawPipelineTIFF(src_filepath, verbose=False)
             tiff.parse_micromanager_metadata()
@@ -218,22 +235,21 @@ class FOVProcessor:
                 tiff.tiff.close()
     
 
-    def process_raw_tiff(self, src_root, dst_root):
+    def process_raw_tiff(self, dst_root):
         '''
         Process a single raw TIFF
             1) parse the micromanager and other metadata
             2) split the tiff pages into the z-stacks for the 405 and 488 channels
             3) generate z-projections
 
-        src_root : the root of the 'PlateMicroscopy' directory
-        dst_root : the destination 'oc-plate-microscopy' directory 
+        dst_root : the path to the destination 'opencell-microscopy' directory 
 
         NOTE: the `tiff.global_metadata` object returned by this method
         is modified by all of the `RawPipelineTIFF` methods called below
         (including by `project_stack`, which appends the min/max intensities)
         '''
 
-        src_filepath = self.src_filepath(src_root=src_root)
+        src_filepath = self.src_filepath()
         metadata = {'src_filepath': src_filepath}
         if not os.path.isfile(src_filepath):
             metadata['error'] = 'File does not exist'
@@ -275,7 +291,7 @@ class FOVProcessor:
         return result
 
 
-    def crop_corner_rois(self, src_root, dst_root):
+    def crop_corner_rois(self, dst_root):
         '''
         Crop a 600x600 ROI at each corner of the raw FOV
 
@@ -285,7 +301,7 @@ class FOVProcessor:
         '''
 
         # attempt to load and split the TIFF
-        tiff = self.load_raw_tiff(src_root)
+        tiff = self.load_raw_tiff()
         if tiff is None:
             raise ValueError('Raw TIFF file for fov %s does not exist' % self.fov_id)
         
@@ -345,7 +361,7 @@ class FOVProcessor:
         return all_roi_props
 
 
-    def crop_best_roi(self, src_root, dst_root):
+    def crop_best_roi(self, dst_root):
         '''
         Find and crop the ROI with the highest ROI score
         '''
@@ -408,13 +424,13 @@ class FOVProcessor:
         return roi_props
 
 
-    def generate_ijclean(self, src_root, dst_root):
+    def generate_ijclean(self, dst_root):
         '''
         Append the IJMetadata tags to the raw tiff so that it can be opened in ImageJ
         with the correct psuedocolors and black/white points
         '''
         # attempt to load and split the TIFF
-        tiff = self.load_raw_tiff(src_root)
+        tiff = self.load_raw_tiff()
         if not tiff:
             return
 

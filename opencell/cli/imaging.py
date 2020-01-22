@@ -68,7 +68,7 @@ def parse_args():
         'process_raw_tiffs', 
         'calculate_fov_features',
         'crop_corner_rois',
-        'update',
+        'process_all_fovs',
     ]
 
     for dest in action_arg_dests:
@@ -247,6 +247,7 @@ def do_fov_tasks(Session, args, processor_method_name, processor_method_kwargs, 
     operator_method_names = {
         'process_raw_tiff': 'insert_raw_tiff_metadata',
         'calculate_fov_features': 'insert_fov_features',
+        'calculate_cell_layer_props': 'insert_cell_layer_props',
         'crop_corner_rois': 'insert_corner_rois',
         'crop_best_roi': 'insert_best_roi',
         'generate_thumbnails': 'insert_thumbnails',
@@ -259,6 +260,9 @@ def do_fov_tasks(Session, args, processor_method_name, processor_method_kwargs, 
     # if a list of FOVs was not provided, select all FOVs
     if fovs is None:
         fovs = Session.query(models.MicroscopyFOV).all()
+
+    if not len(fovs):
+        print('There are no FOVs to be processed')
 
     # instantiate a processor and operations class for each FOV
     # (note the awkward nomenclature mismatch here; 
@@ -305,7 +309,26 @@ def do_fov_tasks(Session, args, processor_method_name, processor_method_kwargs, 
         print("No errors occurred while running method '%s'" % processor_method_name)
 
 
+def get_unprocessed_fovs(engine, session, result_kind):
+    '''
+    Retrieve all FOV instances without any results of the specified kind
+    in the MicroscopyFOVResult table
+    '''
+
+    query = '''
+        select fov.*, res.kind as kind from microscopy_fov fov
+        left join (select * from microscopy_fov_result where kind = '%s') res 
+        on fov.id = res.fov_id
+        where kind is null;'''
+
+    d = pd.read_sql(query % result_kind, engine)
+    unprocessed_fovs = session.query(models.MicroscopyFOV).filter(models.MicroscopyFOV.id.in_(list(d.id))).all()
+    return unprocessed_fovs
+
+
 def main():
+
+
 
     args = parse_args()
 
@@ -354,6 +377,9 @@ def main():
     if args.process_raw_tiffs:
         method_name = 'process_raw_tiff'
         method_kwargs = {'dst_root': args.dst_root}
+
+        if not args.process_all_fovs:
+            fovs = get_unprocessed_fovs(engine, Session, result_kind='raw-tiff-metadata')
         try:
             do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
         except Exception as error:
@@ -376,6 +402,9 @@ def main():
         method_kwargs = {
             'dst_root': args.dst_root,
             'fov_scorer': fov_scorer}
+    
+        if not args.process_all_fovs:
+            fovs = get_unprocessed_fovs(engine, Session, result_kind='fov-features')
         do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
 
 

@@ -208,10 +208,11 @@ class RawPipelineTIFF(MicroManagerTIFF):
         # whether the MM metadata has two channel inds with an equal number of slices
         self.has_valid_channel_inds = False
 
-        # whether each channel's MM metadata has slice_inds that increment by one
+        # whether the MM metadata for each channel has slice_inds that increment by one
         self.has_valid_slice_inds = False
 
-        # whether it's safe to split the TIFF into channels by splitting the pages in half
+        # whether it is safe to split the TIFF stack into channels by splitting the pages in half,
+        # when there are not valid channel inds
         self.safe_to_split_in_half = False
 
         md = self.mm_metadata.copy()
@@ -242,28 +243,44 @@ class RawPipelineTIFF(MicroManagerTIFF):
         for column in float_columns:
             md[column] = md[column].apply(float)
 
-        # check for two channels and an equal number of slices
-        channel_inds = md.channel_ind.unique()
-        if len(channel_inds) == 2:
-            num_0 = (md.channel_ind==channel_inds[0]).sum()
-            num_1 = (md.channel_ind==channel_inds[1]).sum()
-            if num_0 == num_1:
-                self.has_valid_channel_inds = True
-            else:
-                self.event_logger('Channels have unequal number of slices: %s and %s' % (num_0, num_1))        
-        else:
-            self.event_logger('Unexpected number of channel_inds (%s)' % channel_inds)
-
+        # if there are two distinct channels, we assign the first to 405 and the second to 488
+        self.channel_inds = None
+        unique_channel_inds = sorted(md.channel_ind.unique())
+        if len(unique_channel_inds) == 2:
+            self.channel_inds = {
+                self.laser_405: min(unique_channel_inds),
+                self.laser_488: max(unique_channel_inds),
+            }
+        
+        # if there are three channel_inds, we assume the third channel is brightfield
+        elif set(unique_channel_inds) == set([0, 1, 2]):
+            self.event_logger('There were three channel inds')
+            self.channel_inds = {
+                self.laser_405: 0,
+                self.laser_488: 1,
+            }
+            
         # if there's one channel index, check for an even number of pages
-        if len(channel_inds) == 1:
+        elif len(unique_channel_inds) == 1:
             if np.mod(md.shape[0], 2) == 0:
                 self.safe_to_split_in_half = True
             else:
                 self.event_logger('There is one channel_ind and an odd number of pages')
+        else:
+            self.event_logger('Unexpected number of channel_inds (%s)' % unique_channel_inds)
+
+        # if there were valid channel_inds, check for an equal number of pages from each channel
+        if self.channel_inds is not None:
+            num_405 = (md.channel_ind == self.channel_inds[self.laser_405]).sum()
+            num_488 = (md.channel_ind == self.channel_inds[self.laser_488]).sum()
+            if num_405 == num_488:
+                self.has_valid_channel_inds = True
+            else:
+                self.event_logger('Channels have unequal number of slices: %s and %s' % (num_405, num_488))        
 
         # in each channel, check that slice_ind increments by 1.0
         # and that exposure time and laser power are consistent
-        for channel_ind in channel_inds:
+        for channel_ind in unique_channel_inds:
             md_channel = md.loc[md.channel_ind==channel_ind]
             steps = np.unique(np.diff(md_channel.slice_ind))
 
@@ -336,14 +353,12 @@ class RawPipelineTIFF(MicroManagerTIFF):
         md = self.validated_mm_metadata.copy()
 
         if self.has_valid_channel_inds:
-            min_ind, max_ind = md.channel_ind.min(), md.channel_ind.max()
-            first_channel, second_channel = self.laser_405, self.laser_488
-            for channel_ind, channel_name in zip((min_ind, max_ind), (first_channel, second_channel)):
-                channel_md = md.loc[md.channel_ind==channel_ind]
+            for channel_name in (self.laser_405, self.laser_488):
+                channel_md = md.loc[md.channel_ind==self.channel_inds[channel_name]]
                 self.global_metadata.update(
                     self.tag_and_coerce_metadata(channel_md.iloc[0], tag=channel_name))
                 self.stacks[channel_name] = self.concat_pages(channel_md.page_ind.values)
-            
+
         elif self.safe_to_split_in_half:
             n = int(md.shape[0]/2)
             self.stacks[self.laser_405] = self.concat_pages(md.iloc[:n].page_ind.values)

@@ -291,6 +291,24 @@ class FOVProcessor:
         return result
 
 
+    def calculate_z_profiles(self):
+        '''
+        '''
+        # attempt to load and split the TIFF
+        result = {}
+        tiff = self.load_raw_tiff()
+        if tiff is None:
+            result['error'] = 'Raw TIFF file for fov %s does not exist' % self.fov_id
+            return result
+
+        for channel in (tiff.laser_405, tiff.laser_488):
+            try:
+                result[channel] = tiff.calculate_z_profiles(channel)
+            except Exception as error:
+                result[channel] = {'error': str(error)}
+        return result
+
+
     def crop_corner_rois(self, dst_root):
         '''
         Crop a 600x600 ROI at each corner of the raw FOV

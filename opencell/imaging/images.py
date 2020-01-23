@@ -402,6 +402,26 @@ class RawPipelineTIFF(MicroManagerTIFF):
                 'An error occured while %s-projecting the %s channel' % (axis, channel_name))
 
 
+    def calculate_z_profiles(self, channel):
+        '''
+        Calculate various statistics of the intensities for each z-slice
+        '''
+
+        stack = self.stacks[channel]
+
+        min_profile = np.array([zslice.min() for zslice in stack]).astype(int)
+        max_profile = np.array([zslice.max() for zslice in stack]).astype(int)
+        mean_profile = np.array([zslice.mean() for zslice in stack]).astype(int)
+        p9999_profile = np.array([np.percentile(zslice, 99.99) for zslice in stack]).astype(int)
+
+        return {
+            'min': min_profile,
+            'max': max_profile,
+            'mean': mean_profile,
+            'p9999': p9999_profile,
+        }
+
+
     def find_cell_layer(self, channel, rel_bottom, rel_top, step_size):
         '''
         Find the top and bottom of the cell layer

@@ -642,6 +642,19 @@ class MicroscopyFOVOperations:
         add_and_commit(session, row, errors='raise')
 
 
+    def insert_z_profiles(self, session, result):
+        '''
+        Insert z-profiles
+        result : dict returned by FOVProcessor.calculate_z_profiles
+        '''
+        result = to_jsonable(result)        
+        row = models.MicroscopyFOVResult(
+            fov_id=self.fov_id,
+            kind='z-profiles',
+            data=result)
+        add_and_commit(session, row, errors='raise')
+
+
     def insert_corner_rois(self, session, result):
         '''
         Insert the four ROIs cropped from each corner of an FOV

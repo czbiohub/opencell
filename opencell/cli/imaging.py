@@ -67,6 +67,7 @@ def parse_args():
         'insert_fovs',
         'process_raw_tiffs', 
         'calculate_fov_features',
+        'calculate_z_profiles',
         'crop_corner_rois',
         'process_all_fovs',
     ]
@@ -247,7 +248,7 @@ def do_fov_tasks(Session, args, processor_method_name, processor_method_kwargs, 
     operator_method_names = {
         'process_raw_tiff': 'insert_raw_tiff_metadata',
         'calculate_fov_features': 'insert_fov_features',
-        'calculate_cell_layer_props': 'insert_cell_layer_props',
+        'calculate_z_profiles': 'insert_z_profiles',
         'crop_corner_rois': 'insert_corner_rois',
         'crop_best_roi': 'insert_best_roi',
         'generate_thumbnails': 'insert_thumbnails',

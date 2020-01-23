@@ -390,6 +390,15 @@ def main():
                 file.write(str(error))
 
 
+    # calculate z-profiles
+    if args.calculate_z_profiles:
+        method_name = 'calculate_z_profiles'
+        method_kwargs = {}
+        if not args.process_all_fovs:
+            fovs = get_unprocessed_fovs(engine, Session, result_kind='z-profiles')
+        do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
+
+
     # calculate FOV features and score
     if args.calculate_fov_features:
 

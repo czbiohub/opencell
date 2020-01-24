@@ -47,7 +47,7 @@ def autoscale(im, percentile=None, p=None, dtype='uint8', gamma=None):
         return (im * 0).astype(dtype)
         
     im = im - minn
-    im[im < minn] = 0
+    im[im < 0] = 0
     im = im/(maxx - minn)
     im[im > 1] = 1
     

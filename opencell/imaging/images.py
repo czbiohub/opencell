@@ -422,32 +422,65 @@ class RawPipelineTIFF(MicroManagerTIFF):
         }
 
 
-    def find_cell_layer(self, channel, rel_bottom, rel_top, step_size):
+    @staticmethod
+    def find_cell_layer(stack):
         '''
-        Find the top and bottom of the cell layer
-
-        stack : a 3D numpy array with dimensions (z, x, y)
-            (assumed to be a z-stack of Hoechst staining)
-        rel_bottom, rel_top : the position of the bottom and top of the cell layer,
-            relative to the center of the cell layer, in microns
-
+        Estimate the center of the cell layer using the center of mass
+        of the z-profile of the mean intensity of the Hoechst staining
         '''
-
-        stack = self.stacks[channel]
 
         # z-profile of the mean intensity in the Hoechst channel
         raw_profile = np.array([zslice.mean() for zslice in stack]).astype(float)
         profile = raw_profile - raw_profile.mean()
         profile[profile < 0] = 0
-        profile /= profile.sum()
 
-        # the index of the center of the cell layer
-        # (defined as the median of the mean-subtracted mean intensity profile)
-        center_ind = np.argwhere(np.cumsum(profile) > .5).min()
+        x = np.arange(len(profile))
+        center_of_mass = (profile * x).sum()/profile.sum()
+        return center_of_mass, raw_profile
 
+
+    def crop_and_align_cell_layer(self, rel_bottom, rel_top, step_size):
+        '''
+        Align the 405 and 488 stacks to correct for chromatic aberration
+        and crop around the cell layer
+
+        rel_bottom, rel_top : the position of the bottom and top of the cell layer,
+            relative to the center of the cell layer, in an integer number of microns
+            (rel_bottom should be negative)
+        '''
+
+        result = {}
+
+        stack_405 = self.stacks[self.laser_405].copy()
+        stack_488 = self.stacks[self.laser_488].copy()
+
+        # hard-coded chromatic aberration offset in microns
+        # this is an empirically estimated median offset
+        # obtained by inspecting z-stacks from nucleus-localized targets
+        chromatic_aberration_offset = 1.0
+        offset_ind = int(chromatic_aberration_offset / step_size)
+
+        stack_405 = stack_405[:-offset_ind, :, :]
+        stack_488 = stack_488[offset_ind:, :, :]
+
+        # estimate the cell layer center and round it the nearest z-slice
+        cell_layer_center, _ = self.find_cell_layer(stack_405)
+        cell_layer_center = np.round(cell_layer_center)
+        
         # absolute position, in number of z-slices, of the top and bottom of the cell layer 
-        # (rel_bottom is assumed to be negative)
-        bottom_ind = int(center_ind + np.floor(rel_bottom/step_size))
-        top_ind = int(center_ind + np.ceil(rel_top/step_size))
+        bottom_ind = int(cell_layer_center + rel_bottom / step_size)
+        top_ind = int(cell_layer_center + rel_top / step_size)
 
-        return bottom_ind, top_ind, center_ind, raw_profile
+        if bottom_ind < 0:
+            result['error'] = 'Cell layer center was too close to the bottom of the stack'
+        elif top_ind >= stack_405.shape[0]:
+            result['error'] = 'Cell layer center was too close to the top of the stack'
+        else:
+            stack_405 = stack_405[bottom_ind:top_ind, :, :]
+            stack_488 = stack_488[bottom_ind:top_ind, :, :]
+
+        result['offset'] = offset_ind
+        result['crop_window'] = [bottom_ind, top_ind]
+        result['cell_layer_center'] = cell_layer_center
+        stacks = {'405': stack_405, '488': stack_488}
+        return stacks, result

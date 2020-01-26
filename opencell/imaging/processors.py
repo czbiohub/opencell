@@ -44,6 +44,9 @@ class FOVProcessor:
         # (either 'plate_microscopy' or 'raw_pipeline_microscopy')
         self.src_type = src_type
 
+        # see set_src_roots
+        self.src_roots = {}
+
         # the path to the raw TIFF, relative to src_root
         self.raw_filepath = raw_filepath
 
@@ -57,7 +60,7 @@ class FOVProcessor:
         self.site_id = 'S%02d' % int(self.site_num)
 
 
-    def set_src_roots(self, plate_microscopy_dir, raw_pipeline_microscopy_dir):
+    def set_src_roots(self, plate_microscopy_dir=None, raw_pipeline_microscopy_dir=None):
         '''
         Set the absolute paths to the 'PlateMicroscopy'
         and 'raw-pipeline-microscopy' directories
@@ -180,7 +183,7 @@ class FOVProcessor:
         if dst_root is None:
             dst_root = ''
 
-        kinds = ['proj', 'crop', 'ijclean']
+        kinds = ['proj', 'crop', 'clean']
         if kind not in kinds:
             raise ValueError('%s is not a valid destination kind' % kind)
         appendix = kind.upper()
@@ -303,9 +306,57 @@ class FOVProcessor:
 
         for channel in (tiff.laser_405, tiff.laser_488):
             try:
-                result[channel] = tiff.calculate_z_profiles(channel)
+                result[channel] = tiff.calculate_z_profiles(tiff.stacks[channel])
             except Exception as error:
                 result[channel] = {'error': str(error)}
+        return result
+
+
+    def crop_align_downsample(self, dst_root):
+        '''
+        Align the two channels to correct for chromatic aberration,
+        crop the stacks around the cell layer, and downsample stacks
+        with 0.2um steps to 0.5um steps
+        '''
+
+        # the z-position of the top and bottom of the cell layer,
+        # relative to the cell layer center, in microns
+        rel_bottom = -5
+        rel_top = 6
+        
+        result = {}
+        tiff = self.load_raw_tiff()
+        if tiff is None:
+            result['error'] = 'Raw TIFF file for fov %s does not exist' % self.fov_id
+            return result
+
+        step_size = self.z_step_size()
+        try:
+            stacks, result = tiff.crop_and_align_cell_layer(rel_bottom, rel_top, step_size)
+        except Exception as error:
+            result['error'] = str(error)
+
+        # check if an error occurred above or in crop_and_align_cell_layer
+        if result.get('error'):
+            return result
+    
+        # if the step_size is 0.2um, downsample to 0.5um
+        if step_size == 0.2:
+            zscale = 0.2/0.5
+            for channel in stacks:
+                stacks[channel] = skimage.transform.rescale(
+                    stacks[channel], 
+                    scale=(zscale, 1, 1), 
+                    multichannel=False, 
+                    preserve_range=True, 
+                    anti_aliasing=False,
+                    order=1).astype('uint16')
+
+        # save the stacks as a hyperstack in CZXY order
+        stack = np.concatenate((stacks['405'][None, :], stacks['488'][None, :]), axis=0)
+        dst_filepath = self.dst_filepath(dst_root, kind='clean', ext='tif')
+        tifffile.imsave(dst_filepath, stack, dtype='uint16')
+        result['final_stack_shape'] = stack.shape
         return result
 
 

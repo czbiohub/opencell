@@ -655,6 +655,18 @@ class MicroscopyFOVOperations:
         add_and_commit(session, row, errors='raise')
 
 
+    def insert_cell_layer_alignment_result(self, session, result):
+        '''
+        Insert result from the align_cell_layer method
+        '''
+        result = to_jsonable(result)        
+        row = models.MicroscopyFOVResult(
+            fov_id=self.fov_id,
+            kind='cell-layer-alignment',
+            data=result)
+        add_and_commit(session, row, errors='raise')
+
+
     def insert_corner_rois(self, session, result):
         '''
         Insert the four ROIs cropped from each corner of an FOV

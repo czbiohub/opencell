@@ -68,6 +68,7 @@ def parse_args():
         'process_raw_tiffs', 
         'calculate_fov_features',
         'calculate_z_profiles',
+        'align_cell_layer',
         'crop_corner_rois',
         'process_all_fovs',
     ]
@@ -249,10 +250,9 @@ def do_fov_tasks(Session, args, processor_method_name, processor_method_kwargs, 
         'process_raw_tiff': 'insert_raw_tiff_metadata',
         'calculate_fov_features': 'insert_fov_features',
         'calculate_z_profiles': 'insert_z_profiles',
+        'align_cell_layer': 'insert_cell_layer_alignment_result',
         'crop_corner_rois': 'insert_corner_rois',
-        'crop_best_roi': 'insert_best_roi',
         'generate_thumbnails': 'insert_thumbnails',
-        'generate_ijclean': 'insert_ijclean',
     }
 
     # the name of the FOVOperations method that inserts the results of the processor method
@@ -298,9 +298,8 @@ def do_fov_tasks(Session, args, processor_method_name, processor_method_kwargs, 
     errors = pd.DataFrame(data=errors).dropna()
     if 'message' in list(errors.columns):
         print("Errors occurred while running method '%s'" % processor_method_name)
-        dst_root = processor_method_kwargs.get('dst_root')
-        if dst_root is not None:
-            cache_filepath = os.path.join(dst_root, '%s_%s-errors.csv' % \
+        if args.dst_root is not None:
+            cache_filepath = os.path.join(args.dst_root, '%s_%s-errors.csv' % \
                 (timestamp(), processor_method_name))
             errors.to_csv(cache_filepath, index=False)
             print("Error log was saved to %s" % cache_filepath)
@@ -396,6 +395,15 @@ def main():
         method_kwargs = {}
         if not args.process_all_fovs:
             fovs = get_unprocessed_fovs(engine, Session, result_kind='z-profiles')
+        do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
+
+
+    # crop around the cell layer in z
+    if args.align_cell_layer:
+        method_name = 'align_cell_layer'
+        method_kwargs = {'dst_root': args.dst_root}
+        if not args.process_all_fovs:
+            fovs = get_unprocessed_fovs(engine, Session, result_kind='cell-layer-alignment')
         do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
 
 

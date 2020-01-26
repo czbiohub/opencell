@@ -312,11 +312,11 @@ class FOVProcessor:
         return result
 
 
-    def crop_align_downsample(self, dst_root):
+    def align_cell_layer(self, dst_root):
         '''
-        Align the two channels to correct for chromatic aberration,
-        crop the stacks around the cell layer, and downsample stacks
-        with 0.2um steps to 0.5um steps
+        Align the two channels to correct for chromatic aberration in z,
+        crop the stacks around the cell layer in z, so that they are centered around it,
+        and downsample stacks with 0.2um steps to 0.5um steps
         '''
 
         # the z-position of the top and bottom of the cell layer,
@@ -332,7 +332,7 @@ class FOVProcessor:
 
         step_size = self.z_step_size()
         try:
-            stacks, result = tiff.crop_and_align_cell_layer(rel_bottom, rel_top, step_size)
+            stacks, result = tiff.align_cell_layer(rel_bottom, rel_top, step_size)
         except Exception as error:
             result['error'] = str(error)
 
@@ -350,7 +350,8 @@ class FOVProcessor:
                     multichannel=False, 
                     preserve_range=True, 
                     anti_aliasing=False,
-                    order=1).astype('uint16')
+                    order=1)
+                stacks[channel] = stacks[channel].astype('uint16')
 
         # save the stacks as a hyperstack in CZXY order
         stack = np.concatenate((stacks['405'][None, :], stacks['488'][None, :]), axis=0)

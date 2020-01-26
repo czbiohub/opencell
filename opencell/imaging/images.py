@@ -439,10 +439,10 @@ class RawPipelineTIFF(MicroManagerTIFF):
         return center_of_mass, raw_profile
 
 
-    def crop_and_align_cell_layer(self, rel_bottom, rel_top, step_size):
+    def align_cell_layer(self, rel_bottom, rel_top, step_size):
         '''
-        Align the 405 and 488 stacks to correct for chromatic aberration
-        and crop around the cell layer
+        Approximately align the 405 and 488 stacks to correct for chromatic aberration,
+        and crop around the cell layer so that it is in the center of the stack
 
         rel_bottom, rel_top : the position of the bottom and top of the cell layer,
             relative to the center of the cell layer, in an integer number of microns
@@ -472,14 +472,14 @@ class RawPipelineTIFF(MicroManagerTIFF):
         top_ind = int(cell_layer_center + rel_top / step_size)
 
         if bottom_ind < 0:
-            result['error'] = 'Cell layer center was too close to the bottom of the stack'
+            result['error'] = 'The cell layer center was too close to the bottom of the stack'
         elif top_ind >= stack_405.shape[0]:
-            result['error'] = 'Cell layer center was too close to the top of the stack'
+            result['error'] = 'The cell layer center was too close to the top of the stack'
         else:
             stack_405 = stack_405[bottom_ind:top_ind, :, :]
             stack_488 = stack_488[bottom_ind:top_ind, :, :]
 
-        result['offset'] = offset_ind
+        result['offset_488_405'] = offset_ind
         result['crop_window'] = [bottom_ind, top_ind]
         result['cell_layer_center'] = cell_layer_center
         stacks = {'405': stack_405, '488': stack_488}

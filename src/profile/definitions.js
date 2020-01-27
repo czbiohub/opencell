@@ -1,5 +1,6 @@
 import manualMetadata from '../demo/data/manual_metadata.json';
 import uniprotMetadata from '../demo/data/uniprot_metadata.json';
+import facsGrades from '../demo/data/facs_grades.json';
 
 
 // column defs for the datatable; also used by header.jsx
@@ -67,8 +68,13 @@ export const metadataDefinitions = [
     },{
         id: 'hdr_modified',
         accessor: row => Math.round(100*row.scalars?.hdr_modified),
-        Header: 'HDR/modified',
+        Header: 'HDR/mod',
         units: '%',
+    },{
+        id: 'facs_grade',
+        accessor: row => facsGrades[`${row.plate_id}-${row.well_id}`],
+        Header: 'FACS grade',
+        units: '',
     }
 ];
 

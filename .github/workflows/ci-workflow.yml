@@ -1,6 +1,6 @@
-name: Python package
+name: Opencell CI
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   build:
@@ -8,9 +8,12 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8]
+        python-version: [3.8]
 
     steps:
+    - name: Install pg_config
+      run: |
+        sudo apt-get install libpq-dev
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v1
@@ -30,4 +33,4 @@ jobs:
     - name: Test with pytest
       run: |
         pip install pytest
-        pytest
+        pytest -v

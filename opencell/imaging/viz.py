@@ -137,7 +137,7 @@ def build_tile(
         for col_ind in range(shape[1]):
             ind = offset + counter
             if ind >= data.shape[0]:
-                im *= 0
+                im = np.zeros((image_size, image_size), dtype='uint8')
             else:
                 filepath = data.iloc[ind][filepath_colummn]
                 if im_loader:

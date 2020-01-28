@@ -29,8 +29,11 @@ try:
 except ImportError:
     DRAGONFLY_REPO = '/gpfsML/ML_group/KC/projects/dragonfly-automation'
     sys.path.append(DRAGONFLY_REPO)
-    from dragonfly_automation.fov_models import PipelineFOVScorer
-    
+    try:
+        from dragonfly_automation.fov_models import PipelineFOVScorer
+    except ImportError:
+        PipelineFOVScorer = None
+
 
 def timestamp():
     return datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')

@@ -532,7 +532,12 @@ class PolyclonalLineOperations:
         attrs = ['target_name', 'target_family', 'transcript_id', 'well_id']
         data = {attr: getattr(design, attr) for attr in attrs}
 
+        # explicitly serialize the target_terminus, which is an enum type
+        data['target_terminus'] = design.target_terminus.value[0]
+
+        # rename the plate_id attribute
         data['plate_id'] = design.plate_design_id
+
         data['cell_line_id'] = self.line.id
 
         # all of the core 'scalar' properties/features/results

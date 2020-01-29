@@ -32,18 +32,23 @@ export const metadataDefinitions = [
         Header: 'Family',
         units: '',
     },{
+        id: 'target_terminus',
+        accessor: row => row.target_terminus,
+        Header: 'Term',
+        units: null,
+    },{
         id: 'uniprot_id',
         accessor: row => uniprotMetadata[row.target_name]?.uniprot_id,
         Header: 'Uniprot ID'
     },{
         id: 'plate_id',
-        accessor: row => row.plate_id,
-        Header: 'Plate ID',
+        accessor: row => parseInt(row.plate_id?.slice(1)),
+        Header: 'Plate',
         units: null,
     },{
         id: 'well_id',
         accessor: row => row.well_id,
-        Header: 'Well ID',
+        Header: 'Well',
         units: null,
     },{
         id: 'hek_tpm',
@@ -73,7 +78,7 @@ export const metadataDefinitions = [
     },{
         id: 'facs_grade',
         accessor: row => facsGrades[`${row.plate_id}-${row.well_id}`],
-        Header: 'FACS grade',
+        Header: 'FACS',
         units: '',
     }
 ];

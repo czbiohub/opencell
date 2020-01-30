@@ -371,6 +371,8 @@ class FOVProcessor:
         and save each ROI as a tiled PNG
         '''
 
+        all_roi_props = []
+
         # attempt to load and split the TIFF
         tiff = self.load_raw_tiff()
         if tiff is None:
@@ -382,8 +384,8 @@ class FOVProcessor:
 
         # the top and bottom of the cell layer, relative to its center, in microns
         # (these were empirically determined)
-        cell_layer_rel_bottom = -6
-        cell_layer_rel_top = 7
+        cell_layer_rel_bottom = -5
+        cell_layer_rel_top = 6
 
         # the step size of the final stack in microns
         # (this is chosen to correspond to the xy pixel size,
@@ -391,16 +393,20 @@ class FOVProcessor:
         target_step_size = 0.2
 
         # the number of slices the resampled stack must have
-        required_num_slices = 65
+        # (should be equal to (rel_top - rel_buttom) / target_step_size)
+        required_num_slices = 55
 
-        # the z coords of the cell layer (calculated using the Hoechst staining from the entire FOV)
-        bottom_ind, top_ind, center_ind, profile = tiff.find_cell_layer(
-            rel_bottom=cell_layer_rel_bottom,
-            rel_top=cell_layer_rel_top,
-            step_size=self.z_step_size())
+        # crop around the cell layer in z
+        aligned_stacks, alignment_result = tiff.align_cell_layer(
+            cell_layer_rel_bottom, cell_layer_rel_top, self.z_step_size())
 
-        # clamp the bottom ind to zero
-        bottom_ind = max(0, bottom_ind)
+        # for now, just exit silently if an error ocurred in cell layer alignment/cropping
+        if alignment_result.get('error'):
+            return all_roi_props
+
+        # for now, the top and bottom inds are the full extent of the cropped stack
+        bottom_ind = 0
+        top_ind = aligned_stacks['405'].shape[0]
 
         # the shape of each ROI
         roi_shape = (roi_size, roi_size, top_ind - bottom_ind)
@@ -415,19 +421,18 @@ class FOVProcessor:
             (max_ind, max_ind, bottom_ind)
         ]
 
-        all_roi_props = []
         for roi_position in roi_top_left_positions:
             roi_props = {
                 'shape': roi_shape,
                 'position': roi_position,
                 'xy_coords': (*roi_position[:2], *roi_shape[:2]),
-                'cell_layer_center_ind': center_ind,
+                'cell_layer_center_ind': alignment_result['cell_layer_center'],
                 'target_step_size': target_step_size,
                 'original_step_size': self.z_step_size(),
                 'required_num_slices': required_num_slices,
             }
 
-            roi_props = self.crop_and_save_roi(roi_props, tiff, dst_root)
+            roi_props = self.crop_and_save_roi(roi_props, aligned_stacks, dst_root)
             all_roi_props.append(roi_props)
         return all_roi_props
 
@@ -439,7 +444,7 @@ class FOVProcessor:
         pass
 
 
-    def crop_and_save_roi(self, roi_props, tiff, dst_root):
+    def crop_and_save_roi(self, roi_props, stacks, dst_root):
         '''
         Crop an ROI from the raw TIFF, resample it in z if necessary,
         downsample it from uint16 to uint8, and save it as a 1D tiled PNG
@@ -448,19 +453,21 @@ class FOVProcessor:
         num_rows, num_cols, num_z = roi_props['shape']
         row_ind, col_ind, z_ind = roi_props['position']
 
-        for channel in [tiff.laser_405, tiff.laser_488]:
+        for channel in stacks:
             dst_filepath = self.dst_filepath(
                 dst_root,
                 kind='crop',
                 channel=channel,
                 roi_props=roi_props,
-                ext='png')
+                ext='png'
+            )
 
             # crop the raw stack
-            cropped_stack = tiff.stacks[channel][
+            cropped_stack = stacks[channel][
                 z_ind:(z_ind + num_z),
                 row_ind:(row_ind + num_rows),
-                col_ind:(col_ind + num_cols)]
+                col_ind:(col_ind + num_cols)
+            ]
             cropped_stack = cropped_stack.copy()
 
             # move the z dimension from the first to the last axis
@@ -468,7 +475,7 @@ class FOVProcessor:
 
             # resample the stack in z so that it has the required z-step size
             # and number of z-slices
-            cropped_stack, did_resample_stack = self.resample_stack(
+            cropped_stack, did_resample_stack = self.maybe_resample_stack(
                 cropped_stack,
                 original_step_size=roi_props['original_step_size'],
                 target_step_size=roi_props['target_step_size'],
@@ -507,7 +514,7 @@ class FOVProcessor:
 
 
     @staticmethod
-    def resample_stack(stack, original_step_size, target_step_size, required_num_slices):
+    def maybe_resample_stack(stack, original_step_size, target_step_size, required_num_slices):
         '''
         Resample and possibly crop or pad a z-stack
         so that it has the specified number of z-slices

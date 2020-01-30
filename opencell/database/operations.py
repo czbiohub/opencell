@@ -694,7 +694,6 @@ class MicroscopyFOVOperations:
                 props=roi_props
             )
             rois.append(roi)
-
         add_and_commit(session, rois, errors='raise')
 
 

@@ -20,19 +20,19 @@ from opencell.imaging import images, utils
 class FOVProcessor:
 
     def __init__(
-        self, 
+        self,
         fov_id,
         pml_id,
-        parental_line, 
-        plate_id, 
-        well_id, 
-        site_num, 
+        parental_line,
+        plate_id,
+        well_id,
+        site_num,
         target_name,
         src_type,
         raw_filepath,
         all_roi_rows
     ):
-        
+
         self.fov_id = fov_id
         self.pml_id = pml_id
         self.parental_line = parental_line
@@ -64,8 +64,8 @@ class FOVProcessor:
         '''
         Set the absolute paths to the 'PlateMicroscopy'
         and 'raw-pipeline-microscopy' directories
-        
-        On ESS, these should be 
+
+        On ESS, these should be
         '/gpfsML/ML_group/PlateMicroscopy/'
         '/gpfsML/ML_group/raw-pipeline-microscopy/'
         '''
@@ -123,7 +123,7 @@ class FOVProcessor:
         Unpleasant method to determine the z-step size from the PML ID
 
         This method encodes the facts that, prior to ML0123 (aka PML0123),
-        the step size was always 0.5um, and that starting at ML0123, 
+        the step size was always 0.5um, and that starting at ML0123,
         the step size has always been 0.2um.
 
         NOTE: this method is necessary because the z-step size is *not* encoded
@@ -140,14 +140,14 @@ class FOVProcessor:
     def src_filepath(self):
         '''
         Construct the absolute filepath to a TIFF stack
-        in either the 'PlateMicroscopy' or 'raw-pipeline-microscopy' directory 
+        in either the 'PlateMicroscopy' or 'raw-pipeline-microscopy' directory
         '''
 
         src_root = self.src_roots.get(self.src_type) or ''
         src_filepath = os.path.join(src_root, self.raw_filepath)
         return src_filepath
 
-    
+
     def dst_plate_dir(self):
         '''
         Construct a dst plate_dir from an src plate_dir
@@ -159,13 +159,13 @@ class FOVProcessor:
 
 
     def dst_filepath(
-        self, 
-        dst_root=None, 
-        kind=None, 
-        channel=None, 
+        self,
+        dst_root=None,
+        kind=None,
+        channel=None,
         roi_id=None,
         roi_props=None,
-        ext=None, 
+        ext=None,
         makedirs=True
     ):
         '''
@@ -174,7 +174,7 @@ class FOVProcessor:
         The full path is of the form '{kind}/{dst_plate_dir}/{dst_filename}'
         dst_plate_dir is of the form 'czML0383-P0001'
         dst_filename is of the form 'czML0383-P0001-A01-PML0123-S01_CLTA_{kind}-{channel}'
-        
+
         If `kind` is 'crop' and if roi_coords are provided,
         then the roi_coords are included in the filename:
         'czML00383-P0001-A01-PML0123-S01_CLTA_CROP-0424-0000-0600-0600-CH405'
@@ -197,7 +197,7 @@ class FOVProcessor:
             roi_props = row.pop()['props']
 
         # append the ROI coords if roi_props exists
-        # (we don't validate these, but we assume they correspond to 
+        # (we don't validate these, but we assume they correspond to
         # (top_left_row, top_left_col, num_rows, num_cols))
         if kind == 'crop' and roi_props is not None:
             for coord in roi_props['xy_coords']:
@@ -215,9 +215,9 @@ class FOVProcessor:
         dst_dirpath = os.path.join(dst_root, kind, dst_plate_dir)
         if makedirs:
             os.makedirs(dst_dirpath, exist_ok=True)
-        
+
         # construct the destination filename
-        dst_filename = f'{dst_plate_dir}-{self.well_id}-{self.pml_id}-{self.site_id}_{self.target_name}_{appendix}.{ext}'
+        dst_filename = f'{dst_plate_dir}-{self.well_id}-{self.pml_id}-{self.site_id}_{self.target_name}_{appendix}.{ext}'  # noqa: E501
         return os.path.join(dst_dirpath, dst_filename)
 
 
@@ -237,7 +237,7 @@ class FOVProcessor:
             else:
                 print('Warning: could not split the TIFF')
                 tiff.tiff.close()
-    
+
 
     def process_raw_tiff(self, dst_root):
         '''
@@ -246,7 +246,7 @@ class FOVProcessor:
             2) split the tiff pages into the z-stacks for the 405 and 488 channels
             3) generate z-projections
 
-        dst_root : the path to the destination 'opencell-microscopy' directory 
+        dst_root : the path to the destination 'opencell-microscopy' directory
 
         NOTE: the `tiff.global_metadata` object returned by this method
         is modified by all of the `RawPipelineTIFF` methods called below
@@ -324,7 +324,7 @@ class FOVProcessor:
         # relative to the cell layer center, in microns
         rel_bottom = -5
         rel_top = 6
-        
+
         result = {}
         tiff = self.load_raw_tiff()
         if tiff is None:
@@ -340,16 +340,16 @@ class FOVProcessor:
         # check if an error occurred above or in crop_and_align_cell_layer
         if result.get('error'):
             return result
-    
+
         # if the step_size is 0.2um, downsample to 0.5um
         if step_size == 0.2:
             zscale = 0.2/0.5
             for channel in stacks:
                 stacks[channel] = skimage.transform.rescale(
-                    stacks[channel], 
-                    scale=(zscale, 1, 1), 
-                    multichannel=False, 
-                    preserve_range=True, 
+                    stacks[channel],
+                    scale=(zscale, 1, 1),
+                    multichannel=False,
+                    preserve_range=True,
                     anti_aliasing=False,
                     order=1)
                 stacks[channel] = stacks[channel].astype('uint16')
@@ -375,7 +375,7 @@ class FOVProcessor:
         tiff = self.load_raw_tiff()
         if tiff is None:
             raise ValueError('Raw TIFF file for fov %s does not exist' % self.fov_id)
-        
+
         # the size of the full FOV and the size of the ROIs to crop from each corner
         fov_size = 1024
         roi_size = 600
@@ -387,7 +387,7 @@ class FOVProcessor:
 
         # the step size of the final stack in microns
         # (this is chosen to correspond to the xy pixel size,
-        # so that the voxels of the resampled stack will be isotropic)    
+        # so that the voxels of the resampled stack will be isotropic)
         target_step_size = 0.2
 
         # the number of slices the resampled stack must have
@@ -395,7 +395,7 @@ class FOVProcessor:
 
         # the z coords of the cell layer (calculated using the Hoechst staining from the entire FOV)
         bottom_ind, top_ind, center_ind, profile = tiff.find_cell_layer(
-            rel_bottom=cell_layer_rel_bottom, 
+            rel_bottom=cell_layer_rel_bottom,
             rel_top=cell_layer_rel_top,
             step_size=self.z_step_size())
 
@@ -419,7 +419,7 @@ class FOVProcessor:
         for roi_position in roi_top_left_positions:
             roi_props = {
                 'shape': roi_shape,
-                'position': roi_position, 
+                'position': roi_position,
                 'xy_coords': (*roi_position[:2], *roi_shape[:2]),
                 'cell_layer_center_ind': center_ind,
                 'target_step_size': target_step_size,
@@ -438,35 +438,35 @@ class FOVProcessor:
         '''
         pass
 
-    
+
     def crop_and_save_roi(self, roi_props, tiff, dst_root):
         '''
-        Crop an ROI from the raw TIFF, resample it in z if necessary, 
+        Crop an ROI from the raw TIFF, resample it in z if necessary,
         downsample it from uint16 to uint8, and save it as a 1D tiled PNG
         '''
 
         num_rows, num_cols, num_z = roi_props['shape']
         row_ind, col_ind, z_ind = roi_props['position']
-        
+
         for channel in [tiff.laser_405, tiff.laser_488]:
             dst_filepath = self.dst_filepath(
-                dst_root, 
-                kind='crop', 
-                channel=channel, 
-                roi_props=roi_props, 
+                dst_root,
+                kind='crop',
+                channel=channel,
+                roi_props=roi_props,
                 ext='png')
-    
+
             # crop the raw stack
             cropped_stack = tiff.stacks[channel][
-                z_ind:(z_ind + num_z), 
-                row_ind:(row_ind + num_rows), 
+                z_ind:(z_ind + num_z),
+                row_ind:(row_ind + num_rows),
                 col_ind:(col_ind + num_cols)]
             cropped_stack = cropped_stack.copy()
 
             # move the z dimension from the first to the last axis
             cropped_stack = np.moveaxis(cropped_stack, 0, -1)
 
-            # resample the stack in z so that it has the required z-step size 
+            # resample the stack in z so that it has the required z-step size
             # and number of z-slices
             cropped_stack, did_resample_stack = self.resample_stack(
                 cropped_stack,
@@ -480,7 +480,7 @@ class FOVProcessor:
             # downsample the pixel intensities from uint16 to uint8
             cropped_stack, min_intensity, max_intensity = self.stack_to_uint8(
                 cropped_stack, percentile=0.01)
-            
+
             # log the black and white points used to downsample the intensities
             roi_props['min_intensity_%s' % channel] = min_intensity
             roi_props['max_intensity_%s' % channel] = max_intensity
@@ -489,7 +489,7 @@ class FOVProcessor:
             # TODO: what to do when the file already exists?
             if not os.path.isfile(dst_filepath):
                 cropped_stack = np.moveaxis(cropped_stack, -1, 0)
-                tile = np.concatenate([zslice for zslice in cropped_stack], axis=0)            
+                tile = np.concatenate([zslice for zslice in cropped_stack], axis=0)
                 imageio.imsave(dst_filepath, tile)
 
         return roi_props
@@ -509,7 +509,7 @@ class FOVProcessor:
     @staticmethod
     def resample_stack(stack, original_step_size, target_step_size, required_num_slices):
         '''
-        Resample and possibly crop or pad a z-stack 
+        Resample and possibly crop or pad a z-stack
         so that it has the specified number of z-slices
 
         stack : 3D numpy array with dimensions (x, y, z)
@@ -518,7 +518,7 @@ class FOVProcessor:
         required_num_slices : the number of z-slices the resampled stack must have
             (usually chosen so that the voxels of the resampled stack will be isotropic)
         '''
-    
+
         did_resample_stack = False
 
         # resample z to generate isotropic voxels
@@ -551,17 +551,17 @@ class FOVProcessor:
         Downsample the raw uint16 pixel intensities to uint8
         and return the black and white points used to do so
         '''
-            
+
         stack = stack.astype(float)
         minn, maxx = np.percentile(stack, (percentile, 100 - percentile))
         if minn == maxx:
             maxx = minn + 1
-            
+
         stack -= minn
         stack[stack < minn] = 0
         stack /= (maxx - minn)
         stack[stack > 1] = 1
-        
+
         stack = (255*stack).astype('uint8')
         return stack, int(minn), int(maxx)
 
@@ -575,12 +575,12 @@ class FOVProcessor:
         stack : 3D numpy array with dimensions (x, y, z)
         num_cols : the number of columns in the tile
         '''
-    
+
         num_slices = stack.shape[-1]
         num_extra_slices = int(num_cols * np.ceil(num_slices/num_cols) - num_slices)
         extra_slices = np.zeros((*stack.shape[:2], num_extra_slices), dtype=stack.dtype)
         stack = np.concatenate((stack, extra_slices), axis=2)
-        
+
         num_slices = stack.shape[-1]
         num_rows = int(num_slices/num_cols)
 
@@ -590,5 +590,5 @@ class FOVProcessor:
                 [stack[:, :, col_ind + row_ind*num_cols] for col_ind in range(num_cols)], axis=1)
             rows.append(row)
         tile = np.concatenate(rows, axis=0)
-    
+
         return tile

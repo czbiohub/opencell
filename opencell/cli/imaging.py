@@ -23,7 +23,7 @@ from opencell.imaging.processors import FOVProcessor
 from opencell.imaging.managers import PlateMicroscopyManager
 
 try:
-    DRAGONFLY_REPO = '/Users/keith.cheveralls/projects/dragonfly-automation' 
+    DRAGONFLY_REPO = '/Users/keith.cheveralls/projects/dragonfly-automation'
     sys.path.append(DRAGONFLY_REPO)
     from dragonfly_automation.fov_models import PipelineFOVScorer
 except ImportError:
@@ -61,14 +61,14 @@ def parse_args():
 
     # path to JSON file with database credentials
     parser.add_argument('--credentials', dest='credentials', required=False)
-    
+
     # CLI args whose presence in the command sets them to True
     action_arg_dests = [
-        'inspect_plate_microscopy_metadata', 
-        'construct_plate_microscopy_metadata', 
+        'inspect_plate_microscopy_metadata',
+        'construct_plate_microscopy_metadata',
         'insert_plate_microscopy_fovs',
         'insert_fovs',
-        'process_raw_tiffs', 
+        'process_raw_tiffs',
         'calculate_fov_features',
         'calculate_z_profiles',
         'align_cell_layer',
@@ -111,7 +111,7 @@ def construct_plate_microscopy_metadata(plate_microscopy_manager):
     if not hasattr(plate_microscopy_manager, 'os_walk'):
         plate_microscopy_manager.cache_os_walk()
 
-    print('Constructing metadata')    
+    print('Constructing metadata')
     plate_microscopy_manager.construct_metadata()
 
     print('Constructing raw metadata')
@@ -168,7 +168,7 @@ def insert_raw_pipeline_microscopy_fovs(session, root_dir, pml_id, errors='warn'
     '''
     Insert all raw FOVs from a single raw-pipeline-microscopy dataset
 
-    (Note that there is substantial code duplication between this method 
+    (Note that there is substantial code duplication between this method
     and insert_plate_microscopy_fovs above)
 
     root_dir : the path to the 'raw-pipeline-microscopy' directory
@@ -201,10 +201,10 @@ def insert_raw_pipeline_microscopy_fovs(session, root_dir, pml_id, errors='warn'
 
 @dask.delayed
 def do_fov_task(
-    Session, 
-    fov_processor, 
-    fov_operator, 
-    processor_method_name, 
+    Session,
+    fov_processor,
+    fov_operator,
+    processor_method_name,
     processor_method_kwargs,
     operator_method_name
 ):
@@ -239,7 +239,7 @@ def do_fov_tasks(Session, args, processor_method_name, processor_method_kwargs, 
 
     Parameters
     ----------
-    Session : 
+    Session :
     args : the parsed command-line arguments
         (from which we obtain the paths to the 'plat_microscopy' and 'raw_pipeline_microscopy' dirs)
     processor_method_name : the name of the FOVProcessor method to call
@@ -270,7 +270,7 @@ def do_fov_tasks(Session, args, processor_method_name, processor_method_kwargs, 
         print('There are no FOVs to be processed')
 
     # instantiate a processor and operations class for each FOV
-    # (note the awkward nomenclature mismatch here; 
+    # (note the awkward nomenclature mismatch here;
     # we call an instance of the FOVOperations class an `fov_operator`)
     fov_processors = [FOVProcessor.from_database(fov) for fov in fovs]
     fov_operators = [operations.MicroscopyFOVOperations(fov.id) for fov in fovs]
@@ -278,18 +278,18 @@ def do_fov_tasks(Session, args, processor_method_name, processor_method_kwargs, 
     # set the src_roots
     for fov_processor in fov_processors:
         fov_processor.set_src_roots(
-            plate_microscopy_dir=args.plate_microscopy_dir, 
+            plate_microscopy_dir=args.plate_microscopy_dir,
             raw_pipeline_microscopy_dir=args.raw_pipeline_microscopy_dir)
 
     # create the dask tasks
     tasks = []
     for fov_processor, fov_operator in zip(fov_processors, fov_operators):
         task = do_fov_task(
-            Session, 
-            fov_processor, 
-            fov_operator, 
-            processor_method_name, 
-            processor_method_kwargs, 
+            Session,
+            fov_processor,
+            fov_operator,
+            processor_method_name,
+            processor_method_kwargs,
             operator_method_name)
         tasks.append(task)
 
@@ -321,7 +321,7 @@ def get_unprocessed_fovs(engine, session, result_kind):
 
     query = '''
         select fov.*, res.kind as kind from microscopy_fov fov
-        left join (select * from microscopy_fov_result where kind = '%s') res 
+        left join (select * from microscopy_fov_result where kind = '%s') res
         on fov.id = res.fov_id
         where kind is null;'''
 
@@ -347,7 +347,7 @@ def main():
         db_url = db_utils.url_from_credentials(args.credentials)
         engine = sa.create_engine(db_url)
         models.Base.metadata.create_all(engine)
-    
+
         session_factory = sa.orm.sessionmaker(bind=engine)
         Session = sa.orm.scoped_session(session_factory)
 
@@ -422,7 +422,7 @@ def main():
     # calculate FOV features and score
     if args.calculate_fov_features:
 
-        # load and train the FOV scorer 
+        # load and train the FOV scorer
         # (note the dependence on the path to dragonfly-automation repo)
         fov_scorer = PipelineFOVScorer(mode='training')
         fov_scorer.load(os.path.join(DRAGONFLY_REPO, 'models', '2019-10-08'))
@@ -432,7 +432,7 @@ def main():
         method_kwargs = {
             'dst_root': args.dst_root,
             'fov_scorer': fov_scorer}
-    
+
         if not args.process_all_fovs:
             fovs = get_unprocessed_fovs(engine, Session, result_kind='fov-features')
         do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
@@ -441,7 +441,7 @@ def main():
     if args.crop_corner_rois:
         method_name = 'crop_corner_rois'
         method_kwargs = {'dst_root': args.dst_root}
-    
+
         # only crop ROIs from the two highest-scoring FOVs per line
         fovs_to_crop = []
         for line in Session.query(models.CellLine).all():

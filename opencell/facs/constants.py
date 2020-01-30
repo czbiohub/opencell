@@ -4,7 +4,7 @@ from FlowCytometryTools import ThresholdGate, PolyGate
 # channel names
 FITC, SSCA, FSCA, FSCW = 'FITC-A', 'SSC-A', 'FSC-A', 'FSC-W'
 
-# b-paramter for hlog transform 
+# b-paramter for hlog transform
 # (this is a kwarg for the FCMeasurement.transform method)
 HLOG_B = 350.0
 
@@ -25,13 +25,9 @@ VIABLE_GATE = FSC_VIABLE_GATE & SSC_VIABLE_GATE
 # this is copied directly from Nathan's 'FACS_QC_v8.py'
 SINGLET_GATE = PolyGate(
     [
-        ('8750', '250'), ('9350', '240'), 
-        ('10000', '290'), ('10200', '390'), 
+        ('8750', '250'), ('9350', '240'),
+        ('10000', '290'), ('10200', '390'),
         ('9500', '400'), ('9250', '390'),
         ('9000', '360'), ('8800', '300')
-    ], 
+    ],
     ['FSC-A', 'FSC-W'])
-
-
-
-

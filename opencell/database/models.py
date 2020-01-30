@@ -24,7 +24,7 @@ metadata = db.MetaData(naming_convention={
 
 class Base(object):
 
-    # TODO: decide whether we need to keep `extend_existing` here 
+    # TODO: decide whether we need to keep `extend_existing` here
     # (originally for autoreloading during development)
     __table_args__ = {'extend_existing': True}
 
@@ -71,9 +71,9 @@ well_id_enum = db.Enum(*constants.DATABASE_WELL_IDS, name='well_id_type_enum')
 class CellLine(Base):
     '''
     All cell lines - progenitor, polyclonal, and monoclonal
-    
+
     Progenitor cell lines are included here so that parent_id exists for both polyclonal lines
-    that are direct descendents of a progenitor line and for monoclonal lines 
+    that are direct descendents of a progenitor line and for monoclonal lines
     (that are, at least for now, descendents of a polyclonal line)
 
     '''
@@ -81,7 +81,7 @@ class CellLine(Base):
     __tablename__ = 'cell_line'
 
     id = db.Column(db.Integer, primary_key=True)
-    
+
     # parent_id is only null for progenitor cell lines
     parent_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'), nullable=True)
     line_type = db.Column(cell_line_type_enum, nullable=False)
@@ -133,15 +133,15 @@ class PlateDesign(Base):
     design_id = db.Column(db.String, primary_key=True)
     design_date = db.Column(db.Date)
     design_notes = db.Column(db.String)
-    
+
     # one-to-many relationships with crispr_design and plate_instance
     crispr_designs = db.orm.relationship(
-        'CrisprDesign', 
+        'CrisprDesign',
         back_populates='plate_design',
         cascade='all, delete, delete-orphan')
 
     plate_instances = db.orm.relationship(
-        'PlateInstance', 
+        'PlateInstance',
         back_populates='plate_design',
         cascade='all, delete, delete-orphan')
 
@@ -151,7 +151,7 @@ class PlateDesign(Base):
     @db.orm.validates('design_id')
     def validate_design_id(self, key, value):
         '''
-        Validate and maybe format the plate design id 
+        Validate and maybe format the plate design id
         '''
         return utils.format_plate_design_id(value)
 
@@ -170,17 +170,17 @@ class CrisprDesign(Base):
     and the same design may appear in multiple wells and/or plate designs.
 
     In practice, however, this kind of overlap is rare enough that, for now,
-    we take the shortcut of combining the design, target, and plate layout (well_id) 
-    into one table. Doing so also eliminates the complexity of 
+    we take the shortcut of combining the design, target, and plate layout (well_id)
+    into one table. Doing so also eliminates the complexity of
     1) determining how to uniquely identify targets, and
     2) checking whether each design and target is unique when inserting new plate designs.
 
     Furthermore, we do *not* require that the crispr design be unique
     (i.e., that the (protospacer_sequence, template_sequence) columns be unique),
-    because there are several examples from plates 1-19 in which the same sequences 
-    are associated with distinct target names and metadata. Depending on how 
-    these apparent discrepancies are resolved, we can later consider placing a unique constraint 
-    on the guide and template sequences. 
+    because there are several examples from plates 1-19 in which the same sequences
+    are associated with distinct target names and metadata. Depending on how
+    these apparent discrepancies are resolved, we can later consider placing a unique constraint
+    on the guide and template sequences.
 
     Note that we use a serial primary key, but (well_id, plate_design_id) must be unique.
 
@@ -200,7 +200,7 @@ class CrisprDesign(Base):
 
     # terminus at which the template was inserted
     # TODO: decide if NOT NULL is appropriate here
-    # (currently, some designs from P0016 are null, 
+    # (currently, some designs from P0016 are null,
     # but only the 'jin' designs that should be ignored anyway)
     target_terminus = db.Column(terminus_type_enum, nullable=False)
 
@@ -298,13 +298,13 @@ class PlateInstance(Base):
     Currently (2019-07-01), there is no meaningful distinction between
     a plate 'design' and a plate 'instance', because there is only one physical instance
     of each design. This table is included in anticipation of future experiments
-    in which new physical instances of the same plate design are created and should be tracked. 
+    in which new physical instances of the same plate design are created and should be tracked.
 
     Note that, technically, each plate instance is prepared by combining several reagents,
     two of which - the guides and the repair templates - themselves exist on separate plates,
-    and it is not yet clear whether a replicate preparation of the same plate design 
+    and it is not yet clear whether a replicate preparation of the same plate design
     from the same physical reagents should correspond to a new 'instance',
-    or whether the reagents themselves must be distinct. 
+    or whether the reagents themselves must be distinct.
 
     '''
     __tablename__ = 'plate_instance'
@@ -331,7 +331,7 @@ class Electroporation(Base):
     Although a serial primary key is used, we require that the columns
     (cell_line_id, plate_instance_id, and electroporation_date) be unique
     to reflect the fact that the same plate would/should never be electroporated
-    more than once on the same day. 
+    more than once on the same day.
 
     '''
     __tablename__ = 'electroporation'
@@ -361,18 +361,18 @@ class Electroporation(Base):
 
 class ElectroporationLine(Base):
     '''
-    Association table that maps cell lines to the electroporation and well_id 
-    from which they originated. 
+    Association table that maps cell lines to the electroporation and well_id
+    from which they originated.
 
     We use a composite primary key on (electroporation_id, cell_line_id).
-    
-    Note that there are no constraints on the type or number of cell lines 
+
+    Note that there are no constraints on the type or number of cell lines
     associated with an electroporation, even though currently (July 2019),
-    only a single polyclonal line is generated from each electroporation and well_id. 
-    This flexibility is intended to anticipate a possibly future workflow 
+    only a single polyclonal line is generated from each electroporation and well_id.
+    This flexibility is intended to anticipate a possibly future workflow
     in which multiple monoclonal lines are generated from each electroporation,
-    without an intermediate polyclonal line. 
-    
+    without an intermediate polyclonal line.
+
     '''
 
     __tablename__ = 'electroporation_line'
@@ -390,18 +390,18 @@ class ElectroporationLine(Base):
 
 class FACSDataset(Base):
     '''
-    A single FACS dataset, consisting of 
+    A single FACS dataset, consisting of
         1) the sample and fitted reference histograms
         2) various extracted properties (GFP-positive area, median/max intensities, etc)
 
     Each of these datasets must correspond to a single cell line,
-    and there should be only one dataset per cell line, though this may change 
+    and there should be only one dataset per cell line, though this may change
     and is currently not enforced.
 
-    In practice, and possibly also in principle, FACS datasets should exist 
+    In practice, and possibly also in principle, FACS datasets should exist
     only for polyclonal lines, though this is not currently enforced.
 
-    For now, we use the cell_line_id as the primary key. 
+    For now, we use the cell_line_id as the primary key.
 
     TODO: add columns for date_generated, git_commit, and sample/control dirpaths
 
@@ -415,7 +415,7 @@ class FACSDataset(Base):
     # histograms
     histograms = db.Column(postgresql.JSONB)
 
-    # extracted properties (area, median intensity, etc)    
+    # extracted properties (area, median intensity, etc)
     scalars = db.Column(postgresql.JSONB)
 
 
@@ -429,7 +429,7 @@ class SequencingDataset(Base):
     cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'), primary_key=True)
     cell_line = db.orm.relationship('CellLine', backref='sequencing_dataset')
 
-    # extracted properties 
+    # extracted properties
     # (percent HDR among all alleles and modified alleles)
     scalars = db.Column(postgresql.JSONB)
 
@@ -510,7 +510,7 @@ class MicroscopyFOV(Base):
     thumbnails = db.orm.relationship(
         'Thumbnail', back_populates='fov', cascade='all, delete-orphan')
 
-    # round_id is either 'R01' (initial post-sort imaging) 
+    # round_id is either 'R01' (initial post-sort imaging)
     # or 'R02' (thawed-plate imaging)
     imaging_round_id = db.Column(db.String, nullable=False)
 
@@ -557,7 +557,7 @@ class MicroscopyFOVResult(Base):
     timestamp = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
 
     fov = db.orm.relationship('MicroscopyFOV', back_populates='results', uselist=False)
- 
+
     # the kind or type of the result ('raw-tiff-metadata', 'fov-features', etc)
     # (eventually, this should be changed to an enum)
     kind = db.Column(db.String)
@@ -592,8 +592,8 @@ class MicroscopyFOVROI(Base):
     # kind of ROI: either 'corner', 'top-scoring', 'single-nucleus', 'single-cell'
     kind = db.Column(db.String)
 
-    # all ROI-specific metadata, including the ROI oordinates (position and shape), 
-    # the z-coordinate of the center of the cell layer,  and the min/max values 
+    # all ROI-specific metadata, including the ROI oordinates (position and shape),
+    # the z-coordinate of the center of the cell layer,  and the min/max values
     # used to downsample the intensities from uint16 to uint8
     props = db.Column(postgresql.JSONB)
 

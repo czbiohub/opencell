@@ -25,12 +25,12 @@ class FACSProcessor(object):
         Class to load and process the FACS data from a single pipeline plate
 
         `samples_dirpath` is the path to a local directory containing the raw FCS data
-        for all samples on the plate. There should be one FCS file per well, 
+        for all samples on the plate. There should be one FCS file per well,
         and the filenames must adhere to the pattern '{well_id}_Data.fcs'
 
         `controls_dirpath` is the path a local directory containing all of the negative controls
-        (that is, wild-type samples) for the plate. The filenames of these files are unimportant; 
-        we assume that all FCS files in this directory correspond to a negative control. 
+        (that is, wild-type samples) for the plate. The filenames of these files are unimportant;
+        we assume that all FCS files in this directory correspond to a negative control.
 
         Internally, samples are identified *only* by the well_id appearing in each FCS filename.
 
@@ -54,7 +54,7 @@ class FACSProcessor(object):
 
         # concatenate controls and calc global mean/std
         control_values, control_mean, control_std = self._concatenate_controls()
-    
+
         # generate the reference (negative control) histogram
         self.x_ref, self.y_ref = self.generate_control_histogram(control_values)
 
@@ -67,7 +67,7 @@ class FACSProcessor(object):
         Check for missing/unexpected sample datasets
         and the expected number of control datasets
         '''
-    
+
         filenames = glob.glob(os.path.join(self.samples_dirpath, '*.fcs'))
         well_ids = [filename.split(os.sep)[-1].split('_')[0] for filename in filenames]
 
@@ -79,35 +79,35 @@ class FACSProcessor(object):
         unexpected_well_ids = set(well_ids).difference(common_constants.RAW_WELL_IDS)
         if unexpected_well_ids:
             print('Warning: FCS files found for unexpected well_ids %s' % unexpected_well_ids)
-    
+
         # count the number of negative control datasets
         control_filepaths = glob.glob(os.path.join(self.controls_dirpath, '*.fcs'))
         if len(control_filepaths) != facs_constants.NUM_CONTROL_DATASETS:
             print('Warning: expected %s control datasets but found %s' %
                 (facs_constants.NUM_CONTROL_DATASETS, len(control_filepaths)))
-        
+
         return well_ids, control_filepaths
 
 
     def sample_filepath(self, well_id):
         '''
-        Construct the filepath of the dataset for a given well_id    
+        Construct the filepath of the dataset for a given well_id
         '''
-        
+
         if well_id not in common_constants.RAW_WELL_IDS:
             raise ValueError('Invalid well_id %s' % well_id)
- 
+
         # we *assume* that the filename is of this form
         filename = '%s_Data.fcs' % well_id
         filepath = os.path.join(self.samples_dirpath, filename)
         return filepath
-    
+
 
     def load_sample(self, well_id):
         '''
         Load, transform, and gate a sample dataset
         '''
-        
+
         dataset = fct.FCMeasurement(ID=well_id, datafile=self.sample_filepath(well_id))
         dataset = facs_utils.transform_and_gate_dataset(dataset)
         return dataset
@@ -191,7 +191,7 @@ class FACSProcessor(object):
         if nbins is None and xrange is not None and verbose:
             print('Warning: a range was provided but the number of bins was not provided')
 
-        # calculate the x-range from the percentile 
+        # calculate the x-range from the percentile
         # (defaults to max/min because percentile=1)
         if xrange is None:
             xrange = np.percentile(values, (percentile, 100 - percentile))
@@ -219,7 +219,7 @@ class FACSProcessor(object):
     def process_sample(self, well_id, show_plots=True):
         '''
         '''
-        
+
         # load the dataset and generate its histogram
         dataset = self.load_sample(well_id)
         x_sample, y_sample = self.generate_sample_histogram(dataset.data[FITC])
@@ -234,13 +234,13 @@ class FACSProcessor(object):
 
         unmixer = FACSUnmixer(
             self.x_ref,
-            self.y_ref, 
+            self.y_ref,
             x_sample,
-            y_sample, 
-            offset_guess=offset_guess, 
-            offset_bounds=offset_bounds, 
+            y_sample,
+            offset_guess=offset_guess,
+            offset_bounds=offset_bounds,
             fit_window=fit_window)
-        
+
         # do the fit
         result = unmixer.fit()
 
@@ -258,15 +258,15 @@ class FACSProcessor(object):
             plt.plot(x_sample, y_ref_fitted, color='black', alpha=.7)
             plt.plot(x_sample, y_sample_unmixed, color='green')
 
-        # use the fit parameters to define a boundary between 
+        # use the fit parameters to define a boundary between
         # the left and right hand 'sides' of the distribution
         # (that is, between GFP-negative and -positive populations)
         left_right_boundary = fitted_offset + self.ref_std
 
         # calculate stats of the right-hand side of the unmixed histogram
         stats = self.calc_unmixed_stats(
-            x_sample, 
-            y_sample_unmixed, 
+            x_sample,
+            y_sample_unmixed,
             fitted_offset,
             left_right_boundary)
 
@@ -299,7 +299,7 @@ class FACSProcessor(object):
             'fitted_offset': fitted_offset,
             'left_right_boundary': left_right_boundary,
         }
-    
+
         # the area of the right-hand side of the unmixed sample histogram
         stats['area'] = y.sum() * (x[1] - x[0])
 
@@ -307,23 +307,23 @@ class FACSProcessor(object):
         if stats['area'] < 0:
             stats['area'] = 0
             return stats
-    
+
         # the mean/std of the right-hand side of the unmixed sample histogram
         stats['raw_mean'] = (y * x).sum() / y.sum()
         stats['raw_std'] = ((y * x**2).sum() / y.sum() - stats['raw_mean']**2)**.5
 
-        # median and 99th percentile of the right-hand side 
+        # median and 99th percentile of the right-hand side
         # (by interpolating the cumulative histogram)
         y_c = np.cumsum(y)/y.sum()
         stats['raw_median'] = interpolate.interp1d(y_c, x)([.5])[0]
         stats['raw_percentile99'] = interpolate.interp1d(y_c, x)([.99])[0]
 
-        # subtract the fitted offset (the location of the GFP-negative peak)    
+        # subtract the fitted offset (the location of the GFP-negative peak)
         fitted_offset_linear = facs_utils.hlog_inverse(fitted_offset)
 
         for prop in ('mean', 'median', 'percentile99'):
             value = stats.get('raw_%s' % prop)
-            if value is not None:   
+            if value is not None:
                 value_linear = facs_utils.hlog_inverse(value)
 
                 # in linear scale...

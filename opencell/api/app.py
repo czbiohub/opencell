@@ -19,9 +19,9 @@ def create_session_registry(url):
     '''
     Create an sqlalchemy scoped session registry
 
-    This registry is the `Session` object below. 
+    This registry is the `Session` object below.
     Note that, although this object is a 'registry' that manages session instances,
-    it also proxies session-bound methods (like query), so that the registry 
+    it also proxies session-bound methods (like query), so that the registry
     itself can be treated like a session instance, enabling lines like
     `Session.query(models.SomeModel)`
     '''
@@ -50,7 +50,7 @@ def create_app(args):
 
     api.add_resource(resources.MicroscopyFOV, '/fovs/<string:channel>/<string:kind>/<int:fov_id>')
     api.add_resource(resources.MicroscopyFOVROI, '/rois/<string:channel>/<string:kind>/<int:roi_id>')
-    
+
     api.init_app(app)
 
     if args.credentials:
@@ -85,4 +85,3 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
     create_app(args)
-    

@@ -107,26 +107,26 @@ def make_rgb(imr=None, img=None, imb=None, im_bg=None, zaxis=0, gamma=None):
 
 
 def build_tile(
-    data, 
-    offset=0, 
-    shape=10, 
-    figsize=12, 
-    show_labels=False, 
-    label_column=None, 
+    data,
+    offset=0,
+    shape=10,
+    figsize=12,
+    show_labels=False,
+    label_column=None,
     label_format=None,
     im_loader=None,
     plot=True
 ):
-    
+
     filepath_colummn = 'filename'
     if 'filepath' in data.columns:
         filepath_colummn = 'filepath'
-    
+
     pad = 3
     label_pad = 15
     if not isinstance(shape, tuple) or len(shape) == 1:
         shape = (shape, shape)
-    
+
     scale = 4
     image_size = 1024/scale
 
@@ -145,7 +145,7 @@ def build_tile(
                     im = im_loader(filepath)
                 else:
                     im = utils.load(filepath)
-                
+
                 im = im[::scale, ::scale]
                 if im.dtype != 'uint8':
                     im = utils.autogain(im, percentile=1)
@@ -158,7 +158,7 @@ def build_tile(
                     label_text = data.iloc[ind][label_column]
                     if label_format:
                         label_text = label_format % label_text
-                
+
                 labels.append({
                     'text': label_text,
                     'x': col_ind * image_size + label_pad,
@@ -174,7 +174,7 @@ def build_tile(
 
         rows.append(np.concatenate(tuple(cols), axis=1))
     tile = np.concatenate(tuple(rows), axis=0)
-    
+
     if not plot:
         return tile
 

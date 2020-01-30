@@ -15,8 +15,8 @@ def parseFloat(val):
     return val
 
 
-# map from the column names in the cached CSVs to the column names 
-# expected by the database and/or by the methods in opencell.database.operations 
+# map from the column names in the cached CSVs to the column names
+# expected by the database and/or by the methods in opencell.database.operations
 # (all required columns are included, even if their name is unchanged)
 LIBRARY_COLUMNS = {
     'plate_id': 'plate_id',
@@ -26,14 +26,14 @@ LIBRARY_COLUMNS = {
     'family': 'target_family',
 
     'enst_id': 'transcript_id',
-    'enst_note': 'transcript_notes', 
+    'enst_note': 'transcript_notes',
 
     'hek_tpm': 'hek_tpm',
 
     'terminus_to_tag': 'target_terminus',
     'terminus_choice': 'terminus_notes',
-        
-    'protospacer_name': 'protospacer_name', 
+
+    'protospacer_name': 'protospacer_name',
     'protospacer_note': 'protospacer_notes',
     'protospacer_sequence': 'protospacer_sequence',
 
@@ -52,12 +52,12 @@ ELECTROPORATION_COLUMNS = {
 def load_library_snapshot(filename):
     '''
     Load and format/reorganize a CSV 'snapshot' of the library spreadsheet
-    
+
     These 'snapshots' are of the google sheet created/maintained by Manu
     that contains all info about plate and crispr design for plate 1 - plate 19.
 
     The snapshot *must* contain the columns on the left side of the LIBRARY_COLUMNS
-    map (see above). 
+    map (see above).
 
     '''
 
@@ -68,7 +68,7 @@ def load_library_snapshot(filename):
     library['plate_id'] = library.plate_id.apply(utils.format_plate_design_id)
 
     # parse the hek_tpm column, which should be float but has some strings with commas
-    # (e.g., '1,000' instead of '1000') 
+    # (e.g., '1,000' instead of '1000')
     library['hek_tpm'] = library.hek_tpm.apply(parseFloat)
 
     # retain only the columns we need for the database
@@ -95,9 +95,9 @@ def load_electroporation_history(filename):
 
     # drop unneeded columns
     electroporations = electroporations[list(ELECTROPORATION_COLUMNS.values())]
- 
+
     return electroporations
-    
+
 
 def load_legacy_microscopy_master_key(filepath):
     '''
@@ -113,8 +113,8 @@ def load_legacy_microscopy_master_key(filepath):
     md = md.rename(columns={c: c.replace(' ', '_').lower() for c in md.columns})
 
     md = md.rename(columns={
-        'id': 'legacy_id', 
-        'automated_acquisition?': 'automation', 
+        'id': 'legacy_id',
+        'automated_acquisition?': 'automation',
         'acquisition_notes': 'notes',
         'primary_imager': 'imager',
     })
@@ -164,4 +164,3 @@ def read_and_validate_platemap(filepath):
         raise ValueError('Some target names are missing in platemap %s' % filepath)
 
     return platemap
-

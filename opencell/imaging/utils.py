@@ -29,11 +29,11 @@ def load_and_downscale_2x(filepath):
 
 def autoscale(im, percentile=None, p=None, dtype='uint8', gamma=None):
     '''
-    
+
     '''
-    
+
     MAX = {'uint8': 255, 'uint16': 65535}
-    
+
     im = im.copy().astype(float)
 
     if p is not None:
@@ -45,19 +45,19 @@ def autoscale(im, percentile=None, p=None, dtype='uint8', gamma=None):
     minn, maxx = np.percentile(im, (percentile, 100 - percentile))
     if minn == maxx:
         return (im * 0).astype(dtype)
-        
+
     im = im - minn
     im[im < 0] = 0
     im = im/(maxx - minn)
     im[im > 1] = 1
-    
+
     if gamma:
         im = im**gamma
-    
+
     im = (im * MAX[dtype]).astype(dtype)
     return im
 
-    
+
 def remove_edge_regions(mask, conn=1):
     '''
     Remove regions in the mask that 'touch' one or more edges of the image

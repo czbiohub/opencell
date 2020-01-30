@@ -21,8 +21,8 @@ def parse_args():
 
     # path to credentials JSON
     parser.add_argument(
-        '--credentials', 
-        dest='credentials', 
+        '--credentials',
+        dest='credentials',
         required=True)
 
     # the path to the directory of snapshot/cached opencell metadata
@@ -43,7 +43,7 @@ def parse_args():
     # CLI args whose presence in the command sets them to True
     action_arg_dests = [
         'update',
-        'drop_all', 
+        'drop_all',
         'populate',
         'insert_facs',
         'insert_plate_microscopy_datasets',
@@ -89,9 +89,9 @@ def populate(session, data_dir, errors='warn'):
     # -----------------------------------------------------------------------------------
     print('Inserting progenitor cell line for plates 1-19')
     ops.get_or_create_progenitor_cell_line(
-        session, 
-        name=constants.PARENTAL_LINE_NAME, 
-        notes='mNG1-10 in HEK293', 
+        session,
+        name=constants.PARENTAL_LINE_NAME,
+        notes='mNG1-10 in HEK293',
         create=True)
 
     # -----------------------------------------------------------------------------------
@@ -228,13 +228,13 @@ def main():
     # (these are datasets up to PML0179)
     if args.insert_plate_microscopy_datasets:
         filepath = os.path.join(
-            args.data_dir, 
+            args.data_dir,
             '2019-12-05_Pipeline-microscopy-master-key_PlateMicroscopy-MLs-raw.csv')
         metadata = file_utils.load_legacy_microscopy_master_key(filepath)
         insert_microscopy_datasets(
-            session, 
-            metadata, 
-            root_directory='plate_microscopy', 
+            session,
+            metadata,
+            root_directory='plate_microscopy',
             update=False,
             errors='warn')
 
@@ -245,9 +245,9 @@ def main():
         metadata = pd.read_csv(args.microscopy_master_key)
         metadata.rename(columns={'id': 'pml_id'}, inplace=True)
         insert_microscopy_datasets(
-            session, 
-            metadata, 
-            root_directory='raw_pipeline_microscopy', 
+            session,
+            metadata,
+            root_directory='raw_pipeline_microscopy',
             update=args.update,
             errors='warn')
 

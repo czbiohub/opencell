@@ -20,7 +20,7 @@ from . import utils
 
 
 def generate_background_mask(im, sigma, rel_thresh):
-    
+
     # smooth the raw image
     imf = skimage.filters.gaussian(im, sigma=sigma)
 
@@ -35,7 +35,7 @@ def filter_lg(im, sigma):
     '''
     Laplace transform of gaussian-filtered image
     '''
-    
+
     imf = skimage.filters.gaussian(im, sigma=sigma)
     im_lg = skimage.filters.laplace(imf, ksize=3)
     return im_lg
@@ -49,11 +49,11 @@ def generate_lg_mask(im, mask_bg, sigma, radius, percentile, max_area, min_area,
     max_area : maximum area of holes to fill
     min_area : minimum area of region in the local minimum mask to remove from the background mask
 
-    Steps 
+    Steps
     1) generate a 'refined' background mask by thresholding the laplace transform at zero
     2) morphologically close this mask and fill holes until there are no intranuclear holes or gaps
        (empirically, this requires closing with disk(4))
-    3) multiply this 'refined' mask by the existing crude background mask (`mask_bg`) 
+    3) multiply this 'refined' mask by the existing crude background mask (`mask_bg`)
        to restore any 'true' holes/gaps that were present in `mask_bg`
     4) generate a mask of local minima in the laplace transform,
        using a percentile threshold (5%-7% works well)
@@ -61,7 +61,7 @@ def generate_lg_mask(im, mask_bg, sigma, radius, percentile, max_area, min_area,
        if they partially intersect/overlap with the background of the refined mask
 
     This procedure helps to capture the narrow regions and gaps between clumped nuclei,
-    which dramatically improves the accuracy of the nucleus positions 
+    which dramatically improves the accuracy of the nucleus positions
     extracted from the distance-transformed mask.
 
     An alternative and likely better approach would be to find a more sophisticated way
@@ -102,7 +102,7 @@ def generate_lg_mask(im, mask_bg, sigma, radius, percentile, max_area, min_area,
 
 
 def find_nucleus_positions(mask, min_distance):
-    
+
     # smoothed distance transform
     dist = ndimage.distance_transform_edt(mask)
     distf = skimage.filters.gaussian(dist, sigma=1)
@@ -134,9 +134,9 @@ def generate_watershed_mask(mask, min_distance, mask_bg=None):
     labeled_local_max, num_local_max = ndimage.label(local_max)
 
     mask_labeled = skimage.morphology.watershed(
-        -distf.astype(float), 
-        mask=mask_bg, 
-        markers=labeled_local_max, 
+        -distf.astype(float),
+        mask=mask_bg,
+        markers=labeled_local_max,
         watershed_line=True,
         compactness=.01)
 

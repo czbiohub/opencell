@@ -26,10 +26,10 @@ class MicroManagerTIFF:
 
         self.verbose = verbose
         self.src_filepath = src_filepath
-        
+
         self.events = []
         self.global_metadata = {'processing_timestamp': timestamp()}
-        
+
         self.open_tiff()
 
 
@@ -74,7 +74,7 @@ class MicroManagerTIFF:
         Open the stack using tifffile.TiffFile
         '''
         self.tiff = tifffile.TiffFile(self.src_filepath)
-    
+
 
     @staticmethod
     def _parse_mm_tag_schema_v1(mm_tag):
@@ -127,7 +127,7 @@ class MicroManagerTIFF:
             ij_metadata = self.tiff.pages[0].tags['IJMetadata'].value['Info']
         except Exception:
             self.event_logger('There was no IJMetadata tag found on the first page')
-        
+
         if ij_metadata is not None:
             try:
                 ij_metadata = json.loads(ij_metadata)
@@ -202,7 +202,7 @@ class RawPipelineTIFF(MicroManagerTIFF):
         - if there are no channel_inds, check for an even number of pages
         - if there are two channel_inds, check that slice_inds
           and exposure settings are consistent within each channel
-        
+
         '''
 
         # whether the MM metadata has two channel inds with an equal number of slices
@@ -251,7 +251,7 @@ class RawPipelineTIFF(MicroManagerTIFF):
                 self.laser_405: min(unique_channel_inds),
                 self.laser_488: max(unique_channel_inds),
             }
-        
+
         # if there are three channel_inds, we assume the third channel is brightfield
         elif set(unique_channel_inds) == set([0, 1, 2]):
             self.event_logger('There were three channel inds')
@@ -259,7 +259,7 @@ class RawPipelineTIFF(MicroManagerTIFF):
                 self.laser_405: 0,
                 self.laser_488: 1,
             }
-            
+
         # if there's one channel index, check for an even number of pages
         elif len(unique_channel_inds) == 1:
             if np.mod(md.shape[0], 2) == 0:
@@ -277,7 +277,7 @@ class RawPipelineTIFF(MicroManagerTIFF):
                 self.has_valid_channel_inds = True
             else:
                 self.event_logger(
-                    'Channels have unequal number of slices: %s and %s' % (num_405, num_488))        
+                    'Channels have unequal number of slices: %s and %s' % (num_405, num_488))
 
         # in each channel, check that slice_ind increments by 1.0
         # and that exposure time and laser power are consistent
@@ -299,7 +299,7 @@ class RawPipelineTIFF(MicroManagerTIFF):
                 steps = np.unique(np.diff(md_channel[column]))
                 if len(steps) > 1 or steps[0] != 0:
                     self.event_logger(
-                        'Inconsistent values found in column %s for channel_ind %s' % 
+                        'Inconsistent values found in column %s for channel_ind %s' %
                         (column, channel_ind))
 
         self.validated_mm_metadata = md
@@ -325,7 +325,7 @@ class RawPipelineTIFF(MicroManagerTIFF):
     def split_channels(self):
         '''
         Split the pages of the pipeline-like TIFF into 405 and 488 channels
-        to construct the z-stack for each channel and, if possible, 
+        to construct the z-stack for each channel and, if possible,
         extract the channel-specific MM metadata (i.e., exposure time and laser power)
 
         Overview
@@ -342,9 +342,9 @@ class RawPipelineTIFF(MicroManagerTIFF):
 
         Assignment of channels
         ----------------------
-        When there are two valid channel_inds, the 405 laser is assigned 
+        When there are two valid channel_inds, the 405 laser is assigned
         to the lower channel_ind (which is either 0 or -1).
-        When there are no channel_inds, the 405 laser is assigned 
+        When there are no channel_inds, the 405 laser is assigned
         to the first half of the pages.
 
         '''
@@ -391,7 +391,7 @@ class RawPipelineTIFF(MicroManagerTIFF):
         try:
             proj = self.stacks[channel_name].max(axis=axis_ind)
             minmax = {
-                'min_intensity': int(proj.min()), 
+                'min_intensity': int(proj.min()),
                 'max_intensity': int(proj.max()),
             }
             self.global_metadata.update(self.tag_and_coerce_metadata(minmax, tag=channel_name))
@@ -468,8 +468,8 @@ class RawPipelineTIFF(MicroManagerTIFF):
         # estimate the cell layer center and round it the nearest z-slice
         cell_layer_center, _ = self.find_cell_layer(stack_405)
         cell_layer_center = np.round(cell_layer_center)
-        
-        # absolute position, in number of z-slices, of the top and bottom of the cell layer 
+
+        # absolute position, in number of z-slices, of the top and bottom of the cell layer
         bottom_ind = int(cell_layer_center + rel_bottom / step_size)
         top_ind = int(cell_layer_center + rel_top / step_size)
 

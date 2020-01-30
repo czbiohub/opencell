@@ -2,6 +2,7 @@
 import os
 import sys
 
+
 class Config(object):
     '''
     Common configuration

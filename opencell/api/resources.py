@@ -19,11 +19,11 @@ from opencell.api.cache import cache
 
 # copied from https://stackoverflow.com/questions/24816799/how-to-use-flask-cache-with-flask-restful
 def cache_key():
-   args = request.args
-   key = request.path + '?' + urllib.parse.urlencode([
-     (k, v) for k in sorted(args) for v in sorted(args.getlist(k))
-   ])
-   return key
+    args = request.args
+    key = request.path + '?' + urllib.parse.urlencode([
+        (k, v) for k in sorted(args) for v in sorted(args.getlist(k))
+    ])
+    return key
 
 
 class Plates(Resource):
@@ -77,9 +77,9 @@ class Electroporations(Resource):
         eps = current_app.Session.query(models.Electroporation).all()
 
         eps = [{
-                'date': str(ep.electroporation_date), 
-                'plate_id': ep.plate_instance.plate_design_id
-            } for ep in eps]
+            'date': str(ep.electroporation_date), 
+            'plate_id': ep.plate_instance.plate_design_id
+        } for ep in eps]
 
         eps = sorted(eps, key=lambda d: d['plate_id'])
         return eps
@@ -106,7 +106,8 @@ class PolyclonalLines(Resource):
         plate_id = args.get('plate_id')
         target_name = args.get('target_name')
 
-        if kind is not None and kind not in ['all', 'facs', 'sequencing', 'ms', 'microscopy']:
+        valid_kinds = ['all', 'facs', 'sequencing', 'ms', 'microscopy']
+        if kind is not None and kind not in valid_kinds:
             # TODO: return the right http error
             pass
         
@@ -115,13 +116,17 @@ class PolyclonalLines(Resource):
         
             # first look for an exact match
             designs = current_app.Session.query(models.CrisprDesign)\
-                    .filter(db.func.lower(models.CrisprDesign.target_name) == target_name.lower()).all()
+                .filter(db.func.lower(models.CrisprDesign.target_name) == target_name.lower()).all()
     
             # if no exact matches, use startswith
             if not designs:
-                designs = current_app.Session.query(models.CrisprDesign)\
-                    .filter(db.func.lower(models.CrisprDesign.target_name)\
-                    .startswith(target_name.lower())).all()
+                designs = (
+                    current_app.Session.query(models.CrisprDesign)
+                    .filter(
+                        db.func.lower(models.CrisprDesign.target_name)
+                        .startswith(target_name.lower())
+                    )
+                ).all()
 
             # filter by plate_id
             if plate_id:
@@ -130,12 +135,14 @@ class PolyclonalLines(Resource):
         # if a plate_id but not target_name was provided
         elif plate_id:
             designs = current_app.Session.query(models.CrisprDesign)\
-                    .filter(models.CrisprDesign.plate_design_id == plate_id).all()
+                .filter(models.CrisprDesign.plate_design_id == plate_id).all()
             
         lines = []
         if designs is not None:
             for design in designs:
-                ep_lines = design.plate_design.plate_instances[0].electroporations[0].electroporation_lines
+                ep_lines = (
+                    design.plate_design.plate_instances[0].electroporations[0].electroporation_lines
+                )
                 cell_lines = [line.cell_line for line in ep_lines if line.well_id == design.well_id]
                 lines.append(cell_lines[0])
 

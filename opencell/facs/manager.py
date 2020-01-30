@@ -51,16 +51,16 @@ class FACSManager(object):
 
     def _get_dirpath(self, plate_id, data_type=None):
 
-        if data_type=='control':
+        if data_type == 'control':
             dirnames = CONTROL_DIRNAMES
-        if data_type=='sample':
+        if data_type == 'sample':
             dirnames = SAMPLE_DIRNAMES
     
         if not dirnames.get(plate_id):
             raise ValueError('No %s data dirname for plate %s' % (data_type, plate_id))
     
         path = os.path.join(self.facs_data_root, dirnames[plate_id])
-        if data_type=='sample':
+        if data_type == 'sample':
             path = os.path.join(path, 'profile_data')
 
         if not os.path.isdir(path):

@@ -129,7 +129,8 @@ def generate_watershed_mask(mask, min_distance, mask_bg=None):
     dist = ndimage.distance_transform_edt(mask)
     distf = skimage.filters.gaussian(dist, sigma=1)
 
-    local_max = skimage.feature.peak_local_max(distf, indices=False, min_distance=min_distance, labels=mask)
+    local_max = skimage.feature.peak_local_max(
+        distf, indices=False, min_distance=min_distance, labels=mask)
     labeled_local_max, num_local_max = ndimage.label(local_max)
 
     mask_labeled = skimage.morphology.watershed(

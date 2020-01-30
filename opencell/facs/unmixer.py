@@ -6,6 +6,7 @@ import numpy as np
 
 from scipy import interpolate, optimize
 
+
 class FACSUnmixer(object):
     
     def __init__(self, xref, yref, xs, ys, offset_guess, offset_bounds, fit_window):
@@ -85,7 +86,7 @@ class FACSUnmixer(object):
         yref_interp_overlap = interpolate.interp1d(x, self.yref)(self.xs[overlap_mask])
 
         # pad the interpolated y-values with zeros outside of the overlap
-        yref_interp = self.ys*0
+        yref_interp = self.ys * 0
         yref_interp[overlap_mask] = yref_interp_overlap
         
         # apply the scale
@@ -99,11 +100,11 @@ class FACSUnmixer(object):
         '''
 
         # scale factor to avoid premature stopping because of small absolute y-values
-        internal_scale = 1/self.ys.max()
+        internal_scale = 1 / self.ys.max()
 
         yref_predict = self.predict(offset, scale)
 
-        ssq = (self.ys*internal_scale - yref_predict*internal_scale)**2
+        ssq = (self.ys * internal_scale - yref_predict * internal_scale)**2
         mask = (self.xs > self.fit_window[0]) & (self.xs < self.fit_window[1])
         cost = ssq[mask].sum()
         return cost

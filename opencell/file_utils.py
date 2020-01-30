@@ -6,6 +6,7 @@ import pandas as pd
 from opencell import constants
 from opencell.database import utils
 
+
 def parseFloat(val):
     try:
         val = float(val)
@@ -115,7 +116,8 @@ def load_legacy_microscopy_master_key(filepath):
         'id': 'legacy_id', 
         'automated_acquisition?': 'automation', 
         'acquisition_notes': 'notes',
-        'primary_imager': 'imager',})
+        'primary_imager': 'imager',
+    })
 
     md = md.drop(labels=[c for c in md.columns if c.startswith('unnamed')], axis=1)
 

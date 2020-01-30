@@ -30,7 +30,8 @@ class FOVProcessor:
         target_name,
         src_type,
         raw_filepath,
-        all_roi_rows):
+        all_roi_rows
+    ):
         
         self.fov_id = fov_id
         self.pml_id = pml_id
@@ -165,7 +166,8 @@ class FOVProcessor:
         roi_id=None,
         roi_props=None,
         ext=None, 
-        makedirs=True):
+        makedirs=True
+    ):
         '''
         Construct the relative directory path and filename for a given 'kind' of output file
 

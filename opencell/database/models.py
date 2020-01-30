@@ -34,7 +34,7 @@ class Base(object):
         the construction of JSON-able objects
         '''
         d = {}
-        for column in self.__table__.columns: # pylint: disable=no-member
+        for column in self.__table__.columns:  # pylint: disable=no-member
             value = getattr(self, column.name)
             if isinstance(value, enum.Enum):
                 value = value.value
@@ -46,6 +46,7 @@ class Base(object):
             d[column.name] = value
         return d
 
+
 Base = db.ext.declarative.declarative_base(cls=Base, metadata=metadata)
 
 
@@ -55,10 +56,12 @@ class TerminusTypeEnum(enum.Enum):
     C_TERMINUS = 'C_TERMINUS'
     INTERNAL = 'INTERNAL'
 
+
 class CellLineTypeEnum(enum.Enum):
     PROGENITOR = 'PROGENITOR'
     POLYCLONAL = 'POLYCLONAL'
     MONOCLONAL = 'MONOCLONAL'
+
 
 terminus_type_enum = db.Enum(TerminusTypeEnum, name='terminus_type_enum')
 cell_line_type_enum = db.Enum(CellLineTypeEnum, name='cell_line_type_enum')
@@ -93,10 +96,12 @@ class CellLine(Base):
     parent = db.orm.relationship('CellLine', remote_side=[id])
 
     # electroporation_line that generated the cell line (if any)
-    electroporation_line = db.orm.relationship('ElectroporationLine', back_populates='cell_line', uselist=False)
+    electroporation_line = db.orm.relationship(
+        'ElectroporationLine', back_populates='cell_line', uselist=False)
 
     # manual annotation
-    annotation = db.orm.relationship('CellLineAnnotation', back_populates='cell_line', uselist=False)
+    annotation = db.orm.relationship(
+        'CellLineAnnotation', back_populates='cell_line', uselist=False)
 
 
     def __init__(self, line_type, name=None, notes=None, parent_id=None):
@@ -104,7 +109,7 @@ class CellLine(Base):
         For simplicity, we only allow instantiation using an explicit parent_id,
         not by providing a list of children instances or a parent instance
         '''
-        if parent_id is None and line_type!=CellLineTypeEnum.PROGENITOR.value:
+        if parent_id is None and line_type != CellLineTypeEnum.PROGENITOR.value:
             raise ValueError('A parent_id is required for all derived cell lines')
 
         self.line_type = line_type
@@ -254,11 +259,11 @@ class CrisprDesign(Base):
             print("Warning: terminus type '%s' coerced to INTERNAL" % value)
             value = TerminusTypeEnum.INTERNAL
         elif value.startswith('c'):
-            if value!='c':
+            if value != 'c':
                 print("Warning: terminus type '%s' coerced to C_TERMINUS" % value)
             value = TerminusTypeEnum.C_TERMINUS
         elif value.startswith('n'):
-            if value!='n':
+            if value != 'n':
                 print("Warning: terminus type '%s' coerced to N_TERMINUS" % value)
             value = TerminusTypeEnum.N_TERMINUS
         return value

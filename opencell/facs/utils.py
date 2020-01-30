@@ -44,8 +44,8 @@ def hlog_inverse(value):
     aux = 1. * d / r * value
     s = np.sign(value)
     if s.shape:
-        s[s==0] = 1
-    elif s==0:
+        s[s == 0] = 1
+    elif s == 0:
         s = 1
     return s * 10 ** (s * aux) + b * aux - s
 

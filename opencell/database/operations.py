@@ -49,9 +49,9 @@ def add_and_commit(session, instances, errors='raise'):
             session.commit()
         except Exception as exception:
             session.rollback()
-            if errors=='raise':
+            if errors == 'raise':
                 raise
-            if errors=='warn':
+            if errors == 'warn':
                 print('Error in add_and_commit: %s' % exception)
 
     # except db.exc.IntegrityError:
@@ -104,9 +104,11 @@ def get_or_create_progenitor_cell_line(session, name, notes=None, create=False):
     '''
 
     # check whether the progenitor cell line already exists
-    cell_line = session.query(models.CellLine)\
-        .filter(models.CellLine.name==name)\
+    cell_line = (
+        session.query(models.CellLine)
+        .filter(models.CellLine.name == name)
         .first()
+    )
 
     if cell_line is not None:
         print("Warning: a cell line with the name '%s' already exists" % name)
@@ -118,7 +120,8 @@ def get_or_create_progenitor_cell_line(session, name, notes=None, create=False):
 
     else:
         cell_line = None
-        print("No progenitor cell line with name '%s' found; use create=True to force its creation" \
+        print(
+            "No progenitor cell line with name '%s' found; use create=True to force its creation"
             % name)
 
     return cell_line
@@ -165,7 +168,7 @@ class PlateOperations:
         '''
 
         plate = session.query(models.PlateDesign)\
-            .filter(models.PlateDesign.design_id==design_id).first()
+            .filter(models.PlateDesign.design_id == design_id).first()
 
         if plate is None:
             raise ValueError('Plate design %s does not exist' % design_id)
@@ -207,7 +210,7 @@ class PlateOperations:
 
         try:
             add_and_commit(session, plate)
-        except:
+        except Exception:
             print('Error creating design %s' % plate.design_id)
             raise 
         
@@ -230,7 +233,8 @@ class PlateOperations:
         session, 
         library_snapshot, 
         drop_existing=False,
-        errors='warn'):
+        errors='warn'
+    ):
         '''
         Convenience method to insert all crispr designs for the current plate
         from a snapshot of the library spreadsheet. 
@@ -244,7 +248,7 @@ class PlateOperations:
         '''
 
         # crop the library to the current plate
-        designs = library_snapshot.loc[library_snapshot.plate_id==self.plate.design_id].copy()
+        designs = library_snapshot.loc[library_snapshot.plate_id == self.plate.design_id].copy()
 
         # discard the plate_id
         designs.drop(labels=['plate_id'], axis=1, inplace=True)
@@ -253,18 +257,18 @@ class PlateOperations:
         designs.replace({pd.np.nan: None}, inplace=True)
 
         # check that we have the expected number of designs/wells
-        if designs.shape[0]!=len(constants.DATABASE_WELL_IDS):
+        if designs.shape[0] != len(constants.DATABASE_WELL_IDS):
             raise ValueError('%s designs found; expected 96' % designs.shape[0])
 
         # drop the negative (empty) controls
-        designs = designs.loc[designs.target_name!='empty_control']
+        designs = designs.loc[designs.target_name != 'empty_control']
     
         # delete all existing crispr designs
         if drop_existing:
             delete_and_commit(session, self.plate.crispr_designs)
 
         # create all designs and maybe warn about errors
-        for ind, design in designs.iterrows(): # pylint: disable=unused-variable
+        for ind, design in designs.iterrows():  # pylint: disable=unused-variable
             self.plate.crispr_designs.append(models.CrisprDesign(**design))
             add_and_commit(session, self.plate, errors=errors)
 
@@ -344,7 +348,7 @@ class PolyclonalLineOperations:
     def from_line_id(cls, session, line_id):
         '''
         '''
-        line = session.query(models.CellLine).filter(models.CellLine.id==line_id).first()
+        line = session.query(models.CellLine).filter(models.CellLine.id == line_id).first()
         return cls(line)
 
 
@@ -359,11 +363,11 @@ class PolyclonalLineOperations:
         ep = models.Electroporation
 
         this_ep = session.query(ep).filter(
-            ep.plate_instance==session.query(pi).filter(pi.plate_design_id==design_id).first()
+            ep.plate_instance == session.query(pi).filter(pi.plate_design_id == design_id).first()
         ).first()
 
         for line in this_ep.electroporation_lines:
-            if line.well_id==well_id:
+            if line.well_id == well_id:
                 return cls(line.cell_line)
         
         raise ValueError('No polyclonal line found for well %s of plate %s' % (well_id, design_id))
@@ -377,8 +381,12 @@ class PolyclonalLineOperations:
         If there is more than one cell_line for the target_name, 
         then the PolyClonalLineOperations class is instantiated using the first such cell_line
         '''
-        cds = session.query(models.CrisprDesign)\
-                .filter(db.func.lower(models.CrisprDesign.target_name) == db.func.lower(target_name)).all()
+        cds = (
+            session.query(models.CrisprDesign)
+            .filter(
+                db.func.lower(models.CrisprDesign.target_name) == db.func.lower(target_name)
+            )
+        ).all()
 
         if len(cds) > 1:
             print('Warning: %s cell lines found for target %s' % (len(cds), target_name))
@@ -389,7 +397,7 @@ class PolyclonalLineOperations:
 
         cd = cds[0]
         ep_lines = cd.plate_design.plate_instances[0].electroporations[0].electroporation_lines
-        ep_line = [line for line in ep_lines if line.well_id==cd.well_id][0]
+        ep_line = [line for line in ep_lines if line.well_id == cd.well_id][0]
         return cls(ep_line.cell_line)
 
 
@@ -520,12 +528,9 @@ class PolyclonalLineOperations:
 
         ep = self.line.electroporation_line.electroporation
 
-        plate_id = ep.plate_instance.plate_design_id
-        well_id = self.line.electroporation_line.well_id
-
         # the crispr design for this line
         for design in ep.plate_instance.plate_design.crispr_designs:
-            if design.well_id == well_id:
+            if design.well_id == self.line.electroporation_line.well_id:
                 break
 
         # top-level attributes from the crispr design

@@ -23,7 +23,7 @@ from opencell.imaging.processors import FOVProcessor
 from opencell.imaging.managers import PlateMicroscopyManager
 
 try:
-    DRAGONFLY_REPO ='/Users/keith.cheveralls/projects/dragonfly-automation' 
+    DRAGONFLY_REPO = '/Users/keith.cheveralls/projects/dragonfly-automation' 
     sys.path.append(DRAGONFLY_REPO)
     from dragonfly_automation.fov_models import PipelineFOVScorer
 except ImportError:
@@ -158,7 +158,7 @@ def insert_plate_microscopy_fovs(session, cache_dir=None, errors='warn'):
 
         try:
             pcl_ops = operations.PolyclonalLineOperations.from_plate_well(session, plate_id, well_id)
-        except:
+        except Exception:
             print('No polyclonal line for (%s, %s)' % group)
             continue
         pcl_ops.insert_microscopy_fovs(session, group_metadata, errors=errors)
@@ -193,7 +193,7 @@ def insert_raw_pipeline_microscopy_fovs(session, root_dir, pml_id, errors='warn'
         group_metadata = metadata.get_group(group)
         try:
             pcl_ops = operations.PolyclonalLineOperations.from_plate_well(session, plate_id, well_id)
-        except:
+        except Exception:
             print('No polyclonal line for (%s, %s)' % group)
             continue
         pcl_ops.insert_microscopy_fovs(session, group_metadata, errors=errors)
@@ -206,7 +206,8 @@ def do_fov_task(
     fov_operator, 
     processor_method_name, 
     processor_method_kwargs,
-    operator_method_name):
+    operator_method_name
+):
     '''
     fov_processor : an instance of the imaging.processor.FOVProcessor class
     fov_operator : an instance of the database.operations.MicroscopyFOVOperations class
@@ -302,7 +303,7 @@ def do_fov_tasks(Session, args, processor_method_name, processor_method_kwargs, 
     if 'message' in list(errors.columns):
         print("Errors occurred while running method '%s'" % processor_method_name)
         if args.dst_root is not None:
-            cache_filepath = os.path.join(args.dst_root, '%s_%s-errors.csv' % \
+            cache_filepath = os.path.join(args.dst_root, '%s_%s-errors.csv' %
                 (timestamp(), processor_method_name))
             errors.to_csv(cache_filepath, index=False)
             print("Error log was saved to %s" % cache_filepath)
@@ -325,7 +326,10 @@ def get_unprocessed_fovs(engine, session, result_kind):
         where kind is null;'''
 
     d = pd.read_sql(query % result_kind, engine)
-    unprocessed_fovs = session.query(models.MicroscopyFOV).filter(models.MicroscopyFOV.id.in_(list(d.id))).all()
+    unprocessed_fovs = (
+        session.query(models.MicroscopyFOV)
+        .filter(models.MicroscopyFOV.id.in_(list(d.id)))
+    ).all()
     return unprocessed_fovs
 
 
@@ -350,8 +354,10 @@ def main():
     # if a pml_id was provided, only process the FOVs from that dataset
     fovs = None
     if args.pml_id:
-        dataset = Session.query(models.MicroscopyDataset)\
-            .filter(models.MicroscopyDataset.pml_id == args.pml_id).first()
+        dataset = (
+            Session.query(models.MicroscopyDataset)
+            .filter(models.MicroscopyDataset.pml_id == args.pml_id)
+        ).first()
         fovs = dataset.fovs
 
     # construct the PlateMicroscopy metadata
@@ -388,7 +394,10 @@ def main():
         except Exception as error:
             print('FATAL ERROR: an uncaught exception occurred in %s' % method_name)
             print(str(error))
-            with open(os.path.join(args.dst_root, '%s_%s_uncaught_exception.log' % (timestamp(), method_name)), 'w') as file:
+            with open(
+                os.path.join(args.dst_root, '%s_%s_uncaught_exception.log' % (timestamp(), method_name)),
+                'w'
+            ) as file:
                 file.write(str(error))
 
 
@@ -444,7 +453,10 @@ def main():
         except Exception as error:
             print('FATAL ERROR: an uncaught exception occurred in %s' % method_name)
             print(str(error))
-            with open(os.path.join(args.dst_root, '%s_%s_uncaught_exception.log' % (timestamp(), method_name)), 'w') as file:
+            with open(
+                os.path.join(args.dst_root, '%s_%s_uncaught_exception.log' % (timestamp(), method_name)),
+                'w'
+            ) as file:
                 file.write(str(error))
             raise
 

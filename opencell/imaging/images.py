@@ -125,13 +125,13 @@ class MicroManagerTIFF:
         ij_metadata = None
         try:
             ij_metadata = self.tiff.pages[0].tags['IJMetadata'].value['Info']
-        except:
+        except Exception:
             self.event_logger('There was no IJMetadata tag found on the first page')
         
         if ij_metadata is not None:
             try:
                 ij_metadata = json.loads(ij_metadata)
-            except:
+            except Exception:
                 self.event_logger('IJMetadata could not be parsed by json.loads')
 
         mm_metadata_rows = []
@@ -150,11 +150,11 @@ class MicroManagerTIFF:
 
             try:
                 page_metadata_v1 = self._parse_mm_tag_schema_v1(mm_tag.value)
-            except:
+            except Exception:
                 page_metadata_v1 = None
             try:
                 page_metadata_v2 = self._parse_mm_tag_schema_v2(mm_tag.value)
-            except:
+            except Exception:
                 page_metadata_v2 = None
 
             page_metadata = {}
@@ -231,15 +231,15 @@ class RawPipelineTIFF(MicroManagerTIFF):
         num_dropped_rows = self.mm_metadata.shape[0] - md.shape[0]
         if num_dropped_rows != num_error_rows:
             self.event_logger(
-                '%s rows with NAs were dropped but %s rows had errors' % \
-                    (num_dropped_rows, num_error_rows))
+                '%s rows with NAs were dropped but %s rows had errors' %
+                (num_dropped_rows, num_error_rows))
 
         # check that we can coerce the parsed columns as expected
         int_columns = ['slice_ind', 'channel_ind']
         for column in int_columns:
             md[column] = md[column].apply(int)
 
-        float_columns = ['laser_power_405', 'laser_power_488', 'exposure_time',]
+        float_columns = ['laser_power_405', 'laser_power_488', 'exposure_time']
         for column in float_columns:
             md[column] = md[column].apply(float)
 
@@ -276,12 +276,13 @@ class RawPipelineTIFF(MicroManagerTIFF):
             if num_405 == num_488:
                 self.has_valid_channel_inds = True
             else:
-                self.event_logger('Channels have unequal number of slices: %s and %s' % (num_405, num_488))        
+                self.event_logger(
+                    'Channels have unequal number of slices: %s and %s' % (num_405, num_488))        
 
         # in each channel, check that slice_ind increments by 1.0
         # and that exposure time and laser power are consistent
         for channel_ind in unique_channel_inds:
-            md_channel = md.loc[md.channel_ind==channel_ind]
+            md_channel = md.loc[md.channel_ind == channel_ind]
             steps = np.unique(np.diff(md_channel.slice_ind))
 
             # check that slice inds are contiguous
@@ -298,7 +299,8 @@ class RawPipelineTIFF(MicroManagerTIFF):
                 steps = np.unique(np.diff(md_channel[column]))
                 if len(steps) > 1 or steps[0] != 0:
                     self.event_logger(
-                        'Inconsistent values found in column %s for channel_ind %s' % (column, channel_ind))
+                        'Inconsistent values found in column %s for channel_ind %s' % 
+                        (column, channel_ind))
 
         self.validated_mm_metadata = md
 
@@ -314,7 +316,7 @@ class RawPipelineTIFF(MicroManagerTIFF):
             key = '%s_%s' % (key, tag)
             try:
                 val = float(val)
-            except:
+            except Exception:
                 pass
             d[key] = val
         return d
@@ -354,7 +356,7 @@ class RawPipelineTIFF(MicroManagerTIFF):
 
         if self.has_valid_channel_inds:
             for channel_name in (self.laser_405, self.laser_488):
-                channel_md = md.loc[md.channel_ind==self.channel_inds[channel_name]]
+                channel_md = md.loc[md.channel_ind == self.channel_inds[channel_name]]
                 self.global_metadata.update(
                     self.tag_and_coerce_metadata(channel_md.iloc[0], tag=channel_name))
                 self.stacks[channel_name] = self.concat_pages(channel_md.page_ind.values)
@@ -397,7 +399,7 @@ class RawPipelineTIFF(MicroManagerTIFF):
             if dst_filepath is not None:
                 tifffile.imsave(dst_filepath, proj)
 
-        except:
+        except Exception:
             self.event_logger(
                 'An error occured while %s-projecting the %s channel' % (axis, channel_name))
 

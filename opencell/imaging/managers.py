@@ -241,7 +241,7 @@ class PlateMicroscopyManager:
         print('Warning: dropping %s rows of unparseable raw metadata' % len(dropped_inds))
         md_raw.drop(dropped_inds, inplace=True)
 
-        #the parental_line is the same for all plates in PlateMicroscopy
+        # the parental_line is the same for all plates in PlateMicroscopy
         md_raw['parental_line'] = constants.PARENTAL_LINE_NAME
 
         # the electroporation ID is always the same
@@ -297,7 +297,8 @@ class PlateMicroscopyManager:
         for ind, row in md.iterrows():
             if not np.mod(ind, 10000):
                 print(ind)
-            s = os.stat(os.path.join(self.root_dir, row.plate_dir, row.exp_dir, row.exp_subdir, row.filename))
+            s = os.stat(os.path.join(
+                self.root_dir, row.plate_dir, row.exp_dir, row.exp_subdir, row.filename))
             md.at[ind, 'filesize'] = s.st_size
             md.at[ind, 'ctime'] = s.st_ctime
         self.md = md

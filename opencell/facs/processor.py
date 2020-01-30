@@ -17,8 +17,8 @@ from opencell import constants as common_constants
 # FITC channel name
 FITC = facs_constants.FITC
 
-class FACSProcessor(object):
 
+class FACSProcessor(object):
 
     def __init__(self, samples_dirpath, controls_dirpath, verbose=True):
         '''
@@ -72,18 +72,18 @@ class FACSProcessor(object):
         well_ids = [filename.split(os.sep)[-1].split('_')[0] for filename in filenames]
 
         # check for missing/unexpected well_ids
-        missing_well_ids = set(common_constants.WELL_IDS).difference(well_ids)
+        missing_well_ids = set(common_constants.RAW_WELL_IDS).difference(well_ids)
         if missing_well_ids:
             print('Warning: there is no FCS file for some well_ids: %s' % missing_well_ids)
 
-        unexpected_well_ids = set(well_ids).difference(common_constants.WELL_IDS)
+        unexpected_well_ids = set(well_ids).difference(common_constants.RAW_WELL_IDS)
         if unexpected_well_ids:
             print('Warning: FCS files found for unexpected well_ids %s' % unexpected_well_ids)
     
         # count the number of negative control datasets
         control_filepaths = glob.glob(os.path.join(self.controls_dirpath, '*.fcs'))
         if len(control_filepaths) != facs_constants.NUM_CONTROL_DATASETS:
-            print('Warning: expected %s control datasets but found %s' % \
+            print('Warning: expected %s control datasets but found %s' %
                 (facs_constants.NUM_CONTROL_DATASETS, len(control_filepaths)))
         
         return well_ids, control_filepaths
@@ -94,7 +94,7 @@ class FACSProcessor(object):
         Construct the filepath of the dataset for a given well_id    
         '''
         
-        if well_id not in common_constants.WELL_IDS:
+        if well_id not in common_constants.RAW_WELL_IDS:
             raise ValueError('Invalid well_id %s' % well_id)
  
         # we *assume* that the filename is of this form
@@ -203,11 +203,11 @@ class FACSProcessor(object):
         # also, note that if `xrange` is proportional to the standard deviation,
         # then this rule is similar to "Scott's rule" for the optimal bin width.
         if nbins is None:
-            nbins = 2 * len(values)**(1/3)
+            nbins = 2 * len(values) ** (1/3)
             if verbose:
                 print('Using nbins=%d' % nbins)
 
-        bin_width = (maxx - minn)/nbins
+        bin_width = (maxx - minn) / nbins
         bins = np.arange(minn, maxx, bin_width)
         bin_counts, bin_edges = np.histogram(values, bins=bins, density=True)
 

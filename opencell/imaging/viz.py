@@ -15,7 +15,7 @@ def imshow(im, figsize=12, cmap='gray', colorbar=True):
     '''
     plt.figure(figsize=(figsize, figsize))
     plt.imshow(im, cmap=cmap)
-    if im.dtype!='bool' and im.ndim==2 and colorbar:
+    if im.dtype != 'bool' and im.ndim == 2 and colorbar:
         plt.colorbar(shrink=.5)
 
     plt.axis('off')
@@ -65,7 +65,7 @@ def make_rgb(imr=None, img=None, imb=None, im_bg=None, zaxis=0, gamma=None):
     '''
 
     def _make_projection(im):
-        if im.ndim==3:
+        if im.ndim == 3:
             im = im.max(axis=zaxis)
         if im.ndim > 3:
             raise ValueError('An image has more than three dimensions')
@@ -115,7 +115,8 @@ def build_tile(
     label_column=None, 
     label_format=None,
     im_loader=None,
-    plot=True):
+    plot=True
+):
     
     filepath_colummn = 'filename'
     if 'filepath' in data.columns:

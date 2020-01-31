@@ -5,7 +5,7 @@ import datetime
 
 def url_from_credentials(credentials_filepath):
     '''
-    Generate database URL from credentials in a JSON file 
+    Generate database URL from credentials in a JSON file
     '''
 
     with open(credentials_filepath) as file:
@@ -30,15 +30,15 @@ def format_plate_design_id(design_id):
     Format a plate design id if it's not already in the format required by the database
     This format is: `'P%04d' % plate_number`
 
-    For convenience, this method is relatively permissive. 
-    
+    For convenience, this method is relatively permissive.
+
     All of the following examples will yield 'P0001':
     'Plate 1, 'plate1', 'plate01', '01', 1
 
     '''
 
     design_id = str(design_id)
-    
+
     result = re.match('^P[0-9]{4}$', design_id)
     if result is None:
         plate_number = None

@@ -24,7 +24,7 @@ class PlateMicroscopyManager:
     '''
 
     def __init__(self, root_dir=None, cache_dir=None):
-        
+
         self.root_dir = root_dir
         self.cache_dir = cache_dir
         os.makedirs(self.cache_dir, exist_ok=True)
@@ -44,7 +44,7 @@ class PlateMicroscopyManager:
         with open(self.cached_os_walk_filepath, 'rb') as file:
             self.os_walk = pickle.load(file)
 
-        # note that a trailing slash is required on self.root_dir 
+        # note that a trailing slash is required on self.root_dir
         # to correctly remove the root_dir from the raw filepaths in construct_metadata
         self.root_dir = self.os_walk[0][0]
         if self.root_dir[-1] != os.sep:
@@ -54,7 +54,7 @@ class PlateMicroscopyManager:
     def cache_os_walk(self):
         if os.path.isfile(self.cached_os_walk_filepath):
             raise ValueError('Cached os_walk already exists')
-    
+
         self.os_walk = list(os.walk(self.root_dir))
         with open(self.cached_os_walk_filepath, 'wb') as file:
             pickle.dump(self.os_walk, file)
@@ -87,28 +87,28 @@ class PlateMicroscopyManager:
             filenames = [name for name in filenames if '.tif' in name]
             if not filenames:
                 continue
-            maxx = max(maxx, len(path.replace(self.root_dir, '').split(os.sep)))  
+            maxx = max(maxx, len(path.replace(self.root_dir, '').split(os.sep)))
         return maxx
-    
+
 
     @staticmethod
     def parse_raw_tiff_filename(filename):
         '''
         Parse well_id, site_num, and target name from a raw TIFF filename
-        
+
         For almost all filenames, the format is '{well_id}_{site_num}_{target_name}.ome.tif'
-        
+
         The exception is 'Jin' lines, which appear in plate6 and plate7;
         here, the format is '{well_id}_{site_num}_Jin_{well_id}_{target_name}.ome.tif',
         and it is the first well_id that is the 'real', pipeline-relevant, well_id
-        
+
         Note that the target name sometimes includes the terminus that was tagged,
         in the form of a trailing '-N', '-C', '_N', '_C', '_Int', '-Int'
 
-        Also, two target names include a trailing '-A' or '-B' 
+        Also, two target names include a trailing '-A' or '-B'
         (these are 'HLA-A' and 'ARHGAP11A-B')
         '''
-        
+
         well_id = '[A-H][1-9][0-2]?'
         site_num = '[1-9][0-9]?'
         target_name = r'[a-zA-Z0-9]+'
@@ -116,8 +116,8 @@ class PlateMicroscopyManager:
         raw_pattern = rf'^({well_id})_({site_num})_({target_name})({appendix})?.ome.tif$'
 
         # in Jin filenames, the second well_id is not relevant
-        raw_jin_pattern = rf'^({well_id})_({site_num})_Jin_(?:{well_id})_({target_name})({appendix})?.ome.tif$'
-        
+        raw_jin_pattern = rf'^({well_id})_({site_num})_Jin_(?:{well_id})_({target_name})({appendix})?.ome.tif$'  # noqa: E501
+
         filename_was_parsed = False
         for pattern in [raw_pattern, raw_jin_pattern]:
             result = re.match(pattern, filename)
@@ -169,7 +169,7 @@ class PlateMicroscopyManager:
             if paths_only:
                 rows.append({**path_info, **plate_info})
                 continue
-            
+
             # create a row for each file
             for filename in filenames:
                 rows.append({'filename': filename, **path_info, **plate_info})
@@ -183,7 +183,7 @@ class PlateMicroscopyManager:
 
         # flag all of the raw files
         # these are all TIFF files in experiment dirs of the form '^ML[0-9]{4}_[0-9]{8}$'
-        # (for example: 'ML0045_20181022')        
+        # (for example: 'ML0045_20181022')
         md['is_raw'] = md.exp_dir.apply(lambda s: re.match('^ML[0-9]{4}_[0-9]{8}$', s) is not None)
 
         self.md = md
@@ -218,11 +218,11 @@ class PlateMicroscopyManager:
 
         for column in ['well_id', 'site_num', 'target_name', 'fov_id']:
             md_raw[column] = None
-        
+
         dropped_inds = []
         # parse the well_id, site_num, and target_name from the filename,
         # and drop rows with unparseable filenames
-        for ind, row in md_raw.iterrows():        
+        for ind, row in md_raw.iterrows():
             result = self.parse_raw_tiff_filename(row.filename)
             if not result:
                 if 'MMStack' not in row.filename:
@@ -233,15 +233,15 @@ class PlateMicroscopyManager:
             well_id, site_num, target_name = result
             md_raw.at[ind, 'site_num'] = site_num
             md_raw.at[ind, 'target_name'] = target_name
-        
+
             # pad the well_id ('A1' -> 'A01')
             well_row, well_col = re.match('([A-H])([0-9]{1,2})', well_id).groups()
             md_raw.at[ind, 'well_id'] = '%s%02d' % (well_row, int(well_col))
-    
+
         print('Warning: dropping %s rows of unparseable raw metadata' % len(dropped_inds))
         md_raw.drop(dropped_inds, inplace=True)
 
-        #the parental_line is the same for all plates in PlateMicroscopy
+        # the parental_line is the same for all plates in PlateMicroscopy
         md_raw['parental_line'] = constants.PARENTAL_LINE_NAME
 
         # the electroporation ID is always the same
@@ -265,11 +265,11 @@ class PlateMicroscopyManager:
         # reconstruct the raw filepath (relative to the PlateMicroscopy directory)
         for ind, row in md_raw.iterrows():
             md_raw.at[ind, 'raw_filepath'] = os.path.join(
-                row.plate_dir, 
-                row.exp_dir, 
+                row.plate_dir,
+                row.exp_dir,
                 row.exp_subdir if not pd.isna(row.exp_subdir) else '',
                 row.filename)
-    
+
         # construct an fov_id that should be globally unique
         for ind, row in md_raw.iterrows():
             md_raw.at[ind, 'fov_id'] = '%s-%s-%s' % (row.exp_id, row.well_id, row.site_id)
@@ -297,8 +297,8 @@ class PlateMicroscopyManager:
         for ind, row in md.iterrows():
             if not np.mod(ind, 10000):
                 print(ind)
-            s = os.stat(os.path.join(self.root_dir, row.plate_dir, row.exp_dir, row.exp_subdir, row.filename))
+            s = os.stat(os.path.join(
+                self.root_dir, row.plate_dir, row.exp_dir, row.exp_subdir, row.filename))
             md.at[ind, 'filesize'] = s.st_size
             md.at[ind, 'ctime'] = s.st_ctime
         self.md = md
-

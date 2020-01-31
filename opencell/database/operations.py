@@ -49,9 +49,9 @@ def add_and_commit(session, instances, errors='raise'):
             session.commit()
         except Exception as exception:
             session.rollback()
-            if errors=='raise':
+            if errors == 'raise':
                 raise
-            if errors=='warn':
+            if errors == 'warn':
                 print('Error in add_and_commit: %s' % exception)
 
     # except db.exc.IntegrityError:
@@ -62,7 +62,7 @@ def delete_and_commit(session, instances):
 
     if not isinstance(instances, list):
         instances = [instances]
-    
+
     for instance in instances:
         try:
             session.delete(instance)
@@ -88,15 +88,15 @@ def get_or_create_progenitor_cell_line(session, name, notes=None, create=False):
     (which contains predominately polyclonal and monoclonal lines).
 
     The use of a human-readable name here is just for convenience and is intended
-    to facilitate the creation/retrieval of the progenitor cell lines used for electroporation 
-    (of which we can assume there will be very few). 
+    to facilitate the creation/retrieval of the progenitor cell lines used for electroporation
+    (of which we can assume there will be very few).
 
     Parameters
     ----------
     name : required human-readable and unique name for the cell_line
     notes : optional human-readable notes about the cell line
     create : whether to create a cell line with the given name if one does not already exist
-        
+
     Returns
     -------
     A CellLine instance corresponding to the progenitor cell line
@@ -104,9 +104,11 @@ def get_or_create_progenitor_cell_line(session, name, notes=None, create=False):
     '''
 
     # check whether the progenitor cell line already exists
-    cell_line = session.query(models.CellLine)\
-        .filter(models.CellLine.name==name)\
+    cell_line = (
+        session.query(models.CellLine)
+        .filter(models.CellLine.name == name)
         .first()
+    )
 
     if cell_line is not None:
         print("Warning: a cell line with the name '%s' already exists" % name)
@@ -118,7 +120,8 @@ def get_or_create_progenitor_cell_line(session, name, notes=None, create=False):
 
     else:
         cell_line = None
-        print("No progenitor cell line with name '%s' found; use create=True to force its creation" \
+        print(
+            "No progenitor cell line with name '%s' found; use create=True to force its creation"
             % name)
 
     return cell_line
@@ -126,7 +129,7 @@ def get_or_create_progenitor_cell_line(session, name, notes=None, create=False):
 
 def get_plate_instance(session, plate_design_id, plate_instance_id):
     '''
-    Convenience method to retrieve an instance of a plate design 
+    Convenience method to retrieve an instance of a plate design
     by specifying a design_id and/or an instance_id
 
     If a design_id is provided without an instance_id, then there must be only one instance
@@ -134,9 +137,9 @@ def get_plate_instance(session, plate_design_id, plate_instance_id):
 
     If an instance_id is provided without a design_id, then we assume the user has looked up
     the correct instance_id.
-    
+
     If both a design_id and an instance_id are provided, we check that the instance_id is indeed
-    an instance of the specified design. 
+    an instance of the specified design.
     '''
     pass
 
@@ -165,7 +168,7 @@ class PlateOperations:
         '''
 
         plate = session.query(models.PlateDesign)\
-            .filter(models.PlateDesign.design_id==design_id).first()
+            .filter(models.PlateDesign.design_id == design_id).first()
 
         if plate is None:
             raise ValueError('Plate design %s does not exist' % design_id)
@@ -184,7 +187,7 @@ class PlateOperations:
 
         **This is intended to be the only way in which new plate designs are created**
 
-        If the design_id already exists, we issue a warning 
+        If the design_id already exists, we issue a warning
         but load and instantiate from the existing plate
         '''
 
@@ -201,16 +204,16 @@ class PlateOperations:
         # automatically create the first instance of the new design
         plate.plate_instances.append(
             models.PlateInstance(
-                instance_date=None, 
+                instance_date=None,
                 instance_notes='auto-generated first instance')
         )
 
         try:
             add_and_commit(session, plate)
-        except:
+        except Exception:
             print('Error creating design %s' % plate.design_id)
-            raise 
-        
+            raise
+
         return cls(plate)
 
 
@@ -218,7 +221,7 @@ class PlateOperations:
         '''
         Manually create a new instance of the plate
 
-        Note that this is not implemented (as of 2019-06-28), 
+        Note that this is not implemented (as of 2019-06-28),
         because there is currently only one instance of each plate
         (and it is created automatically in create_plate_design)
         '''
@@ -226,14 +229,15 @@ class PlateOperations:
 
 
     def create_crispr_designs(
-        self, 
-        session, 
-        library_snapshot, 
+        self,
+        session,
+        library_snapshot,
         drop_existing=False,
-        errors='warn'):
+        errors='warn'
+    ):
         '''
         Convenience method to insert all crispr designs for the current plate
-        from a snapshot of the library spreadsheet. 
+        from a snapshot of the library spreadsheet.
 
         Parameters
         ----------
@@ -244,7 +248,7 @@ class PlateOperations:
         '''
 
         # crop the library to the current plate
-        designs = library_snapshot.loc[library_snapshot.plate_id==self.plate.design_id].copy()
+        designs = library_snapshot.loc[library_snapshot.plate_id == self.plate.design_id].copy()
 
         # discard the plate_id
         designs.drop(labels=['plate_id'], axis=1, inplace=True)
@@ -253,18 +257,18 @@ class PlateOperations:
         designs.replace({pd.np.nan: None}, inplace=True)
 
         # check that we have the expected number of designs/wells
-        if designs.shape[0]!=len(constants.DATABASE_WELL_IDS):
+        if designs.shape[0] != len(constants.DATABASE_WELL_IDS):
             raise ValueError('%s designs found; expected 96' % designs.shape[0])
 
         # drop the negative (empty) controls
-        designs = designs.loc[designs.target_name!='empty_control']
-    
+        designs = designs.loc[designs.target_name != 'empty_control']
+
         # delete all existing crispr designs
         if drop_existing:
             delete_and_commit(session, self.plate.crispr_designs)
 
         # create all designs and maybe warn about errors
-        for ind, design in designs.iterrows(): # pylint: disable=unused-variable
+        for ind, design in designs.iterrows():  # pylint: disable=unused-variable
             self.plate.crispr_designs.append(models.CrisprDesign(**design))
             add_and_commit(session, self.plate, errors=errors)
 
@@ -283,19 +287,19 @@ class ElectroporationOperations:
         '''
         Create a new electroporation
 
-        Note that this *automatically* generates 96 new polyclonal cell lines. 
+        Note that this *automatically* generates 96 new polyclonal cell lines.
 
         Parameters
         ----------
         cell_line : an instance of CellLine corresponding to the cell line used
         plate_instance : the PlateInstance corresponding to the plate electroporated
-        date : the date, as a string, of the electroporation 
+        date : the date, as a string, of the electroporation
                (required to disambiguate electroporations of the same plate)
 
         Returns
         -------
         The Electroporation instance corresponding to the new electroporation
-        
+
         '''
 
         electroporation = models.Electroporation(
@@ -303,11 +307,11 @@ class ElectroporationOperations:
             plate_instance=plate_instance,
             electroporation_date=date)
 
-        add_and_commit(session, electroporation, errors=errors) 
+        add_and_commit(session, electroporation, errors=errors)
 
         # create a polyclonal line for each crispr design
         for design in electroporation.plate_instance.plate_design.crispr_designs:
-            
+
             cell_line = models.CellLine(
                 parent_id=electroporation.cell_line.id,
                 line_type='POLYCLONAL')
@@ -321,7 +325,7 @@ class ElectroporationOperations:
 
         return cls(electroporation)
 
-    
+
     @classmethod
     def from_plate_design_id(cls, plate_design_id):
         '''
@@ -344,7 +348,7 @@ class PolyclonalLineOperations:
     def from_line_id(cls, session, line_id):
         '''
         '''
-        line = session.query(models.CellLine).filter(models.CellLine.id==line_id).first()
+        line = session.query(models.CellLine).filter(models.CellLine.id == line_id).first()
         return cls(line)
 
 
@@ -352,33 +356,37 @@ class PolyclonalLineOperations:
     def from_plate_well(cls, session, design_id, well_id):
         '''
         Convenience method to retrieve the cell line corresponding to a plate design and a well id,
-        *assuming* that there is only one electroporation of one instance of the plate design. 
+        *assuming* that there is only one electroporation of one instance of the plate design.
         '''
 
         pi = models.PlateInstance
         ep = models.Electroporation
 
         this_ep = session.query(ep).filter(
-            ep.plate_instance==session.query(pi).filter(pi.plate_design_id==design_id).first()
+            ep.plate_instance == session.query(pi).filter(pi.plate_design_id == design_id).first()
         ).first()
 
         for line in this_ep.electroporation_lines:
-            if line.well_id==well_id:
+            if line.well_id == well_id:
                 return cls(line.cell_line)
-        
+
         raise ValueError('No polyclonal line found for well %s of plate %s' % (well_id, design_id))
-    
-    
+
+
     @classmethod
     def from_target_name(cls, session, target_name):
         '''
         Convenience method to retrieve the cell line for the given target_name
 
-        If there is more than one cell_line for the target_name, 
+        If there is more than one cell_line for the target_name,
         then the PolyClonalLineOperations class is instantiated using the first such cell_line
         '''
-        cds = session.query(models.CrisprDesign)\
-                .filter(db.func.lower(models.CrisprDesign.target_name) == db.func.lower(target_name)).all()
+        cds = (
+            session.query(models.CrisprDesign)
+            .filter(
+                db.func.lower(models.CrisprDesign.target_name) == db.func.lower(target_name)
+            )
+        ).all()
 
         if len(cds) > 1:
             print('Warning: %s cell lines found for target %s' % (len(cds), target_name))
@@ -389,7 +397,7 @@ class PolyclonalLineOperations:
 
         cd = cds[0]
         ep_lines = cd.plate_design.plate_instances[0].electroporations[0].electroporation_lines
-        ep_line = [line for line in ep_lines if line.well_id==cd.well_id][0]
+        ep_line = [line for line in ep_lines if line.well_id == cd.well_id][0]
         return cls(ep_line.cell_line)
 
 
@@ -410,7 +418,7 @@ class PolyclonalLineOperations:
             histograms=to_jsonable(histograms))
         add_and_commit(session, facs_dataset, errors=errors)
 
-    
+
     def insert_sequencing_dataset(self, session, scalars, errors='warn'):
         '''
         Insert a limited set of the sequencing results - just the HDR/all and HDR/modified ratios
@@ -434,13 +442,13 @@ class PolyclonalLineOperations:
         pml_id, imaging_round_id, site_num, raw_filepath
         '''
 
-        fovs = []
+        fovs = self.line.fovs
         for _, row in metadata.iterrows():
             columns = {
-                'pml_id': row.pml_id, 
-                'site_num': row.site_num, 
+                'pml_id': row.pml_id,
+                'site_num': row.site_num,
                 'raw_filename': row.raw_filepath,
-                'imaging_round_id': row.imaging_round_id, 
+                'imaging_round_id': row.imaging_round_id,
             }
             fovs.append(models.MicroscopyFOV(cell_line=self.line, **columns))
         add_and_commit(session, fovs, errors=errors)
@@ -457,7 +465,7 @@ class PolyclonalLineOperations:
             if result:
                 score = result[0].data.get('score')
             scores.append(score)
-    
+
         # sort the FOVs by score
         scores = np.array(scores)
         mask = ~pd.isna(scores)
@@ -487,7 +495,7 @@ class PolyclonalLineOperations:
     def simplify_facs_histograms(histograms):
         '''
         Downsample and discretize the FACS histograms for a cell line
-        This is intended to reduce the payload size when the histograms 
+        This is intended to reduce the payload size when the histograms
         will only be used to generate thumbnail/sparkline-like plots
 
         Note that the scaling, rounding, and 2x-subsampling were empirically determined
@@ -501,7 +509,7 @@ class PolyclonalLineOperations:
         # x-axis values can be safely rounded to ints
         histograms['x'] = [int(val) for val in histograms['x']]
 
-        # y-axis values (densities) must be scaled 
+        # y-axis values (densities) must be scaled
         scale_factor = 1e6
         for key in 'y_sample', 'y_ref_fitted':
             histograms[key] = [int(val*scale_factor) for val in histograms[key]]
@@ -520,69 +528,70 @@ class PolyclonalLineOperations:
 
         ep = self.line.electroporation_line.electroporation
 
-        plate_id = ep.plate_instance.plate_design_id
-        well_id = self.line.electroporation_line.well_id
-
         # the crispr design for this line
         for design in ep.plate_instance.plate_design.crispr_designs:
-            if design.well_id == well_id:
+            if design.well_id == self.line.electroporation_line.well_id:
                 break
 
-        # the crispr design
-        # (includes plate_design_id and well_id)
-        d = design.as_dict()
+        # top-level attributes from the crispr design
+        attrs = ['target_name', 'target_family', 'transcript_id', 'well_id']
+        data = {attr: getattr(design, attr) for attr in attrs}
 
-        # append cell-line- and electroporation-specific fields 
-        d['cell_line_id'] = self.line.id
-        d['electroporation_date'] = ep.electroporation_date
+        # explicitly serialize the target_terminus, which is an enum type
+        data['target_terminus'] = design.target_terminus.value[0]
 
-        # the facs results (scalars and histograms)
-        # TODO: enforce one-to-one and drop the [0]
-        if kind == 'all' or kind == 'facs':
-            d['facs_results'] = {}
-            d['facs_histograms'] = {}
-            if self.line.facs_dataset:
-                facs_dataset = self.line.facs_dataset[0]
-                d['facs_histograms'] = self.simplify_facs_histograms(facs_dataset.histograms)    
-                d['facs_results'] = self.simplify_scalars(facs_dataset.scalars)
+        # rename the plate_id attribute
+        data['plate_id'] = design.plate_design_id
 
-        # the sequencing ratios
-        if kind == 'all' or kind == 'sequencing':
-            d['sequencing_results'] = {}
-            if self.line.sequencing_dataset:
-                sequencing_dataset = self.line.sequencing_dataset[0]
-                d['sequencing_results'] = self.simplify_scalars(sequencing_dataset.scalars)
+        data['cell_line_id'] = self.line.id
 
-        # we're done unless we need the FOVs
-        if kind != 'all' and kind != 'microscopy':
-            return d
+        # all of the core 'scalar' properties/features/results
+        scalars = {'hek_tpm': design.hek_tpm}
+
+        # the sequencing percentages
+        if self.line.sequencing_dataset:
+            sequencing_dataset = self.line.sequencing_dataset[0]
+            scalars['hdr_all'] = sequencing_dataset.scalars.get('hdr_all')
+            scalars['hdr_modified'] = sequencing_dataset.scalars.get('hdr_modified')
+
+        # the FACS area and relative median intensity
+        facs_dataset = None
+        if self.line.facs_dataset:
+            facs_dataset = self.line.facs_dataset[0]
+            scalars['facs_area'] = facs_dataset.scalars.get('area')
+            scalars['facs_intensity'] = facs_dataset.scalars.get('rel_median_log')
+
+        # the FACS histograms
+        if kind in ['all', 'facs'] and facs_dataset is not None:
+            data['facs_histograms'] = self.simplify_facs_histograms(facs_dataset.histograms)
 
         # microscopy FOVs
-        all_fovs = []
-        for fov in self.line.fovs:
+        if kind in ['all', 'microscopy']:
+            all_fovs = []
+            for fov in self.line.fovs:
+                score_result = [r for r in fov.results if r.kind == 'fov-features']
+                score = None
+                if score_result:
+                    score = score_result[0].data.get('score')
 
-            score_result = [r for r in fov.results if r.kind == 'fov-features']
-            score = None
-            if score_result:
-                score = score_result[0].data.get('score')
-    
-            all_fovs.append({
-                'fov_id': fov.id,
-                'pml_id': fov.dataset.pml_id,
-                'src_filename': fov.raw_filename,
-                'rois': [roi.as_dict() for roi in fov.rois],
-                'score': score,
-            })
+                all_fovs.append({
+                    'fov_id': fov.id,
+                    'pml_id': fov.dataset.pml_id,
+                    'src_filename': fov.raw_filename,
+                    'rois': [roi.as_dict() for roi in fov.rois],
+                    'score': score,
+                })
 
-        # sort FOVs by score (unscored FOVs last)
-        all_fovs = sorted(
-            all_fovs, 
-            key=lambda row: row.get('score') if row.get('score') is not None else -2)
+            # sort FOVs by score (unscored FOVs last)
+            all_fovs = sorted(
+                all_fovs,
+                key=lambda row: row.get('score') if row.get('score') is not None else -2)
+            data['fovs'] = all_fovs[::-1]
 
-        d['fovs'] = all_fovs[::-1]
-        return d
+        data['scalars'] = scalars
+        return data
 
-    
+
 class MicroscopyFOVOperations:
     '''
     Methods to insert metadata associated with, or 'children' of, microscopy FOVs
@@ -591,7 +600,7 @@ class MicroscopyFOVOperations:
     FOV 'children' include the ROIs cropped from each FOV
 
     NOTE: instances of this class cannot be associated with instances of models.MicroscopyFOV
-    (in the way that, for example, PolyclonalLineOperations instances 
+    (in the way that, for example, PolyclonalLineOperations instances
     are associated with instances of models.CellLine)
     because they may be passed to dask.delayed-wrapped methods
 
@@ -617,15 +626,15 @@ class MicroscopyFOVOperations:
         events = result.get('events')
 
         row = models.MicroscopyFOVResult(
-            fov_id=self.fov_id, 
-            kind='raw-tiff-metadata', 
+            fov_id=self.fov_id,
+            kind='raw-tiff-metadata',
             data=metadata)
         add_and_commit(session, row, errors='raise')
 
         if len(events):
             row = models.MicroscopyFOVResult(
-                fov_id=self.fov_id, 
-                kind='raw-tiff-processing-events', 
+                fov_id=self.fov_id,
+                kind='raw-tiff-processing-events',
                 data=events)
             add_and_commit(session, row, errors='raise')
 
@@ -635,10 +644,35 @@ class MicroscopyFOVOperations:
         Insert FOV features
         result : dict returned by FOVProcessor.calculate_fov_features
         '''
-        result = to_jsonable(result)        
+        result = to_jsonable(result)
         row = models.MicroscopyFOVResult(
             fov_id=self.fov_id,
             kind='fov-features',
+            data=result)
+        add_and_commit(session, row, errors='raise')
+
+
+    def insert_z_profiles(self, session, result):
+        '''
+        Insert z-profiles
+        result : dict returned by FOVProcessor.calculate_z_profiles
+        '''
+        result = to_jsonable(result)
+        row = models.MicroscopyFOVResult(
+            fov_id=self.fov_id,
+            kind='z-profiles',
+            data=result)
+        add_and_commit(session, row, errors='raise')
+
+
+    def insert_cell_layer_alignment_result(self, session, result):
+        '''
+        Insert result from the align_cell_layer method
+        '''
+        result = to_jsonable(result)
+        row = models.MicroscopyFOVResult(
+            fov_id=self.fov_id,
+            kind='cell-layer-alignment',
             data=result)
         add_and_commit(session, row, errors='raise')
 
@@ -660,7 +694,6 @@ class MicroscopyFOVOperations:
                 props=roi_props
             )
             rois.append(roi)
-
         add_and_commit(session, rois, errors='raise')
 
 
@@ -677,5 +710,3 @@ class MicroscopyROIOperations:
 
     def insert_thumbnails(self, session, thumbnails):
         pass
-
-

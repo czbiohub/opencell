@@ -11,7 +11,7 @@ services:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
     # 'bridge' is the default for docker run, but docker-compose requires it explicitly
-    network_mode: "bridge" 
+    network_mode: "bridge"
     ports:
       - 5433:5432 # out:in
 

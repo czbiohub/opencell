@@ -2,6 +2,7 @@
 import os
 import sys
 
+
 class Config(object):
     '''
     Common configuration
@@ -18,6 +19,8 @@ class Config(object):
         'http://localhost:8081',
         'http://localhost:8082',
         'http://localhost:8083',
+        'http://cap.czbiohub.org:8001',
+        'http://opencell.czbiohub.org',
     ]
 
 

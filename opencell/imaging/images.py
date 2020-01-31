@@ -26,10 +26,10 @@ class MicroManagerTIFF:
 
         self.verbose = verbose
         self.src_filepath = src_filepath
-        
+
         self.events = []
         self.global_metadata = {'processing_timestamp': timestamp()}
-        
+
         self.open_tiff()
 
 
@@ -74,7 +74,7 @@ class MicroManagerTIFF:
         Open the stack using tifffile.TiffFile
         '''
         self.tiff = tifffile.TiffFile(self.src_filepath)
-    
+
 
     @staticmethod
     def _parse_mm_tag_schema_v1(mm_tag):
@@ -125,13 +125,13 @@ class MicroManagerTIFF:
         ij_metadata = None
         try:
             ij_metadata = self.tiff.pages[0].tags['IJMetadata'].value['Info']
-        except:
+        except Exception:
             self.event_logger('There was no IJMetadata tag found on the first page')
-        
+
         if ij_metadata is not None:
             try:
                 ij_metadata = json.loads(ij_metadata)
-            except:
+            except Exception:
                 self.event_logger('IJMetadata could not be parsed by json.loads')
 
         mm_metadata_rows = []
@@ -150,11 +150,11 @@ class MicroManagerTIFF:
 
             try:
                 page_metadata_v1 = self._parse_mm_tag_schema_v1(mm_tag.value)
-            except:
+            except Exception:
                 page_metadata_v1 = None
             try:
                 page_metadata_v2 = self._parse_mm_tag_schema_v2(mm_tag.value)
-            except:
+            except Exception:
                 page_metadata_v2 = None
 
             page_metadata = {}
@@ -202,16 +202,17 @@ class RawPipelineTIFF(MicroManagerTIFF):
         - if there are no channel_inds, check for an even number of pages
         - if there are two channel_inds, check that slice_inds
           and exposure settings are consistent within each channel
-        
+
         '''
 
         # whether the MM metadata has two channel inds with an equal number of slices
         self.has_valid_channel_inds = False
 
-        # whether each channel's MM metadata has slice_inds that increment by one
+        # whether the MM metadata for each channel has slice_inds that increment by one
         self.has_valid_slice_inds = False
 
-        # whether it's safe to split the TIFF into channels by splitting the pages in half
+        # whether it is safe to split the TIFF stack into channels by splitting the pages in half,
+        # when there are not valid channel inds
         self.safe_to_split_in_half = False
 
         md = self.mm_metadata.copy()
@@ -230,41 +231,58 @@ class RawPipelineTIFF(MicroManagerTIFF):
         num_dropped_rows = self.mm_metadata.shape[0] - md.shape[0]
         if num_dropped_rows != num_error_rows:
             self.event_logger(
-                '%s rows with NAs were dropped but %s rows had errors' % \
-                    (num_dropped_rows, num_error_rows))
+                '%s rows with NAs were dropped but %s rows had errors' %
+                (num_dropped_rows, num_error_rows))
 
         # check that we can coerce the parsed columns as expected
         int_columns = ['slice_ind', 'channel_ind']
         for column in int_columns:
             md[column] = md[column].apply(int)
 
-        float_columns = ['laser_power_405', 'laser_power_488', 'exposure_time',]
+        float_columns = ['laser_power_405', 'laser_power_488', 'exposure_time']
         for column in float_columns:
             md[column] = md[column].apply(float)
 
-        # check for two channels and an equal number of slices
-        channel_inds = md.channel_ind.unique()
-        if len(channel_inds) == 2:
-            num_0 = (md.channel_ind==channel_inds[0]).sum()
-            num_1 = (md.channel_ind==channel_inds[1]).sum()
-            if num_0 == num_1:
-                self.has_valid_channel_inds = True
-            else:
-                self.event_logger('Channels have unequal number of slices: %s and %s' % (num_0, num_1))        
-        else:
-            self.event_logger('Unexpected number of channel_inds (%s)' % channel_inds)
+        # if there are two distinct channels, we assign the first to 405 and the second to 488
+        self.channel_inds = None
+        unique_channel_inds = sorted(md.channel_ind.unique())
+        if len(unique_channel_inds) == 2:
+            self.channel_inds = {
+                self.laser_405: min(unique_channel_inds),
+                self.laser_488: max(unique_channel_inds),
+            }
+
+        # if there are three channel_inds, we assume the third channel is brightfield
+        elif set(unique_channel_inds) == set([0, 1, 2]):
+            self.event_logger('There were three channel inds')
+            self.channel_inds = {
+                self.laser_405: 0,
+                self.laser_488: 1,
+            }
 
         # if there's one channel index, check for an even number of pages
-        if len(channel_inds) == 1:
+        elif len(unique_channel_inds) == 1:
             if np.mod(md.shape[0], 2) == 0:
                 self.safe_to_split_in_half = True
             else:
                 self.event_logger('There is one channel_ind and an odd number of pages')
+        else:
+            self.event_logger('Unexpected number of channel_inds (%s)' % unique_channel_inds)
+
+        # if there were valid channel_inds, check for an equal number of pages from each channel
+        if self.channel_inds is not None:
+            num_405 = (md.channel_ind == self.channel_inds[self.laser_405]).sum()
+            num_488 = (md.channel_ind == self.channel_inds[self.laser_488]).sum()
+            if num_405 == num_488:
+                self.has_valid_channel_inds = True
+            else:
+                self.event_logger(
+                    'Channels have unequal number of slices: %s and %s' % (num_405, num_488))
 
         # in each channel, check that slice_ind increments by 1.0
         # and that exposure time and laser power are consistent
-        for channel_ind in channel_inds:
-            md_channel = md.loc[md.channel_ind==channel_ind]
+        for channel_ind in unique_channel_inds:
+            md_channel = md.loc[md.channel_ind == channel_ind]
             steps = np.unique(np.diff(md_channel.slice_ind))
 
             # check that slice inds are contiguous
@@ -281,7 +299,8 @@ class RawPipelineTIFF(MicroManagerTIFF):
                 steps = np.unique(np.diff(md_channel[column]))
                 if len(steps) > 1 or steps[0] != 0:
                     self.event_logger(
-                        'Inconsistent values found in column %s for channel_ind %s' % (column, channel_ind))
+                        'Inconsistent values found in column %s for channel_ind %s' %
+                        (column, channel_ind))
 
         self.validated_mm_metadata = md
 
@@ -297,7 +316,7 @@ class RawPipelineTIFF(MicroManagerTIFF):
             key = '%s_%s' % (key, tag)
             try:
                 val = float(val)
-            except:
+            except Exception:
                 pass
             d[key] = val
         return d
@@ -306,7 +325,7 @@ class RawPipelineTIFF(MicroManagerTIFF):
     def split_channels(self):
         '''
         Split the pages of the pipeline-like TIFF into 405 and 488 channels
-        to construct the z-stack for each channel and, if possible, 
+        to construct the z-stack for each channel and, if possible,
         extract the channel-specific MM metadata (i.e., exposure time and laser power)
 
         Overview
@@ -323,9 +342,9 @@ class RawPipelineTIFF(MicroManagerTIFF):
 
         Assignment of channels
         ----------------------
-        When there are two valid channel_inds, the 405 laser is assigned 
+        When there are two valid channel_inds, the 405 laser is assigned
         to the lower channel_ind (which is either 0 or -1).
-        When there are no channel_inds, the 405 laser is assigned 
+        When there are no channel_inds, the 405 laser is assigned
         to the first half of the pages.
 
         '''
@@ -336,14 +355,12 @@ class RawPipelineTIFF(MicroManagerTIFF):
         md = self.validated_mm_metadata.copy()
 
         if self.has_valid_channel_inds:
-            min_ind, max_ind = md.channel_ind.min(), md.channel_ind.max()
-            first_channel, second_channel = self.laser_405, self.laser_488
-            for channel_ind, channel_name in zip((min_ind, max_ind), (first_channel, second_channel)):
-                channel_md = md.loc[md.channel_ind==channel_ind]
+            for channel_name in (self.laser_405, self.laser_488):
+                channel_md = md.loc[md.channel_ind == self.channel_inds[channel_name]]
                 self.global_metadata.update(
                     self.tag_and_coerce_metadata(channel_md.iloc[0], tag=channel_name))
                 self.stacks[channel_name] = self.concat_pages(channel_md.page_ind.values)
-            
+
         elif self.safe_to_split_in_half:
             n = int(md.shape[0]/2)
             self.stacks[self.laser_405] = self.concat_pages(md.iloc[:n].page_ind.values)
@@ -374,7 +391,7 @@ class RawPipelineTIFF(MicroManagerTIFF):
         try:
             proj = self.stacks[channel_name].max(axis=axis_ind)
             minmax = {
-                'min_intensity': int(proj.min()), 
+                'min_intensity': int(proj.min()),
                 'max_intensity': int(proj.max()),
             }
             self.global_metadata.update(self.tag_and_coerce_metadata(minmax, tag=channel_name))
@@ -382,27 +399,90 @@ class RawPipelineTIFF(MicroManagerTIFF):
             if dst_filepath is not None:
                 tifffile.imsave(dst_filepath, proj)
 
-        except:
+        except Exception:
             self.event_logger(
                 'An error occured while %s-projecting the %s channel' % (axis, channel_name))
 
 
-    def crop_stack(self):
+    def calculate_z_profiles(self, channel):
         '''
-        Crop the stacks in z around the cell layer
+        Calculate various statistics of the intensities for each z-slice
         '''
-        pass
+
+        stack = self.stacks[channel]
+
+        min_profile = np.array([zslice.min() for zslice in stack]).astype(int)
+        max_profile = np.array([zslice.max() for zslice in stack]).astype(int)
+        mean_profile = np.array([zslice.mean() for zslice in stack]).astype(int)
+        p9999_profile = np.array([np.percentile(zslice, 99.99) for zslice in stack]).astype(int)
+
+        return {
+            'min': min_profile,
+            'max': max_profile,
+            'mean': mean_profile,
+            'p9999': p9999_profile,
+        }
 
 
-    def downsample(self, scale):
+    @staticmethod
+    def find_cell_layer(stack):
         '''
-        Downsample the stacks
+        Estimate the center of the cell layer using the center of mass
+        of the z-profile of the mean intensity of the Hoechst staining
         '''
-        pass
+
+        # z-profile of the mean intensity in the Hoechst channel
+        raw_profile = np.array([zslice.mean() for zslice in stack]).astype(float)
+        profile = raw_profile - raw_profile.mean()
+        profile[profile < 0] = 0
+
+        x = np.arange(len(profile))
+        center_of_mass = (profile * x).sum()/profile.sum()
+        return center_of_mass, raw_profile
 
 
-    def to_uint8(self):
+    def align_cell_layer(self, rel_bottom, rel_top, step_size):
         '''
+        Approximately align the 405 and 488 stacks to correct for chromatic aberration,
+        and crop around the cell layer so that it is in the center of the stack
+
+        rel_bottom, rel_top : the position of the bottom and top of the cell layer,
+            relative to the center of the cell layer, in an integer number of microns
+            (rel_bottom should be negative)
         '''
-        pass
-        
+
+        result = {}
+
+        stack_405 = self.stacks[self.laser_405].copy()
+        stack_488 = self.stacks[self.laser_488].copy()
+
+        # hard-coded chromatic aberration offset in microns
+        # this is an empirically estimated median offset
+        # obtained by inspecting z-stacks from nucleus-localized targets
+        chromatic_aberration_offset = 1.0
+        offset_ind = int(chromatic_aberration_offset / step_size)
+
+        stack_405 = stack_405[:-offset_ind, :, :]
+        stack_488 = stack_488[offset_ind:, :, :]
+
+        # estimate the cell layer center and round it the nearest z-slice
+        cell_layer_center, _ = self.find_cell_layer(stack_405)
+        cell_layer_center = np.round(cell_layer_center)
+
+        # absolute position, in number of z-slices, of the top and bottom of the cell layer
+        bottom_ind = int(cell_layer_center + rel_bottom / step_size)
+        top_ind = int(cell_layer_center + rel_top / step_size)
+
+        if bottom_ind < 0:
+            result['error'] = 'The cell layer center was too close to the bottom of the stack'
+        elif top_ind >= stack_405.shape[0]:
+            result['error'] = 'The cell layer center was too close to the top of the stack'
+        else:
+            stack_405 = stack_405[bottom_ind:top_ind, :, :]
+            stack_488 = stack_488[bottom_ind:top_ind, :, :]
+
+        result['offset_488_405'] = offset_ind
+        result['crop_window'] = [bottom_ind, top_ind]
+        result['cell_layer_center'] = cell_layer_center
+        stacks = {'405': stack_405, '488': stack_488}
+        return stacks, result

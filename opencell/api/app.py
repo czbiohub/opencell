@@ -19,9 +19,9 @@ def create_session_registry(url):
     '''
     Create an sqlalchemy scoped session registry
 
-    This registry is the `Session` object below. 
+    This registry is the `Session` object below.
     Note that, although this object is a 'registry' that manages session instances,
-    it also proxies session-bound methods (like query), so that the registry 
+    it also proxies session-bound methods (like query), so that the registry
     itself can be treated like a session instance, enabling lines like
     `Session.query(models.SomeModel)`
     '''
@@ -43,14 +43,15 @@ def create_app(args):
     api.add_resource(resources.Plates, '/plates')
     api.add_resource(resources.Plate, '/plates/<string:plate_id>/')
     api.add_resource(resources.Electroporations, '/electroporations')
+
     api.add_resource(resources.PolyclonalLines, '/lines')
-    api.add_resource(resources.PolyclonalLine, '/lines/<int:cell_line_id>/')
-    api.add_resource(resources.FACSHistograms, '/facshistograms/<int:cell_line_id>/')
+    api.add_resource(resources.PolyclonalLine, '/lines/<int:cell_line_id>')
+    api.add_resource(resources.CellLineAnnotation, '/annotations/<int:cell_line_id>')
+
     api.add_resource(resources.MicroscopyFOV, '/fovs/<string:channel>/<string:kind>/<int:fov_id>')
     api.add_resource(resources.MicroscopyFOVROI, '/rois/<string:channel>/<string:kind>/<int:roi_id>')
-    
-    api.init_app(app)
 
+    api.init_app(app)
 
     if args.credentials:
         credentials = args.credentials
@@ -81,7 +82,6 @@ def parse_args():
     return parser.parse_args()
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     args = parse_args()
     create_app(args)
-    

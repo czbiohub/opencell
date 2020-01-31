@@ -6,6 +6,7 @@ import pandas as pd
 from opencell import constants
 from opencell.database import utils
 
+
 def parseFloat(val):
     try:
         val = float(val)
@@ -14,8 +15,8 @@ def parseFloat(val):
     return val
 
 
-# map from the column names in the cached CSVs to the column names 
-# expected by the database and/or by the methods in opencell.database.operations 
+# map from the column names in the cached CSVs to the column names
+# expected by the database and/or by the methods in opencell.database.operations
 # (all required columns are included, even if their name is unchanged)
 LIBRARY_COLUMNS = {
     'plate_id': 'plate_id',
@@ -25,14 +26,14 @@ LIBRARY_COLUMNS = {
     'family': 'target_family',
 
     'enst_id': 'transcript_id',
-    'enst_note': 'transcript_notes', 
+    'enst_note': 'transcript_notes',
 
     'hek_tpm': 'hek_tpm',
 
     'terminus_to_tag': 'target_terminus',
     'terminus_choice': 'terminus_notes',
-        
-    'protospacer_name': 'protospacer_name', 
+
+    'protospacer_name': 'protospacer_name',
     'protospacer_note': 'protospacer_notes',
     'protospacer_sequence': 'protospacer_sequence',
 
@@ -51,12 +52,12 @@ ELECTROPORATION_COLUMNS = {
 def load_library_snapshot(filename):
     '''
     Load and format/reorganize a CSV 'snapshot' of the library spreadsheet
-    
+
     These 'snapshots' are of the google sheet created/maintained by Manu
     that contains all info about plate and crispr design for plate 1 - plate 19.
 
     The snapshot *must* contain the columns on the left side of the LIBRARY_COLUMNS
-    map (see above). 
+    map (see above).
 
     '''
 
@@ -67,7 +68,7 @@ def load_library_snapshot(filename):
     library['plate_id'] = library.plate_id.apply(utils.format_plate_design_id)
 
     # parse the hek_tpm column, which should be float but has some strings with commas
-    # (e.g., '1,000' instead of '1000') 
+    # (e.g., '1,000' instead of '1000')
     library['hek_tpm'] = library.hek_tpm.apply(parseFloat)
 
     # retain only the columns we need for the database
@@ -94,11 +95,11 @@ def load_electroporation_history(filename):
 
     # drop unneeded columns
     electroporations = electroporations[list(ELECTROPORATION_COLUMNS.values())]
- 
-    return electroporations
-    
 
-def load_microscopy_master_key(filepath):
+    return electroporations
+
+
+def load_legacy_microscopy_master_key(filepath):
     '''
     Load and format a snapshot of the 'legacy' tab of the 'Pipeline-microscopy-master-key' google sheet
 
@@ -108,29 +109,30 @@ def load_microscopy_master_key(filepath):
     Note that these acquisitions have IDs of the form 'MLxxxx_YYYYMMDD'.
     '''
 
-    exp_md = pd.read_csv(filepath)
-    exp_md = exp_md.rename(columns={c: c.replace(' ', '_').lower() for c in exp_md.columns})
+    md = pd.read_csv(filepath)
+    md = md.rename(columns={c: c.replace(' ', '_').lower() for c in md.columns})
 
-    exp_md = exp_md.rename(columns={
-        'id': 'legacy_id', 
-        'automated_acquisition?': 'automation', 
+    md = md.rename(columns={
+        'id': 'legacy_id',
+        'automated_acquisition?': 'automation',
         'acquisition_notes': 'notes',
-        'primary_imager': 'imager',})
+        'primary_imager': 'imager',
+    })
 
-    exp_md = exp_md.drop(labels=[c for c in exp_md.columns if c.startswith('unnamed')], axis=1)
+    md = md.drop(labels=[c for c in md.columns if c.startswith('unnamed')], axis=1)
 
     # separate the ML ID itself from the date
-    exp_md['id'] = exp_md.legacy_id.apply(lambda s: s.split('_')[0])
+    md['ml_id'] = md.legacy_id.apply(lambda s: s.split('_')[0])
 
     # parse the date from the ML-style ID
-    exp_md['date'] = pd.to_datetime(exp_md.legacy_id.apply(lambda s: s.split('_')[1]))
+    md['date'] = pd.to_datetime(md.legacy_id.apply(lambda s: s.split('_')[1]))
 
     # prepend the P to create the PML-style ID
-    exp_md['pml_id'] = [f'P{ml_id}' for ml_id in exp_md.id]
+    md['pml_id'] = [f'P{ml_id}' for ml_id in md.ml_id]
 
     # columns to retain
-    exp_md = exp_md[['pml_id', 'date', 'automation', 'imager', 'description', 'notes']]
-    return exp_md
+    md = md[['pml_id', 'date', 'automation', 'imager', 'description', 'notes']]
+    return md
 
 
 def read_and_validate_platemap(filepath):
@@ -162,4 +164,3 @@ def read_and_validate_platemap(filepath):
         raise ValueError('Some target names are missing in platemap %s' % filepath)
 
     return platemap
-

@@ -44,23 +44,23 @@ class FACSManager(object):
         '''
         box_root : local path to the Box 'root' directory
         '''
-    
+
         self.box_root = box_root
         self.facs_data_root = os.path.join(self.box_root, 'FACS_data')
-    
+
 
     def _get_dirpath(self, plate_id, data_type=None):
 
-        if data_type=='control':
+        if data_type == 'control':
             dirnames = CONTROL_DIRNAMES
-        if data_type=='sample':
+        if data_type == 'sample':
             dirnames = SAMPLE_DIRNAMES
-    
+
         if not dirnames.get(plate_id):
             raise ValueError('No %s data dirname for plate %s' % (data_type, plate_id))
-    
+
         path = os.path.join(self.facs_data_root, dirnames[plate_id])
-        if data_type=='sample':
+        if data_type == 'sample':
             path = os.path.join(path, 'profile_data')
 
         if not os.path.isdir(path):
@@ -74,14 +74,13 @@ class FACSManager(object):
         to the directories containing the sample and negative control datasets
         for the given plate_id
 
-        plate_id : either a plate_id of the form 'P0001' or a plate number 
+        plate_id : either a plate_id of the form 'P0001' or a plate number
         '''
 
         if isinstance(plate_id, int):
             plate_id = plate_id_from_number(plate_id)
 
         return (
-            self._get_dirpath(plate_id, 'sample'), 
+            self._get_dirpath(plate_id, 'sample'),
             self._get_dirpath(plate_id, 'control')
         )
-

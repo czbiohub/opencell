@@ -113,7 +113,6 @@ class FACSProcessor(object):
         return dataset
 
 
-
     def _load_controls(self):
         '''
         Load, transform, and gate all of the negative control datasets

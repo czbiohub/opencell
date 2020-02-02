@@ -34,9 +34,10 @@ jobs:
     - name: Lint with pylint
       run: |
         pip install pylint
-        # ignore pylint warnings
+        # note that including the pylint --errors-only flag
+        # seems to result in pylint ignoring the pylintrc file
         # TODO: is there a way to print the warnings and still exit 0?
-        pylint --errors-only ./opencell
+        pylint ./opencell
     - name: Test with pytest
       run: |
         pip install pytest

@@ -13,9 +13,6 @@ CREATE OR REPLACE VIEW public.cell_line_metadata AS
      JOIN cell_line ON cell_line.id = epl.cell_line_id
   ORDER BY (ROW(cd.plate_design_id, cd.well_id));
 
-ALTER TABLE public.cell_line_metadata
-    OWNER TO postgres;
-
 
 -- exposure settings for microscopy FOVs with basic cell line metadata
 select plate_id, well_id, target_name, fov.cell_line_id, pml_id, fov_id,
@@ -41,11 +38,11 @@ group by n order by c desc;
 select count(fov_id) as n, (props::json ->> 'position')::json ->> 2 as p from microscopy_fov_roi
 group by p order by n desc;
 
--- count kinds of fov results
-select kind, count(kind) from microscopy_fov_result
-left join microscopy_fov on microscopy_fov.id = microscopy_fov_result.fov_id
-group by kind;
-
+-- the number of annotations with a particular category flagged
+select * from(
+	select *, array(select json_array_elements_text(categories::json)) as cats
+	from cell_line_annotation) ants
+where 're_sort' = any (cats);
 
 -- drop all rows from all microscopy-related tables
 TRUNCATE microscopy_dataset CASCADE;
@@ -71,7 +68,6 @@ ADD CONSTRAINT fk_microscopy_fov_result_fov_id_microscopy_fov FOREIGN KEY (fov_i
    ON UPDATE NO ACTION
    ON DELETE CASCADE;
 
-
 -- delete FOVs and descendents from particular datasets
 delete from microscopy_fov_result
 where fov_id in (
@@ -81,7 +77,6 @@ where fov_id in (
 delete from microscopy_fov
 where pml_id in ('PML0227', 'PML0233', 'PML0234');
 
-
 -- delete all results for raw-pipeline-microscopy datasets
 delete from microscopy_fov_result
 where fov_id in (
@@ -89,7 +84,6 @@ where fov_id in (
 		select pml_id from microscopy_dataset where root_directory like 'raw_%'
 	)
 );
-
 
 -- select (or delete) all but the most recent result of a particular kind for each FOV
 select * from microscopy_fov_result

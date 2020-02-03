@@ -272,11 +272,7 @@ class CellLineAnnotation(Resource):
 
         annotation.comment = data.get('comment')
         annotation.categories = data.get('categories')
-
-        annotation.client_metadata = {
-            'last_modified': data.get('timestamp'),
-            'displayed_fov_ids': data.get('fov_ids'),
-        }
+        annotation.client_metadata = data.get('client_metadata')
 
         try:
             operations.add_and_commit(

@@ -1,10 +1,12 @@
 numpy
 pandas
+seaborn
 pynrrd
 imageio
 tifffile
 scikit-image
 scikit-learn
+psycopg2
 sqlalchemy
 dask
 dask[delayed]

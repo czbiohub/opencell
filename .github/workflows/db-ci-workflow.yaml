@@ -11,11 +11,11 @@ jobs:
         image: postgres
         ports:
           - 5433:5432
-      environment:
-        # no need to specify a username because, for now,
-        # the test env uses the default 'postgres' user
-        POSTGRES_DB: opencelldb_test
-        POSTGRES_PASSWORD: password
+        env:
+          # no need to specify a username because, for now,
+          # the test env uses the default 'postgres' user
+          POSTGRES_DB: opencelldb_test
+          POSTGRES_PASSWORD: password
 
     steps:
     - name: Install pg_config

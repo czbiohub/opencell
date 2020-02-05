@@ -10,13 +10,14 @@ jobs:
         python-version: [3.8]
 
     services:
+      # setup the postgres database required for the tests
       postgres:
         image: postgres
         ports:
           - 5433:5432
         env:
           # no need to specify a username because, for now,
-          # the test env uses the default 'postgres' user
+          # the tests connect as the default 'postgres' user
           POSTGRES_DB: opencelldb_test
           POSTGRES_PASSWORD: password
 

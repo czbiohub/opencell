@@ -62,6 +62,10 @@ def parse_args():
     # path to JSON file with database credentials
     parser.add_argument('--credentials', dest='credentials', required=False)
 
+    # FOV thumbnail scale and quality
+    parser.add_argument('--thumbnail-scale', dest='thumbnail_scale', required=False)
+    parser.add_argument('--thumbnail-quality', dest='thumbnail_quality', required=False)
+
     # CLI args whose presence in the command sets them to True
     action_arg_dests = [
         'inspect_plate_microscopy_metadata',
@@ -70,6 +74,7 @@ def parse_args():
         'insert_fovs',
         'process_raw_tiffs',
         'calculate_fov_features',
+        'generate_fov_thumbnails',
         'calculate_z_profiles',
         'align_cell_layer',
         'crop_corner_rois',
@@ -253,10 +258,10 @@ def do_fov_tasks(Session, args, processor_method_name, processor_method_kwargs, 
     operator_method_names = {
         'process_raw_tiff': 'insert_raw_tiff_metadata',
         'calculate_fov_features': 'insert_fov_features',
+        'generate_fov_thumbnails': 'insert_fov_thumbnails',
         'calculate_z_profiles': 'insert_z_profiles',
         'align_cell_layer': 'insert_cell_layer_alignment_result',
         'crop_corner_rois': 'insert_corner_rois',
-        'generate_thumbnails': 'insert_thumbnails',
     }
 
     # the name of the FOVOperations method that inserts the results of the processor method
@@ -334,8 +339,6 @@ def get_unprocessed_fovs(engine, session, result_kind):
 
 
 def main():
-
-
 
     args = parse_args()
 
@@ -435,6 +438,18 @@ def main():
 
         if not args.process_all_fovs:
             fovs = get_unprocessed_fovs(engine, Session, result_kind='fov-features')
+        do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
+
+
+    # generate thumbnails with a given size and quality
+    if args.generate_fov_thumbnails:
+
+        method_name = 'generate_fov_thumbnails'
+        method_kwargs = {
+            'dst_root': args.dst_root,
+            'scale': int(args.thumbnail_scale),
+            'quality': int(args.thumbnail_quality),
+        }
         do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
 
 

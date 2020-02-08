@@ -652,6 +652,24 @@ class MicroscopyFOVOperations:
         add_and_commit(session, row, errors='raise')
 
 
+    def insert_fov_thumbnails(self, session, result):
+        '''
+        Insert FOV thumbnails
+        result : dict returned by FOVProcessor.generate_fov_thumbnails
+        '''
+        result = to_jsonable(result)
+
+        rows = []
+        for channel, b64_string in result['b64_strings'].items():
+            row = models.Thumbnail(
+                fov_id=self.fov_id,
+                size=result.get('size'),
+                channel=channel,
+                data=b64_string)
+            rows.append(row)
+        add_and_commit(session, rows, errors='raise')
+
+
     def insert_z_profiles(self, session, result):
         '''
         Insert z-profiles

@@ -295,6 +295,37 @@ class FOVProcessor:
         return result
 
 
+    def generate_fov_thumbnails(self, dst_root, scale, quality):
+        '''
+        Generate thumbnail images of the z-projections as base64-encoded JPGs
+        '''
+        filepath_405 = self.dst_filepath(dst_root, kind='proj', channel='405', ext='tif')
+        filepath_488 = self.dst_filepath(dst_root, kind='proj', channel='488', ext='tif')
+
+        ims = {}
+        ims['405'] = tifffile.imread(filepath_405)[..., None]
+        ims['488'] = tifffile.imread(filepath_488)[..., None]
+        ims['rgb'] = self.make_rgb(ims['405'], ims['488'])
+
+        b64_strings = {}
+        for key, im in ims.items():
+            # use downscale_local_mean to reduce noise
+            im = skimage.transform.downscale_local_mean(im, factors=(scale, scale, 1))
+            # crop the last row and column to eliminate edge effects
+            im = im[:-1, :-1, :]
+            # cast to uint8 again (downscale_local_mean outputs float64)
+            im = utils.autoscale(im)
+            # base64 encode
+            b64_strings[key] = utils.b64encode_image(im, format='jpg', quality=90)
+
+        result = {
+            'size': im.shape[0],
+            'quality': quality,
+            'b64_strings': b64_strings,
+        }
+        return result
+
+
     def calculate_z_profiles(self):
         '''
         '''
@@ -599,3 +630,35 @@ class FOVProcessor:
         tile = np.concatenate(rows, axis=0)
 
         return tile
+
+
+    @staticmethod
+    def make_rgb(im_405, im_488):
+        '''
+        Construct an RGB image from z-projections (or single z-slices)
+        im_405 : 2D numpy array (assumed to correspond to Hoechst staining)
+        im_488 : 2D numpy array (assumed to correspond to GFP signal)
+        '''
+
+        if im_405.ndim == 2:
+            im_405 = im_405[..., None]
+        if im_488.ndim == 2:
+            im_488 = im_488[..., None]
+
+        # background subtract the hoechst
+        im_405 = im_405.astype(float)
+        im_405 -= im_405.mean()
+        im_405[im_405 < 0] = 0
+
+        # downscale to uint8 using 1% percentiles
+        # (and bump the gamma for hoechst to make it stand out again the GFP a bit better)
+        hoechst = utils.autoscale(im_405, percentile=1, gamma=.7)
+        gfp = utils.autoscale(im_488, percentile=1)
+
+        # set the blue channel to the maximum of the GFP and hoechst
+        # (this is easier than summing the channels and dealing with uint8 overflow, etc)
+        blue = np.concatenate((gfp, hoechst), axis=2).max(axis=2)[..., None]
+
+        red, green = gfp, gfp
+        rgb = np.concatenate((red, green, blue), axis=2)
+        return rgb

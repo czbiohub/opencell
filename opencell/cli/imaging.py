@@ -76,7 +76,7 @@ def parse_args():
         'calculate_fov_features',
         'generate_fov_thumbnails',
         'calculate_z_profiles',
-        'align_cell_layer',
+        'generate_clean_tiffs',
         'crop_corner_rois',
         'process_all_fovs',
     ]
@@ -260,7 +260,7 @@ def do_fov_tasks(Session, args, processor_method_name, processor_method_kwargs, 
         'calculate_fov_features': 'insert_fov_features',
         'generate_fov_thumbnails': 'insert_fov_thumbnails',
         'calculate_z_profiles': 'insert_z_profiles',
-        'align_cell_layer': 'insert_cell_layer_alignment_result',
+        'generate_clean_tiff': 'insert_clean_tiff_metadata',
         'crop_corner_rois': 'insert_corner_rois',
     }
 
@@ -414,11 +414,11 @@ def main():
 
 
     # crop around the cell layer in z
-    if args.align_cell_layer:
-        method_name = 'align_cell_layer'
+    if args.generate_clean_tiffs:
+        method_name = 'generate_clean_tiff'
         method_kwargs = {'dst_root': args.dst_root}
         if not args.process_all_fovs:
-            fovs = get_unprocessed_fovs(engine, Session, result_kind='cell-layer-alignment')
+            fovs = get_unprocessed_fovs(engine, Session, result_kind='clean-tiff-metadata')
         do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
 
 

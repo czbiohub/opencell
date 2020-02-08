@@ -344,11 +344,12 @@ class FOVProcessor:
         return result
 
 
-    def align_cell_layer(self, dst_root):
+    def generate_clean_tiff(self, dst_root):
         '''
-        Align the two channels to correct for chromatic aberration in z,
-        crop the stacks around the cell layer in z, so that they are centered around it,
-        and downsample stacks with 0.2um steps to 0.5um steps
+        Generate 'clean' but otherwise raw TIFFs for machine-learning pipelines by
+            1) aligning the two channels to approximately correct for chromatic aberration in z
+            2) centering and cropping the stacks around the cell layer in z
+            3) downsampling stacks with 0.2um z-steps to 0.5um z-steps
         '''
 
         # the z-position of the top and bottom of the cell layer,
@@ -395,11 +396,16 @@ class FOVProcessor:
 
     def crop_corner_rois(self, dst_root):
         '''
-        Crop a 600x600 ROI at each corner of the raw FOV
+        Crop a 600x600 ROI at each corner of the cell-layer-cropped z-stacks,
+        downsample the intensities from uint16 to uint8, and save each ROI as a tiled PNG
 
-        At the same time, crop around the cell layer in z,
-        downsample the intensities from uint16 to uint8,
-        and save each ROI as a tiled PNG
+        Returns
+        -------
+        all_roi_props : a list of ROI properties (empty if an error ocurred)
+
+        TODO: more consistent/transparent error-handling
+        (are we raising exceptions or returning an empty list?)
+
         '''
 
         all_roi_props = []
@@ -547,8 +553,7 @@ class FOVProcessor:
     @staticmethod
     def maybe_resample_stack(stack, original_step_size, target_step_size, required_num_slices):
         '''
-        Resample and possibly crop or pad a z-stack
-        so that it has the specified number of z-slices
+        Resample and possibly crop or pad a z-stack so that it has the specified number of z-slices
 
         stack : 3D numpy array with dimensions (x, y, z)
         original_step_size : the z-step size of the original stack (in microns)
@@ -635,9 +640,9 @@ class FOVProcessor:
     @staticmethod
     def make_rgb(im_405, im_488):
         '''
-        Construct an RGB image from z-projections (or single z-slices)
-        im_405 : 2D numpy array (assumed to correspond to Hoechst staining)
-        im_488 : 2D numpy array (assumed to correspond to GFP signal)
+        Construct an RGB image from z-projections (or single z-slices) of each channel
+        im_405 : 2D numpy array (assumed to be the Hoechst staining)
+        im_488 : 2D numpy array (assumed to be the GFP signal)
         '''
 
         if im_405.ndim == 2:

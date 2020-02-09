@@ -316,7 +316,7 @@ class FOVProcessor:
             # cast to uint8 again (downscale_local_mean outputs float64)
             im = utils.autoscale(im)
             # base64 encode
-            b64_strings[key] = utils.b64encode_image(im, format='jpg', quality=90)
+            b64_strings[key] = utils.b64encode_image(im, format='jpg', quality=quality)
 
         result = {
             'size': im.shape[0],

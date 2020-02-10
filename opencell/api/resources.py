@@ -108,59 +108,41 @@ class PolyclonalLines(Resource):
 
         valid_kinds = ['all', 'facs', 'sequencing', 'ms', 'microscopy']
         if kind is not None and kind not in valid_kinds:
-            # TODO: return the right http error
-            pass
+            abort(404)
 
-        designs = None
+        cell_line_metadata = current_app.cell_line_metadata_view
+        query = current_app.Session.query(cell_line_metadata)
+
+        if plate_id:
+            query = query.filter(cell_line_metadata.columns.plate_id == plate_id)
+
+        # look for an exact match to the target_name; if none, filter by startswith
         if target_name:
-
-            # first look for an exact match
-            designs = current_app.Session.query(models.CrisprDesign)\
-                .filter(db.func.lower(models.CrisprDesign.target_name) == target_name.lower()).all()
-
-            # if no exact matches, use startswith
-            if not designs:
-                designs = (
-                    current_app.Session.query(models.CrisprDesign)
-                    .filter(
-                        db.func.lower(models.CrisprDesign.target_name)
-                        .startswith(target_name.lower())
-                    )
-                ).all()
-
-            # filter by plate_id
-            if plate_id:
-                designs = [design for design in designs if design.plate_design_id == plate_id]
-
-        # if a plate_id but not target_name was provided
-        elif plate_id:
-            designs = current_app.Session.query(models.CrisprDesign)\
-                .filter(models.CrisprDesign.plate_design_id == plate_id).all()
-
-        lines = []
-        if designs is not None:
-            for design in designs:
-                ep_lines = (
-                    design.plate_design.plate_instances[0].electroporations[0].electroporation_lines
+            exact_query = query.filter(
+                db.func.lower(cell_line_metadata.columns.target_name) == target_name.lower()
+            )
+            if not exact_query.all():
+                query = query.filter(
+                    db.func.lower(cell_line_metadata.columns.target_name)
+                    .startswith(target_name.lower())
                 )
-                cell_lines = [line.cell_line for line in ep_lines if line.well_id == design.well_id]
-                lines.append(cell_lines[0])
-
-        # all polyclonal lines
-        else:
-            eps = current_app.Session.query(models.Electroporation).all()
-            for ep in eps:
-                lines.extend([ep_line.cell_line for ep_line in ep.electroporation_lines])
+            else:
+                query = exact_query
 
         # limit to the first ten lines to prevent returning giant payloads
         if kind is not None:
-            lines = lines[:10] if len(lines) > 10 else lines
+            query = query.limit(10)
 
-        data = []
-        for line in lines:
-            ops = operations.PolyclonalLineOperations.from_line_id(current_app.Session, line.id)
-            data.append(ops.construct_json(kind=kind))
-        return jsonify(data)
+        metadata = pd.DataFrame(
+            data=query.all(),
+            columns=[column.name for column in cell_line_metadata.columns]
+        )
+        payload = []
+        for ind, row in metadata.iterrows():
+            ops = operations.PolyclonalLineOperations.from_line_id(
+                current_app.Session, row.cell_line_id)
+            payload.append(ops.construct_payload(kind=kind))
+        return jsonify(payload)
 
 
 class PolyclonalLine(Resource):
@@ -171,7 +153,7 @@ class PolyclonalLine(Resource):
         args = request.args
         kind = args.get('kind')
         ops = operations.PolyclonalLineOperations.from_line_id(current_app.Session, cell_line_id)
-        return jsonify(ops.construct_json(kind=kind))
+        return jsonify(ops.construct_payload(kind=kind))
 
 
 class MicroscopyFOV(Resource):
@@ -237,6 +219,7 @@ class MicroscopyFOVROI(Resource):
             attachment_filename=filepath.split(os.sep)[-1])
 
         return file
+
 
 
 class CellLineAnnotation(Resource):

@@ -6,11 +6,11 @@ CREATE OR REPLACE VIEW public.cell_line_metadata AS
     cd.target_name,
     cell_line.id AS cell_line_id
    FROM crispr_design cd
-     JOIN plate_design pd ON pd.design_id::text = cd.plate_design_id::text
-     JOIN plate_instance pi ON pd.design_id::text = pi.plate_design_id::text
-     JOIN electroporation ep ON pi.id = ep.plate_instance_id
-     JOIN electroporation_line epl ON ep.id = epl.electroporation_id AND cd.well_id = epl.well_id
-     JOIN cell_line ON cell_line.id = epl.cell_line_id
+     INNER JOIN plate_design pd ON pd.design_id::text = cd.plate_design_id::text
+     INNER JOIN plate_instance pi ON pd.design_id::text = pi.plate_design_id::text
+     INNER JOIN electroporation ep ON pi.id = ep.plate_instance_id
+     INNER JOIN electroporation_line epl ON ep.id = epl.electroporation_id AND cd.well_id = epl.well_id
+     INNER JOIN cell_line ON cell_line.id = epl.cell_line_id
   ORDER BY (ROW(cd.plate_design_id, cd.well_id));
 
 
@@ -20,10 +20,25 @@ select plate_id, well_id, target_name, fov.cell_line_id, pml_id, fov_id,
   data::json ->> 'laser_power_488_488' as laser_power_488,
   raw_filename
 from cell_line_metadata clm
-  join microscopy_fov fov on clm.cell_line_id = fov.cell_line_id
-  join microscopy_fov_result fov_result on fov.id = fov_result.fov_id
+  inner join microscopy_fov fov on clm.cell_line_id = fov.cell_line_id
+  inner join microscopy_fov_result fov_result on fov.id = fov_result.fov_id
 where fov_result.kind = 'raw-tiff-metadata'
 order by (plate_id, well_id, pml_id);
+
+
+-- the top-scoring FOV and its score for each cell line
+select * from (
+	select fov.cell_line_id, fov.id as fov_id, (data::json ->> 'score')::float as score,
+		row_number() over (
+			partition by fov.cell_line_id
+			order by coalesce((data::json ->> 'score')::float, -1) desc
+		) as rank
+	from microscopy_fov fov
+	  left join microscopy_fov_result result on fov.id = result.fov_id
+	where result.kind = 'fov-features'
+) ranked_fovs
+where rank = 1
+order by score desc;
 
 
 -- filter by existence of a json key (where `data` is a JSON-typed column)

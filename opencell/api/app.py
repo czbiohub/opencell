@@ -1,5 +1,6 @@
 
 import argparse
+import sqlalchemy as sa
 from flask import Flask
 from flask_cors import CORS
 from flask_restful import Api
@@ -11,7 +12,7 @@ from sqlalchemy.orm import (
 
 from opencell.api import resources
 from opencell.api import settings
-from opencell.database import utils
+from opencell.database import models, utils
 from opencell.api.cache import cache
 
 
@@ -28,7 +29,14 @@ def create_session_registry(url):
     engine = create_engine(url)
     session_factory = sessionmaker(bind=engine)
     Session = scoped_session(session_factory)
-    return Session
+
+    cell_line_metadata_view = sa.Table(
+        'cell_line_metadata',
+        models.Base.metadata,
+        autoload=True,
+        autoload_with=engine)
+
+    return Session, cell_line_metadata_view
 
 
 def create_app(args):
@@ -63,7 +71,7 @@ def create_app(args):
 
     # create an instance of sqlalchemy's scoped_session registry
     url = utils.url_from_credentials(credentials)
-    app.Session = create_session_registry(url)
+    app.Session, app.cell_line_metadata_view = create_session_registry(url)
 
     # required to close the session instance when a request is completed
     @app.teardown_appcontext

@@ -167,8 +167,11 @@ class PlateOperations:
         Initialize from a design_id
         '''
 
-        plate = session.query(models.PlateDesign)\
-            .filter(models.PlateDesign.design_id == design_id).first()
+        plate = (
+            session.query(models.PlateDesign)
+            .filter(models.PlateDesign.design_id == design_id)
+            .first()
+        )
 
         if plate is None:
             raise ValueError('Plate design %s does not exist' % design_id)
@@ -359,14 +362,13 @@ class PolyclonalLineOperations:
         *assuming* that there is only one electroporation of one instance of the plate design.
         '''
 
-        pi = models.PlateInstance
-        ep = models.Electroporation
+        electroporation = (
+            session.query(models.Electroporation)
+            .filter(models.Electroporation.plate_instance.plate_design_id == design_id)
+            .first()
+        )
 
-        this_ep = session.query(ep).filter(
-            ep.plate_instance == session.query(pi).filter(pi.plate_design_id == design_id).first()
-        ).first()
-
-        for line in this_ep.electroporation_lines:
+        for line in electroporation.electroporation_lines:
             if line.well_id == well_id:
                 return cls(line.cell_line)
 
@@ -383,10 +385,9 @@ class PolyclonalLineOperations:
         '''
         cds = (
             session.query(models.CrisprDesign)
-            .filter(
-                db.func.lower(models.CrisprDesign.target_name) == db.func.lower(target_name)
-            )
-        ).all()
+            .filter(db.func.lower(models.CrisprDesign.target_name) == db.func.lower(target_name))
+            .all()
+        )
 
         if len(cds) > 1:
             print('Warning: %s cell lines found for target %s' % (len(cds), target_name))

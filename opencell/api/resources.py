@@ -34,12 +34,6 @@ class Plates(Resource):
         '''
         raise NotImplementedError
 
-    def post(self):
-        '''
-        Create a new plate design or instance
-        '''
-        raise NotImplementedError
-
 
 class Plate(Resource):
 
@@ -49,9 +43,11 @@ class Plate(Resource):
 
         TODO: handle invalid plate_id (what error code to return?)
         '''
-        plate = current_app.Session.query(models.PlateDesign)\
-            .filter(models.PlateDesign.design_id == plate_id)\
+        plate = (
+            current_app.Session.query(models.PlateDesign)
+            .filter(models.PlateDesign.design_id == plate_id)
             .first()
+        )
 
         targets = [d.target_name for d in plate.crispr_designs]
 
@@ -59,13 +55,6 @@ class Plate(Resource):
             'plate_id': plate.design_id,
             'targets': targets,
         }
-
-
-    def put(self, plate_id):
-        '''
-        Modify an existing plate design or instance
-        '''
-        raise NotImplementedError
 
 
 class Electroporations(Resource):
@@ -83,13 +72,6 @@ class Electroporations(Resource):
 
         eps = sorted(eps, key=lambda d: d['plate_id'])
         return eps
-
-
-    def post(self):
-        '''
-        Create a new electroporation
-        '''
-        raise NotImplementedError
 
 
 class PolyclonalLines(Resource):
@@ -131,7 +113,8 @@ class PolyclonalLines(Resource):
 
         # limit to the first ten lines to prevent returning giant payloads
         if kind is not None:
-            query = query.limit(10)
+            pass
+            # query = query.limit(10)
 
         metadata = pd.DataFrame(
             data=query.all(),
@@ -152,7 +135,8 @@ class PolyclonalLine(Resource):
         '''
         args = request.args
         kind = args.get('kind')
-        ops = operations.PolyclonalLineOperations.from_line_id(current_app.Session, cell_line_id)
+        ops = operations.PolyclonalLineOperations.from_line_id(
+            current_app.Session, cell_line_id)
         return jsonify(ops.construct_payload(kind=kind))
 
 
@@ -169,8 +153,11 @@ class MicroscopyFOV(Resource):
         if kind == 'proj':
             ext = 'tif'
 
-        fov = current_app.Session.query(models.MicroscopyFOV)\
-            .filter(models.MicroscopyFOV.id == fov_id).first()
+        fov = (
+            current_app.Session.query(models.MicroscopyFOV)
+            .filter(models.MicroscopyFOV.id == fov_id)
+            .first()
+        )
 
         if not fov:
             # this means the fov_id was not valid
@@ -202,8 +189,11 @@ class MicroscopyFOVROI(Resource):
 
         '''
 
-        roi = current_app.Session.query(models.MicroscopyFOVROI)\
-            .filter(models.MicroscopyFOVROI.id == roi_id).first()
+        roi = (
+            current_app.Session.query(models.MicroscopyFOVROI)
+            .filter(models.MicroscopyFOVROI.id == roi_id)
+            .first()
+        )
 
         processor = FOVProcessor.from_database(roi.fov)
         filepath = processor.dst_filepath(
@@ -228,8 +218,11 @@ class CellLineAnnotation(Resource):
         '''
         '''
 
-        line = current_app.Session.query(models.CellLine)\
-            .filter(models.CellLine.id == cell_line_id).first()
+        line = (
+            current_app.Session.query(models.CellLine)
+            .filter(models.CellLine.id == cell_line_id)
+            .first()
+        )
 
         if line.annotation is not None:
             return jsonify({
@@ -246,8 +239,11 @@ class CellLineAnnotation(Resource):
         '''
         data = request.get_json()
 
-        line = current_app.Session.query(models.CellLine)\
-            .filter(models.CellLine.id == cell_line_id).first()
+        line = (
+            current_app.Session.query(models.CellLine)
+            .filter(models.CellLine.id == cell_line_id)
+            .first()
+        )
 
         annotation = line.annotation
         if annotation is None:

@@ -334,7 +334,8 @@ def get_unprocessed_fovs(engine, session, result_kind):
     unprocessed_fovs = (
         session.query(models.MicroscopyFOV)
         .filter(models.MicroscopyFOV.id.in_(list(d.id)))
-    ).all()
+        .all()
+    )
     return unprocessed_fovs
 
 
@@ -360,7 +361,8 @@ def main():
         dataset = (
             Session.query(models.MicroscopyDataset)
             .filter(models.MicroscopyDataset.pml_id == args.pml_id)
-        ).first()
+            .first()
+        )
         fovs = dataset.fovs
 
     # construct the PlateMicroscopy metadata

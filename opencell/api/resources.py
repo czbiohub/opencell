@@ -201,7 +201,7 @@ class MicroscopyFOVROI(Resource):
             roi_id=roi_id,
             channel=channel,
             kind='crop',
-            ext='png')
+            ext='jpg')
 
         file = send_file(
             open(filepath, 'rb'),

@@ -569,7 +569,12 @@ class FOVProcessor:
             did_resample_stack = True
             z_scale = original_step_size/target_step_size
             stack = skimage.transform.rescale(
-                stack, (1, 1, z_scale), multichannel=False, preserve_range=True)
+                stack,
+                (1, 1, z_scale),
+                multichannel=False,
+                preserve_range=True,
+                anti_aliasing=False,
+                order=1)
 
         # pad or crop the stack in z so that there are the required number of slices
         num_rows, num_cols, num_slices = stack.shape

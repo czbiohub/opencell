@@ -364,7 +364,8 @@ class PolyclonalLineOperations:
 
         electroporation = (
             session.query(models.Electroporation)
-            .filter(models.Electroporation.plate_instance.plate_design_id == design_id)
+            .join(models.Electroporation.plate_instance)
+            .filter(models.PlateInstance.plate_design_id == design_id)
             .first()
         )
 

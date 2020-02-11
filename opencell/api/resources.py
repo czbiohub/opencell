@@ -88,13 +88,12 @@ class PolyclonalLines(Resource):
         plate_id = args.get('plate_id')
         target_name = args.get('target_name')
 
-        valid_kinds = ['all', 'facs', 'sequencing', 'ms', 'microscopy']
+        valid_kinds = ['all', 'facs', 'ms', 'microscopy', 'thumbnail']
         if kind is not None and kind not in valid_kinds:
             abort(404)
 
-        cell_line_metadata = current_app.cell_line_metadata_view
+        cell_line_metadata = current_app.views.get('cell_line_metadata')
         query = current_app.Session.query(cell_line_metadata)
-
         if plate_id:
             query = query.filter(cell_line_metadata.columns.plate_id == plate_id)
 
@@ -123,8 +122,11 @@ class PolyclonalLines(Resource):
         payload = []
         for ind, row in metadata.iterrows():
             ops = operations.PolyclonalLineOperations.from_line_id(
-                current_app.Session, row.cell_line_id)
+                current_app.Session,
+                row.cell_line_id
+            )
             payload.append(ops.construct_payload(kind=kind))
+
         return jsonify(payload)
 
 

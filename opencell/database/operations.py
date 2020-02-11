@@ -348,11 +348,17 @@ class PolyclonalLineOperations:
 
 
     @classmethod
-    def from_line_id(cls, session, line_id):
+    def from_line_id(cls, session, line_id, eager=False):
         '''
         '''
-        line = session.query(models.CellLine).filter(models.CellLine.id == line_id).first()
-        return cls(line)
+        query = session.query(models.CellLine).filter(models.CellLine.id == line_id)
+
+        if eager:
+            query = query.options(
+                db.orm.joinedload(models.CellLine.fovs)
+                .joinedload(models.MicroscopyFOV.results)
+            )
+        return cls(query.first())
 
 
     @classmethod
@@ -362,18 +368,22 @@ class PolyclonalLineOperations:
         *assuming* that there is only one electroporation of one instance of the plate design.
         '''
 
-        electroporation = (
-            session.query(models.Electroporation)
-            .join(models.Electroporation.plate_instance)
+        lines = (
+            session.query(models.CellLine)
+            .join(models.ElectroporationLine)
+            .join(models.Electroporation)
+            .join(models.PlateInstance)
             .filter(models.PlateInstance.plate_design_id == design_id)
-            .first()
+            .filter(models.ElectroporationLine.well_id == well_id)
+            .all()
         )
 
-        for line in electroporation.electroporation_lines:
-            if line.well_id == well_id:
-                return cls(line.cell_line)
+        if len(lines) > 1:
+            raise ValueError('More than one line found for well %s of plate %s' % (well_id, design_id))
+        if not lines:
+            raise ValueError('No line found for well %s of plate %s' % (well_id, design_id))
 
-        raise ValueError('No polyclonal line found for well %s of plate %s' % (well_id, design_id))
+        return cls(lines[0])
 
 
     @classmethod
@@ -392,15 +402,11 @@ class PolyclonalLineOperations:
 
         if len(cds) > 1:
             print('Warning: %s cell lines found for target %s' % (len(cds), target_name))
-
         if len(cds) == 0:
-            print('Warning: no cells lines found for target %s' % target_name)
-            return
+            raise ValueError('Warning: no cells lines found for target %s' % target_name)
 
         cd = cds[0]
-        ep_lines = cd.plate_design.plate_instances[0].electroporations[0].electroporation_lines
-        ep_line = [line for line in ep_lines if line.well_id == cd.well_id][0]
-        return cls(ep_line.cell_line)
+        return self.from_plate_well(cd.plate_design_id, cd.well_id)
 
 
     def insert_facs_dataset(self, session, histograms, scalars, errors='warn'):
@@ -454,7 +460,7 @@ class PolyclonalLineOperations:
         add_and_commit(session, fovs, errors=errors)
 
 
-    def get_top_scoring_fovs(self, session, ntop):
+    def get_top_scoring_fovs(self, ntop):
         '''
         Get the n highest-scored FOVs
         '''
@@ -567,6 +573,14 @@ class PolyclonalLineOperations:
 
         if kind in ['all', 'microscopy']:
             data['fovs'] = self.construct_fov_payload()
+
+        if kind in ['all', 'thumbnail']:
+            thumbnail = {}
+            best_fov = self.get_top_scoring_fovs(ntop=1)
+            if best_fov:
+                best_fov = best_fov[0]
+                thumbnail = [thumbnail.data for thumbnail in best_fov.thumbnails if thumbnail.channel == 'rgb'][0]
+            data['thumbnail'] = thumbnail
 
         data['scalars'] = scalars
         return data

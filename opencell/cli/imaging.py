@@ -464,7 +464,7 @@ def main():
         fovs_to_crop = []
         for line in Session.query(models.CellLine).all():
             ops = operations.PolyclonalLineOperations(line)
-            fovs_to_crop.extend(ops.get_top_scoring_fovs(Session, ntop=2))
+            fovs_to_crop.extend(ops.get_top_scoring_fovs(ntop=2))
 
         try:
             do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs_to_crop)

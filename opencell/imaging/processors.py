@@ -496,7 +496,7 @@ class FOVProcessor:
                 kind='crop',
                 channel=channel,
                 roi_props=roi_props,
-                ext='png'
+                ext='jpg'
             )
 
             # crop the raw stack
@@ -534,7 +534,7 @@ class FOVProcessor:
             if not os.path.isfile(dst_filepath):
                 cropped_stack = np.moveaxis(cropped_stack, -1, 0)
                 tile = np.concatenate([zslice for zslice in cropped_stack], axis=0)
-                imageio.imsave(dst_filepath, tile)
+                imageio.imsave(dst_filepath, tile, format='jpg', quality=90)
 
         return roi_props
 

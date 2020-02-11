@@ -328,7 +328,8 @@ def get_unprocessed_fovs(engine, session, result_kind):
         select fov.*, res.kind as kind from microscopy_fov fov
         left join (select * from microscopy_fov_result where kind = '%s') res
         on fov.id = res.fov_id
-        where kind is null;'''
+        where kind is null;
+    '''
 
     d = pd.read_sql(query % result_kind, engine)
     unprocessed_fovs = (

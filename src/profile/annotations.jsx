@@ -16,16 +16,18 @@ import './Profile.css';
 const localizationLabels = [
     'Nuclear', 'Nuclear membrane', 'Nuclear punctae', 'Chromatin',
     'Nucleolus', 'Nucleolus-GC', 'Nucleolus-FC/DFC', 'Nucleolar ring',
-    'Membrane', 'Cytoplasmic', 'Cytoskeleton', 
+    'Nucleus-cytoplasm variation', 'Membrane', 'Cytoplasmic', 'Cytoskeleton', 
     'ER', 'Golgi', 'Mitochondria', 'Centrosome', 'Vesicles',
     'Big aggregates', 'Small aggregates', 'Diffuse', 'Textured',
-    'Cell contact', 'Nucleus-cytoplasm variation'
+    'Cell contact', 'Cilia',
 ];
 
 const qcLabels = [
-    'Pretty', 'Interesting', 
-    'No GFP', 'Low GFP', 'Heterogeneous GFP', 'Low HDR',
-    'Re-sort', 'Over-exposed', 'Disk artifact', 'Cross-contamination',
+    'Publication ready', 'Heterogeneous GFP', 'Salvageable re-sort', 'Re-image',
+    'No GFP', 'Low GFP', 'Low HDR',
+    'Over-exposed', 'Disk artifact', 'Confluency off',
+    'Cross-contamination', 'Re-sort',
+    'Interesting', 'Pretty',
 ];
 
 
@@ -116,8 +118,10 @@ class AnnotationsForm extends Component {
         const data = {
             comment: this.state.comment,
             categories: this.state.categories,
-            fov_ids: [...new Set(this.props.fovIds)],
-            timestamp: (new Date()).toString(),
+            client_metadata: {
+                last_modified: (new Date()).toString(),
+                displayed_fov_ids: [...new Set(this.props.fovIds)],
+            }
         };
 
         putData(`${settings.apiRoot}/annotations/${this.props.cellLineId}`, data)

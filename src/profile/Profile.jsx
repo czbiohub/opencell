@@ -14,10 +14,8 @@ import Header from './header.jsx';
 
 import SliceViz from './sliceViz.jsx';
 import VolumeViz from './volumeViz.jsx';
-
 import FACSPlot from '../common/facsPlot.jsx';
 import ExpressionPlot from '../common/expressionPlot.jsx';
-
 import AnnotationsForm from './annotations.jsx';
 import VolcanoPlotContainer from './volcanoPlotContainer.jsx';
 
@@ -26,7 +24,6 @@ import 'react-table/react-table.css';
 import "@blueprintjs/core/lib/css/blueprint.css";
 
 import { metadataDefinitions } from './definitions.js';
-
 import manualMetadata from '../demo/data/manual_metadata.json';
 import uniprotMetadata from '../demo/data/uniprot_metadata.json';
 
@@ -130,21 +127,21 @@ class App extends Component {
     }
 
 
-    loadPNG(url, onLoad) {
+    loadImage(url, onLoad) {
 
         // hard-coded xy size and number of z-slices
         // WARNING: these must match the stack to be loaded
-        const imSize = 600;
+        const imageSize = 600;
         const numSlices = 65;
 
-        const pngWidth = imSize;
-        const pngHeight = imSize*numSlices;
+        const imageWidth = imageSize;
+        const imageHeight = imageSize*numSlices;
 
         const volume = {
-            xLength: imSize,
-            yLength: imSize,
+            xLength: imageSize,
+            yLength: imageSize,
             zLength: numSlices,
-            data: new Uint8Array(pngWidth*pngHeight),
+            data: new Uint8Array(imageWidth*imageHeight),
         };
 
         const img = new Image;
@@ -155,11 +152,11 @@ class App extends Component {
         img.onload = function () {
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
-            canvas.setAttribute('width', pngWidth);
-            canvas.setAttribute('height', pngHeight);
+            canvas.setAttribute('width', imageWidth);
+            canvas.setAttribute('height', imageHeight);
             context.drawImage(img, 0, 0);
 
-            const imageData = context.getImageData(0, 0, pngWidth, pngHeight);
+            const imageData = context.getImageData(0, 0, imageWidth, imageHeight);
             for (let ind = 0; ind < volume.data.length; ind++) {
                 volume.data[ind] = imageData.data[ind*4];
             }
@@ -176,7 +173,7 @@ class App extends Component {
 
         const loadStack = (filepath) => {
             return new Promise((resolve, reject) => {
-                this.loadPNG(filepath, volume => resolve(volume));
+                this.loadImage(filepath, volume => resolve(volume));
             });
         }
 
@@ -369,13 +366,12 @@ class App extends Component {
                                     onItemSelect={roi => this.setState({stacksLoaded: false, roiId: roi.id})}
                                     activeItem={this.rois.filter(roi => roi.id === this.state.roiId)[0]}
                                 >
-                                <Button 
-                                    className="bp3-button-custom"
-                                    text={`ROI ${this.state.roiId}`}
-                                    rightIcon="double-caret-vertical"
-                                />
-                            </Select>
-                        </div>
+                                    <Button 
+                                        className="bp3-button-custom"
+                                        text={`ROI ${this.state.roiId}`}
+                                        rightIcon="double-caret-vertical"/>
+                                </Select>
+                            </div>
                         </div>
                     </div>
 
@@ -456,7 +452,7 @@ class App extends Component {
                     </div>
         
                     <ReactTable 
-                        pageSize={10}
+                        pageSize={50}
                         showPageSizeOptions={false}
                         filterable={true}
                         columns={tableDefs}

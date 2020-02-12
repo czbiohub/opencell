@@ -10,17 +10,26 @@ class Header extends Component {
 
     render () {
 
-        const headerDefs = ['protein_name', 'target_terminus', 'uniprot_id', 'plate_id', 'well_id', 'hdr_all', 'hdr_modified', 'facs_grade'];
-        const metadataItems = metadataDefinitions.filter(def => headerDefs.includes(def.id)).map(def => {
-            return (
-                <MetadataItem
-                    key={def.Header}
-                    value={def.accessor(this.props.cellLine)}
-                    label={def.Header}
-                    units={def.units}
-                />
-            );
-        });
+        const headerDefs = [
+            'protein_name', 'target_terminus', 'uniprot_id', 
+            'plate_id', 'well_id', 
+            'hdr_all', 'hdr_modified', 
+            'facs_grade'
+        ];
+
+        const metadataItems = metadataDefinitions.filter(
+                def => headerDefs.includes(def.id)
+            )
+            .map(def => {
+                return (
+                    <MetadataItem
+                        key={def.Header}
+                        value={def.accessor(this.props.cellLine)}
+                        label={def.Header}
+                        units={def.units}
+                    />
+                );
+            });
 
         return (
             <div className="fl w-100 pt3 pb3">
@@ -49,7 +58,9 @@ class Header extends Component {
 
                         {/* target name */}
                         <div className='fl dib'>
-                            <div className="blue pt3" style={{fontSize: 66}}>{this.props.cellLine.target_name}</div>
+                            <div className="blue pt3" style={{fontSize: 66}}>
+                                {this.props.cellLine.target_name}
+                            </div>
                         </div>
 
                         {/* stats */}

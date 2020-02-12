@@ -101,6 +101,7 @@ class App extends Component {
         this.setState({
             targetName,
             cellLineId: cellLine.cell_line_id,
+            fovId: rois[0].fov_id,
             roiId: rois[0].id,
             stacksLoaded: false, 
             gfpMax: manualMetadata[targetName]?.gfp_max || 50,
@@ -179,8 +180,8 @@ class App extends Component {
             return (
                 <MenuItem
                     key={roi.id}
-                    text={`ROI ${roi.id}`}
-                    label={`(FOV ${roi.fov_id})`}
+                    text={`FOV ${roi.fov_id}`}
+                    label={`(ROI ${roi.id})`}
                     active={props.modifiers.active}
                     onClick={props.handleClick}
                 />
@@ -315,7 +316,7 @@ class App extends Component {
                                 >
                                     <Button 
                                         className="bp3-button-custom"
-                                        text={`ROI ${this.state.roiId}`}
+                                        text={`FOV ${this.state.fovId} (ROI ${this.state.roiId})`}
                                         rightIcon="double-caret-vertical"/>
                                 </Select>
                             </div>

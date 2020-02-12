@@ -1,5 +1,6 @@
 import React, {Component} from 'react';
-import {metadataDefinitions} from './definitions.js';
+import metadataDefinitions from './metadataDefinitions.js';
+
 
 class Header extends Component {
 

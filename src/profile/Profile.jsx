@@ -23,11 +23,12 @@ import 'tachyons';
 import 'react-table/react-table.css';
 import "@blueprintjs/core/lib/css/blueprint.css";
 
-import { metadataDefinitions } from './definitions.js';
+import metadataDefinitions from './metadataDefinitions.js';
 import manualMetadata from '../demo/data/manual_metadata.json';
 import uniprotMetadata from '../demo/data/uniprot_metadata.json';
 
 import settings from '../common/settings.js';
+import * as utils from '../common/utils.js';
 
 import '../common/common.css';
 import './Profile.css';
@@ -42,10 +43,10 @@ class App extends Component {
         this.urlParams = new URLSearchParams(window.location.search);
 
         this.state = {
-
             linesLoaded: false,
             stacksLoaded: false,
             
+            fovId: null,
             roiId: null,
             cellLineId: null,
             targetName: null,
@@ -74,17 +75,13 @@ class App extends Component {
             dapiMin: 5,
             dapiMax: 50,
             zIndex: 30,
-
         };
-
 
         this.changeTarget = this.changeTarget.bind(this);
         this.onSearchChange = this.onSearchChange.bind(this);
-
         this.allCellLines = [];
         this.cellLine = {};
         this.rois = [];
-    
     }
 
 
@@ -127,53 +124,11 @@ class App extends Component {
     }
 
 
-    loadImage(url, onLoad) {
-
-        // hard-coded xy size and number of z-slices
-        // WARNING: these must match the stack to be loaded
-        const imageSize = 600;
-        const numSlices = 65;
-
-        const imageWidth = imageSize;
-        const imageHeight = imageSize*numSlices;
-
-        const volume = {
-            xLength: imageSize,
-            yLength: imageSize,
-            zLength: numSlices,
-            data: new Uint8Array(imageWidth*imageHeight),
-        };
-
-        const img = new Image;
-
-        // this is required to avoid the 'tainted canvas' error
-        img.setAttribute('crossOrigin', '');
-
-        img.onload = function () {
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            canvas.setAttribute('width', imageWidth);
-            canvas.setAttribute('height', imageHeight);
-            context.drawImage(img, 0, 0);
-
-            const imageData = context.getImageData(0, 0, imageWidth, imageHeight);
-            for (let ind = 0; ind < volume.data.length; ind++) {
-                volume.data[ind] = imageData.data[ind*4];
-            }
-            
-            onLoad(volume);
-        };
-
-        img.src = url;
-
-    }
-
-
     loadStacks() {
 
         const loadStack = (filepath) => {
             return new Promise((resolve, reject) => {
-                this.loadImage(filepath, volume => resolve(volume));
+                utils.loadImage(filepath, volume => resolve(volume));
             });
         }
 
@@ -198,13 +153,11 @@ class App extends Component {
 
 
     componentDidMount() {
-
         let url = `${this.apiUrl}/lines`;
         d3.json(url).then(lines => {
             this.allCellLines = lines;     
             this.setState({linesLoaded: true});
         });
-
         // initial target to display
         this.onSearchChange(this.urlParams.get('target') || 'LMNB1');
         
@@ -265,13 +218,13 @@ class App extends Component {
                 {/* page header and metadata */}
                 <Header cellLine={this.cellLine} onSearchChange={this.onSearchChange}/>
 
-                {/* Expression scatterplot and FACS histograms */}
+                {/* Left column */}
                 <div className="fl w-25 dib pl3 pr4 pt0">
 
+                    {/* 'About' textbox */}
                     <div className="bb b--black-10">
                         <div className="f3 container-header">About this protein</div>
                     </div>
-
                     <div
                         className='pt0 pb3 w-100 protein-function-container'
                         style={{height: 100, overflow: 'auto', lineHeight: 1.33}}>
@@ -279,7 +232,6 @@ class App extends Component {
                             <p>{uniprotMetadata[this.state.targetName]?.uniprot_function}</p>
                         </div>
                     </div>
-
 
                     {/* expression scatterplot*/}
                     <div className="pt4 bb b--black-10">
@@ -291,11 +243,10 @@ class App extends Component {
                         <ExpressionPlot targetName={this.state.targetName}/>
                     </div>
 
-
+                    {/* FACS plot */}
                     <div className="bb b--black-10">
                         <div className="f3 container-header">FACS histograms</div>
-                    </div> 
-                   
+                    </div>                    
                     {/* FACS plot controls */}
                     <div className="pt3 pb2">
                         <div className='fl w-100 pb3'>
@@ -315,7 +266,6 @@ class App extends Component {
                             </div>
                         </div>
                     </div>
-
                     {/* FACS plot itself*/}
                     <div 
                         className="fl pt3 w-100 facs-container" 
@@ -331,7 +281,6 @@ class App extends Component {
                 </div>
 
 
-
                 {/* microscopy - slice-viz and volume-viz modes */}
                 {/* note that the 'fl' is required here for 'dib' to work*/}
                 <div className="fl w-40 dib pl3 pr4">
@@ -341,8 +290,6 @@ class App extends Component {
 
                     {/* display controls */}
                     <div className="pt3 pb2">
-
-                        {/* Top row - display mode and channel */}
                         <div className='fl w-100 pb3'>
                             <div className='dib pr4'>
                                 <ButtonGroup 
@@ -416,8 +363,8 @@ class App extends Component {
                 </div>
 
 
+                {/*  annotations or volcano plot */}
                 {this.urlParams.get('annotations')!=='yes' ? (
-
                     <div className="fl w-33 dib pl3">
                         <div className="bb b--black-10">
                             <div className="f3 container-header">Interactions</div>
@@ -427,9 +374,7 @@ class App extends Component {
                             changeTarget={name => this.onSearchChange(name)}
                         />
                     </div>
-
                 ) : (
-
                     <div className="fl w-33 dib pl3 pb3">
                         <div className="bb b--black-10">
                             <div className="f3 container-header">Annotations</div>
@@ -440,17 +385,14 @@ class App extends Component {
                             fovIds={this.rois.map(roi => roi.fov_id)}
                         />
                     </div>
-
                 )}
 
 
                 {/* table of all targets */}
                 <div className="fl w-90 pt0 pl4 pb5">
-
                     <div className="">
                         <div className="f3 container-header">All cell lines</div>
                     </div>
-        
                     <ReactTable 
                         pageSize={50}
                         showPageSizeOptions={false}
@@ -474,7 +416,6 @@ class App extends Component {
                           }}
                     />
                 </div>
-
             </div>
 
             {this.state.linesLoaded & this.state.stacksLoaded ? (null) : (<div className='loading-overlay'/>)}

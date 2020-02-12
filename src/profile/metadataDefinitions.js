@@ -6,7 +6,7 @@ import facsGrades from '../demo/data/facs_grades.json';
 // column defs for the datatable; also used by header.jsx
 // the single argument of the accessor methods is assumed to be
 // a JSON object of cell line metadata returned by the '/lines' endpoint
-export const metadataDefinitions = [
+const metadataDefinitions = [
     {   
         id: 'protein_name',
         accessor: row => {
@@ -83,3 +83,5 @@ export const metadataDefinitions = [
     }
 ];
 
+
+export default metadataDefinitions;

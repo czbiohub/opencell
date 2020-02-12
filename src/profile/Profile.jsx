@@ -12,10 +12,9 @@ import ButtonGroup from './buttonGroup.jsx';
 import Navbar from '../common/navbar.jsx';
 import Header from './header.jsx';
 
-import ViewerContainer from './viewerContainer.jsx';
-
-import FACSPlot from '../common/facsPlot.jsx';
 import ExpressionPlot from '../common/expressionPlot.jsx';
+import FacsPlotContainer from './facsPlotContainer.jsx';
+import ViewerContainer from './viewerContainer.jsx';
 import VolcanoPlotContainer from './volcanoPlotContainer.jsx';
 import AnnotationsForm from './annotations.jsx';
 
@@ -39,30 +38,13 @@ class App extends Component {
     constructor (props) {
         super(props);
 
-        this.urlParams = new URLSearchParams(window.location.search);
-
         this.state = {
-
-            linesLoaded: false,
-            
             rois: [],
             fovId: null,
             roiId: null,
             cellLineId: null,
             targetName: null,
-
-            // 'Volcano' or 'Table'
-            msDisplayMode: 'Volcano',
-
-            // 'None', 'Family', 'Status'
-            msColorMode: 'Status',
-
-            // whether to plot the GFP-positive population
-            facsShowGFP: 'On',
-
-            // whether to show the annotations (median/max intensity etc)
-            facsShowAnnotations: 'On',
-
+            linesLoaded: false,
         };
 
         this.changeTarget = this.changeTarget.bind(this);
@@ -70,6 +52,7 @@ class App extends Component {
 
         this.cellLine = {};
         this.allCellLines = [];
+        this.urlParams = new URLSearchParams(window.location.search);
     }
 
 
@@ -169,7 +152,8 @@ class App extends Component {
                     </div>
                     <div 
                         className="fl pt3 pb3 w-100 expression-plot-container" 
-                        style={{marginLeft: -20, marginTop: 0}}>
+                        style={{marginLeft: -20, marginTop: 0}}
+                    >
                         <ExpressionPlot targetName={this.state.targetName}/>
                     </div>
 
@@ -177,44 +161,14 @@ class App extends Component {
                     <div className="bb b--black-10">
                         <div className="f3 container-header">FACS histograms</div>
                     </div>  
-                  
-                    {/* FACS plot controls */}
-                    <div className="pt3 pb2">
-                        <div className='fl w-100 pb3'>
-                            <div className='dib pr4'>
-                                <ButtonGroup 
-                                    label='GFP-positive population' 
-                                    values={['On', 'Off']}
-                                    activeValue={this.state.facsShowGFP}
-                                    onClick={value => this.setState({facsShowGFP: value})}/>
-                            </div>
-                            <div className='dib pr4'>
-                                <ButtonGroup 
-                                    label='Annotations' 
-                                    values={['On', 'Off']}
-                                    activeValue={this.state.facsShowAnnotations}
-                                    onClick={value => this.setState({facsShowAnnotations: value})}/>
-                            </div>
-                        </div>
-                    </div>
-                    {/* FACS plot itself*/}
-                    <div 
-                        className="fl pt3 w-100 facs-container" 
-                        style={{marginLeft: -20, marginTop: -20}}>
-                        <FACSPlot 
-                            width={400}
-                            height={300}
-                            isSparkline={false}
-                            cellLineId={this.state.cellLineId}
-                            showGFP={this.state.facsShowGFP==='On'}/>
-                    </div>
+                    <FacsPlotContainer cellLineId={this.state.cellLineId}/>
                    
                 </div>
 
 
-                {/* microscopy - sliceViewer and volumeViewer */}
+                {/* Center column - sliceViewer and volumeViewer */}
                 {/* note that the 'fl' is required here for 'dib' to work*/}
-                <div className="fl w-40 dib pl3 pr4">
+                <div className="fl dib pl3 pr3" style={{width: '650px'}}>
                     <div className="bb b--black-10">
                         <div className="f3 container-header">Localization</div>
                     </div>
@@ -227,29 +181,31 @@ class App extends Component {
                 </div>
 
 
-                {/*  annotations or volcano plot */}
-                {this.urlParams.get('annotations')!=='yes' ? (
-                    <div className="fl w-33 dib pl3">
-                        <div className="bb b--black-10">
-                            <div className="f3 container-header">Interactions</div>
+                {/* Right column - annotations or volcano plot */}
+                <div className="fl dib pl3 pb3" style={{width: '400px'}}>
+                    {this.urlParams.get('annotations')!=='yes' ? (
+                        <div>
+                            <div className="bb b--black-10">
+                                <div className="f3 container-header">Interactions</div>
+                            </div>
+                            <VolcanoPlotContainer
+                                targetName={this.state.targetName}
+                                changeTarget={name => this.onSearchChange(name)}
+                            />
                         </div>
-                        <VolcanoPlotContainer
-                            targetName={this.state.targetName}
-                            changeTarget={name => this.onSearchChange(name)}
-                        />
-                    </div>
-                ) : (
-                    <div className="fl w-33 dib pl3 pb3">
-                        <div className="bb b--black-10">
-                            <div className="f3 container-header">Annotations</div>
-                        </div>       
-                        {/* note that fovIds should include only the *displayed* FOVs */}
-                        <AnnotationsForm 
-                            cellLineId={this.state.cellLineId} 
-                            fovIds={this.state.rois.map(roi => roi.fov_id)}
-                        />
-                    </div>
-                )}
+                    ) : (
+                        <div>
+                            <div className="bb b--black-10">
+                                <div className="f3 container-header">Annotations</div>
+                            </div>       
+                            {/* note that fovIds should include only the *displayed* FOVs */}
+                            <AnnotationsForm 
+                                cellLineId={this.state.cellLineId} 
+                                fovIds={this.state.rois.map(roi => roi.fov_id)}
+                            />
+                        </div>
+                    )}
+                </div>
 
 
                 {/* table of all targets */}
@@ -277,7 +233,7 @@ class App extends Component {
                         }}
                         getPaginationProps={(state, rowInfo, column) => {
                             return {style: {fontSize: 16}}
-                          }}
+                        }}
                     />
                 </div>
             </div>

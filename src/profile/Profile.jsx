@@ -12,12 +12,12 @@ import ButtonGroup from './buttonGroup.jsx';
 import Navbar from '../common/navbar.jsx';
 import Header from './header.jsx';
 
-import SliceViz from './sliceViz.jsx';
-import VolumeViz from './volumeViz.jsx';
+import ViewerContainer from './viewerContainer.jsx';
+
 import FACSPlot from '../common/facsPlot.jsx';
 import ExpressionPlot from '../common/expressionPlot.jsx';
-import AnnotationsForm from './annotations.jsx';
 import VolcanoPlotContainer from './volcanoPlotContainer.jsx';
+import AnnotationsForm from './annotations.jsx';
 
 import 'tachyons';
 import 'react-table/react-table.css';
@@ -39,23 +39,17 @@ class App extends Component {
     constructor (props) {
         super(props);
 
-        this.apiUrl = settings.apiRoot;
         this.urlParams = new URLSearchParams(window.location.search);
 
         this.state = {
+
             linesLoaded: false,
-            stacksLoaded: false,
             
+            rois: [],
             fovId: null,
             roiId: null,
             cellLineId: null,
             targetName: null,
-
-            // 'Volume' or 'Slice'
-            localizationMode: 'Slice',
-
-            // 'GFP' or 'DAPI' or 'Both'
-            localizationChannel: 'Both',
 
             // 'Volcano' or 'Table'
             msDisplayMode: 'Volcano',
@@ -69,19 +63,13 @@ class App extends Component {
             // whether to show the annotations (median/max intensity etc)
             facsShowAnnotations: 'On',
 
-            // HACK: these values must match the initial values hard-coded in the sliders below
-            gfpMin: 0,
-            gfpMax: 50,
-            dapiMin: 5,
-            dapiMax: 50,
-            zIndex: 30,
         };
 
         this.changeTarget = this.changeTarget.bind(this);
         this.onSearchChange = this.onSearchChange.bind(this);
-        this.allCellLines = [];
+
         this.cellLine = {};
-        this.rois = [];
+        this.allCellLines = [];
     }
 
 
@@ -92,19 +80,17 @@ class App extends Component {
         // check that the target has changed
         if (targetName===this.state.targetName) return;
 
+        // concatenate all ROIs
         const rois = [...cellLine.fovs[0].rois, ...cellLine.fovs[1].rois];
 
-        this.rois = rois;
         this.cellLine = cellLine;
 
-        // reset stacksLoaded to false, since we now need to load new z-stacks
         this.setState({
-            targetName,
             cellLineId: cellLine.cell_line_id,
             fovId: rois[0].fov_id,
             roiId: rois[0].id,
-            stacksLoaded: false, 
-            gfpMax: manualMetadata[targetName]?.gfp_max || 50,
+            targetName,
+            rois,
         });
     }
 
@@ -113,7 +99,7 @@ class App extends Component {
         // fired when the user hits enter in the header's target search text input
         // `value` is the value of the input
 
-        let url = `${this.apiUrl}/lines?target_name=${value}&kind=all`;
+        let url = `${settings.apiUrl}/lines?target_name=${value}&kind=all`;
         d3.json(url).then(lines => {
             for (const line of lines) {
                 if (line && line.fovs.length) {
@@ -125,36 +111,8 @@ class App extends Component {
     }
 
 
-    loadStacks() {
-
-        const loadStack = (filepath) => {
-            return new Promise((resolve, reject) => {
-                utils.loadImage(filepath, volume => resolve(volume));
-            });
-        }
-
-        if (!this.state.roiId) {
-            this.setState({stacksLoaded: true});
-            return;
-        }
-
-        // ***WARNING***
-        // the order of the channels in the `filepaths` array below matters,
-        // because it is *independently* hard-coded in SliceViz and VolumeViz
-        const filepaths = [
-            `${this.apiUrl}/rois/405/crop/${this.state.roiId}`,
-            `${this.apiUrl}/rois/488/crop/${this.state.roiId}`,
-        ];
-
-        Promise.all(filepaths.map(loadStack)).then(volumes => {
-            this.volumes = volumes;
-            this.setState({stacksLoaded: true});
-        });
-    }
-
-
     componentDidMount() {
-        let url = `${this.apiUrl}/lines`;
+        let url = `${settings.apiUrl}/lines`;
         d3.json(url).then(lines => {
             this.allCellLines = lines;     
             this.setState({linesLoaded: true});
@@ -165,36 +123,7 @@ class App extends Component {
     }
 
 
-    componentDidUpdate(prevProps, prevState, snapshot) {
-        // reload the z-stacks only if the roi has changed
-        if (prevState.roiId!==this.state.roiId) {
-            this.loadStacks();
-        }
-    }
-
-
     render() {
-
-        function renderROIItem (roi, props) {
-            if (!props.modifiers.matchesPredicate) return null;
-            return (
-                <MenuItem
-                    key={roi.id}
-                    text={`FOV ${roi.fov_id}`}
-                    label={`(ROI ${roi.id})`}
-                    active={props.modifiers.active}
-                    onClick={props.handleClick}
-                />
-            );
-        };
-
-        let localizationContent;
-        if (this.state.localizationMode==='Volume') {
-            localizationContent = <VolumeViz volumes={this.volumes} {...this.state}/>
-        }
-        if (this.state.localizationMode==='Slice') {
-            localizationContent = <SliceViz volumes={this.volumes} {...this.state}/>
-        }
 
         // append gene_name to metadataDefinitions 
         // (used only for the table of all targets at the bottom)
@@ -207,10 +136,9 @@ class App extends Component {
             ...metadataDefinitions,
         ];
 
-
         return (
-
             <div>
+
             <Navbar/>
 
             {/* main container */}
@@ -228,7 +156,8 @@ class App extends Component {
                     </div>
                     <div
                         className='pt0 pb3 w-100 protein-function-container'
-                        style={{height: 100, overflow: 'auto', lineHeight: 1.33}}>
+                        style={{height: 100, overflow: 'auto', lineHeight: 1.33}}
+                    >
                         <div>
                             <p>{uniprotMetadata[this.state.targetName]?.uniprot_function}</p>
                         </div>
@@ -247,7 +176,8 @@ class App extends Component {
                     {/* FACS plot */}
                     <div className="bb b--black-10">
                         <div className="f3 container-header">FACS histograms</div>
-                    </div>                    
+                    </div>  
+                  
                     {/* FACS plot controls */}
                     <div className="pt3 pb2">
                         <div className='fl w-100 pb3'>
@@ -282,85 +212,18 @@ class App extends Component {
                 </div>
 
 
-                {/* microscopy - slice-viz and volume-viz modes */}
+                {/* microscopy - sliceViewer and volumeViewer */}
                 {/* note that the 'fl' is required here for 'dib' to work*/}
                 <div className="fl w-40 dib pl3 pr4">
                     <div className="bb b--black-10">
                         <div className="f3 container-header">Localization</div>
                     </div>
-
-                    {/* display controls */}
-                    <div className="pt3 pb2">
-                        <div className='fl w-100 pb3'>
-                            <div className='dib pr4'>
-                                <ButtonGroup 
-                                    label='Mode' 
-                                    values={['Slice', 'Volume']}
-                                    activeValue={this.state.localizationMode}
-                                    onClick={value => this.setState({localizationMode: value})}/>
-                            </div>
-                            <div className='dib pr4'>
-                                <ButtonGroup 
-                                    label='Channel' 
-                                    values={['DAPI', 'GFP', 'Both']}
-                                    activeValue={this.state.localizationChannel}
-                                    onClick={value => this.setState({localizationChannel: value})}/>
-                            </div>
-                            <div className="dib pr3">
-                                <Select 
-                                    items={this.rois} 
-                                    itemRenderer={renderROIItem} 
-                                    filterable={false}
-                                    onItemSelect={roi => this.setState({stacksLoaded: false, roiId: roi.id})}
-                                    activeItem={this.rois.filter(roi => roi.id === this.state.roiId)[0]}
-                                >
-                                    <Button 
-                                        className="bp3-button-custom"
-                                        text={`FOV ${this.state.fovId} (ROI ${this.state.roiId})`}
-                                        rightIcon="double-caret-vertical"/>
-                                </Select>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* slice viewer or volume rendering */}
-                    <div className="fl">
-                        {localizationContent}
-                    </div>
-
-                    {/* Localization controls - min/max/z-index sliders */}
-                    <div className='fl w-90 pt3'>
-                        <div className='w-50 dib'>
-                            <div className=''>DAPI range</div>
-                            <Slider 
-                                label='Min'
-                                min={0} max={100} value={this.state.dapiMin}
-                                onChange={value => this.setState({dapiMin: value})}/>
-                            <Slider 
-                                label='Max'
-                                min={0} max={100} value={this.state.dapiMax}
-                                onChange={value => this.setState({dapiMax: value})}/>
-                        </div>
-
-                        <div className='w-50 dib'>
-                            <div className=''>GFP range</div>
-                            <Slider 
-                                label='Min'
-                                min={0} max={100} value={this.state.gfpMin}
-                                onChange={value => this.setState({gfpMin: value})}/>
-                            <Slider 
-                                label='Max'
-                                min={0} max={100} value={this.state.gfpMax}
-                                onChange={value => this.setState({gfpMax: value})}/>
-                        </div>
-                        <div className='w-100 pt2'>
-                            <div className=''>Z-slice</div>
-                            <Slider 
-                                label='z-index'
-                                min={0} max={100} value={this.state.zIndex}
-                                onChange={value => this.setState({zIndex: value})}/>
-                        </div>
-                    </div>
+                    <ViewerContainer
+                        rois={this.state.rois}
+                        fovId={this.state.fovId}
+                        roiId={this.state.roiId}
+                        changeRoi={(roiId, fovId) => this.setState({roiId, fovId})}
+                    />
                 </div>
 
 
@@ -383,7 +246,7 @@ class App extends Component {
                         {/* note that fovIds should include only the *displayed* FOVs */}
                         <AnnotationsForm 
                             cellLineId={this.state.cellLineId} 
-                            fovIds={this.rois.map(roi => roi.fov_id)}
+                            fovIds={this.state.rois.map(roi => roi.fov_id)}
                         />
                     </div>
                 )}
@@ -419,7 +282,7 @@ class App extends Component {
                 </div>
             </div>
 
-            {this.state.linesLoaded & this.state.stacksLoaded ? (null) : (<div className='loading-overlay'/>)}
+            {this.state.linesLoaded ? (null) : (<div className='loading-overlay'/>)}
 
             </div>
 

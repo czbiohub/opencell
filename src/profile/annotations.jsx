@@ -124,7 +124,7 @@ class AnnotationsForm extends Component {
             }
         };
 
-        putData(`${settings.apiRoot}/annotations/${this.props.cellLineId}`, data)
+        putData(`${settings.apiUrl}/annotations/${this.props.cellLineId}`, data)
             .then(response => {
                 console.log(response);
                 if (!response.ok) throw new Error('Error submitting annotations');
@@ -138,7 +138,7 @@ class AnnotationsForm extends Component {
     fetchData () {
         // load the list of categories into state.categories
         // load the comment string into state.comment
-        fetch(`${settings.apiRoot}/annotations/${this.props.cellLineId}`)
+        fetch(`${settings.apiUrl}/annotations/${this.props.cellLineId}`)
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Error getting annotations for cell line ${this.props.cellLineId}`);
@@ -146,10 +146,18 @@ class AnnotationsForm extends Component {
                 return response.json();
             })
             .then(data => {
-                this.setState({categories: data.categories, comment: data.comment, submissionStatus: ''});
+                this.setState({
+                    categories: data.categories, 
+                    comment: data.comment, 
+                    submissionStatus: ''
+                });
             })
             .catch(error => {
-                this.setState({categories: [], comment: '', submissionStatus: ''});
+                this.setState({
+                    categories: [], 
+                    comment: '', 
+                    submissionStatus: ''
+                });
             });
     }
 

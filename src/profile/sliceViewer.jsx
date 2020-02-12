@@ -6,14 +6,14 @@ import 'tachyons';
 import './Profile.css';
 
 
-class SliceViz extends Component {
+export default class SliceViewer extends Component {
 
     constructor (props) {
 
         super(props);
         this.state = {};
 
-        this.initViz = this.initViz.bind(this);
+        this.initViewer = this.initViewer.bind(this);
         this.maybeInitData = this.maybeInitData.bind(this);
         this.displaySlice = this.displaySlice.bind(this);
 
@@ -36,7 +36,7 @@ class SliceViz extends Component {
 
     
     componentDidMount() {
-        this.initViz();
+        this.initViewer();
         if (this.props.stacksLoaded) {
             this.maybeInitData();
             this.displaySlice();
@@ -77,7 +77,7 @@ class SliceViz extends Component {
     }
 
 
-    initViz() {
+    initViewer() {
 
         // how to display an image given a linearized uint8 array
         // https://stackoverflow.com/questions/42410080/draw-an-exisiting-arraybuffer-into-a-canvas-without-copying
@@ -205,5 +205,3 @@ class SliceViz extends Component {
         );
     }
 }
-
-export default SliceViz;

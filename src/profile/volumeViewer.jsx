@@ -12,14 +12,14 @@ import 'tachyons';
 import './Profile.css';
 
 
-class VolumeViz extends Component {
+export default class VolumeViewer extends Component {
 
     constructor (props) {
 
         super(props);
         this.state = {};
 
-        this.initViz = this.initViz.bind(this);
+        this.initViewer = this.initViewer.bind(this);
         this.renderVolume = this.renderVolume.bind(this);
         this.updateUniforms = this.updateUniforms.bind(this);
 
@@ -56,7 +56,7 @@ class VolumeViz extends Component {
 
     componentDidMount() {
         // data-independent threejs initialization
-        this.initViz();
+        this.initViewer();
 
         // if the stacks (as PNG tiles) have loaded
         if (this.props.stacksLoaded) {
@@ -117,7 +117,7 @@ class VolumeViz extends Component {
     }
 
 
-    initViz() {
+    initViewer() {
 
         // set the height of the canvas to the container's width
         const containerAspect = 1;
@@ -296,5 +296,3 @@ class VolumeViz extends Component {
         );
     }
 }
-
-export default VolumeViz;

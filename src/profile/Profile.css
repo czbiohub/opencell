@@ -89,22 +89,19 @@ button:focus {
     display: inline-block;
 	width: auto;
     cursor: pointer;
-    padding-left: 3px;
-    padding-right: 3px;
+    padding: 4px;
     margin-right: 10px;
-    border-bottom: 1px solid #333;
     line-height: 1.42;
+    border-bottom: 1px solid #333;
 }
 
 .simple-button:hover {
-	background-color: #eee;
+    background-color: #d1d4d622;
 }
 
 .simple-button-active, .simple-button-active:hover {
     font-weight: bold;
-    /* background-color: #ddd; rgba(78, 174, 234, 0.3); */
-    background-color: #ddd;
-    border-bottom: none;
+    background-color: #d1d4d64d;
 }
 
 .simple-button-group-label {
@@ -184,10 +181,27 @@ button:focus {
   }
 
 
+.protein-function-container {
+    height: 100;
+    overflow: 'auto';
+    line-height: 1.33;
+}
+
+/* expression and facs plot containers should have the same margins
+in order for the plots to be vertically aligned */
+.expression-plot-container, 
+.facs-plot-container {
+    margin-left: -20px;
+    margin-right: 10px;
+    margin-top: 10px;
+}
+
+
+
 /* --------------------- expression scatterplot and FACS plot --------------------- */
 
-.facs-container .tick path, 
-.facs-container .axis line,
+.facs-plot-container .tick path, 
+.facs-plot-container .axis line,
 .expression-plot-container .tick path, 
 .expression-plot-container .axis line {
     stroke: #ccc;
@@ -196,12 +210,12 @@ button:focus {
 }
 
 /* the bottom-most horizontal axis line in the FACS plot should be solid and darker */
-.facs-container .axis .bottom line {
+.facs-plot-container .axis .bottom line {
     stroke: #666;
     stroke-dasharray: none;
 }
 
-.facs-container .axis text,
+.facs-plot-container .axis text,
 .expression-plot-container .axis text {
     font-size: 14px;
 }

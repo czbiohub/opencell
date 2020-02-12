@@ -119,6 +119,15 @@ class App extends Component {
             ...metadataDefinitions,
         ];
 
+        function SectionHeader (props) {
+            return (
+                <div className="bb b--black-10">
+                    <div className="f3 container-header">{props.title}</div>
+                </div>
+            );
+        }
+
+
         return (
             <div>
 
@@ -130,89 +139,72 @@ class App extends Component {
                 {/* page header and metadata */}
                 <Header cellLine={this.cellLine} onSearchChange={this.onSearchChange}/>
 
-                {/* Left column */}
-                <div className="fl w-25 dib pl3 pr4 pt0">
+                {/* container for the three primary panels */}
+                <div className="flex" style={{minWidth: '1600px'}}>
 
-                    {/* 'About' textbox */}
-                    <div className="bb b--black-10">
-                        <div className="f3 container-header">About this protein</div>
-                    </div>
-                    <div
-                        className='pt0 pb3 w-100 protein-function-container'
-                        style={{height: 100, overflow: 'auto', lineHeight: 1.33}}
-                    >
-                        <div>
-                            <p>{uniprotMetadata[this.state.targetName]?.uniprot_function}</p>
-                        </div>
-                    </div>
+                    {/* Left column - about box and expression and facs plots*/}
+                    <div className="w-25 pl3 pr4 pt0">
 
-                    {/* expression scatterplot*/}
-                    <div className="pt4 bb b--black-10">
-                        <div className="f3 container-header">Expression level</div>
-                    </div>
-                    <div 
-                        className="fl pt3 pb3 w-100 expression-plot-container" 
-                        style={{marginLeft: -20, marginTop: 0}}
-                    >
-                        <ExpressionPlot targetName={this.state.targetName}/>
-                    </div>
-
-                    {/* FACS plot */}
-                    <div className="bb b--black-10">
-                        <div className="f3 container-header">FACS histograms</div>
-                    </div>  
-                    <FacsPlotContainer cellLineId={this.state.cellLineId}/>
-                   
-                </div>
-
-
-                {/* Center column - sliceViewer and volumeViewer */}
-                {/* note that the 'fl' is required here for 'dib' to work*/}
-                <div className="fl dib pl3 pr3" style={{width: '650px'}}>
-                    <div className="bb b--black-10">
-                        <div className="f3 container-header">Localization</div>
-                    </div>
-                    <ViewerContainer
-                        rois={this.state.rois}
-                        fovId={this.state.fovId}
-                        roiId={this.state.roiId}
-                        changeRoi={(roiId, fovId) => this.setState({roiId, fovId})}
-                    />
-                </div>
-
-
-                {/* Right column - annotations or volcano plot */}
-                <div className="fl dib pl3 pb3" style={{width: '400px'}}>
-                    {this.urlParams.get('annotations')!=='yes' ? (
-                        <div>
-                            <div className="bb b--black-10">
-                                <div className="f3 container-header">Interactions</div>
+                        {/* 'About' textbox */}
+                        <div className='pb4'>
+                            <SectionHeader title='About this protein'/>
+                            <div className='protein-function-container'>
+                                <p>{uniprotMetadata[this.state.targetName]?.uniprot_function}</p>
                             </div>
-                            <VolcanoPlotContainer
-                                targetName={this.state.targetName}
-                                changeTarget={name => this.onSearchChange(name)}
-                            />
                         </div>
-                    ) : (
-                        <div>
-                            <div className="bb b--black-10">
-                                <div className="f3 container-header">Annotations</div>
-                            </div>       
-                            {/* note that fovIds should include only the *displayed* FOVs */}
-                            <AnnotationsForm 
-                                cellLineId={this.state.cellLineId} 
-                                fovIds={this.state.rois.map(roi => roi.fov_id)}
-                            />
+
+                        {/* expression scatterplot*/}
+                        <SectionHeader title='Expression level'/>
+                        <div className="fl w-100 pb3 expression-plot-container">
+                            <ExpressionPlot targetName={this.state.targetName}/>
                         </div>
-                    )}
+
+                        {/* FACS plot */}
+                        <SectionHeader title='FACS histograms'/>
+                        <FacsPlotContainer cellLineId={this.state.cellLineId}/>
+                    </div>
+
+
+                    {/* Center column - sliceViewer and volumeViewer */}
+                    {/* note the hard-coded width (because the ROIs are always 600px */}
+                    <div className="pl3 pr3" style={{flexBasis: '650px'}}>
+                        <SectionHeader title='Localization'/>
+                        <ViewerContainer
+                            rois={this.state.rois}
+                            fovId={this.state.fovId}
+                            roiId={this.state.roiId}
+                            changeRoi={(roiId, fovId) => this.setState({roiId, fovId})}
+                        />
+                    </div>
+
+
+                    {/* Right column - annotations or volcano plot */}
+                    <div className="w-33 pl3 pb3">
+                        {this.urlParams.get('annotations')!=='yes' ? (
+                            <div>
+                                <SectionHeader title='Interactions'/>
+                                <VolcanoPlotContainer
+                                    targetName={this.state.targetName}
+                                    changeTarget={name => this.onSearchChange(name)}
+                                />
+                            </div>
+                        ) : (
+                            <div>
+                                <SectionHeader title='Annotations'/>    
+                                <AnnotationsForm 
+                                    cellLineId={this.state.cellLineId} 
+                                    fovIds={this.state.rois.map(roi => roi.fov_id)}
+                                />
+                            </div>
+                        )}
+                    </div>
                 </div>
 
 
                 {/* table of all targets */}
-                <div className="fl w-90 pt0 pl4 pb5">
-                    <div className="">
-                        <div className="f3 container-header">All cell lines</div>
-                    </div>
+                <div className="w-90 pt0 pl4 pb5">
+                    <SectionHeader title='All cell lines'/>
+                    <div className='pt3 table-container'>
                     <ReactTable 
                         pageSize={50}
                         showPageSizeOptions={false}
@@ -235,6 +227,7 @@ class App extends Component {
                             return {style: {fontSize: 16}}
                         }}
                     />
+                    </div>
                 </div>
             </div>
 

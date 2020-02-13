@@ -530,11 +530,9 @@ class FOVProcessor:
             roi_props['max_intensity_%s' % channel] = max_intensity
 
             # save the stack itself
-            # TODO: what to do when the file already exists?
-            if not os.path.isfile(dst_filepath):
-                cropped_stack = np.moveaxis(cropped_stack, -1, 0)
-                tile = np.concatenate([zslice for zslice in cropped_stack], axis=0)
-                imageio.imsave(dst_filepath, tile, format='jpg', quality=90)
+            cropped_stack = np.moveaxis(cropped_stack, -1, 0)
+            tile = np.concatenate([zslice for zslice in cropped_stack], axis=0)
+            imageio.imsave(dst_filepath, tile, format='jpg', quality=90)
 
         return roi_props
 

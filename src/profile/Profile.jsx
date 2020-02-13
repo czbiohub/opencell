@@ -148,7 +148,7 @@ class App extends Component {
                         {/* 'About' textbox */}
                         <div className='pb4'>
                             <SectionHeader title='About this protein'/>
-                            <div className='protein-function-container'>
+                            <div className='pt2 protein-function-container'>
                                 <p>{uniprotMetadata[this.state.targetName]?.uniprot_function}</p>
                             </div>
                         </div>

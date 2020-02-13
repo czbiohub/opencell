@@ -226,6 +226,12 @@ class App extends Component {
                         getPaginationProps={(state, rowInfo, column) => {
                             return {style: {fontSize: 16}}
                         }}
+                        defaultFilterMethod={(filter, row, column) => {
+                            // force default filtering to be case-insensitive
+                            const id = filter.pivotId || filter.id;
+                            const value = filter.value.toLowerCase();
+                            return row[id] !== undefined ? String(row[id]).toLowerCase().startsWith(value) : true
+                        }}
                     />
                     </div>
                 </div>

@@ -12,9 +12,13 @@ class Header extends Component {
     render () {
 
         const headerDefs = [
-            'protein_name', 'target_terminus', 'uniprot_id', 
-            'plate_id', 'well_id', 
-            'hdr_all', 'hdr_modified', 
+            'protein_name', 
+            'target_terminus', 
+            'uniprot_id', 
+            'plate_id', 
+            'well_id', 
+            'hdr_all', 
+            'hdr_modified', 
             'facs_grade'
         ];
 
@@ -33,58 +37,46 @@ class Header extends Component {
             });
 
         return (
-            <div className="w-100 pt3 pb3">
 
-                {/* main container with bottom border */}
-                <div className="bb b--white" style={{overflow: 'hidden'}}>
+            <div className="flex items-center w-100 pt3 pb3">
 
-                    <div className='fl dib w-25 pt0 pl3'>
-
-                        {/* OpenCell graphic logo */}
-                        <div className='fl dib w-30'>
-                            <img src='./logos/opencell_logo.png' width={120} height={120}/>
-                        </div>
-
-                        {/* 'OpenCell' text header on top of the CZB logo */}
-                        <div className='fl pl3 dib w-70' style={{marginTop: -15}}>
-                            <div className="blue pt3 pb2 opencell-logo">{'OpenCell'}</div>
-                            <img src='./logos/logo_text_smaller.png' width={'40%'}
-                                    style={{verticalAlign: 'top', paddingLeft: 0}}
-                                />
-                        </div>
-                    
-                    </div>
-
-                    <div className='fl dib w-75 pt3 pl0'>
-
-                        {/* target name */}
-                        <div className='fl dib'>
-                            <div className="blue pt3" style={{fontSize: 66}}>
-                                {this.props.cellLine.target_name}
-                            </div>
-                        </div>
-
-                        {/* stats */}
-                        <div className='fl dib pt3 header-metadata'>
-                            <ul>{metadataItems}</ul>
-                        </div>
-
-                        {/* target search text input */}
-                        <div className='fr dib pt4 pr4'>
-                            <input 
-                                type='text' 
-                                className='header-search-textbox' 
-                                defaultValue={''}
-                                onKeyPress={(event) => {
-                                    if (event.charCode===13) {
-                                        this.props.onSearchChange(event.currentTarget.value);
-                                    }
-                                }}/>
-                            <div className='f5 header-search-label'>Search by target name</div>
-                        </div>
-                    </div>
+                {/* OpenCell graphic logo */}
+                <div style={{flex: '0 0 90px'}}>
+                    <img src='./logos/opencell_logo.png' width={90} height={90}/>
                 </div>
+
+                {/* 'OpenCell' text header on top of the CZB logo */}
+                <div className='pl3'>
+                    <div className="pb1 blue opencell-logo">{'OpenCell'}</div>
+                    <img src='./logos/logo_text_smaller.png' width={100}/>
+                </div>
+                
+                {/* target name */}
+                <div className="pl5 blue" style={{fontSize: 66}}>
+                    {this.props.cellLine.target_name}
+                </div>
+
+                {/* target metadata items */}
+                <div className='header-metadata'>
+                    <ul>{metadataItems}</ul>
+                </div>
+
+                {/* target search box */}
+                <div className=''>
+                    <input 
+                        type='text' 
+                        className='header-search-textbox' 
+                        defaultValue={''}
+                        onKeyPress={(event) => {
+                            if (event.charCode===13) {
+                                this.props.onSearchChange(event.currentTarget.value);
+                            }
+                        }}/>
+                    <div className='f7 header-search-label'>Search by target name</div>
+                </div>
+
             </div>
+
         );
     }
 }

@@ -15,21 +15,6 @@ button:focus {
     outline: none;
 }
 
-/* override tachyon's blue */
-.blue {
-    color: #01a1dd;
-}
-
-.container-header {
-    color: #333;
-}
-
-.opencell-logo {
-    font-size: 40px;
-    font-weight: 100;
-    letter-spacing: 2px;
-}
-
 .loading-overlay {
     position: absolute;
     top: 0px;
@@ -40,6 +25,28 @@ button:focus {
     opacity: .7;
 }
 
+/* override tachyon's blue */
+.blue {
+    color: #01a1dd;
+}
+
+.container-header {
+    color: #333;
+}
+
+.flex-0-0-auto {
+    flex: 0 0 auto;
+}
+
+.header-opencell-title {
+    font-size: 40px;
+    font-weight: 100;
+    letter-spacing: 2px;
+}
+
+.header-target-name {
+    font-size: 66px;
+}
 
 .header-metadata ul {
     margin-left: 0px;
@@ -47,7 +54,6 @@ button:focus {
     display: block;
     clear: none;
     white-space: nowrap;
-
 }
 
 .header-metadata li {

@@ -41,19 +41,19 @@ class Header extends Component {
             <div className="flex items-center w-100 pt3 pb3">
 
                 {/* OpenCell graphic logo */}
-                <div style={{flex: '0 0 90px'}}>
+                <div className='flex-0-0-auto'>
                     <img src='./logos/opencell_logo.png' width={90} height={90}/>
                 </div>
 
                 {/* 'OpenCell' text header on top of the CZB logo */}
-                <div className='pl3'>
-                    <div className="pb1 blue opencell-logo">{'OpenCell'}</div>
+                <div className='flex-0-0-auto pl3'>
+                    <div className="pb1 blue header-opencell-title">{'OpenCell'}</div>
                     <img src='./logos/logo_text_smaller.png' width={100}/>
                 </div>
                 
                 {/* target name */}
-                <div className="pl5 blue" style={{fontSize: 66}}>
-                    {this.props.cellLine.target_name}
+                <div className="flex-0-0-auto pl4 blue header-target-name">
+                    {this.props.cellLine.metadata?.target_name}
                 </div>
 
                 {/* target metadata items */}

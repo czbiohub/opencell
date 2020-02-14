@@ -464,18 +464,11 @@ class PolyclonalLineOperations:
         '''
         Get the n highest-scored FOVs
         '''
-        scores = []
-        for fov in self.line.fovs:
-            score = None
-            result = [result for result in fov.results if result.kind == 'fov-features']
-            if result:
-                score = result[0].data.get('score')
-            scores.append(score)
+        scores = np.array([fov.get_score() for fov in self.line.fovs])
 
         # sort the FOVs by score
-        scores = np.array(scores)
         mask = ~pd.isna(scores)
-        scores[~mask] = -2
+        scores[~mask] = -1
         inds = np.argsort(np.array(scores))[::-1]
 
         # drop inds without a score
@@ -486,51 +479,12 @@ class PolyclonalLineOperations:
         return top_fovs
 
 
-    @staticmethod
-    def simplify_scalars(d):
-        '''
-        Simplify a dict of scalar values
-        '''
-        for key, value in d.items():
-            if value is not None and not isinstance(value, str):
-                d[key] = '%0.2f' % value
-        return d
-
-
-    @staticmethod
-    def simplify_facs_histograms(histograms):
-        '''
-        Downsample and discretize the FACS histograms for a cell line
-        This is intended to reduce the payload size when the histograms
-        will only be used to generate thumbnail/sparkline-like plots
-
-        Note that the scaling, rounding, and 2x-subsampling were empirically determined
-        as the most extreme downsampling that still yields satisfactory thumbnail-sized plots
-        ('thumbnail-sized' means plots on the order of 100px wide)
-        '''
-
-        if histograms is None:
-            return None
-
-        # x-axis values can be safely rounded to ints
-        histograms['x'] = [int(val) for val in histograms['x']]
-
-        # y-axis values (densities) must be scaled
-        scale_factor = 1e6
-        for key in 'y_sample', 'y_ref_fitted':
-            histograms[key] = [int(val*scale_factor) for val in histograms[key]]
-
-        # finally, downsample by 2x
-        for key in histograms.keys():
-            histograms[key] = histograms[key][::2]
-
-        return histograms
-
-
     def construct_payload(self, kind=None):
         '''
         Construct the JSON payload returned by the lines/ endpoint of the API
         '''
+
+        payload = {}
 
         ep = self.line.electroporation_line.electroporation
 
@@ -541,15 +495,14 @@ class PolyclonalLineOperations:
 
         # top-level attributes from the crispr design
         attrs = ['target_name', 'target_family', 'transcript_id', 'well_id']
-        data = {attr: getattr(design, attr) for attr in attrs}
+        metadata = {attr: getattr(design, attr) for attr in attrs}
 
-        # explicitly serialize the target_terminus, which is an enum type
-        data['target_terminus'] = design.target_terminus.value[0]
-
-        # rename the plate_id attribute
-        data['plate_id'] = design.plate_design_id
-
-        data['cell_line_id'] = self.line.id
+        metadata.update({
+            'cell_line_id': self.line.id,
+            'plate_id': design.plate_design_id,
+            # explicitly serialize the target_terminus, which is an enum type
+            'target_terminus': design.target_terminus.value[0],
+        })
 
         # aggregate various 'scalar' properties/features/results
         scalars = {'hek_tpm': design.hek_tpm}
@@ -557,33 +510,39 @@ class PolyclonalLineOperations:
         # the sequencing percentages
         if self.line.sequencing_dataset:
             sequencing_dataset = self.line.sequencing_dataset[0]
-            scalars['hdr_all'] = sequencing_dataset.scalars.get('hdr_all')
-            scalars['hdr_modified'] = sequencing_dataset.scalars.get('hdr_modified')
+            scalars.update({
+                'hdr_all': sequencing_dataset.scalars.get('hdr_all'),
+                'hdr_modified': sequencing_dataset.scalars.get('hdr_modified')
+            })
 
         # the FACS area and relative median intensity
         facs_dataset = None
         if self.line.facs_dataset:
             facs_dataset = self.line.facs_dataset[0]
-            scalars['facs_area'] = facs_dataset.scalars.get('area')
-            scalars['facs_intensity'] = facs_dataset.scalars.get('rel_median_log')
-
+            scalars.update({
+                'facs_area': facs_dataset.scalars.get('area'),
+                'facs_intensity': facs_dataset.scalars.get('rel_median_log')
+            })
             # the FACS histograms are big, so they are not included by default
             if kind in ['all', 'facs']:
-                data['facs_histograms'] = self.simplify_facs_histograms(facs_dataset.histograms)
+                payload['facs_histograms'] = facs_dataset.simplify_histograms()
 
         if kind in ['all', 'microscopy']:
-            data['fovs'] = self.construct_fov_payload()
+            payload['fovs'] = self.construct_fov_payload()
 
         if kind in ['all', 'thumbnail']:
-            thumbnail = {}
             best_fov = self.get_top_scoring_fovs(ntop=1)
             if best_fov:
-                best_fov = best_fov[0]
-                thumbnail = [thumbnail.data for thumbnail in best_fov.thumbnails if thumbnail.channel == 'rgb'][0]
-            data['thumbnail'] = thumbnail
+                payload['thumbnail'] = {
+                    **best_fov[0].as_dict(),
+                    **best_fov[0].get_thumbnail('rgb').as_dict(),
+                }
 
-        data['scalars'] = scalars
-        return data
+        payload.update({
+            'scalars': scalars,
+            'metadata': metadata,
+        })
+        return payload
 
 
     def construct_fov_payload(self):
@@ -593,26 +552,16 @@ class PolyclonalLineOperations:
 
         all_fovs = []
         for fov in self.line.fovs:
-            score_result = [r for r in fov.results if r.kind == 'fov-features']
-            score = None
-            if score_result:
-                score = score_result[0].data.get('score')
-
             all_fovs.append({
                 'fov_id': fov.id,
                 'pml_id': fov.dataset.pml_id,
                 'src_filename': fov.raw_filename,
                 'rois': [roi.as_dict() for roi in fov.rois],
-                'score': score,
+                'score': fov.get_score(),
             })
 
         # sort FOVs by score (unscored FOVs last)
-        all_fovs = sorted(
-            all_fovs,
-            key=lambda row: row.get('score') if row.get('score') is not None else -2)
-
-        # descending order
-        all_fovs = all_fovs[::-1]
+        all_fovs = sorted(all_fovs, key=lambda row: row.get('score') or -1)[::-1]
         return all_fovs
 
 

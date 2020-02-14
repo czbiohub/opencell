@@ -419,6 +419,35 @@ class FACSDataset(Base):
     scalars = db.Column(postgresql.JSONB)
 
 
+    def simplify_histograms(self):
+        '''
+        Downsample and discretize the histograms
+        This is intended to reduce the payload size when the histograms
+        will only be used to generate thumbnail/sparkline-like plots
+
+        Note that the scaling, rounding, and 2x-subsampling were empirically determined
+        as the most extreme downsampling that still yields satisfactory thumbnail-sized plots
+        ('thumbnail-sized' means plots on the order of 100px wide)
+        '''
+
+        if self.histograms is None:
+            return None
+        histograms = self.histograms.copy()
+
+        # x-axis values can be safely rounded to ints
+        histograms['x'] = [int(x) for x in histograms['x']]
+
+        # y-axis values (densities) must be scaled before rounding
+        scale_factor = 1e6
+        for key in 'y_sample', 'y_ref_fitted':
+            histograms[key] = [int(y*scale_factor) for y in histograms[key]]
+
+        # finally, downsample by 2x
+        for key in histograms.keys():
+            histograms[key] = histograms[key][::2]
+        return histograms
+
+
 class SequencingDataset(Base):
     '''
     Some processed results from the sequencing dataset for a single polyclonal cell line
@@ -540,6 +569,31 @@ class MicroscopyFOV(Base):
         if match is None:
             raise ValueError('Invalid imaging_round_id %s' % value)
         return value
+
+    def get_result(self, kind):
+        return (
+            db.orm.object_session(self)
+            .query(MicroscopyFOVResult)
+            .filter(MicroscopyFOVResult.fov_id == self.id)
+            .filter(MicroscopyFOVResult.kind == kind)
+            .first()
+        )
+
+    def get_score(self):
+        score = None
+        features = self.get_result('fov-features')
+        if features:
+            score = features.data.get('score')
+        return score
+
+    def get_thumbnail(self, channel):
+        return (
+            db.orm.object_session(self)
+            .query(Thumbnail)
+            .filter(Thumbnail.fov_id == self.id)
+            .filter(Thumbnail.channel == channel)
+            .first()
+        )
 
 
 class MicroscopyFOVResult(Base):

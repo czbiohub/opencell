@@ -463,7 +463,7 @@ def main():
         # only crop ROIs from the two highest-scoring FOVs per line
         fovs_to_crop = []
         for line in Session.query(models.CellLine).all():
-            ops = operations.PolyclonalLineOperations(line)
+            ops = operations.PolyclonalLineOperations.from_line_id(Session, line.id, eager=True)
             fovs_to_crop.extend(ops.get_top_scoring_fovs(ntop=2))
 
         try:

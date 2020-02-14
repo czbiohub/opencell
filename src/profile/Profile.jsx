@@ -58,7 +58,7 @@ class App extends Component {
 
     changeTarget (cellLine) {
         
-        const targetName = cellLine.target_name;
+        const targetName = cellLine.metadata.target_name;
 
         // check that the target has changed
         if (targetName===this.state.targetName) return;
@@ -69,7 +69,7 @@ class App extends Component {
         this.cellLine = cellLine;
 
         this.setState({
-            cellLineId: cellLine.cell_line_id,
+            cellLineId: cellLine.metadata.cell_line_id,
             fovId: rois[0].fov_id,
             roiId: rois[0].id,
             targetName,
@@ -211,12 +211,12 @@ class App extends Component {
                         filterable={true}
                         columns={tableDefs}
                         data={this.allCellLines.map(line => {
-                            return {...line, isActive: this.state.targetName===line.target_name};
+                            return {...line, isActive: this.state.targetName===line.metadata.target_name};
                         })}
                         getTrProps={(state, rowInfo, column) => {
                             const isActive = rowInfo ? rowInfo.original.isActive : false;
                             return {
-                                onClick: () => this.onSearchChange(rowInfo.original.target_name),
+                                onClick: () => this.onSearchChange(rowInfo.original.metadata.target_name),
                                 style: {
                                     background: isActive ? '#ddd' : null,
                                     fontWeight: isActive ? 'bold' : 'normal'

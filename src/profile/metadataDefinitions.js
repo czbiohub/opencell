@@ -10,11 +10,13 @@ const metadataDefinitions = [
     {   
         id: 'protein_name',
         accessor: row => {
-            const maxLength = 20; // previously was 35
+            const maxLength = 20;
+            const targetName = row.metadata?.target_name;
+            if (!targetName) return null;
             let name = (
-                manualMetadata[row.target_name]?.protein_name ||
-                manualMetadata[row.target_name]?.description ||
-                uniprotMetadata[row.target_name]?.protein_name
+                manualMetadata[targetName]?.protein_name ||
+                manualMetadata[targetName]?.description ||
+                uniprotMetadata[targetName]?.protein_name
             );
             name = name ? name : '';
             name = name.split('(')[0].split(',')[0].trim();
@@ -26,28 +28,28 @@ const metadataDefinitions = [
     },{
         id: 'target_family',
         accessor: row => {
-            let value = row.target_family || 'null';
+            let value = row.metadata?.target_family || 'null';
             return value ? value.charAt(0).toUpperCase() + value.slice(1) : null;
         },
         Header: 'Family',
         units: '',
     },{
         id: 'target_terminus',
-        accessor: row => row.target_terminus,
+        accessor: row => row.metadata?.target_terminus,
         Header: 'Term',
         units: null,
     },{
         id: 'uniprot_id',
-        accessor: row => uniprotMetadata[row.target_name]?.uniprot_id,
+        accessor: row => row.metadata ? uniprotMetadata[row.metadata.target_name]?.uniprot_id : null,
         Header: 'Uniprot ID'
     },{
         id: 'plate_id',
-        accessor: row => parseInt(row.plate_id?.slice(1)),
+        accessor: row => parseInt(row.metadata?.plate_id?.slice(1)),
         Header: 'Plate',
         units: null,
     },{
         id: 'well_id',
-        accessor: row => row.well_id,
+        accessor: row => row.metadata?.well_id,
         Header: 'Well',
         units: null,
     },{
@@ -77,7 +79,7 @@ const metadataDefinitions = [
         units: '%',
     },{
         id: 'facs_grade',
-        accessor: row => facsGrades[`${row.plate_id}-${row.well_id}`],
+        accessor: row => facsGrades[`${row.metadata?.plate_id}-${row.metadata?.well_id}`],
         Header: 'FACS',
         units: '',
     }

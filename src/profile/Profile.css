@@ -30,11 +30,12 @@ button:focus {
     color: #01a1dd;
 }
 
-.container-header {
-    color: #333;
+.flex-0-0-auto {
+    flex: 0 0 auto;
 }
 
-.flex-0-0-auto {
+
+.header-container > div {
     flex: 0 0 auto;
 }
 
@@ -76,6 +77,10 @@ button:focus {
     text-transform: uppercase;
 }
 
+/* the header for each main panel/section */
+.section-header {
+    color: #333;
+}
 
 
 /* --------------------- custom div-based buttons --------------------- */

@@ -38,31 +38,31 @@ class Header extends Component {
 
         return (
 
-            <div className="flex items-center w-100 pt3 pb3">
+            <div className="flex items-center w-100 pt3 pb3 header-container">
 
                 {/* OpenCell graphic logo */}
-                <div className='flex-0-0-auto'>
+                <div>
                     <img src='./logos/opencell_logo.png' width={90} height={90}/>
                 </div>
 
                 {/* 'OpenCell' text header on top of the CZB logo */}
-                <div className='flex-0-0-auto pl3'>
+                <div className='pl3'>
                     <div className="pb1 blue header-opencell-title">{'OpenCell'}</div>
                     <img src='./logos/logo_text_smaller.png' width={100}/>
                 </div>
                 
                 {/* target name */}
-                <div className="flex-0-0-auto pl4 blue header-target-name">
+                <div className="pl4 blue header-target-name">
                     {this.props.cellLine.metadata?.target_name}
                 </div>
 
                 {/* target metadata items */}
-                <div className='flex-0-0-auto pl4'>
+                <div className='pl4'>
                     <div className='flex items-center'>{metadataItems}</div>
                 </div>
 
                 {/* target search box */}
-                <div className=''>
+                <div>
                     <input 
                         type='text' 
                         className='header-search-textbox' 

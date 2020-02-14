@@ -122,7 +122,7 @@ class App extends Component {
         function SectionHeader (props) {
             return (
                 <div className="bb b--black-10">
-                    <div className="f3 container-header">{props.title}</div>
+                    <div className="f3 section-header">{props.title}</div>
                 </div>
             );
         }

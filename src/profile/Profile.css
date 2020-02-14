@@ -48,34 +48,22 @@ button:focus {
     font-size: 66px;
 }
 
-.header-metadata ul {
-    margin-left: 0px;
-    list-style: none;
-    display: block;
-    clear: none;
-    white-space: nowrap;
-}
-
-.header-metadata li {
-    display: inline-block;
-    vertical-align: top;
+.header-metadata-item {
     margin-right: 25px;
 }
 
-.header-metadata abbr {
+.header-metadata-item abbr {
     text-decoration: none;
     line-height: 1em;
     margin-left: 2px;
     font-size: 14px;
 }
 
-.header-metadata-label {
-    display: block;
+.header-metadata-item-label {
     color: #aaa;
 }
 
 .header-search-label {
-    display: block;
     color: #aaa;
     padding-top: 5px;
 }

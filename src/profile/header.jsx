@@ -57,8 +57,8 @@ class Header extends Component {
                 </div>
 
                 {/* target metadata items */}
-                <div className='header-metadata'>
-                    <ul>{metadataItems}</ul>
+                <div className='flex-0-0-auto pl4'>
+                    <div className='flex items-center'>{metadataItems}</div>
                 </div>
 
                 {/* target search box */}
@@ -84,11 +84,11 @@ class Header extends Component {
 function MetadataItem(props) {
     
     return (
-        <li>
+        <div className='flex-0-0-auto header-metadata-item'>
             <strong className='f3'>{props.value}</strong>
             <abbr className='f4' title='units description'>{props.units}</abbr>
-            <div className='f5 header-metadata-label'>{props.label}</div>
-        </li>
+            <div className='f5 header-metadata-item-label'>{props.label}</div>
+        </div>
     );
 }
 

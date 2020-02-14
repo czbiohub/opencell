@@ -114,7 +114,7 @@ class App extends Component {
             {   
                 id: 'gene_name',
                 Header: 'Gene name',
-                accessor: row => row.target_name,
+                accessor: row => row.metadata?.target_name,
             },
             ...metadataDefinitions,
         ];

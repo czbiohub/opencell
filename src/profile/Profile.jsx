@@ -206,8 +206,8 @@ class App extends Component {
                     <SectionHeader title='All cell lines'/>
                     <div className='pt3 table-container'>
                     <ReactTable 
-                        pageSize={50}
-                        showPageSizeOptions={false}
+                        defaultPageSize={10}
+                        showPageSizeOptions={true}
                         filterable={true}
                         columns={tableDefs}
                         data={this.allCellLines.map(line => {

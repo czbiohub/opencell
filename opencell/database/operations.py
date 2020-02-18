@@ -463,19 +463,24 @@ class PolyclonalLineOperations:
     def construct_payload(self, kind=None):
         '''
         Construct the JSON payload returned by the lines/ endpoint of the API
+
+        Note that, awkwardly, the RNAseq data is a column in the crispr_design table
         '''
 
         # the crispr design for this line
-        self.design = self.line.get_crispr_design()
+        design = self.line.get_crispr_design()
 
-        # top-level attributes from the crispr design
-        attrs = ['target_name', 'target_family', 'transcript_id', 'well_id']
-        metadata = {attr: getattr(self.design, attr) for attr in attrs}
-        metadata.update({
+        # metadata object included in every playload
+        metadata = {
             'cell_line_id': self.line.id,
-            'plate_id': self.design.plate_design_id,
-            'target_terminus': self.design.target_terminus.value[0],
-        })
+            'well_id': design.well_id,
+            'plate_id': design.plate_design_id,
+            'target_name': design.target_name,
+            'target_family': design.target_family,
+            'target_terminus': design.target_terminus.value[0],
+            'transcript_id': design.transcript_id,
+            'hek_tpm': design.hek_tpm,
+        }
         payload = {'metadata': metadata}
 
         if kind in ['all', 'scalars']:
@@ -502,7 +507,7 @@ class PolyclonalLineOperations:
         '''
         Aggregate various scalar properties/features/results
         '''
-        scalars = {'hek_tpm': self.design.hek_tpm}
+        scalars = {}
 
         # the sequencing percentages
         if self.line.sequencing_dataset:
@@ -526,7 +531,6 @@ class PolyclonalLineOperations:
         '''
         JSON payload describing the FOVs and ROIs
         '''
-
         all_fovs = []
         for fov in self.line.fovs:
             all_fovs.append({

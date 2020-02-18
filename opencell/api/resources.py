@@ -120,17 +120,19 @@ class PolyclonalLines(Resource):
             columns=[column.name for column in cell_line_metadata.columns]
         )
 
-        lines = (
+        query = (
             current_app.Session.query(models.CellLine)
             .filter(models.CellLine.id.in_(list(metadata.cell_line_id)))
-            .options(
+        )
+
+        if kind == 'microscopy':
+            query = query.options(
                 db.orm.joinedload(models.CellLine.fovs, innerjoin=True)
                 .joinedload(models.MicroscopyFOV.results, innerjoin=True)
             )
-        )
 
         payload = []
-        for line in lines:
+        for line in query.all():
             ops = operations.PolyclonalLineOperations(line)
             payload.append(ops.construct_payload(kind=kind))
         return jsonify(payload)

@@ -39,7 +39,10 @@ def add_all(session, rows):
 
 
 def add_and_commit(session, instances, errors='raise'):
-
+    '''
+    Add and commit instances (rows) one at a time,
+    raising or warning about any errors that occur
+    '''
     if not isinstance(instances, list):
         instances = [instances]
 
@@ -53,9 +56,6 @@ def add_and_commit(session, instances, errors='raise'):
                 raise
             if errors == 'warn':
                 print('Error in add_and_commit: %s' % exception)
-
-    # except db.exc.IntegrityError:
-    # except db.orm.exc.FlushError:
 
 
 def delete_and_commit(session, instances):
@@ -351,14 +351,13 @@ class PolyclonalLineOperations:
     def from_line_id(cls, session, line_id, eager=False):
         '''
         '''
-        query = session.query(models.CellLine).filter(models.CellLine.id == line_id)
-
+        query = session.query(models.CellLine)
         if eager:
             query = query.options(
-                db.orm.joinedload(models.CellLine.fovs)
-                .joinedload(models.MicroscopyFOV.results)
+                db.orm.joinedload(models.CellLine.fovs, innerjoin=True)
+                .joinedload(models.MicroscopyFOV.results, innerjoin=True)
             )
-        return cls(query.first())
+        return cls(query.get(line_id))
 
 
     @classmethod
@@ -403,10 +402,10 @@ class PolyclonalLineOperations:
         if len(cds) > 1:
             print('Warning: %s cell lines found for target %s' % (len(cds), target_name))
         if len(cds) == 0:
-            raise ValueError('Warning: no cells lines found for target %s' % target_name)
+            raise ValueError('No cells lines found for target %s' % target_name)
 
         cd = cds[0]
-        return self.from_plate_well(cd.plate_design_id, cd.well_id)
+        return cls.from_plate_well(session, cd.plate_design_id, cd.well_id)
 
 
     def insert_facs_dataset(self, session, histograms, scalars, errors='warn'):
@@ -450,33 +449,15 @@ class PolyclonalLineOperations:
 
         fovs = self.line.fovs
         for _, row in metadata.iterrows():
-            columns = {
-                'pml_id': row.pml_id,
-                'site_num': row.site_num,
-                'raw_filename': row.raw_filepath,
-                'imaging_round_id': row.imaging_round_id,
-            }
-            fovs.append(models.MicroscopyFOV(cell_line=self.line, **columns))
+            fov = models.MicroscopyFOV(
+                cell_line=self.line,
+                pml_id=row.pml_id,
+                site_num=row.site_num,
+                raw_filename=row.raw_filepath,
+                imaging_round_id=row.imaging_round_id,
+            )
+            fovs.append(fov)
         add_and_commit(session, fovs, errors=errors)
-
-
-    def get_top_scoring_fovs(self, ntop):
-        '''
-        Get the n highest-scored FOVs
-        '''
-        scores = np.array([fov.get_score() for fov in self.line.fovs])
-
-        # sort the FOVs by score
-        mask = ~pd.isna(scores)
-        scores[~mask] = -1
-        inds = np.argsort(np.array(scores))[::-1]
-
-        # drop inds without a score
-        inds = inds[mask[inds]]
-
-        # the two highest-scoring FOVs
-        top_fovs = [self.line.fovs[ind] for ind in inds[:ntop]]
-        return top_fovs
 
 
     def construct_payload(self, kind=None):
@@ -484,28 +465,44 @@ class PolyclonalLineOperations:
         Construct the JSON payload returned by the lines/ endpoint of the API
         '''
 
-        payload = {}
-
-        ep = self.line.electroporation_line.electroporation
-
         # the crispr design for this line
-        for design in ep.plate_instance.plate_design.crispr_designs:
-            if design.well_id == self.line.electroporation_line.well_id:
-                break
+        self.design = self.line.get_crispr_design()
 
         # top-level attributes from the crispr design
         attrs = ['target_name', 'target_family', 'transcript_id', 'well_id']
-        metadata = {attr: getattr(design, attr) for attr in attrs}
-
+        metadata = {attr: getattr(self.design, attr) for attr in attrs}
         metadata.update({
             'cell_line_id': self.line.id,
-            'plate_id': design.plate_design_id,
-            # explicitly serialize the target_terminus, which is an enum type
-            'target_terminus': design.target_terminus.value[0],
+            'plate_id': self.design.plate_design_id,
+            'target_terminus': self.design.target_terminus.value[0],
         })
+        payload = {'metadata': metadata}
 
-        # aggregate various 'scalar' properties/features/results
-        scalars = {'hek_tpm': design.hek_tpm}
+        if kind in ['all', 'scalars']:
+            payload['scalars'] = self.construct_scalars_payload()
+
+        if kind in ['all', 'facs'] and self.line.facs_dataset:
+            payload['facs_histograms'] = self.line.facs_dataset[0].simplify_histograms()
+
+        if kind in ['all', 'microscopy']:
+            payload['fovs'] = self.construct_fov_payload()
+
+        if kind in ['all', 'thumbnail']:
+            best_fov = self.line.get_top_scoring_fovs(ntop=1)
+            if best_fov:
+                payload['thumbnail'] = {
+                    **best_fov[0].as_dict(),
+                    **best_fov[0].get_thumbnail('rgb').as_dict(),
+                }
+
+        return payload
+
+
+    def construct_scalars_payload(self):
+        '''
+        Aggregate various scalar properties/features/results
+        '''
+        scalars = {'hek_tpm': self.design.hek_tpm}
 
         # the sequencing percentages
         if self.line.sequencing_dataset:
@@ -516,33 +513,13 @@ class PolyclonalLineOperations:
             })
 
         # the FACS area and relative median intensity
-        facs_dataset = None
         if self.line.facs_dataset:
             facs_dataset = self.line.facs_dataset[0]
             scalars.update({
                 'facs_area': facs_dataset.scalars.get('area'),
                 'facs_intensity': facs_dataset.scalars.get('rel_median_log')
             })
-            # the FACS histograms are big, so they are not included by default
-            if kind in ['all', 'facs']:
-                payload['facs_histograms'] = facs_dataset.simplify_histograms()
-
-        if kind in ['all', 'microscopy']:
-            payload['fovs'] = self.construct_fov_payload()
-
-        if kind in ['all', 'thumbnail']:
-            best_fov = self.get_top_scoring_fovs(ntop=1)
-            if best_fov:
-                payload['thumbnail'] = {
-                    **best_fov[0].as_dict(),
-                    **best_fov[0].get_thumbnail('rgb').as_dict(),
-                }
-
-        payload.update({
-            'scalars': scalars,
-            'metadata': metadata,
-        })
-        return payload
+        return scalars
 
 
     def construct_fov_payload(self):
@@ -686,17 +663,6 @@ class MicroscopyFOVOperations:
             )
             rois.append(roi)
         add_and_commit(session, rois, errors='raise')
-
-
-    def insert_thumbnails(self, session, thumbnails):
-        pass
-
-
-
-class MicroscopyROIOperations:
-
-    def __init__(self, roi_id):
-        self.roi_id = roi_id
 
 
     def insert_thumbnails(self, session, thumbnails):

@@ -401,19 +401,19 @@ class FOVProcessor:
 
         Returns
         -------
+        error_info : a dict with an 'error' key if an error occured
         all_roi_props : a list of ROI properties (empty if an error ocurred)
-
-        TODO: more consistent/transparent error-handling
-        (are we raising exceptions or returning an empty list?)
 
         '''
 
+        result = {}
         all_roi_props = []
 
         # attempt to load and split the TIFF
         tiff = self.load_raw_tiff()
         if tiff is None:
-            raise ValueError('Raw TIFF file for fov %s does not exist' % self.fov_id)
+            result['error'] = 'Raw TIFF file for fov %s does not exist' % self.fov_id
+            return result, all_roi_props
 
         # the size of the full FOV and the size of the ROIs to crop from each corner
         fov_size = 1024
@@ -437,9 +437,11 @@ class FOVProcessor:
         aligned_stacks, alignment_result = tiff.align_cell_layer(
             cell_layer_rel_bottom, cell_layer_rel_top, self.z_step_size())
 
-        # for now, just exit silently if an error ocurred in cell layer alignment/cropping
+        # if an alignment error occured, log it and attempt to continue
+        # (these errors occur when the cell layer center was too close to the edge of the z-stack,
+        # so that align_cell_layer was not able to crop around it)
         if alignment_result.get('error'):
-            return all_roi_props
+            result['error'] = alignment_result['error']
 
         # for now, the top and bottom inds are the full extent of the cropped stack
         bottom_ind = 0
@@ -468,10 +470,9 @@ class FOVProcessor:
                 'original_step_size': self.z_step_size(),
                 'required_num_slices': required_num_slices,
             }
-
             roi_props = self.crop_and_save_roi(roi_props, aligned_stacks, dst_root)
             all_roi_props.append(roi_props)
-        return all_roi_props
+        return result, all_roi_props
 
 
     def crop_best_roi(self, dst_root):

@@ -655,7 +655,14 @@ class MicroscopyFOVOperations:
         result : a list of roi_props (possibly empty)
         '''
 
-        all_roi_props = result
+        result, all_roi_props = result
+
+        result = to_jsonable(result)
+        row = models.MicroscopyFOVResult(
+            fov_id=self.fov_id,
+            kind='corner-roi-cropping',
+            data=result)
+        add_and_commit(session, row, errors='raise')
 
         rois = []
         for roi_props in all_roi_props:

@@ -146,7 +146,7 @@ class CellLine(Base):
 
     def get_top_scoring_fovs(self, ntop):
         '''
-        Get the n highest-scored FOVs
+        Get the n highest-scoring FOVs
         '''
         scores = np.array([fov.get_score() for fov in self.fovs])
 

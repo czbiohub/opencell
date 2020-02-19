@@ -324,6 +324,7 @@ def multi_pval(cluster, clustered):
     con_median = neg_control.median()
     con_std = neg_control.std()
 
+
     # This is the enrichment calcuation
 
     # choose the cluster to calculate enrichment
@@ -978,3 +979,147 @@ def atl3_clta_metric(pca_df, n_clusters, repeats):
     clta_score = (100 * clta_score) / repeats
 
     return atl_score, clta_score
+
+
+def iter_pvals(imputed_df):
+    """ Calculate enrichment and pvals for each bait, but remove baits that
+    show up as significant hits and iterate continuously until
+    no more removable baits are found.
+
+    rtype enrichment_df: pd DataFrame
+    rtype pval_df: pd DataFrame"""
+
+    imputed_df = imputed_df.copy()
+
+    # iterate through each cluster to generate neg con group
+    bait_list = [col[0] for col in list(imputed_df) if col[0] != 'Info']
+    bait_list = list(set(bait_list))
+    total = len(bait_list)
+    baitrange = list(np.arange(total))
+    multi_args = zip(bait_list, repeat(imputed_df), baitrange, repeat(total))
+    p = Pool()
+    print("Parallel processing pval / enrichment calculations..")
+    pval_dfs = p.starmap(iter_enrich_pval, multi_args)
+    p.close()
+    p.join()
+    print("Done!")
+    master_table = pd.concat(pval_dfs, axis=1)
+
+
+    return master_table
+
+
+def iter_enrich_pval(bait, df, num, total, max_iter=5, fcd1=True):
+
+    # initiate a counter and a list of drop vars
+    count = 0
+    drop_genes = []
+    drop_list = [bait]
+    new_drops = [bait]
+    con_diff = 1
+
+    # initiate other variables required for the fx
+    bait_list = [col[0] for col in list(df) if col[0] != 'Info']
+    gene_list = df[('Info', 'Gene names')].tolist()
+    if fcd1:
+        fc_var1 = 3.65
+        fc_var2 = 1.75
+    else:
+        fc_var1 = 2.9
+        fc_var2 = 0.9
+    # construct a negative control by dropping all similar baits
+
+    temporary = df.copy()
+    neg_control = df.copy()
+    temporary.drop('Info', level='Baits', inplace=True, axis=1)
+    neg_control.drop('Info', level='Baits', inplace=True, axis=1)
+
+    while ((con_diff > 0) & (count < max_iter)):
+
+        neg_control.drop(columns=new_drops, inplace=True)
+
+        # calculate the neg con median and stds
+        con_median = neg_control.median(axis=1)
+        con_std = neg_control.std(axis=1)
+
+        # calculate enrichment
+        enrich_series = (temporary[bait].median(axis=1) - con_median) / con_std
+        enrich_series.index = gene_list
+        enrich_series.name = 'enrichment'
+
+        # calculate the p-values
+
+        # combine values of replicates into one list
+        bait_series = temporary[bait].values.tolist()
+        # if len(bait_series[0]) < 2:
+        #     print(bait)
+        #     print('Less than 2 replicates')
+        #     continue
+
+
+        # add an index value to the list for locating neg_control indices
+        for i in np.arange(len(bait_series)):
+            bait_series[i].append(i)
+
+        # perform the p value calculations
+        pval_series = pd.Series(bait_series, index=gene_list, name='pvals')
+        pval_series = pval_series.apply(get_pvals, args=[neg_control.T])
+
+        # Find positive hits from enrichment and pval calculations
+        pe_df = pd.concat([enrich_series, pval_series], axis=1)
+        pe_df['thresh'] = pe_df['enrichment'].apply(calc_thresh,
+            args=[fc_var1, fc_var2])
+        pe_df['hits'] = np.where((pe_df['pvals'] > pe_df['thresh']), True, False)
+
+        # Get genes names of all the hits
+        hits = set(pe_df[pe_df['hits']].index.tolist())
+
+        # compare hits to previous iteration
+        drop_set = set(drop_genes)
+        drop_diff = hits - drop_set
+
+
+
+        # update drop genes
+        drop_genes = list(drop_set.union(hits))
+        # get a list of bait names to add to drop list
+        new_drops = []
+        if drop_diff:
+            for gene in drop_diff:
+                if ';' in gene:
+                    mult_genes = gene.split(';')
+                    for ind in mult_genes:
+                        drops = [x for x in bait_list if ind in x]
+                        new_drops = new_drops + drops
+                else:
+                    drops = [x for x in bait_list if gene in x]
+                    new_drops = new_drops + drops
+
+        new_drops = list(set(new_drops)-set(drop_list))
+
+        # number of newly discovered baits to drop
+        con_diff = len(new_drops)
+
+        # print('Iter ' + str(count))
+        # print(new_drops)
+        # print()
+        # print(drop_diff)
+        # print()
+
+        drop_list = list(set(drop_list + new_drops))
+
+        # Update counter
+        count += 1
+    output = pd.concat([pe_df[['enrichment', 'pvals', 'hits']]], keys=[bait],
+        names=['baits', 'values'], axis=1)
+    if num % 10 == 0:
+        print(str(num) + ' / ' + str(total) + ' baits processed')
+    return output
+
+
+def calc_thresh(enrich, fc_var1, fc_var2):
+    """simple function to get FCD thresh to recognize hits"""
+    if enrich < fc_var2:
+        return np.inf
+    else:
+        return fc_var1 / (abs(enrich) - fc_var2)

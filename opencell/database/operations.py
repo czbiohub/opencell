@@ -489,16 +489,8 @@ class PolyclonalLineOperations:
         if kind in ['all', 'facs'] and self.line.facs_dataset:
             payload['facs_histograms'] = self.line.facs_dataset[0].simplify_histograms()
 
-        if kind in ['all', 'microscopy']:
-            payload['fovs'] = self.construct_fov_payload()
-
-        if kind in ['all', 'thumbnail']:
-            best_fov = self.line.get_top_scoring_fovs(ntop=1)
-            if best_fov:
-                payload['thumbnail'] = {
-                    **best_fov[0].as_dict(),
-                    **best_fov[0].get_thumbnail('rgb').as_dict(),
-                }
+        if kind in ['all', 'rois', 'thumbnails']:
+            payload['fovs'] = self.construct_fov_payload(kind=kind)
 
         return payload
 
@@ -527,23 +519,28 @@ class PolyclonalLineOperations:
         return scalars
 
 
-    def construct_fov_payload(self):
+    def construct_fov_payload(self, kind=None):
         '''
         JSON payload describing the FOVs and ROIs
         '''
-        all_fovs = []
+        payload = []
         for fov in self.line.fovs:
-            all_fovs.append({
+            fov_payload = {
                 'fov_id': fov.id,
                 'pml_id': fov.dataset.pml_id,
                 'src_filename': fov.raw_filename,
-                'rois': [roi.as_dict() for roi in fov.rois],
                 'score': fov.get_score(),
-            })
+            }
+            if kind in ['all', 'rois']:
+                fov_payload['rois'] = [roi.as_dict() for roi in fov.rois]
+            if kind in ['all', 'thumbnails']:
+                fov_payload['thumbnails'] = fov.get_thumbnail('rgb').as_dict()
+
+            payload.append(fov_payload)
 
         # sort FOVs by score (unscored FOVs last)
-        all_fovs = sorted(all_fovs, key=lambda row: row.get('score') or -1)[::-1]
-        return all_fovs
+        payload = sorted(payload, key=lambda row: row.get('score') or -1)[::-1]
+        return payload
 
 
 class MicroscopyFOVOperations:

@@ -88,7 +88,7 @@ class PolyclonalLines(Resource):
         plate_id = args.get('plate_id')
         target_name = args.get('target_name')
 
-        valid_kinds = ['scalars', 'facs', 'ms', 'microscopy', 'thumbnail', 'all']
+        valid_kinds = ['scalars', 'facs', 'ms', 'rois', 'thumbnails', 'all']
         if kind is not None and kind not in valid_kinds:
             abort(404)
 
@@ -109,11 +109,6 @@ class PolyclonalLines(Resource):
                 )
             else:
                 query = exact_query
-
-        # limit to the first ten lines to prevent returning giant payloads
-        if kind is not None:
-            pass
-            # query = query.limit(10)
 
         metadata = pd.DataFrame(
             data=query.all(),

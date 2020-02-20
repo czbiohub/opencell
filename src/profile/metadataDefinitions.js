@@ -54,7 +54,7 @@ const metadataDefinitions = [
         units: null,
     },{
         id: 'hek_tpm',
-        accessor: row => Math.round(row.scalars?.hek_tpm),
+        accessor: row => Math.round(row.metadata?.hek_tpm),
         Header: 'Expression (tpm)',
         units: 'tpm',
     },{

@@ -1,8 +1,8 @@
 
 
-const localApi = 'http://localhost:5000';
-const capApi = 'http://cap.czbiohub.org:5001';
+const devApi = 'http://localhost:5000';
+const prodApi = `http://${window.location.host}/api`;
 
 export default {
-    apiUrl: localApi,
+    apiUrl: devApi,
 }

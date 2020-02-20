@@ -95,7 +95,7 @@ class App extends Component {
 
 
     componentDidMount() {
-        let url = `${settings.apiUrl}/lines`;
+        let url = `${settings.apiUrl}/lines?kind=scalars`;
         d3.json(url).then(lines => {
             this.allCellLines = lines;     
             this.setState({linesLoaded: true});

@@ -605,7 +605,7 @@ class FOVProcessor:
             maxx = minn + 1
 
         stack -= minn
-        stack[stack < minn] = 0
+        stack[stack < 0] = 0
         stack /= (maxx - minn)
         stack[stack > 1] = 1
 

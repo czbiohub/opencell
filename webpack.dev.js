@@ -1,36 +1,12 @@
 
 const path = require('path');
 const webpack = require('webpack');
-const HtmlWebpackPlugin = require('html-webpack-plugin')
-const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const merge = require('webpack-merge');
+const common = require('./webpack.common.js');
 
 const config = {
 
-    entry: {
-        home: './src/home/index.jsx',
-        dashboard: './src/dashboard/index.jsx',
-        profile: './src/profile/index.jsx',
-    },
-
-    module: {
-        rules: [
-            {
-                test: /\.(js|jsx)$/,
-                exclude: /node_modules/,
-                use: ['babel-loader']
-            },{
-                test: /\.css$/,
-                use: [
-                    MiniCssExtractPlugin.loader,
-                    'css-loader' // why is this here?
-                ]
-            }
-        ]
-    },
-
-    resolve: {
-        extensions: ['*', '.js', '.jsx']
-    },
+    mode: 'development',
 
     output: {
         path: path.resolve(__dirname, 'dev'),
@@ -40,34 +16,7 @@ const config = {
 
     devServer: {
         contentBase: './static',
-    },
-
-    plugins: [
-        new MiniCssExtractPlugin({
-            filename: '[name].bundle.css',
-            chunks: ['home'],
-        }),
-
-        new HtmlWebpackPlugin({
-            title: 'Home',
-            template: './static/index.html',
-            filename: './index.html',
-            chunks: ['home']
-        }),
-        new HtmlWebpackPlugin({
-            title: 'Dashboard',
-            template: './static/index.html',
-            filename: './dashboard/index.html',
-            chunks: ['dashboard']
-        }),
-        new HtmlWebpackPlugin({
-            title: 'Profile',
-            template: './static/index.html',
-            filename: './profile/index.html',
-            chunks: ['profile']
-        })
-    ]
-
+    }
 };
 
-module.exports = config;
+module.exports = merge(common, config);

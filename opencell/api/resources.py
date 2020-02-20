@@ -34,12 +34,6 @@ class Plates(Resource):
         '''
         raise NotImplementedError
 
-    def post(self):
-        '''
-        Create a new plate design or instance
-        '''
-        raise NotImplementedError
-
 
 class Plate(Resource):
 
@@ -49,9 +43,11 @@ class Plate(Resource):
 
         TODO: handle invalid plate_id (what error code to return?)
         '''
-        plate = current_app.Session.query(models.PlateDesign)\
-            .filter(models.PlateDesign.design_id == plate_id)\
+        plate = (
+            current_app.Session.query(models.PlateDesign)
+            .filter(models.PlateDesign.design_id == plate_id)
             .first()
+        )
 
         targets = [d.target_name for d in plate.crispr_designs]
 
@@ -59,13 +55,6 @@ class Plate(Resource):
             'plate_id': plate.design_id,
             'targets': targets,
         }
-
-
-    def put(self, plate_id):
-        '''
-        Modify an existing plate design or instance
-        '''
-        raise NotImplementedError
 
 
 class Electroporations(Resource):
@@ -85,13 +74,6 @@ class Electroporations(Resource):
         return eps
 
 
-    def post(self):
-        '''
-        Create a new electroporation
-        '''
-        raise NotImplementedError
-
-
 class PolyclonalLines(Resource):
 
     @cache.cached(timeout=3600, key_prefix=cache_key)
@@ -106,61 +88,49 @@ class PolyclonalLines(Resource):
         plate_id = args.get('plate_id')
         target_name = args.get('target_name')
 
-        valid_kinds = ['all', 'facs', 'sequencing', 'ms', 'microscopy']
+        valid_kinds = ['scalars', 'facs', 'ms', 'rois', 'thumbnails', 'all']
         if kind is not None and kind not in valid_kinds:
-            # TODO: return the right http error
-            pass
+            abort(404)
 
-        designs = None
+        cell_line_metadata = current_app.views.get('cell_line_metadata')
+        query = current_app.Session.query(cell_line_metadata)
+        if plate_id:
+            query = query.filter(cell_line_metadata.columns.plate_id == plate_id)
+
+        # look for an exact match to the target_name; if none, filter by startswith
         if target_name:
-
-            # first look for an exact match
-            designs = current_app.Session.query(models.CrisprDesign)\
-                .filter(db.func.lower(models.CrisprDesign.target_name) == target_name.lower()).all()
-
-            # if no exact matches, use startswith
-            if not designs:
-                designs = (
-                    current_app.Session.query(models.CrisprDesign)
-                    .filter(
-                        db.func.lower(models.CrisprDesign.target_name)
-                        .startswith(target_name.lower())
-                    )
-                ).all()
-
-            # filter by plate_id
-            if plate_id:
-                designs = [design for design in designs if design.plate_design_id == plate_id]
-
-        # if a plate_id but not target_name was provided
-        elif plate_id:
-            designs = current_app.Session.query(models.CrisprDesign)\
-                .filter(models.CrisprDesign.plate_design_id == plate_id).all()
-
-        lines = []
-        if designs is not None:
-            for design in designs:
-                ep_lines = (
-                    design.plate_design.plate_instances[0].electroporations[0].electroporation_lines
+            exact_query = query.filter(
+                db.func.lower(cell_line_metadata.columns.target_name) == target_name.lower()
+            )
+            if not exact_query.all():
+                query = query.filter(
+                    db.func.lower(cell_line_metadata.columns.target_name)
+                    .startswith(target_name.lower())
                 )
-                cell_lines = [line.cell_line for line in ep_lines if line.well_id == design.well_id]
-                lines.append(cell_lines[0])
+            else:
+                query = exact_query
 
-        # all polyclonal lines
-        else:
-            eps = current_app.Session.query(models.Electroporation).all()
-            for ep in eps:
-                lines.extend([ep_line.cell_line for ep_line in ep.electroporation_lines])
+        metadata = pd.DataFrame(
+            data=query.all(),
+            columns=[column.name for column in cell_line_metadata.columns]
+        )
 
-        # limit to the first ten lines to prevent returning giant payloads
-        if kind is not None:
-            lines = lines[:10] if len(lines) > 10 else lines
+        query = (
+            current_app.Session.query(models.CellLine)
+            .filter(models.CellLine.id.in_(list(metadata.cell_line_id)))
+        )
 
-        data = []
-        for line in lines:
-            ops = operations.PolyclonalLineOperations.from_line_id(current_app.Session, line.id)
-            data.append(ops.construct_json(kind=kind))
-        return jsonify(data)
+        if kind == 'microscopy':
+            query = query.options(
+                db.orm.joinedload(models.CellLine.fovs, innerjoin=True)
+                .joinedload(models.MicroscopyFOV.results, innerjoin=True)
+            )
+
+        payload = []
+        for line in query.all():
+            ops = operations.PolyclonalLineOperations(line)
+            payload.append(ops.construct_payload(kind=kind))
+        return jsonify(payload)
 
 
 class PolyclonalLine(Resource):
@@ -170,8 +140,9 @@ class PolyclonalLine(Resource):
         '''
         args = request.args
         kind = args.get('kind')
-        ops = operations.PolyclonalLineOperations.from_line_id(current_app.Session, cell_line_id)
-        return jsonify(ops.construct_json(kind=kind))
+        ops = operations.PolyclonalLineOperations.from_line_id(
+            current_app.Session, cell_line_id)
+        return jsonify(ops.construct_payload(kind=kind))
 
 
 class MicroscopyFOV(Resource):
@@ -187,8 +158,11 @@ class MicroscopyFOV(Resource):
         if kind == 'proj':
             ext = 'tif'
 
-        fov = current_app.Session.query(models.MicroscopyFOV)\
-            .filter(models.MicroscopyFOV.id == fov_id).first()
+        fov = (
+            current_app.Session.query(models.MicroscopyFOV)
+            .filter(models.MicroscopyFOV.id == fov_id)
+            .first()
+        )
 
         if not fov:
             # this means the fov_id was not valid
@@ -220,8 +194,11 @@ class MicroscopyFOVROI(Resource):
 
         '''
 
-        roi = current_app.Session.query(models.MicroscopyFOVROI)\
-            .filter(models.MicroscopyFOVROI.id == roi_id).first()
+        roi = (
+            current_app.Session.query(models.MicroscopyFOVROI)
+            .filter(models.MicroscopyFOVROI.id == roi_id)
+            .first()
+        )
 
         processor = FOVProcessor.from_database(roi.fov)
         filepath = processor.dst_filepath(
@@ -229,7 +206,7 @@ class MicroscopyFOVROI(Resource):
             roi_id=roi_id,
             channel=channel,
             kind='crop',
-            ext='png')
+            ext='jpg')
 
         file = send_file(
             open(filepath, 'rb'),
@@ -239,14 +216,18 @@ class MicroscopyFOVROI(Resource):
         return file
 
 
+
 class CellLineAnnotation(Resource):
 
     def get(self, cell_line_id):
         '''
         '''
 
-        line = current_app.Session.query(models.CellLine)\
-            .filter(models.CellLine.id == cell_line_id).first()
+        line = (
+            current_app.Session.query(models.CellLine)
+            .filter(models.CellLine.id == cell_line_id)
+            .first()
+        )
 
         if line.annotation is not None:
             return jsonify({
@@ -263,8 +244,11 @@ class CellLineAnnotation(Resource):
         '''
         data = request.get_json()
 
-        line = current_app.Session.query(models.CellLine)\
-            .filter(models.CellLine.id == cell_line_id).first()
+        line = (
+            current_app.Session.query(models.CellLine)
+            .filter(models.CellLine.id == cell_line_id)
+            .first()
+        )
 
         annotation = line.annotation
         if annotation is None:

@@ -17,3 +17,4 @@ def test_get_or_create_progenitor_cell_line(session):
     lines = session.query(models.CellLine).all()
     assert len(lines) == 1
     assert lines[0].name == name
+    assert lines[0].line_type.value == 'PROGENITOR'

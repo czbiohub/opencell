@@ -47,7 +47,7 @@ def parse_args():
         'populate',
         'insert_facs',
         'insert_plate_microscopy_datasets',
-        'insert_pipeline_microscopy_datasets',
+        'insert_raw_pipeline_microscopy_datasets',
     ]
 
     for dest in action_arg_dests:
@@ -241,7 +241,7 @@ def main():
 
     # insert pipeline microscopy datasets found in the 'raw-pipeline-microscopy' directory
     # (these datasets start at PML0196 and were acquired using the dragonfly-automation scripts)
-    if args.insert_pipeline_microscopy_datasets:
+    if args.insert_raw_pipeline_microscopy_datasets:
         metadata = pd.read_csv(args.microscopy_master_key)
         metadata.rename(columns={'id': 'pml_id'}, inplace=True)
         insert_microscopy_datasets(

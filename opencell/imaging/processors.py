@@ -295,6 +295,37 @@ class FOVProcessor:
         return result
 
 
+    def generate_fov_thumbnails(self, dst_root, scale, quality):
+        '''
+        Generate thumbnail images of the z-projections as base64-encoded JPGs
+        '''
+        filepath_405 = self.dst_filepath(dst_root, kind='proj', channel='405', ext='tif')
+        filepath_488 = self.dst_filepath(dst_root, kind='proj', channel='488', ext='tif')
+
+        ims = {}
+        ims['405'] = tifffile.imread(filepath_405)[..., None]
+        ims['488'] = tifffile.imread(filepath_488)[..., None]
+        ims['rgb'] = self.make_rgb(ims['405'], ims['488'])
+
+        b64_strings = {}
+        for key, im in ims.items():
+            # use downscale_local_mean to reduce noise
+            im = skimage.transform.downscale_local_mean(im, factors=(scale, scale, 1))
+            # crop the last row and column to eliminate edge effects
+            im = im[:-1, :-1, :]
+            # cast to uint8 again (downscale_local_mean outputs float64)
+            im = utils.autoscale(im)
+            # base64 encode
+            b64_strings[key] = utils.b64encode_image(im, format='jpg', quality=quality)
+
+        result = {
+            'size': im.shape[0],
+            'quality': quality,
+            'b64_strings': b64_strings,
+        }
+        return result
+
+
     def calculate_z_profiles(self):
         '''
         '''
@@ -313,11 +344,12 @@ class FOVProcessor:
         return result
 
 
-    def align_cell_layer(self, dst_root):
+    def generate_clean_tiff(self, dst_root):
         '''
-        Align the two channels to correct for chromatic aberration in z,
-        crop the stacks around the cell layer in z, so that they are centered around it,
-        and downsample stacks with 0.2um steps to 0.5um steps
+        Generate 'clean' but otherwise raw TIFFs for machine-learning pipelines by
+            1) aligning the two channels to approximately correct for chromatic aberration in z
+            2) centering and cropping the stacks around the cell layer in z
+            3) downsampling stacks with 0.2um z-steps to 0.5um z-steps
         '''
 
         # the z-position of the top and bottom of the cell layer,
@@ -364,19 +396,24 @@ class FOVProcessor:
 
     def crop_corner_rois(self, dst_root):
         '''
-        Crop a 600x600 ROI at each corner of the raw FOV
+        Crop a 600x600 ROI at each corner of the cell-layer-cropped z-stacks,
+        downsample the intensities from uint16 to uint8, and save each ROI as a tiled PNG
 
-        At the same time, crop around the cell layer in z,
-        downsample the intensities from uint16 to uint8,
-        and save each ROI as a tiled PNG
+        Returns
+        -------
+        error_info : a dict with an 'error' key if an error occured
+        all_roi_props : a list of ROI properties (empty if an error ocurred)
+
         '''
 
+        result = {}
         all_roi_props = []
 
         # attempt to load and split the TIFF
         tiff = self.load_raw_tiff()
         if tiff is None:
-            raise ValueError('Raw TIFF file for fov %s does not exist' % self.fov_id)
+            result['error'] = 'Raw TIFF file for fov %s does not exist' % self.fov_id
+            return result, all_roi_props
 
         # the size of the full FOV and the size of the ROIs to crop from each corner
         fov_size = 1024
@@ -400,9 +437,11 @@ class FOVProcessor:
         aligned_stacks, alignment_result = tiff.align_cell_layer(
             cell_layer_rel_bottom, cell_layer_rel_top, self.z_step_size())
 
-        # for now, just exit silently if an error ocurred in cell layer alignment/cropping
+        # if an alignment error occured, log it and attempt to continue
+        # (these errors occur when the cell layer center was too close to the edge of the z-stack,
+        # so that align_cell_layer was not able to crop around it)
         if alignment_result.get('error'):
-            return all_roi_props
+            result['error'] = alignment_result['error']
 
         # for now, the top and bottom inds are the full extent of the cropped stack
         bottom_ind = 0
@@ -431,10 +470,9 @@ class FOVProcessor:
                 'original_step_size': self.z_step_size(),
                 'required_num_slices': required_num_slices,
             }
-
             roi_props = self.crop_and_save_roi(roi_props, aligned_stacks, dst_root)
             all_roi_props.append(roi_props)
-        return all_roi_props
+        return result, all_roi_props
 
 
     def crop_best_roi(self, dst_root):
@@ -459,7 +497,7 @@ class FOVProcessor:
                 kind='crop',
                 channel=channel,
                 roi_props=roi_props,
-                ext='png'
+                ext='jpg'
             )
 
             # crop the raw stack
@@ -493,11 +531,9 @@ class FOVProcessor:
             roi_props['max_intensity_%s' % channel] = max_intensity
 
             # save the stack itself
-            # TODO: what to do when the file already exists?
-            if not os.path.isfile(dst_filepath):
-                cropped_stack = np.moveaxis(cropped_stack, -1, 0)
-                tile = np.concatenate([zslice for zslice in cropped_stack], axis=0)
-                imageio.imsave(dst_filepath, tile)
+            cropped_stack = np.moveaxis(cropped_stack, -1, 0)
+            tile = np.concatenate([zslice for zslice in cropped_stack], axis=0)
+            imageio.imsave(dst_filepath, tile, format='jpg', quality=90)
 
         return roi_props
 
@@ -516,8 +552,7 @@ class FOVProcessor:
     @staticmethod
     def maybe_resample_stack(stack, original_step_size, target_step_size, required_num_slices):
         '''
-        Resample and possibly crop or pad a z-stack
-        so that it has the specified number of z-slices
+        Resample and possibly crop or pad a z-stack so that it has the specified number of z-slices
 
         stack : 3D numpy array with dimensions (x, y, z)
         original_step_size : the z-step size of the original stack (in microns)
@@ -533,7 +568,12 @@ class FOVProcessor:
             did_resample_stack = True
             z_scale = original_step_size/target_step_size
             stack = skimage.transform.rescale(
-                stack, (1, 1, z_scale), multichannel=False, preserve_range=True)
+                stack,
+                (1, 1, z_scale),
+                multichannel=False,
+                preserve_range=True,
+                anti_aliasing=False,
+                order=1)
 
         # pad or crop the stack in z so that there are the required number of slices
         num_rows, num_cols, num_slices = stack.shape
@@ -565,7 +605,7 @@ class FOVProcessor:
             maxx = minn + 1
 
         stack -= minn
-        stack[stack < minn] = 0
+        stack[stack < 0] = 0
         stack /= (maxx - minn)
         stack[stack > 1] = 1
 
@@ -599,3 +639,35 @@ class FOVProcessor:
         tile = np.concatenate(rows, axis=0)
 
         return tile
+
+
+    @staticmethod
+    def make_rgb(im_405, im_488):
+        '''
+        Construct an RGB image from z-projections (or single z-slices) of each channel
+        im_405 : 2D numpy array (assumed to be the Hoechst staining)
+        im_488 : 2D numpy array (assumed to be the GFP signal)
+        '''
+
+        if im_405.ndim == 2:
+            im_405 = im_405[..., None]
+        if im_488.ndim == 2:
+            im_488 = im_488[..., None]
+
+        # background subtract the hoechst
+        im_405 = im_405.astype(float)
+        im_405 -= im_405.mean()
+        im_405[im_405 < 0] = 0
+
+        # downscale to uint8 using 1% percentiles
+        # (and bump the gamma for hoechst to make it stand out again the GFP a bit better)
+        hoechst = utils.autoscale(im_405, percentile=1, gamma=.7)
+        gfp = utils.autoscale(im_488, percentile=1)
+
+        # set the blue channel to the maximum of the GFP and hoechst
+        # (this is easier than summing the channels and dealing with uint8 overflow, etc)
+        blue = np.concatenate((gfp, hoechst), axis=2).max(axis=2)[..., None]
+
+        red, green = gfp, gfp
+        rgb = np.concatenate((red, green, blue), axis=2)
+        return rgb

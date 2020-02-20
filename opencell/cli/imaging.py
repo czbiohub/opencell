@@ -62,6 +62,10 @@ def parse_args():
     # path to JSON file with database credentials
     parser.add_argument('--credentials', dest='credentials', required=False)
 
+    # FOV thumbnail scale and quality
+    parser.add_argument('--thumbnail-scale', dest='thumbnail_scale', required=False)
+    parser.add_argument('--thumbnail-quality', dest='thumbnail_quality', required=False)
+
     # CLI args whose presence in the command sets them to True
     action_arg_dests = [
         'inspect_plate_microscopy_metadata',
@@ -70,8 +74,9 @@ def parse_args():
         'insert_fovs',
         'process_raw_tiffs',
         'calculate_fov_features',
+        'generate_fov_thumbnails',
         'calculate_z_profiles',
-        'align_cell_layer',
+        'generate_clean_tiffs',
         'crop_corner_rois',
         'process_all_fovs',
     ]
@@ -253,10 +258,10 @@ def do_fov_tasks(Session, args, processor_method_name, processor_method_kwargs, 
     operator_method_names = {
         'process_raw_tiff': 'insert_raw_tiff_metadata',
         'calculate_fov_features': 'insert_fov_features',
+        'generate_fov_thumbnails': 'insert_fov_thumbnails',
         'calculate_z_profiles': 'insert_z_profiles',
-        'align_cell_layer': 'insert_cell_layer_alignment_result',
+        'generate_clean_tiff': 'insert_clean_tiff_metadata',
         'crop_corner_rois': 'insert_corner_rois',
-        'generate_thumbnails': 'insert_thumbnails',
     }
 
     # the name of the FOVOperations method that inserts the results of the processor method
@@ -323,19 +328,19 @@ def get_unprocessed_fovs(engine, session, result_kind):
         select fov.*, res.kind as kind from microscopy_fov fov
         left join (select * from microscopy_fov_result where kind = '%s') res
         on fov.id = res.fov_id
-        where kind is null;'''
+        where kind is null;
+    '''
 
     d = pd.read_sql(query % result_kind, engine)
     unprocessed_fovs = (
         session.query(models.MicroscopyFOV)
         .filter(models.MicroscopyFOV.id.in_(list(d.id)))
-    ).all()
+        .all()
+    )
     return unprocessed_fovs
 
 
 def main():
-
-
 
     args = parse_args()
 
@@ -357,7 +362,8 @@ def main():
         dataset = (
             Session.query(models.MicroscopyDataset)
             .filter(models.MicroscopyDataset.pml_id == args.pml_id)
-        ).first()
+            .first()
+        )
         fovs = dataset.fovs
 
     # construct the PlateMicroscopy metadata
@@ -411,11 +417,11 @@ def main():
 
 
     # crop around the cell layer in z
-    if args.align_cell_layer:
-        method_name = 'align_cell_layer'
+    if args.generate_clean_tiffs:
+        method_name = 'generate_clean_tiff'
         method_kwargs = {'dst_root': args.dst_root}
         if not args.process_all_fovs:
-            fovs = get_unprocessed_fovs(engine, Session, result_kind='cell-layer-alignment')
+            fovs = get_unprocessed_fovs(engine, Session, result_kind='clean-tiff-metadata')
         do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
 
 
@@ -438,15 +444,33 @@ def main():
         do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
 
 
+    # generate thumbnails with a given size and quality
+    if args.generate_fov_thumbnails:
+
+        method_name = 'generate_fov_thumbnails'
+        method_kwargs = {
+            'dst_root': args.dst_root,
+            'scale': int(args.thumbnail_scale),
+            'quality': int(args.thumbnail_quality),
+        }
+        do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
+
+
     if args.crop_corner_rois:
         method_name = 'crop_corner_rois'
         method_kwargs = {'dst_root': args.dst_root}
 
         # only crop ROIs from the two highest-scoring FOVs per line
+        query = (
+            Session.query(models.CellLine)
+            .options(
+                sa.orm.joinedload(models.CellLine.fovs, innerjoin=True)
+                .joinedload(models.MicroscopyFOV.results, innerjoin=True)
+            )
+        )
         fovs_to_crop = []
-        for line in Session.query(models.CellLine).all():
-            ops = operations.PolyclonalLineOperations(line)
-            fovs_to_crop.extend(ops.get_top_scoring_fovs(Session, ntop=2))
+        for line in query.all():
+            fovs_to_crop.extend(line.get_top_scoring_fovs(ntop=2))
 
         try:
             do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs_to_crop)

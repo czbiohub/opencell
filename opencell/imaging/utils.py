@@ -1,5 +1,8 @@
-import tifffile
+import io
+import base64
 import skimage
+import imageio
+import tifffile
 import numpy as np
 import pandas as pd
 from scipy import ndimage
@@ -25,6 +28,13 @@ def load_and_downscale_2x(filepath):
     im = load(filepath)
     im = skimage.transform.downscale_local_mean(im, (1, 2, 2))
     return im
+
+
+def b64encode_image(image, format, **kwargs):
+    with io.BytesIO() as file:
+        imageio.imsave(file, image, format=format, **kwargs)
+        s = base64.b64encode(file.getvalue()).decode('utf-8')
+    return s
 
 
 def autoscale(im, percentile=None, p=None, dtype='uint8', gamma=None):

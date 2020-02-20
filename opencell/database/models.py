@@ -1,7 +1,7 @@
 import re
 import enum
+import numpy as np
 import pandas as pd
-
 import sqlalchemy as db
 import sqlalchemy.orm
 import sqlalchemy.ext.declarative
@@ -117,9 +117,51 @@ class CellLine(Base):
         self.name = name
         self.notes = notes
 
+
     def __repr__(self):
         return "<CellLine(id=%s, parent_id=%s, type='%s')>" % \
             (self.id, self.parent_id, self.line_type)
+
+
+    def get_crispr_design(self):
+        '''
+        Get the crispr design used to generate the cell line
+        Note that this method assumes the cell line is a polyclonal line;
+        more complex queries will be necessary for clonal lines or re-sorted polyclonal lines
+        '''
+        if not self.electroporation_line:
+            return None
+
+        well_id = self.electroporation_line.well_id
+        design = [
+            design for design in (
+                self.electroporation_line
+                .electroporation
+                .plate_instance
+                .plate_design
+                .crispr_designs
+            ) if design.well_id == well_id]
+        return design[0]
+
+
+    def get_top_scoring_fovs(self, ntop):
+        '''
+        Get the n highest-scoring FOVs
+        '''
+        scores = np.array([fov.get_score() for fov in self.fovs])
+
+        # sort the FOVs by score
+        mask = ~pd.isna(scores)
+        scores[~mask] = -1
+        inds = np.argsort(np.array(scores))[::-1]
+
+        # drop inds without a score
+        scores = [score for score in scores if score is not None]
+        inds = inds[mask[inds]]
+
+        # the two highest-scoring FOVs
+        top_fovs = [self.fovs[ind] for ind in inds[:ntop]]
+        return top_fovs
 
 
 class PlateDesign(Base):
@@ -419,6 +461,35 @@ class FACSDataset(Base):
     scalars = db.Column(postgresql.JSONB)
 
 
+    def simplify_histograms(self):
+        '''
+        Downsample and discretize the histograms
+        This is intended to reduce the payload size when the histograms
+        will only be used to generate thumbnail/sparkline-like plots
+
+        Note that the scaling, rounding, and 2x-subsampling were empirically determined
+        as the most extreme downsampling that still yields satisfactory thumbnail-sized plots
+        ('thumbnail-sized' means plots on the order of 100px wide)
+        '''
+
+        if self.histograms is None:
+            return None
+        histograms = self.histograms.copy()
+
+        # x-axis values can be safely rounded to ints
+        histograms['x'] = [int(x) for x in histograms['x']]
+
+        # y-axis values (densities) must be scaled before rounding
+        scale_factor = 1e6
+        for key in 'y_sample', 'y_ref_fitted':
+            histograms[key] = [int(y*scale_factor) for y in histograms[key]]
+
+        # finally, downsample by 2x
+        for key in histograms.keys():
+            histograms[key] = histograms[key][::2]
+        return histograms
+
+
 class SequencingDataset(Base):
     '''
     Some processed results from the sequencing dataset for a single polyclonal cell line
@@ -540,6 +611,44 @@ class MicroscopyFOV(Base):
         if match is None:
             raise ValueError('Invalid imaging_round_id %s' % value)
         return value
+
+    def get_result(self, kind):
+        '''
+        Retrieve a MicroscopyFOVResult of the given kind
+        (Note that this method will be slow without eager-loading)
+        '''
+        result = [result for result in self.results if result.kind == kind]
+        return result[0] if result else None
+
+    def get_result_from_query(self, kind):
+        '''
+        query-based alternative to get_result (will be faster without eager loading)
+        '''
+        return (
+            db.orm.object_session(self)
+            .query(MicroscopyFOVResult)
+            .filter(MicroscopyFOVResult.fov_id == self.id)
+            .filter(MicroscopyFOVResult.kind == kind)
+            .first()
+        )
+
+    def get_score(self):
+        features = self.get_result('fov-features')
+        return features.data.get('score') if features else None
+
+    def get_thumbnail(self, channel):
+        '''
+        Retrieve the thumbnail of the FOV
+        (note that this method uses a subquery because it is unlikely
+         that the Thumbnail table will be eager-loaded)
+        '''
+        return (
+            db.orm.object_session(self)
+            .query(Thumbnail)
+            .filter(Thumbnail.fov_id == self.id)
+            .filter(Thumbnail.channel == channel)
+            .first()
+        )
 
 
 class MicroscopyFOVResult(Base):

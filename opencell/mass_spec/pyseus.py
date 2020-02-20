@@ -981,7 +981,7 @@ def atl3_clta_metric(pca_df, n_clusters, repeats):
     return atl_score, clta_score
 
 
-def iter_pvals(imputed_df):
+def iter_pvals(imputed_df, fc_var1, fc_var2):
     """ Calculate enrichment and pvals for each bait, but remove baits that
     show up as significant hits and iterate continuously until
     no more removable baits are found.
@@ -996,7 +996,9 @@ def iter_pvals(imputed_df):
     bait_list = list(set(bait_list))
     total = len(bait_list)
     baitrange = list(np.arange(total))
-    multi_args = zip(bait_list, repeat(imputed_df), baitrange, repeat(total))
+    multi_args = zip(bait_list, repeat(imputed_df), baitrange, repeat(total),
+        repeat(fc_var1), repeat(fc_var2))
+
     p = Pool()
     print("Parallel processing pval / enrichment calculations..")
     pval_dfs = p.starmap(iter_enrich_pval, multi_args)
@@ -1009,7 +1011,7 @@ def iter_pvals(imputed_df):
     return master_table
 
 
-def iter_enrich_pval(bait, df, num, total, max_iter=5, fcd1=True):
+def iter_enrich_pval(bait, df, num, total, fc_var1, fc_var2, max_iter=5):
 
     # initiate a counter and a list of drop vars
     count = 0
@@ -1021,12 +1023,8 @@ def iter_enrich_pval(bait, df, num, total, max_iter=5, fcd1=True):
     # initiate other variables required for the fx
     bait_list = [col[0] for col in list(df) if col[0] != 'Info']
     gene_list = df[('Info', 'Gene names')].tolist()
-    if fcd1:
-        fc_var1 = 3.65
-        fc_var2 = 1.75
-    else:
-        fc_var1 = 2.9
-        fc_var2 = 0.9
+
+
     # construct a negative control by dropping all similar baits
 
     temporary = df.copy()
@@ -1084,6 +1082,14 @@ def iter_enrich_pval(bait, df, num, total, max_iter=5, fcd1=True):
         drop_genes = list(drop_set.union(hits))
         # get a list of bait names to add to drop list
         new_drops = []
+
+        # If there are too many hits, add only top 35 baits
+        # to the drop list, and only iterate once more.
+        if len(drop_diff) > 35:
+            filter_cons = pe_df.loc[drop_diff]
+            filter_cons.sort_values(by='pvals', ascending=False, inplace=True)
+            drop_diff = filter_cons[:35].index.tolist()
+            count = max_iter - 2
         if drop_diff:
             for gene in drop_diff:
                 if ';' in gene:

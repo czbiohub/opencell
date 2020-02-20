@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 import plotly.figure_factory as ff
 
 
-def volcano_plot(v_df, bait):
+def volcano_plot(v_df, bait, fcd1):
     """plot the volcano plot of a given bait"""
     v_df = v_df.copy()
 
@@ -21,12 +21,12 @@ def volcano_plot(v_df, bait):
     xmax = hits['enrichment'].max() + 1
     ymax = hits['pvals'].max() + 4
 
-    x1 = np.array(list(np.linspace(-8, -1.750001, 100)) + list(np.linspace(1.750001,
-        8, 100)))
-    y1 = 3.65 / (abs(x1)-1.75)
-    x2 = np.array(list(np.linspace(-8, -0.9001, 100)) + list(np.linspace(0.90001,
-        8, 100)))
-    y2 = 2.9 / (abs(x2)-0.9)
+    x1 = np.array(list(np.linspace(-12, -1 * fcd1[1] - 0.001, 200))
+        + list(np.linspace(fcd1[1] + 0.001, 12, 200)))
+    y1 = fcd1[0] / (abs(x1) - fcd1[1])
+    # x2 = np.array(list(np.linspace(-12, -1 * fcd2[1] - 0.001, 200))
+    #     + list(np.linspace(fcd2[1] + 0.001, 12, 200)))
+    # y2 = fcd2[0] / (abs(x2) - fcd2[1])
 
 
 
@@ -36,12 +36,12 @@ def volcano_plot(v_df, bait):
         opacity=0.6, marker=dict(size=10)))
     fig.update_traces(mode='markers+text', marker_line_width=2)
     fig.add_trace(go.Scatter(x=no_hits['enrichment'], y=no_hits['pvals'],
-        mode='markers', opacity=0.4, marker=dict(size=8)))
+        mode='markers', text=no_hits.index.tolist(), opacity=0.4, marker=dict(size=8)))
 
     fig.add_trace(go.Scatter(x=x1, y=y1, mode='lines',
         line=dict(color='royalblue', dash='dash')))
-    fig.add_trace(go.Scatter(x=x2, y=y2, mode='lines',
-        line=dict(color='firebrick', dash='dash')))
+    # fig.add_trace(go.Scatter(x=x2, y=y2, mode='lines',
+    #     line=dict(color='firebrick', dash='dash')))
 
     fig.update_layout(
         title={'text': bait,

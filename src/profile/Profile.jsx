@@ -49,6 +49,7 @@ class App extends Component {
 
         this.changeTarget = this.changeTarget.bind(this);
         this.onSearchChange = this.onSearchChange.bind(this);
+        this.onCellLineSelect = this.onCellLineSelect.bind(this);
 
         this.cellLine = {};
         this.allCellLines = [];
@@ -57,11 +58,10 @@ class App extends Component {
 
 
     changeTarget (cellLine) {
-        
-        const targetName = cellLine.metadata.target_name;
+        // cellLine is the JSON object returned by the lines/ endpoint
 
         // check that the target has changed
-        if (targetName===this.state.targetName) return;
+        if (cellLine.metadata.cell_line_id===this.state.cellLineId) return;
 
         // concatenate all ROIs
         const rois = [...cellLine.fovs[0].rois, ...cellLine.fovs[1].rois];
@@ -70,9 +70,9 @@ class App extends Component {
 
         this.setState({
             cellLineId: cellLine.metadata.cell_line_id,
+            targetName: cellLine.metadata.target_name,
             fovId: rois[0].fov_id,
             roiId: rois[0].id,
-            targetName,
             rois,
         });
     }
@@ -82,7 +82,7 @@ class App extends Component {
         // fired when the user hits enter in the header's target search text input
         // `value` is the value of the input
 
-        let url = `${settings.apiUrl}/lines?target_name=${value}&kind=all`;
+        const url = `${settings.apiUrl}/lines?target_name=${value}&kind=all`;
         d3.json(url).then(lines => {
             for (const line of lines) {
                 if (line && line.fovs.length) {
@@ -93,6 +93,16 @@ class App extends Component {
         });
     }
 
+
+    onCellLineSelect (cellLineId) {
+        // fired when the user clicks on a row of the datatable
+        // or otherwise selects a new cell line by its ID
+        const url = `${settings.apiUrl}/lines/${cellLineId}?kind=all`;
+        d3.json(url).then(line => {
+            if (line) this.changeTarget(line);
+        });
+    }
+    
 
     componentDidMount() {
         let url = `${settings.apiUrl}/lines?kind=scalars`;
@@ -211,12 +221,12 @@ class App extends Component {
                         filterable={true}
                         columns={tableDefs}
                         data={this.allCellLines.map(line => {
-                            return {...line, isActive: this.state.targetName===line.metadata.target_name};
+                            return {...line, isActive: this.state.cellLineId===line.metadata.cell_line_id};
                         })}
                         getTrProps={(state, rowInfo, column) => {
                             const isActive = rowInfo ? rowInfo.original.isActive : false;
                             return {
-                                onClick: () => this.onSearchChange(rowInfo.original.metadata.target_name),
+                                onClick: () => this.onCellLineSelect(rowInfo.original.metadata.cell_line_id),
                                 style: {
                                     background: isActive ? '#ddd' : null,
                                     fontWeight: isActive ? 'bold' : 'normal'

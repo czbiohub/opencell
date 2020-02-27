@@ -526,13 +526,22 @@ class PolyclonalLineOperations:
         payload = []
         for fov in self.line.fovs:
             fov_payload = {
-                'fov_id': fov.id,
+                'id': fov.id,
+                'score': fov.get_score(),
                 'pml_id': fov.dataset.pml_id,
                 'src_filename': fov.raw_filename,
-                'score': fov.get_score(),
             }
+
+            # append the 488 exposure settings
+            metadata = fov.get_result('raw-tiff-metadata')
+            if metadata:
+                fov_payload['laser_power_488'] = metadata.data.get('laser_power_488_488')
+                fov_payload['exposure_time_488'] = metadata.data.get('exposure_time_488')
+                fov_payload['max_intensity_488'] = metadata.data.get('max_intensity_488')
+
             if kind in ['all', 'rois']:
                 fov_payload['rois'] = [roi.as_dict() for roi in fov.rois]
+
             if kind in ['all', 'thumbnails']:
                 fov_payload['thumbnails'] = fov.get_thumbnail('rgb').as_dict()
 

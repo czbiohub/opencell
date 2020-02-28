@@ -380,7 +380,8 @@ def get_pvals(x, control_df):
 
     # get the index to access the right set of control intensities
     row = x[-1]
-    pval = scipy.stats.ttest_ind(x[:-1], control_df[row].values.tolist())[1]
+    pval = scipy.stats.ttest_ind(x[:-1], control_df[row].values.tolist(),
+    nan_policy='omit')[1]
 
     # negative log of the pvals
     pval = -1 * np.log10(pval)
@@ -808,23 +809,27 @@ def find_missing_names(raw_df, verbose=True):
         data = data.encode('utf-8')
         # create a new request
         req = urllib.request.Request(url, data)
-        with urllib.request.urlopen(req) as f:
-            response = f.read()
+        try:
+            with urllib.request.urlopen(req) as f:
+                response = f.read()
 
-        # convert the request to a df for easier processing
-        request_list = response.decode('utf-8')
-        temp = pd.DataFrame([x.split('\t') for x in request_list.split('\n')])
-        headers = temp.iloc[0]
-        gene_names = pd.DataFrame(temp.values[1:], columns=headers)
+            # convert the request to a df for easier processing
+            request_list = response.decode('utf-8')
+            temp = pd.DataFrame([x.split('\t') for x in request_list.split('\n')])
+            headers = temp.iloc[0]
+            gene_names = pd.DataFrame(temp.values[1:], columns=headers)
 
-        # from the converted df, extract the name
-        names_list = gene_names["To"].values.tolist()
-        names_list = list(set([x for x in names_list if x is not None]))
-        name_str = ';'.join(names_list)
-        # Append to the dict
-        if name_str:
-            id_names[ids] = name_str
-        else:
+            # from the converted df, extract the name
+            names_list = gene_names["To"].values.tolist()
+            names_list = list(set([x for x in names_list if x is not None]))
+            name_str = ';'.join(names_list)
+            # Append to the dict
+            if name_str:
+                id_names[ids] = name_str
+            else:
+                id_names[ids] = 'Unnamed'
+        except Exception:
+            print("UniProt Offline, all missing genes are 'Unnamed'")
             id_names[ids] = 'Unnamed'
 
     # Create a DF from the dict
@@ -981,7 +986,7 @@ def atl3_clta_metric(pca_df, n_clusters, repeats):
     return atl_score, clta_score
 
 
-def iter_pvals(imputed_df, fc_var1, fc_var2):
+def iter_pvals(imputed_df, fc_var1, fc_var2, max_iter=5):
     """ Calculate enrichment and pvals for each bait, but remove baits that
     show up as significant hits and iterate continuously until
     no more removable baits are found.
@@ -996,8 +1001,9 @@ def iter_pvals(imputed_df, fc_var1, fc_var2):
     bait_list = list(set(bait_list))
     total = len(bait_list)
     baitrange = list(np.arange(total))
+
     multi_args = zip(bait_list, repeat(imputed_df), baitrange, repeat(total),
-        repeat(fc_var1), repeat(fc_var2))
+        repeat(fc_var1), repeat(fc_var2), repeat(max_iter))
 
     p = Pool()
     print("Parallel processing pval / enrichment calculations..")
@@ -1077,7 +1083,6 @@ def iter_enrich_pval(bait, df, num, total, fc_var1, fc_var2, max_iter=5):
         drop_diff = hits - drop_set
 
 
-
         # update drop genes
         drop_genes = list(drop_set.union(hits))
         # get a list of bait names to add to drop list
@@ -1098,7 +1103,10 @@ def iter_enrich_pval(bait, df, num, total, fc_var1, fc_var2, max_iter=5):
                         drops = [x for x in bait_list if ind in x]
                         new_drops = new_drops + drops
                 else:
-                    drops = [x for x in bait_list if gene in x]
+                    try:
+                        drops = [x for x in bait_list if gene in x]
+                    except Exception:
+                        print(gene)
                     new_drops = new_drops + drops
 
         new_drops = list(set(new_drops)-set(drop_list))
@@ -1120,7 +1128,167 @@ def iter_enrich_pval(bait, df, num, total, fc_var1, fc_var2, max_iter=5):
         names=['baits', 'values'], axis=1)
     if num % 10 == 0:
         print(str(num) + ' / ' + str(total) + ' baits processed')
+    # print(str(num) + ' / ' + str(total) + ' baits processed')
     return output
+
+
+def pval_remove_significants(imputed_df, fc_vars1, fc_vars2):
+    """ Calculate enrichment and pvals for each bait, but remove baits that
+    show up as significant hits and iterate continuously until
+    no more removable baits are found.
+
+    rtype enrichment_df: pd DataFrame
+    rtype pval_df: pd DataFrame"""
+
+    imputed_df = imputed_df.copy()
+
+    # iterate through each cluster to generate neg con group
+    bait_list = [col[0] for col in list(imputed_df) if col[0] != 'Info']
+    bait_list = list(set(bait_list))
+    total = len(bait_list)
+    baitrange = list(np.arange(total))
+
+    fc_var1, fc_var2 = fc_vars1[0], fc_vars1[1]
+
+    multi_args = zip(bait_list, repeat(imputed_df), baitrange, repeat(total),
+        repeat(fc_var1), repeat(fc_var2))
+
+    p = Pool()
+    print("First round p-val calculations..")
+    neg_dfs = p.starmap(first_round_pval, multi_args)
+    p.close()
+    p.join()
+    master_neg = pd.concat(neg_dfs, axis=1)
+    print("First round finished!")
+
+    master_neg.reset_index(inplace=True, drop=True)
+
+    fc_var1, fc_var2 = fc_vars2[0], fc_vars2[1]
+
+    multi_args2 = zip(bait_list, repeat(imputed_df), repeat(master_neg),
+        baitrange, repeat(total), repeat(fc_var1), repeat(fc_var2))
+
+    p = Pool()
+    outputs = p.starmap(second_round_pval, multi_args2)
+
+    master_df = pd.concat(outputs, axis=1)
+
+    return master_df
+
+
+def first_round_pval(bait, df, num, total, fc_var1, fc_var2):
+    """ A first round of pval calculations to remove any significant hits
+    from negative controls """
+
+    # initiate other variables required for the fx
+    gene_list = df[('Info', 'Gene names')].tolist()
+
+    # construct a negative control by dropping all similar baits
+    temporary = df.copy()
+    neg_control = df.copy()
+    temporary.drop('Info', level='Baits', inplace=True, axis=1)
+    neg_control.drop('Info', level='Baits', inplace=True, axis=1)
+
+
+    # calculate the neg con median and stds
+    con_median = neg_control.median(axis=1)
+    con_std = neg_control.std(axis=1)
+
+    # calculate enrichment
+    enrich_series = (temporary[bait].median(axis=1) - con_median) / con_std
+    enrich_series.index = gene_list
+    enrich_series.name = 'enrichment'
+
+    # calculate the p-values
+
+    # combine values of replicates into one list
+    bait_series = temporary[bait].values.tolist()
+
+    # copy a bait series that will be returned with removed hits
+    neg_series = temporary[bait].copy()
+    neg_series.index = gene_list
+    neg_series.columns = pd.MultiIndex.from_product([[bait], neg_series.columns])
+
+    # add an index value to the list for locating neg_control indices
+    for i in np.arange(len(bait_series)):
+        bait_series[i].append(i)
+
+    # perform the p value calculations
+    pval_series = pd.Series(bait_series, index=gene_list, name='pvals')
+    pval_series = pval_series.apply(get_pvals, args=[neg_control.T])
+
+    # Find positive hits from enrichment and pval calculations
+    pe_df = pd.concat([enrich_series, pval_series], axis=1)
+    pe_df['thresh'] = pe_df['enrichment'].apply(calc_thresh,
+        args=[fc_var1, fc_var2])
+    pe_df['hits'] = np.where((pe_df['pvals'] > pe_df['thresh']), True, False)
+
+    # Get genes names of all the hits
+    hits = set(pe_df[pe_df['hits']].index.tolist())
+
+    # Remove hits from the negative control
+    replicates = list(neg_series)
+
+    for rep in replicates:
+        for hit in hits:
+            neg_series[rep][hit] = np.nan
+
+    if num % 20 == 0:
+        print(str(num) + ' / ' + str(total) + ' baits processed')
+    # print(str(num) + ' / ' + str(total) + ' baits processed')
+
+    return neg_series
+
+
+def second_round_pval(bait, df, neg_control, num, total, fc_var1, fc_var2):
+    """ A first round of pval calculations to remove any significant hits
+    from negative controls """
+
+    # initiate other variables required for the fx
+    gene_list = df[('Info', 'Gene names')].tolist()
+
+    # construct a negative control by dropping all similar baits
+    temporary = df.copy()
+    neg_control = neg_control.copy()
+    temporary.drop('Info', level='Baits', inplace=True, axis=1)
+
+    # calculate the neg con median and stds
+    con_median = neg_control.median(axis=1)
+    con_std = neg_control.std(axis=1)
+
+    # calculate enrichment
+    enrich_series = (temporary[bait].median(axis=1) - con_median) / con_std
+    enrich_series.index = gene_list
+    enrich_series.name = 'enrichment'
+
+    # calculate the p-values
+
+    # combine values of replicates into one list
+    bait_series = temporary[bait].values.tolist()
+
+    # add an index value to the list for locating neg_control indices
+    for i in np.arange(len(bait_series)):
+        bait_series[i].append(i)
+
+    # perform the p value calculations
+    pval_series = pd.Series(bait_series, index=gene_list, name='pvals')
+    pval_series = pval_series.apply(get_pvals, args=[neg_control.T])
+
+    # Find positive hits from enrichment and pval calculations
+    pe_df = pd.concat([enrich_series, pval_series], axis=1)
+    pe_df['thresh'] = pe_df['enrichment'].apply(calc_thresh,
+        args=[fc_var1, fc_var2])
+    pe_df['hits'] = np.where((pe_df['pvals'] > pe_df['thresh']), True, False)
+
+    output = pd.concat([pe_df[['enrichment', 'pvals', 'hits']]], keys=[bait],
+        names=['baits', 'values'], axis=1)
+    if num % 20 == 0:
+        print(str(num) + ' / ' + str(total) + ' baits processed')
+    # print(str(num) + ' / ' + str(total) + ' baits processed')
+
+    return output
+
+
 
 
 def calc_thresh(enrich, fc_var1, fc_var2):

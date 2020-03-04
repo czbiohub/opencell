@@ -81,8 +81,8 @@ class Header extends Component {
     }
 }
 
+
 function MetadataItem(props) {
-    
     return (
         <div className='flex-0-0-auto header-metadata-item'>
             <strong className='f3'>{props.value}</strong>

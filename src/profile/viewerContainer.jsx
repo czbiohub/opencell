@@ -13,6 +13,13 @@ import * as utils from '../common/utils.js';
 import 'tachyons';
 import './Profile.css';
 
+function SectionHeader (props) {
+    return (
+        <div className="bb b--black-10">
+            <div className="f3 section-header">{props.title}</div>
+        </div>
+    );
+}
 
 export default class ViewerContainer extends Component {
 
@@ -78,6 +85,8 @@ export default class ViewerContainer extends Component {
 
 
     render () {
+        
+        if (!this.props.fovs.length) return null;
 
         function renderROIItem (roi, props) {
             if (!props.modifiers.matchesPredicate) return null;
@@ -99,7 +108,9 @@ export default class ViewerContainer extends Component {
         if (this.state.localizationMode==='Slice') {
             localizationContent = <SliceViewer volumes={this.volumes} {...this.state}/>
         }
-    
+        
+        const fov = this.props.fovs.filter(fov => fov.id == this.props.fovId)[0];
+        const allROIs = [...this.props.fovs[0].rois, ...this.props.fovs[1].rois];
 
         return (
             <div>
@@ -123,14 +134,14 @@ export default class ViewerContainer extends Component {
                     </div>
                     <div className="dib pr3">
                         <Select 
-                            items={this.props.rois} 
+                            items={allROIs} 
                             itemRenderer={renderROIItem} 
                             filterable={false}
                             onItemSelect={roi => {
                                 this.setState({stacksLoaded: false});
                                 this.props.changeRoi(roi.id, roi.fov_id)}
                             }
-                            activeItem={this.props.rois.filter(roi => roi.id === this.props.roiId)[0]}
+                            activeItem={allROIs.filter(roi => roi.id === this.props.roiId)[0]}
                         >
                             <Button 
                                 className="bp3-button-custom"
@@ -148,8 +159,8 @@ export default class ViewerContainer extends Component {
             </div>
 
             {/* Localization controls - min/max/z-index sliders */}
-            <div className='fl w-90 pt3'>
-                <div className='w-50 dib'>
+            <div className='flex flex-wrap w-100 pt2 pb2'>
+                <div className='flex-0-0-auto w-50'>
                     <div className=''>DAPI range</div>
                     <Slider 
                         label='Min'
@@ -161,7 +172,7 @@ export default class ViewerContainer extends Component {
                         onChange={value => this.setState({dapiMax: value})}/>
                 </div>
 
-                <div className='w-50 dib'>
+                <div className='flex-0-0-auto w-50'>
                     <div className=''>GFP range</div>
                     <Slider 
                         label='Min'
@@ -173,13 +184,20 @@ export default class ViewerContainer extends Component {
                         onChange={value => this.setState({gfpMax: value})}/>
                 </div>
 
-                <div className='w-100 pt2'>
+                <div className='flex-0-0-auto w-100 pt2'>
                     <div className=''>Z-slice</div>
                     <Slider 
                         label='z-index'
                         min={0} max={55} value={this.state.zIndex}
                         onChange={value => this.setState({zIndex: value})}/>
                 </div>
+            </div>
+            
+            <SectionHeader title='FOV metadata'/>
+            <div className='flex pt2'>
+                {FOVMetadataItem('Laser power', fov.laser_power_488?.toFixed(1) || 'NA', '%')}
+                {FOVMetadataItem('Exposure time', fov.exposure_time_488?.toFixed() || 'NA', 'ms')}
+                {FOVMetadataItem('Max intensity', fov.max_intensity_488 || 'NA', '')}
             </div>
 
             {this.state.stacksLoaded ? (null) : (<div className='loading-overlay'/>)}
@@ -191,3 +209,14 @@ export default class ViewerContainer extends Component {
 
 }
 
+
+// warning: this is almost a direct copy of a function in header.jsx
+function FOVMetadataItem(label, value, units) {
+    return (
+        <div className='flex-0-0-auto header-metadata-item'>
+            <strong className='f4'>{value}</strong>
+            <abbr className='f5' title='units description'>{units}</abbr>
+            <div className='f6 header-metadata-item-label'>{label}</div>
+        </div>
+    );
+}

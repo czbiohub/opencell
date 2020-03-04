@@ -33,13 +33,22 @@ import '../common/common.css';
 import './Profile.css';
 
 
+function SectionHeader (props) {
+    return (
+        <div className="bb b--black-10">
+            <div className="f3 section-header">{props.title}</div>
+        </div>
+    );
+}
+
+
 class App extends Component {
 
     constructor (props) {
         super(props);
 
         this.state = {
-            rois: [],
+            fovs: [],
             fovId: null,
             roiId: null,
             cellLineId: null,
@@ -63,17 +72,18 @@ class App extends Component {
         // check that the target has changed
         if (cellLine.metadata.cell_line_id===this.state.cellLineId) return;
 
-        // concatenate all ROIs
-        const rois = [...cellLine.fovs[0].rois, ...cellLine.fovs[1].rois];
+        // the available FOVs are the top two 
+        // (we assume the FOVs are sorted by score)
+        const fovs = [cellLine.fovs[0], cellLine.fovs[1]];
 
         this.cellLine = cellLine;
 
         this.setState({
             cellLineId: cellLine.metadata.cell_line_id,
             targetName: cellLine.metadata.target_name,
-            fovId: rois[0].fov_id,
-            roiId: rois[0].id,
-            rois,
+            fovId: fovs[0].id,
+            roiId: fovs[0].rois[0].id,
+            fovs,
         });
     }
 
@@ -129,14 +139,6 @@ class App extends Component {
             ...metadataDefinitions,
         ];
 
-        function SectionHeader (props) {
-            return (
-                <div className="bb b--black-10">
-                    <div className="f3 section-header">{props.title}</div>
-                </div>
-            );
-        }
-
 
         return (
             <div>
@@ -180,7 +182,7 @@ class App extends Component {
                     <div className="pl3 pr3" style={{flexBasis: '650px'}}>
                         <SectionHeader title='Localization'/>
                         <ViewerContainer
-                            rois={this.state.rois}
+                            fovs={this.state.fovs}
                             fovId={this.state.fovId}
                             roiId={this.state.roiId}
                             changeRoi={(roiId, fovId) => this.setState({roiId, fovId})}
@@ -203,7 +205,7 @@ class App extends Component {
                                 <SectionHeader title='Annotations'/>    
                                 <AnnotationsForm 
                                     cellLineId={this.state.cellLineId} 
-                                    fovIds={this.state.rois.map(roi => roi.fov_id)}
+                                    fovIds={this.state.fovs.map(fov => fov.id)}
                                 />
                             </div>
                         )}

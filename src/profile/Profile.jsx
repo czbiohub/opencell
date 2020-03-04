@@ -1,7 +1,6 @@
 
 import * as d3 from 'd3';
 import React, { Component } from 'react';
-import ReactTable from 'react-table';
 
 import { Button, Radio, RadioGroup, MenuItem } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
@@ -12,6 +11,7 @@ import ButtonGroup from './buttonGroup.jsx';
 import Navbar from '../common/navbar.jsx';
 import Header from './header.jsx';
 
+import CellLineTable from './cellLineTable.jsx';
 import ExpressionPlot from '../common/expressionPlot.jsx';
 import FacsPlotContainer from './facsPlotContainer.jsx';
 import ViewerContainer from './viewerContainer.jsx';
@@ -22,15 +22,14 @@ import 'tachyons';
 import 'react-table/react-table.css';
 import "@blueprintjs/core/lib/css/blueprint.css";
 
-import metadataDefinitions from './metadataDefinitions.js';
-import manualMetadata from '../demo/data/manual_metadata.json';
-import uniprotMetadata from '../demo/data/uniprot_metadata.json';
-
 import settings from '../common/settings.js';
 import * as utils from '../common/utils.js';
 
 import '../common/common.css';
 import './Profile.css';
+
+// this is where the content for the 'About this protein' comes from
+import uniprotMetadata from '../demo/data/uniprot_metadata.json';
 
 
 function SectionHeader (props) {
@@ -122,23 +121,10 @@ class App extends Component {
         });
         // initial target to display
         this.onSearchChange(this.urlParams.get('target') || 'LMNB1');
-        
     }
 
 
     render() {
-
-        // append gene_name to metadataDefinitions 
-        // (used only for the table of all targets at the bottom)
-        let tableDefs = [
-            {   
-                id: 'gene_name',
-                Header: 'Gene name',
-                accessor: row => row.metadata?.target_name,
-            },
-            ...metadataDefinitions,
-        ];
-
 
         return (
             <div>
@@ -150,6 +136,7 @@ class App extends Component {
 
                 {/* page header and metadata */}
                 <Header cellLine={this.cellLine} onSearchChange={this.onSearchChange}/>
+
 
                 {/* container for the three primary panels */}
                 <div className="flex" style={{minWidth: '1600px'}}>
@@ -216,36 +203,12 @@ class App extends Component {
                 {/* table of all targets */}
                 <div className="w-90 pt0 pl4 pb5">
                     <SectionHeader title='All cell lines'/>
-                    <div className='pt3 table-container'>
-                    <ReactTable 
-                        defaultPageSize={10}
-                        showPageSizeOptions={true}
-                        filterable={true}
-                        columns={tableDefs}
-                        data={this.allCellLines.map(line => {
-                            return {...line, isActive: this.state.cellLineId===line.metadata.cell_line_id};
-                        })}
-                        getTrProps={(state, rowInfo, column) => {
-                            const isActive = rowInfo ? rowInfo.original.isActive : false;
-                            return {
-                                onClick: () => this.onCellLineSelect(rowInfo.original.metadata.cell_line_id),
-                                style: {
-                                    background: isActive ? '#ddd' : null,
-                                    fontWeight: isActive ? 'bold' : 'normal'
-                                }
-                            }
-                        }}
-                        getPaginationProps={(state, rowInfo, column) => {
-                            return {style: {fontSize: 16}}
-                        }}
-                        defaultFilterMethod={(filter, row, column) => {
-                            // force default filtering to be case-insensitive
-                            const id = filter.pivotId || filter.id;
-                            const value = filter.value.toLowerCase();
-                            return row[id] !== undefined ? String(row[id]).toLowerCase().startsWith(value) : true
-                        }}
+                    <CellLineTable
+                        cellLines={this.allCellLines}
+                        cellLineId={this.state.cellLineId}
+                        onCellLineSelect={id => this.onCellLineSelect(id)}
                     />
-                    </div>
+
                 </div>
             </div>
 

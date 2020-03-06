@@ -1,5 +1,8 @@
 import os
+import io
 import urllib
+import imageio
+import tifffile
 import pandas as pd
 import sqlalchemy as db
 
@@ -12,9 +15,10 @@ from flask import (
     abort
 )
 
-from opencell.imaging.processors import FOVProcessor
-from opencell.database import models, operations
+from opencell.imaging import utils
 from opencell.api.cache import cache
+from opencell.database import models, operations
+from opencell.imaging.processors import FOVProcessor
 
 
 # copied from https://stackoverflow.com/questions/24816799/how-to-use-flask-cache-with-flask-restful
@@ -155,9 +159,6 @@ class MicroscopyFOV(Resource):
         Currently, only works for kind = 'proj'
         '''
 
-        if kind == 'proj':
-            ext = 'tif'
-
         fov = (
             current_app.Session.query(models.MicroscopyFOV)
             .filter(models.MicroscopyFOV.id == fov_id)
@@ -165,23 +166,31 @@ class MicroscopyFOV(Resource):
         )
 
         if not fov:
-            # this means the fov_id was not valid
-            # TODO: return 404?
-            pass
+            abort(404)
 
         processor = FOVProcessor.from_database(fov)
-        filepath = processor.dst_filepath(
-            dst_root=current_app.config.get('opencell_microscopy_root'),
-            kind=kind,
-            channel=channel,
-            ext=ext)
+        dst_root = current_app.config.get('opencell_microscopy_root')
+        filepath_405 = processor.dst_filepath(dst_root, kind='proj', channel='405', ext='tif')
+        filepath_488 = processor.dst_filepath(dst_root, kind='proj', channel='488', ext='tif')
 
-        file = send_file(
-            open(filepath, 'rb'),
+        ims = {}
+        ims['405'] = tifffile.imread(filepath_405)[..., None]
+        ims['488'] = tifffile.imread(filepath_488)[..., None]
+        ims['rgb'] = processor.make_rgb(ims['405'], ims['488'])
+
+        im = ims.get(channel)
+        if channel in ['405', '488']:
+            im = utils.autoscale(im, p=1)
+
+        file = io.BytesIO()
+        imageio.imsave(file, im, format='jpg', quality=90)
+        file.seek(0)
+
+        return send_file(
+            file,
             as_attachment=True,
-            attachment_filename=filepath.split(os.sep)[-1])
-
-        return file
+            attachment_filename='FOV%04d_%s-%s.jpg' % (fov_id, kind.upper(), channel.upper())
+        )
 
 
 class MicroscopyFOVROI(Resource):

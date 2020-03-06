@@ -15,7 +15,7 @@ import time
 import pdb
 
 
-def subtract_prey_median(imputed_df):
+def subtract_prey_median(imputed_df, mad_mod=True, mad_factor=1):
     """As an option to visualize clustering so that each intensity
     is subtracted by the prey group median, this function
     alters the base dataframe with the transformation"""
@@ -27,15 +27,24 @@ def subtract_prey_median(imputed_df):
     transformed.drop(columns=['Info'], level='Baits', inplace=True)
     transformed = transformed.T
 
-    # Get a list of the columns (now preys)
-    preys = list(transformed)
+    # Get a list of the columns (baits or preys)
+    cols = list(transformed)
 
     # go through each prey (now in columns) and subtract median
-    for prey in preys:
-        transformed[prey] = transformed[prey] - transformed[prey].median()
+    for col in cols:
+        transformed[col] = transformed[col] - transformed[col].median()
+        if mad_mod:
+            mad = transformed[col].mad() * mad_factor
+            transformed[col] = transformed[col].apply(lambda x: x if x > mad else 0)
+
+    transformed = transformed.T
+    # if mad_mod:
+    #     t_cols = list(transformed)
+    #     for col in t_cols:
+    #         mad = transformed[col].mad() * mad_factor
+    #         transformed[col] = transformed[col].apply(lambda x: x if x > mad else 0)
 
     # transpose back to original shape and add the info columns again
-    transformed = transformed.T
     info_cols = list([col for col in list(imputed_df) if col[0] == 'Info'])
     for col in info_cols:
         transformed[col] = imputed_df[col]

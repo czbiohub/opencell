@@ -54,8 +54,8 @@ class PulldownOperations:
         then the PolyClonalLineOperations class is instantiated using the first such cell_line
         '''
         cds = (
-            session.query(models.CrisprDesign)
-            .filter(db.func.lower(models.CrisprDesign.target_name) == db.func.lower(target_name))
+            session.query(ms_models.CrisprDesign)
+            .filter(db.func.lower(ms_models.CrisprDesign.target_name) == db.func.lower(target_name))
             .all()
         )
 
@@ -79,4 +79,4 @@ class PulldownOperations:
             replicate=row.replicate,
             pulldown_plate_id=row.pulldown_plate_id,
             pulldown_well_id=row.pulldown_well_id)
-        operations.add_and_commit(session, pulldown_data)
+        operations.add_and_commit(session, pulldown_data, errors=errors)

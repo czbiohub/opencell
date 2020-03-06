@@ -99,9 +99,10 @@ class Pulldown(Base):
     id = db.Column(db.Integer, primary_key=True)
     cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'))
     replicate = db.Column(db.Integer)
-    pulldown_plate_id = db.Column(db.String)
+    pulldown_plate_id = db.Column(db.String,
+        db.ForeignKey('pulldown_plate.id'))
 
-    pulldown_well_id = db.Column(db.Integer)
+    pulldown_well_id = db.Column(db.String)
     # flag for quality
     qc_flag = db.Column(db.String)
     # dataset_id = db.Column(db.String)
@@ -109,6 +110,12 @@ class Pulldown(Base):
     # Relationships
     cell_line = db.orm.relationship('CellLine', back_populates='pulldown')
     hits = db.orm.relationship('Hits', back_populates='pulldown')
+    pulldown_plate = db.orm.relationship("PulldownPlate", back_populates='pulldown')
+
+    # constraints
+    __table_args__ = (
+            db.UniqueConstraint(pulldown_plate_id, pulldown_well_id),
+    )
 
     def __repr__(self):
         return "<Bait(id=%s, pulldown_plate=%s, pulldown_well=%s)>" % \
@@ -126,7 +133,7 @@ class Hits(Base):
     id = db.Column(db.Integer, primary_key=True)
     pulldown_id = db.Column(db.Integer, db.ForeignKey('pulldown.id'))
     # target string is ProteinIDs (collection of uniprot protein ids)
-    protein_group_id = db.Column(db.String)
+    protein_group_id = db.Column(db.String, db.ForeignKey('protein_group.id'))
     pval = db.Column(db.Float)
     enrichment = db.Column(db.Float)
     hit = db.Column(db.Boolean)
@@ -134,8 +141,12 @@ class Hits(Base):
 
     # Relationships
     pulldown = db.orm.relationship('Pulldown', back_populates='hits')
-    proteingroup = db.orm.relationship('ProteinGroup', back_populates='hits')
+    protein_group = db.orm.relationship('ProteinGroup', back_populates='hits')
 
+    # constraints
+    __table_args__ = (
+            db.UniqueConstraint(pulldown_id, protein_group_id),
+    )
 
 class ProteinGroup(Base):
     '''
@@ -145,8 +156,7 @@ class ProteinGroup(Base):
     __tablename__ = 'protein_group'
 
     # Columns
-    protein_id = db.Column(db.Integer, db.ForeignKey('hits.protein_group_id'),
-        primary_key=True)
+    id = db.Column(db.String, primary_key=True)
 
     # For now, a list of all proteins mapped to the group
     gene_names = db.Column(db.String)
@@ -155,16 +165,15 @@ class ProteinGroup(Base):
     hits = db.orm.relationship('Hits', back_populates='protein_group')
 
 
-class MsPlate(Base):
+class PulldownPlate(Base):
     '''
     every MS plate prepped by the ML Group
 
     '''
-    __tablename__ = "ms_plate"
+    __tablename__ = "pulldown_plate"
 
     # Columns
-    plate_id = db.Column(db.String, db.ForeignKey('pulldown.pulldown_plate_id'),
-        primary_key=True)
+    id = db.Column(db.String, primary_key=True)
     plate_design_link = db.Column(db.String)
     plate_subset = db.Column(db.String)
     cell_prepped_by = db.Column(db.String)
@@ -175,7 +184,7 @@ class MsPlate(Base):
     quant_date = db.Column(db.DateTime)
 
     # Relationships
-    pulldown = db.orm.relationship("Pulldown", back_populates='ms_plate')
+    pulldown = db.orm.relationship("Pulldown", back_populates='pulldown_plate')
 
 
 class Electroporation(Base):

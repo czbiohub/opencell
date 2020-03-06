@@ -543,7 +543,8 @@ class PolyclonalLineOperations:
                 fov_payload['rois'] = [roi.as_dict() for roi in fov.rois]
 
             if kind in ['all', 'thumbnails']:
-                fov_payload['thumbnails'] = fov.get_thumbnail('rgb').as_dict()
+                thumbnail = fov.get_thumbnail('rgb')
+                fov_payload['thumbnails'] = thumbnail.as_dict() if thumbnail else None
 
             payload.append(fov_payload)
 

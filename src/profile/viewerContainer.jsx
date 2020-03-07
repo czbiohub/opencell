@@ -1,4 +1,3 @@
-
 import React, { Component } from 'react';
 import { Button, MenuItem } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
@@ -9,17 +8,11 @@ import SliceViewer from './sliceViewer.jsx';
 import VolumeViewer from './volumeViewer.jsx';
 import settings from '../common/settings.js';
 import * as utils from '../common/utils.js';
+import { SectionHeader } from './common.jsx';
 
 import 'tachyons';
 import './Profile.css';
 
-function SectionHeader (props) {
-    return (
-        <div className="bb b--black-10">
-            <div className="f3 section-header">{props.title}</div>
-        </div>
-    );
-}
 
 export default class ViewerContainer extends Component {
 

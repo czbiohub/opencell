@@ -281,3 +281,14 @@ in order for the plots to be vertically aligned */
 .ReactTable .rt-tbody .rt-tr-group:hover {
 	background-color: #eee;
 }
+
+
+
+/* --------------------- FOV curator --------------------- */
+
+.thumbnail-grid {
+    display: grid;
+    grid-auto-flow: row;
+    grid-template-rows: auto;
+    grid-template-columns: repeat(auto-fit, 100px);
+}

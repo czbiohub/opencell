@@ -5,18 +5,10 @@ import React, { Component } from 'react';
 import { Button, Radio, RadioGroup, MenuItem } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
 
-import Slider from './slider.jsx';
-import ButtonGroup from './buttonGroup.jsx';
-
 import Navbar from '../common/navbar.jsx';
 import Header from './header.jsx';
-
-import CellLineTable from './cellLineTable.jsx';
-import ExpressionPlot from '../common/expressionPlot.jsx';
-import FacsPlotContainer from './facsPlotContainer.jsx';
-import ViewerContainer from './viewerContainer.jsx';
-import VolcanoPlotContainer from './volcanoPlotContainer.jsx';
-import AnnotationsForm from './annotations.jsx';
+import Overview from './overview.jsx';
+import FOVCurator from '../microscopy/FOVCurator.jsx';
 
 import 'tachyons';
 import 'react-table/react-table.css';
@@ -28,23 +20,16 @@ import * as utils from '../common/utils.js';
 import '../common/common.css';
 import './Profile.css';
 
-// this is where the content for the 'About this protein' comes from
-import uniprotMetadata from '../demo/data/uniprot_metadata.json';
-
-
-function SectionHeader (props) {
-    return (
-        <div className="bb b--black-10">
-            <div className="f3 section-header">{props.title}</div>
-        </div>
-    );
-}
-
 
 class App extends Component {
 
     constructor (props) {
         super(props);
+
+        this.urlParams = new URLSearchParams(window.location.search);
+
+        this.cellLine = {};
+        this.allCellLines = [];
 
         this.state = {
             fovs: [],
@@ -53,15 +38,14 @@ class App extends Component {
             cellLineId: null,
             targetName: null,
             linesLoaded: false,
+            showAnnotations: this.urlParams.get('annotations')==='yes',
+            showFOVCurator: this.urlParams.get('fovcurator')==='yes',
         };
 
         this.changeTarget = this.changeTarget.bind(this);
         this.onSearchChange = this.onSearchChange.bind(this);
         this.onCellLineSelect = this.onCellLineSelect.bind(this);
 
-        this.cellLine = {};
-        this.allCellLines = [];
-        this.urlParams = new URLSearchParams(window.location.search);
     }
 
 
@@ -71,18 +55,19 @@ class App extends Component {
         // check that the target has changed
         if (cellLine.metadata.cell_line_id===this.state.cellLineId) return;
 
-        // the available FOVs are the top two 
+        // only the top two FOVs are available in the volume/slicer viewer
         // (we assume the FOVs are sorted by score)
-        const fovs = [cellLine.fovs[0], cellLine.fovs[1]];
+        const viewableFovs = [cellLine.fovs[0], cellLine.fovs[1]];
 
         this.cellLine = cellLine;
 
         this.setState({
             cellLineId: cellLine.metadata.cell_line_id,
             targetName: cellLine.metadata.target_name,
-            fovId: fovs[0].id,
-            roiId: fovs[0].rois[0].id,
-            fovs,
+            fovId: viewableFovs[0].id,
+            roiId: viewableFovs[0].rois[0].id,
+            allFovs: cellLine.fovs,
+            fovs: viewableFovs,
         });
     }
 
@@ -128,92 +113,32 @@ class App extends Component {
 
         return (
             <div>
+                <Navbar/>
 
-            <Navbar/>
+                {/* main container */}
+                <div className="w-100 pl4 pr4">
 
-            {/* main container */}
-            <div className="w-100 pl4 pr4">
+                    {/* page header and metadata */}
+                    <Header cellLine={this.cellLine} onSearchChange={this.onSearchChange}/>
 
-                {/* page header and metadata */}
-                <Header cellLine={this.cellLine} onSearchChange={this.onSearchChange}/>
-
-
-                {/* container for the three primary panels */}
-                <div className="flex" style={{minWidth: '1600px'}}>
-
-                    {/* Left column - about box and expression and facs plots*/}
-                    <div className="w-25 pl3 pr4 pt0">
-
-                        {/* 'About' textbox */}
-                        <div className='pb4'>
-                            <SectionHeader title='About this protein'/>
-                            <div className='pt2 protein-function-container'>
-                                <p>{uniprotMetadata[this.state.targetName]?.uniprot_function}</p>
-                            </div>
-                        </div>
-
-                        {/* expression scatterplot*/}
-                        <SectionHeader title='Expression level'/>
-                        <div className="fl w-100 pb3 expression-plot-container">
-                            <ExpressionPlot targetName={this.state.targetName}/>
-                        </div>
-
-                        {/* FACS plot */}
-                        <SectionHeader title='FACS histograms'/>
-                        <FacsPlotContainer cellLineId={this.state.cellLineId}/>
-                    </div>
-
-
-                    {/* Center column - sliceViewer and volumeViewer */}
-                    {/* note the hard-coded width (because the ROIs are always 600px */}
-                    <div className="pl3 pr3" style={{flexBasis: '650px'}}>
-                        <SectionHeader title='Localization'/>
-                        <ViewerContainer
-                            fovs={this.state.fovs}
-                            fovId={this.state.fovId}
-                            roiId={this.state.roiId}
-                            changeRoi={(roiId, fovId) => this.setState({roiId, fovId})}
+                    {this.state.showFOVCurator ? (
+                        <FOVCurator 
+                            cellLines={this.allCellLines}
+                            onSearchChange={this.onSearchChange}
+                            onCellLineSelect={this.onCellLineSelect}
+                            {...this.state}
                         />
-                    </div>
-
-
-                    {/* Right column - annotations or volcano plot */}
-                    <div className="w-33 pl3 pb3">
-                        {this.urlParams.get('annotations')!=='yes' ? (
-                            <div>
-                                <SectionHeader title='Interactions'/>
-                                <VolcanoPlotContainer
-                                    targetName={this.state.targetName}
-                                    changeTarget={name => this.onSearchChange(name)}
-                                />
-                            </div>
-                        ) : (
-                            <div>
-                                <SectionHeader title='Annotations'/>    
-                                <AnnotationsForm 
-                                    cellLineId={this.state.cellLineId} 
-                                    fovIds={this.state.fovs.map(fov => fov.id)}
-                                />
-                            </div>
-                        )}
-                    </div>
+                    ) : (
+                        <Overview
+                            cellLines={this.allCellLines}
+                            onSearchChange={this.onSearchChange}
+                            onCellLineSelect={this.onCellLineSelect}
+                            showAnnotations={this.state.showAnnotations}
+                            {...this.state}/>
+                    )}
                 </div>
 
-
-                {/* table of all targets */}
-                <div className="w-90 pt0 pl4 pb5">
-                    <SectionHeader title='All cell lines'/>
-                    <CellLineTable
-                        cellLines={this.allCellLines}
-                        cellLineId={this.state.cellLineId}
-                        onCellLineSelect={id => this.onCellLineSelect(id)}
-                    />
-
-                </div>
-            </div>
-
-            {this.state.linesLoaded ? (null) : (<div className='loading-overlay'/>)}
-
+                {this.state.linesLoaded ? (null) : (<div className='loading-overlay'/>)}
             </div>
 
         );

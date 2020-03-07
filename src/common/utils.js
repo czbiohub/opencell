@@ -40,5 +40,3 @@ export function loadImage(url, onLoad) {
     img.src = url;
 
 }
-
-

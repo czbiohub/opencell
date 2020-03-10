@@ -19,6 +19,19 @@ export default class Overview extends Component {
         this.state = {};
     }
 
+    componentDidMount () {    
+    }
+
+    componentDidUpdate(prevProps) {
+
+        if (prevProps.cellLineId===this.props.cellLineId) return;
+        this.setState({
+            fovId: this.props.fovs[0].id,
+            roiId: this.props.fovs[0].rois[0].id,
+        });
+    }
+
+
     render () {
         return (
             <div>
@@ -53,8 +66,8 @@ export default class Overview extends Component {
                         <SectionHeader title='Localization'/>
                         <ViewerContainer
                             fovs={this.props.fovs}
-                            fovId={this.props.fovId}
-                            roiId={this.props.roiId}
+                            fovId={this.state.fovId}
+                            roiId={this.state.roiId}
                             changeRoi={(roiId, fovId) => this.setState({roiId, fovId})}
                         />
                     </div>

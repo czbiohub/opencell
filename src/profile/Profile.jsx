@@ -33,8 +33,6 @@ class App extends Component {
 
         this.state = {
             fovs: [],
-            fovId: null,
-            roiId: null,
             cellLineId: null,
             targetName: null,
             linesLoaded: false,
@@ -64,8 +62,6 @@ class App extends Component {
         this.setState({
             cellLineId: cellLine.metadata.cell_line_id,
             targetName: cellLine.metadata.target_name,
-            fovId: viewableFovs[0].id,
-            roiId: viewableFovs[0].rois[0].id,
             allFovs: cellLine.fovs,
             fovs: viewableFovs,
         });

@@ -292,3 +292,11 @@ in order for the plots to be vertically aligned */
     grid-template-rows: auto;
     grid-template-columns: repeat(auto-fit, 100px);
 }
+
+.thumbnail:hover {
+    opacity: .7;
+}
+
+.thumbnail-active {
+    border: 2px solid red;
+}

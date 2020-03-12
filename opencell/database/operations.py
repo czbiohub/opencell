@@ -5,11 +5,11 @@ import json
 import numpy as np
 import pandas as pd
 import sqlalchemy as db
-
 from contextlib import contextmanager
-from opencell.database import models
-from opencell.imaging import processors
+
 from opencell import constants
+from opencell.database import models
+from opencell.imaging.processors import FOVProcessor
 
 
 @contextmanager
@@ -530,6 +530,7 @@ class PolyclonalLineOperations:
                 'score': fov.get_score(),
                 'pml_id': fov.dataset.pml_id,
                 'src_filename': fov.raw_filename,
+                'z_step_size': FOVProcessor.z_step_size(fov.dataset.pml_id),
             }
 
             # append the 488 exposure settings
@@ -549,7 +550,7 @@ class PolyclonalLineOperations:
             payload.append(fov_payload)
 
         # sort FOVs by score (unscored FOVs last)
-        payload = sorted(payload, key=lambda row: row.get('score') or -1)[::-1]
+        payload = sorted(payload, key=lambda row: row.get('score') or -2)[::-1]
         return payload
 
 

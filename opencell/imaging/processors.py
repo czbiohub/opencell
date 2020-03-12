@@ -118,7 +118,8 @@ class FOVProcessor:
         return processor
 
 
-    def z_step_size(self):
+    @staticmethod
+    def z_step_size(pml_id):
         '''
         Unpleasant method to determine the z-step size from the PML ID
 
@@ -131,7 +132,7 @@ class FOVProcessor:
         '''
         z_step_size = 0.2
         critical_pml_num = 123
-        pml_num = int(self.pml_id[3:])
+        pml_num = int(pml_id[3:])
         if pml_num < critical_pml_num:
             z_step_size = 0.5
         return z_step_size
@@ -357,13 +358,16 @@ class FOVProcessor:
         rel_bottom = -5
         rel_top = 6
 
+        # the desired step size of the clean TIFFs in um
+        target_step_size = 0.5
+
         result = {}
         tiff = self.load_raw_tiff()
         if tiff is None:
             result['error'] = 'Raw TIFF file for fov %s does not exist' % self.fov_id
             return result
 
-        step_size = self.z_step_size()
+        step_size = self.z_step_size(self.pml_id)
         try:
             stacks, result = tiff.align_cell_layer(rel_bottom, rel_top, step_size)
         except Exception as error:
@@ -374,8 +378,9 @@ class FOVProcessor:
             return result
 
         # if the step_size is 0.2um, downsample to 0.5um
+        # (assumes that step_size is only ever 0.2um or 0.5um)
         if step_size == 0.2:
-            zscale = 0.2/0.5
+            zscale = step_size/target_step_size
             for channel in stacks:
                 stacks[channel] = skimage.transform.rescale(
                     stacks[channel],
@@ -424,10 +429,13 @@ class FOVProcessor:
         cell_layer_rel_bottom = -5
         cell_layer_rel_top = 6
 
-        # the step size of the final stack in microns
+        # the desired step size of the final stack in microns
         # (this is chosen to correspond to the xy pixel size,
         # so that the voxels of the resampled stack will be isotropic)
         target_step_size = 0.2
+
+        # the step size of the raw data
+        original_step_size = self.z_step_size(self.pml_id)
 
         # the number of slices the resampled stack must have
         # (should be equal to (rel_top - rel_buttom) / target_step_size)
@@ -435,7 +443,7 @@ class FOVProcessor:
 
         # crop around the cell layer in z
         aligned_stacks, alignment_result = tiff.align_cell_layer(
-            cell_layer_rel_bottom, cell_layer_rel_top, self.z_step_size())
+            cell_layer_rel_bottom, cell_layer_rel_top, original_step_size)
 
         # if an alignment error occured, log it and attempt to continue
         # (these errors occur when the cell layer center was too close to the edge of the z-stack,
@@ -467,7 +475,7 @@ class FOVProcessor:
                 'xy_coords': (*roi_position[:2], *roi_shape[:2]),
                 'cell_layer_center_ind': alignment_result['cell_layer_center'],
                 'target_step_size': target_step_size,
-                'original_step_size': self.z_step_size(),
+                'original_step_size': original_step_size,
                 'required_num_slices': required_num_slices,
             }
             roi_props = self.crop_and_save_roi(roi_props, aligned_stacks, dst_root)

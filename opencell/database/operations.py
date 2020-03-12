@@ -533,6 +533,8 @@ class PolyclonalLineOperations:
                 'z_step_size': FOVProcessor.z_step_size(fov.dataset.pml_id),
             }
 
+            fov_payload['annotation'] = fov.annotation.as_dict() if fov.annotation else None
+
             # append the 488 exposure settings
             metadata = fov.get_result('raw-tiff-metadata')
             if metadata:

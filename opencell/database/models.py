@@ -581,6 +581,10 @@ class MicroscopyFOV(Base):
     thumbnails = db.orm.relationship(
         'Thumbnail', back_populates='fov', cascade='all, delete-orphan')
 
+    # one-to-one with microscopy_fov_annotation
+    annotation = db.orm.relationship(
+        'MicroscopyFOVAnnotation', back_populates='fov', uselist=False, cascade='all, delete-orphan')
+
     # round_id is either 'R01' (initial post-sort imaging)
     # or 'R02' (thawed-plate imaging)
     imaging_round_id = db.Column(db.String, nullable=False)
@@ -749,6 +753,30 @@ class CellLineAnnotation(Base):
     comment = db.Column(db.String)
 
     # the list of categories to which the cell line belongs
+    categories = db.Column(postgresql.JSONB)
+
+    # the client-side timestamp, app state, etc
+    client_metadata = db.Column(postgresql.JSONB)
+
+
+class MicroscopyFOVAnnotation(Base):
+    '''
+    '''
+
+    __tablename__ = 'microscopy_fov_annotation'
+    id = db.Column(db.Integer, primary_key=True)
+
+    # one-to-one relationship with microscopy_fov
+    fov_id = db.Column(db.Integer, db.ForeignKey('microscopy_fov.id'))
+    fov = db.orm.relationship('MicroscopyFOV', back_populates='annotation', uselist=False)
+
+    date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
+
+    # the row and column of the top-left corner of the user-selected ROI
+    roi_position_top = db.Column(db.Integer)
+    roi_position_left = db.Column(db.Integer)
+
+    # the list of categories to which the FOV belongs (currently unused)
     categories = db.Column(postgresql.JSONB)
 
     # the client-side timestamp, app state, etc

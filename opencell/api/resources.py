@@ -228,23 +228,26 @@ class MicroscopyFOVROI(Resource):
 
 class CellLineAnnotation(Resource):
 
-    def get(self, cell_line_id):
-        '''
-        '''
-
-        line = (
+    @staticmethod
+    def get_cell_line(cell_line_id):
+        return (
             current_app.Session.query(models.CellLine)
             .filter(models.CellLine.id == cell_line_id)
             .first()
         )
 
+
+    def get(self, cell_line_id):
+        '''
+        '''
+
+        line = self.get_cell_line(cell_line_id)
         if line.annotation is not None:
             return jsonify({
                 'comment': line.annotation.comment,
                 'categories': line.annotation.categories,
                 'client_metadata': line.annotation.client_metadata,
             })
-
         abort(404)
 
 
@@ -252,13 +255,7 @@ class CellLineAnnotation(Resource):
         '''
         '''
         data = request.get_json()
-
-        line = (
-            current_app.Session.query(models.CellLine)
-            .filter(models.CellLine.id == cell_line_id)
-            .first()
-        )
-
+        line = self.get_cell_line(cell_line_id)
         annotation = line.annotation
         if annotation is None:
             annotation = models.CellLineAnnotation(cell_line_id=cell_line_id)
@@ -266,6 +263,50 @@ class CellLineAnnotation(Resource):
         annotation.comment = data.get('comment')
         annotation.categories = data.get('categories')
         annotation.client_metadata = data.get('client_metadata')
+
+        try:
+            operations.add_and_commit(
+                current_app.Session,
+                annotation,
+                errors='raise')
+        except Exception as error:
+            abort(500, str(error))
+
+        return jsonify(annotation.as_dict())
+
+
+class MicroscopyFOVAnnotation(Resource):
+
+    @staticmethod
+    def get_fov(fov_id):
+        return (
+            current_app.Session.query(models.MicroscopyFOV)
+            .filter(models.MicroscopyFOV.id == fov_id)
+            .first()
+        )
+
+
+    def get(self, fov_id):
+        '''
+        '''
+        fov = self.get_fov(fov_id)
+        if fov.annotation is not None:
+            return jsonify(fov.annotation.as_dict())
+        abort(404)
+
+
+    def put(self, fov_id):
+
+        data = request.get_json()
+        fov = self.get_fov(fov_id)
+        annotation = fov.annotation
+        if annotation is None:
+            annotation = models.MicroscopyFOVAnnotation(fov_id=fov_id)
+
+        annotation.categories = data.get('categories')
+        annotation.client_metadata = data.get('client_metadata')
+        annotation.roi_position_top = data.get('roi_position_top')
+        annotation.roi_position_left = data.get('roi_position_left')
 
         try:
             operations.add_and_commit(

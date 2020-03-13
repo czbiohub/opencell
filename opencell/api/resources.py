@@ -292,7 +292,7 @@ class MicroscopyFOVAnnotation(Resource):
         fov = self.get_fov(fov_id)
         if fov.annotation is not None:
             return jsonify(fov.annotation.as_dict())
-        abort(404)
+        abort(404, 'FOV %s does not have an annotation' % fov_id)
 
 
     def put(self, fov_id):
@@ -317,3 +317,16 @@ class MicroscopyFOVAnnotation(Resource):
             abort(500, str(error))
 
         return jsonify(annotation.as_dict())
+
+
+    def delete(self, fov_id):
+
+        fov = self.get_fov(fov_id)
+        if fov.annotation is None:
+            return abort(404, 'FOV %s does not have an annotation' % fov_id)
+
+        try:
+            operations.delete_and_commit(current_app.Session, fov.annotation)
+        except Exception as error:
+            abort(500, str(error))
+        return ('', 204)

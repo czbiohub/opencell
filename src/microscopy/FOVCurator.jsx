@@ -64,7 +64,7 @@ function thumbnail (fov, fovId, changeFov) {
 
 function roiOutline (top, left, roiSize, className, visible) {
     const visibility = visible ? 'visible' : 'hidden';
-    if (top===undefined || left===undefined) return null;
+    if (isNaN(top) || isNaN(left)) return null;
     return (
         <div 
             className={`fov-curator-roi ${className}`}
@@ -81,6 +81,8 @@ export default class FOVCurator extends Component {
 
         this.state = {
             fovId: null,
+            pixelRoiTop: null,
+            pixelRoiLeft: null,
             loaded: false,
             roiVisible: false,
             categories: [],
@@ -106,6 +108,8 @@ export default class FOVCurator extends Component {
     changeFov (fovId) {
         this.setState({
             fovId, 
+            pixelRoiTop: null,
+            pixelRoiLeft: null,
             roiVisible: false, 
             submissionStatus: '',
             deletionStatus: ''
@@ -197,8 +201,8 @@ export default class FOVCurator extends Component {
         // clear an existing FOV annotation
 
         this.setState({
-            pixelRoiTop: undefined,
-            pixelRoiLeft: undefined,
+            pixelRoiTop: null,
+            pixelRoiLeft: null,
             submissionStatus: ''
         });
 
@@ -226,13 +230,13 @@ export default class FOVCurator extends Component {
                     {/* left panel: FOV metadata */}
                     <div className="w-20 pr3 flex" style={{flexDirection: 'column'}}>
                         <SectionHeader title='FOV metadata'/>
-                        {FOVMetadataItem('Laser power', fov?.laser_power_488.toFixed(1) || 'NA', '%')}
-                        {FOVMetadataItem('Exposure time', fov?.exposure_time_488.toFixed() || 'NA', 'ms')}
-                        {FOVMetadataItem('Max intensity', fov?.max_intensity_488 || 'NA', '')}
+                        {FOVMetadataItem('Laser power', fov?.laser_power_488?.toFixed(1), '%')}
+                        {FOVMetadataItem('Exposure time', fov?.exposure_time_488?.toFixed(), 'ms')}
+                        {FOVMetadataItem('Max intensity', fov?.max_intensity_488, '')}
                         {FOVMetadataItem('Score', fov?.score?.toFixed(2) || 'NA', '')}
-                        {FOVMetadataItem('Step size', fov?.z_step_size?.toFixed(1) || 'NA', 'um')}
-                        {FOVMetadataItem('Dataset ID', fov?.pml_id || 'NA', '')}
-                        {FOVMetadataItem('FOV ID', fov?.id || 'NA', '')}
+                        {FOVMetadataItem('Step size', fov?.z_step_size?.toFixed(1), 'um')}
+                        {FOVMetadataItem('Dataset ID', fov?.pml_id, '')}
+                        {FOVMetadataItem('FOV ID', fov?.id, '')}
 
                         {/* 
                         show the src_filepath on multiple lines

@@ -45,30 +45,41 @@ async function deleteData(url) {
     return await response;
 }
 
-function thumbnail (fov, fovId, changeFov) {
-    const className = classNames(
-        'thumbnail', 
-        {
-            'thumbnail-annotated': !!fov.annotation,
-            'thumbnail-active': fov.id===fovId,
-        }
-    );
-
+// warning: this is almost a direct copy of a function in header.jsx
+function FOVMetadataItem(props) {
     return (
-        <div className='pa1' key={fov.id} onClick={() => changeFov(fov.id)}>
-            <img className={className} src={`data:image/jpg;base64,${fov.thumbnails.data}`}/>
+        <div className='header-metadata-item pt2'>
+            <strong className='f4'>{props.value}</strong>
+            <abbr className='f5' title='units description'>{props.units}</abbr>
+            <div className='f6 header-metadata-item-label'>{props.label}</div>
         </div>
     );
 }
 
 
-function roiOutline (top, left, roiSize, className, visible) {
-    const visibility = visible ? 'visible' : 'hidden';
-    if (isNaN(top) || isNaN(left)) return null;
+function Thumbnail (props) {
+    const className = classNames(
+        'thumbnail', 
+        {
+            'thumbnail-annotated': !!props.fov.annotation,
+            'thumbnail-active': props.fov.id===props.fovId,
+        }
+    );
+    return (
+        <div className='pa1' onClick={() => props.changeFov(props.fov.id)}>
+            <img className={className} src={`data:image/jpg;base64,${props.fov.thumbnails.data}`}/>
+        </div>
+    );
+}
+
+
+function RoiOutline (props) {
+    const visibility = props.visible ? 'visible' : 'hidden';
+    if (isNaN(props.top) || isNaN(props.left)) return null;
     return (
         <div 
-            className={`fov-curator-roi ${className}`}
-            style={{top, left, width: roiSize, height: roiSize, visibility}}
+            className={`fov-curator-roi ${props.className}`}
+            style={{top: props.top, left: props.left, width: props.size, height: props.size, visibility}}
         />
     );
 };
@@ -80,9 +91,9 @@ export default class FOVCurator extends Component {
         super(props);
 
         this.state = {
-            fovId: null,
-            pixelRoiTop: null,
-            pixelRoiLeft: null,
+            fovId: undefined,
+            pixelRoiTop: undefined,
+            pixelRoiLeft: undefined,
             loaded: false,
             roiVisible: false,
             categories: [],
@@ -108,8 +119,8 @@ export default class FOVCurator extends Component {
     changeFov (fovId) {
         this.setState({
             fovId, 
-            pixelRoiTop: null,
-            pixelRoiLeft: null,
+            pixelRoiTop: undefined,
+            pixelRoiLeft: undefined,
             roiVisible: false, 
             submissionStatus: '',
             deletionStatus: ''
@@ -172,7 +183,7 @@ export default class FOVCurator extends Component {
         // submit an FOV annotation
         
         this.setState({deletionStatus: ''});
-        if (this.state.pixelRoiLeft===undefined || this.state.pixelRoiTop===undefined) {
+        if (isNaN(this.state.pixelRoiLeft) || isNaN(this.state.pixelRoiTop)) {
             this.setState({submissionStatus: 'danger'});
             return;
         }
@@ -188,7 +199,7 @@ export default class FOVCurator extends Component {
 
         putData(`${settings.apiUrl}/fov_annotations/${this.state.fovId}`, data)
             .then(response => {
-                console.log(response);
+                console.log(response.json());
                 if (!response.ok) throw new Error('Error submitting FOV annotation');
                 this.setState({submissionStatus: 'success'});
                 this.fetchData();
@@ -201,8 +212,8 @@ export default class FOVCurator extends Component {
         // clear an existing FOV annotation
 
         this.setState({
-            pixelRoiTop: null,
-            pixelRoiLeft: null,
+            pixelRoiTop: undefined,
+            pixelRoiLeft: undefined,
             submissionStatus: ''
         });
 
@@ -222,6 +233,10 @@ export default class FOVCurator extends Component {
 
         const clientRoiSize = this.state.fovScale * this.roiSize;
         const fov = this.data?.fovs.filter(fov => fov.id === this.state.fovId)[0];
+        
+        const thumbnails = this.data?.fovs.map(fov => {
+            return <Thumbnail key={fov.id} fov={fov} fovId={this.state.fovId} changeFov={this.changeFov}/>;
+        });
 
         return (
             <div className="">
@@ -230,13 +245,13 @@ export default class FOVCurator extends Component {
                     {/* left panel: FOV metadata */}
                     <div className="w-20 pr3 flex" style={{flexDirection: 'column'}}>
                         <SectionHeader title='FOV metadata'/>
-                        {FOVMetadataItem('Laser power', fov?.laser_power_488?.toFixed(1), '%')}
-                        {FOVMetadataItem('Exposure time', fov?.exposure_time_488?.toFixed(), 'ms')}
-                        {FOVMetadataItem('Max intensity', fov?.max_intensity_488, '')}
-                        {FOVMetadataItem('Score', fov?.score?.toFixed(2) || 'NA', '')}
-                        {FOVMetadataItem('Step size', fov?.z_step_size?.toFixed(1), 'um')}
-                        {FOVMetadataItem('Dataset ID', fov?.pml_id, '')}
-                        {FOVMetadataItem('FOV ID', fov?.id, '')}
+                        <FOVMetadataItem label='Laser power' value={fov?.laser_power_488?.toFixed(1)} units='%'/>
+                        <FOVMetadataItem label='Exposure time' value={fov?.exposure_time_488?.toFixed()} units='ms'/>
+                        <FOVMetadataItem label='Max intensity' value={fov?.max_intensity_488}/>
+                        <FOVMetadataItem label='Score' value={fov?.score?.toFixed(2) || 'NA'}/>
+                        <FOVMetadataItem label='Step size' value={fov?.z_step_size?.toFixed(1)} units='um'/>
+                        <FOVMetadataItem label='Dataset ID' value={fov?.pml_id}/>
+                        <FOVMetadataItem label='FOV ID' value={fov?.id}/>
 
                         {/* 
                         show the src_filepath on multiple lines
@@ -264,21 +279,25 @@ export default class FOVCurator extends Component {
                             />
 
                             {/* outline of new user-selected ROI */}
-                            {roiOutline(
-                                this.state.pixelRoiTop * this.state.fovScale, 
-                                this.state.pixelRoiLeft * this.state.fovScale, 
-                                clientRoiSize,
-                                'fov-curator-roi-new',
-                                this.state.roiVisible)}
+                            <RoiOutline
+                                top={this.state.pixelRoiTop*this.state.fovScale}
+                                left={this.state.pixelRoiLeft*this.state.fovScale}
+                                size={clientRoiSize}
+                                className='fov-curator-roi-new'
+                                visible={this.state.roiVisible}
+                            />
 
                             {/* outline of existing user-selected ROI */}
-                            {fov?.annotation ? roiOutline(
-                                fov.annotation.roi_position_top * this.state.fovScale,
-                                fov.annotation.roi_position_left * this.state.fovScale,
-                                clientRoiSize,
-                                '',
-                                true)
-                            : null}
+                            {fov?.annotation ? (
+                                <RoiOutline
+                                    top={fov.annotation.roi_position_top*this.state.fovScale}
+                                    left={fov.annotation.roi_position_left*this.state.fovScale}
+                                    size={clientRoiSize}
+                                    visible={true}
+                                />
+                            ) : (
+                                null
+                            )}
                         </div>
                     </div>
 
@@ -301,9 +320,7 @@ export default class FOVCurator extends Component {
                 </div>
 
                 {/* thumbnail grid */}
-                <div className="w-100 pt3 thumbnail-grid">
-                    {this.data?.fovs.map(fov => thumbnail(fov, this.state.fovId, this.changeFov))}
-                </div>
+                <div className="w-100 pt3 thumbnail-grid">{thumbnails}</div>
 
                 {/* table of all targets */}
                 <div className="w-100">
@@ -321,13 +338,4 @@ export default class FOVCurator extends Component {
 }
 
 
-// warning: this is almost a direct copy of a function in header.jsx
-function FOVMetadataItem(label, value, units) {
-    return (
-        <div className='header-metadata-item pt2'>
-            <strong className='f4'>{value}</strong>
-            <abbr className='f5' title='units description'>{units}</abbr>
-            <div className='f6 header-metadata-item-label'>{label}</div>
-        </div>
-    );
-}
+

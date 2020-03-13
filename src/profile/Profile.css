@@ -298,5 +298,20 @@ in order for the plots to be vertically aligned */
 }
 
 .thumbnail-active {
-    border: 2px solid red;
+    opacity: .7;
+    /* border: 2px solid #db3737; */
+}
+
+.thumbnail-annotated {
+    border: 2px solid #db3737;
+}
+
+.fov-curator-roi {
+    position: absolute;
+    pointer-events: none;
+    border: 2px solid #db3737;
+}
+
+.fov-curator-roi-new {
+    border-style: dashed;
 }

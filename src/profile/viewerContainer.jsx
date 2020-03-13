@@ -191,7 +191,7 @@ export default class ViewerContainer extends Component {
                 {FOVMetadataItem('Laser power', fov?.laser_power_488.toFixed(1) || 'NA', '%')}
                 {FOVMetadataItem('Exposure time', fov?.exposure_time_488.toFixed() || 'NA', 'ms')}
                 {FOVMetadataItem('Max intensity', fov?.max_intensity_488 || 'NA', '')}
-                {FOVMetadataItem('Score', fov?.score.toFixed(2) || 'NA', '')}
+                {FOVMetadataItem('Score', fov?.score?.toFixed(2) || 'NA', '')}
                 {FOVMetadataItem('Dataset ID', fov?.pml_id || 'NA', '')}
             </div>
 

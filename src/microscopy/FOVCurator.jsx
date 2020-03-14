@@ -123,7 +123,8 @@ export default class FOVCurator extends Component {
             pixelRoiLeft: undefined,
             roiVisible: false, 
             submissionStatus: '',
-            deletionStatus: ''
+            deletionStatus: '',
+            loaded: false,
         });
     }
 
@@ -275,7 +276,7 @@ export default class FOVCurator extends Component {
                                 ref={this.FOVImgRef}
                                 onClick={event => this.onFOVClick(event)}
                                 src={`${settings.apiUrl}/fovs/rgb/proj/${this.state.fovId}`}
-                                onLoad={event => this.updateFovScale()}
+                                onLoad={() => {this.setState({loaded: true}); this.updateFovScale()}}
                             />
 
                             {/* outline of new user-selected ROI */}
@@ -295,22 +296,24 @@ export default class FOVCurator extends Component {
                                     size={clientRoiSize}
                                     visible={true}
                                 />
-                            ) : (
-                                null
-                            )}
+                            ) : (null)}
+
+                            {this.state.loaded ? (null) : (<div className='loading-overlay'/>)}
+                            
                         </div>
                     </div>
 
                     {/* FOV annotation submission and clear buttons */}
                     <div className="w-20 pl3 flex" style={{flexDirection: 'column'}}>
+                        <SectionHeader title='ROI controls'/>
                         <Button
-                            text={'Submit'}
+                            text={'Update'}
                             className={'ma2 bp3-button'}
                             onClick={event => this.onSubmit()}
                             intent={this.state.submissionStatus || 'none'}
                         />
                         <Button
-                            text={'Clear'}
+                            text={'Clear existing'}
                             className={'ma2 bp3-button'}
                             onClick={event => this.onClear()}
                             intent={this.state.deletionStatus || 'none'}

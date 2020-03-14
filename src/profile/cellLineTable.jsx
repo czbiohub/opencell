@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import ReactTable from 'react-table';
 
-import metadataDefinitions from './metadataDefinitions.js';
+import {cellLineMetadataDefinitions} from './metadataDefinitions.js';
 
 // append gene_name to metadataDefinitions 
 const columnDefs = [
@@ -10,7 +10,7 @@ const columnDefs = [
         Header: 'Gene name',
         accessor: row => row.metadata?.target_name,
     },
-    ...metadataDefinitions,
+    ...cellLineMetadataDefinitions,
 ];
 
 

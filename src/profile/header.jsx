@@ -1,17 +1,15 @@
 import React, {Component} from 'react';
-import metadataDefinitions from './metadataDefinitions.js';
+import {cellLineMetadataDefinitions} from './metadataDefinitions.js';
+import { MetadataContainer } from './common.jsx';
 
 
 class Header extends Component {
 
     constructor (props) {
         super(props);
-    }
 
-
-    render () {
-
-        const headerDefs = [
+        // metadata items to display in the header
+        const metadataDefinitionIds = [
             'protein_name', 
             'target_terminus', 
             'uniprot_id', 
@@ -22,19 +20,14 @@ class Header extends Component {
             'facs_grade'
         ];
 
-        const metadataItems = metadataDefinitions.filter(
-                def => headerDefs.includes(def.id)
-            )
-            .map(def => {
-                return (
-                    <MetadataItem
-                        key={def.Header}
-                        value={def.accessor(this.props.cellLine)}
-                        label={def.Header}
-                        units={def.units}
-                    />
-                );
-            });
+        this.definitions = cellLineMetadataDefinitions.filter(
+            def => metadataDefinitionIds.includes(def.id)
+        );
+
+    }
+
+
+    render () {
 
         return (
 
@@ -58,7 +51,13 @@ class Header extends Component {
 
                 {/* target metadata items */}
                 <div className='pl4'>
-                    <div className='flex items-center'>{metadataItems}</div>
+                    <MetadataContainer
+                        className='items-center'
+                        data={this.props.cellLine}
+                        definitions={this.definitions}
+                        orientation='row'
+                        scale={3}
+                    />
                 </div>
 
                 {/* target search box */}
@@ -79,17 +78,6 @@ class Header extends Component {
 
         );
     }
-}
-
-
-function MetadataItem(props) {
-    return (
-        <div className='flex-0-0-auto header-metadata-item'>
-            <strong className='f3'>{props.value}</strong>
-            <abbr className='f4' title='units description'>{props.units}</abbr>
-            <div className='f5 header-metadata-item-label'>{props.label}</div>
-        </div>
-    );
 }
 
 

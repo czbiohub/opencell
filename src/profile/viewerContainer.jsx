@@ -8,7 +8,8 @@ import SliceViewer from './sliceViewer.jsx';
 import VolumeViewer from './volumeViewer.jsx';
 import settings from '../common/settings.js';
 import * as utils from '../common/utils.js';
-import { SectionHeader } from './common.jsx';
+import { SectionHeader, MetadataContainer } from './common.jsx';
+import { fovMetadataDefinitions } from './metadataDefinitions.js';
 
 import 'tachyons';
 import './Profile.css';
@@ -187,13 +188,13 @@ export default class ViewerContainer extends Component {
             </div>
             
             <SectionHeader title='FOV metadata'/>
-            <div className='flex pt2'>
-                {FOVMetadataItem('Laser power', fov?.laser_power_488.toFixed(1) || 'NA', '%')}
-                {FOVMetadataItem('Exposure time', fov?.exposure_time_488.toFixed() || 'NA', 'ms')}
-                {FOVMetadataItem('Max intensity', fov?.max_intensity_488 || 'NA', '')}
-                {FOVMetadataItem('Score', fov?.score?.toFixed(2) || 'NA', '')}
-                {FOVMetadataItem('Dataset ID', fov?.pml_id || 'NA', '')}
-            </div>
+            <MetadataContainer
+                className='pt2'
+                data={fov}
+                definitions={fovMetadataDefinitions}
+                orientation='row'
+                scale={4}
+            />
 
             {this.state.stacksLoaded ? (null) : (<div className='loading-overlay'/>)}
 
@@ -202,16 +203,4 @@ export default class ViewerContainer extends Component {
 
     };
 
-}
-
-
-// warning: this is almost a direct copy of a function in header.jsx
-function FOVMetadataItem(label, value, units) {
-    return (
-        <div className='flex-0-0-auto header-metadata-item'>
-            <strong className='f4'>{value}</strong>
-            <abbr className='f5' title='units description'>{units}</abbr>
-            <div className='f6 header-metadata-item-label'>{label}</div>
-        </div>
-    );
 }

@@ -6,7 +6,7 @@ import facsGrades from '../demo/data/facs_grades.json';
 // column defs for the datatable; also used by header.jsx
 // the single argument of the accessor methods is assumed to be
 // a JSON object of cell line metadata returned by the '/lines' endpoint
-const metadataDefinitions = [
+const cellLineMetadataDefinitions = [
     {   
         id: 'protein_name',
         accessor: row => {
@@ -86,4 +86,47 @@ const metadataDefinitions = [
 ];
 
 
-export default metadataDefinitions;
+const fovMetadataDefinitions = [
+    {
+        id: 'laser_power',
+        Header: 'Laser power',
+        accessor: fov => fov.laser_power_488?.toFixed(1),
+        units: '%',
+    },{
+        id: 'exposure_time',
+        Header: 'Exposure time',
+        accessor: fov => fov.exposure_time_488?.toFixed(),
+        units: 'ms',
+    },{
+        id: 'max_intensity',
+        Header: 'Max intensity',
+        accessor: fov => fov.max_intensity_488,
+        units: '',
+    },{
+        id: 'score',
+        Header: 'Score',
+        accessor: fov => fov.score?.toFixed(2) || 'NA',
+        units: '',
+    },{
+        id: 'step_size',
+        Header: 'Step size',
+        accessor: fov => fov.z_step_size?.toFixed(1),
+        units: 'um',
+    },{
+        id: 'pml_id',
+        Header: 'Dataset ID',
+        accessor: fov => fov.pml_id,
+        units: '',
+    },{
+        id: 'fov_id',
+        Header: 'FOV ID',
+        accessor: fov => fov.id,
+        units: '',
+    }
+];
+
+
+export {
+    cellLineMetadataDefinitions,
+    fovMetadataDefinitions,
+};

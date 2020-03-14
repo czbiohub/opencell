@@ -15,7 +15,8 @@ import "@blueprintjs/core/lib/css/blueprint.css";
 
 import settings from '../common/settings.js';
 import * as utils from '../common/utils.js';
-import { SectionHeader } from '../profile/common.jsx';
+import { SectionHeader, MetadataContainer } from '../profile/common.jsx';
+import {fovMetadataDefinitions} from '../profile/metadataDefinitions.js';
 
 import '../common/common.css';
 import '../profile/Profile.css';
@@ -43,17 +44,6 @@ async function deleteData(url) {
         referrerPolicy: 'no-referrer',
     });
     return await response;
-}
-
-// warning: this is almost a direct copy of a function in header.jsx
-function FOVMetadataItem(props) {
-    return (
-        <div className='header-metadata-item pt2'>
-            <strong className='f4'>{props.value}</strong>
-            <abbr className='f5' title='units description'>{props.units}</abbr>
-            <div className='f6 header-metadata-item-label'>{props.label}</div>
-        </div>
-    );
 }
 
 
@@ -244,15 +234,14 @@ export default class FOVCurator extends Component {
                 <div className="flex">
 
                     {/* left panel: FOV metadata */}
-                    <div className="w-20 pr3 flex" style={{flexDirection: 'column'}}>
+                    <div className="w-20 pr3">
                         <SectionHeader title='FOV metadata'/>
-                        <FOVMetadataItem label='Laser power' value={fov?.laser_power_488?.toFixed(1)} units='%'/>
-                        <FOVMetadataItem label='Exposure time' value={fov?.exposure_time_488?.toFixed()} units='ms'/>
-                        <FOVMetadataItem label='Max intensity' value={fov?.max_intensity_488}/>
-                        <FOVMetadataItem label='Score' value={fov?.score?.toFixed(2) || 'NA'}/>
-                        <FOVMetadataItem label='Step size' value={fov?.z_step_size?.toFixed(1)} units='um'/>
-                        <FOVMetadataItem label='Dataset ID' value={fov?.pml_id}/>
-                        <FOVMetadataItem label='FOV ID' value={fov?.id}/>
+                        <MetadataContainer
+                            data={fov}
+                            orientation='column'
+                            definitions={fovMetadataDefinitions}
+                            scale={4}
+                        />
 
                         {/* 
                         show the src_filepath on multiple lines
@@ -299,7 +288,7 @@ export default class FOVCurator extends Component {
                             ) : (null)}
 
                             {this.state.loaded ? (null) : (<div className='loading-overlay'/>)}
-                            
+
                         </div>
                     </div>
 

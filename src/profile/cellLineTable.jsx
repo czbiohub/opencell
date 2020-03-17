@@ -29,11 +29,9 @@ export default class CellLineTable extends Component {
                 showPageSizeOptions={true}
                 filterable={true}
                 columns={columnDefs}
-                data={this.props.cellLines.map(line => {
-                    return {...line, isActive: this.props.cellLineId===line.metadata.cell_line_id};
-                })}
+                data={this.props.cellLines}
                 getTrProps={(state, rowInfo, column) => {
-                    const isActive = rowInfo ? rowInfo.original.isActive : false;
+                    const isActive = rowInfo && rowInfo.original.metadata.cell_line_id===this.props.cellLineId;
                     return {
                         onClick: () => this.props.onCellLineSelect(rowInfo.original.metadata.cell_line_id),
                         style: {

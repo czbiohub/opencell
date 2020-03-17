@@ -14,7 +14,7 @@ function SectionHeader (props) {
 function MetadataItem(props) {
     return (
         <div className={props.className}>
-            <strong className={`f${props.scale}`}>{props.value}</strong>
+            <strong className={`f${props.scale}`}>{props.value || 'NA'}</strong>
             <abbr className={`f${props.scale + 1}`} title='units description'>{props.units}</abbr>
             <div className={`f${props.scale + 2} header-metadata-item-label`}>{props.label}</div>
         </div>

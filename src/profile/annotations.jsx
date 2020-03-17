@@ -45,34 +45,27 @@ async function putData(url, data) {
 }
 
 
-class CheckboxGroup extends Component {
-    constructor (props) {
-        super(props);
-    }
+function CheckboxGroup (props) {
 
-    render() {
-
-        const checkboxes = this.props.labels.map(label => {
-            const category = label.toLowerCase().replace(/(-| |\\|\/)/g, '_');
-            return (
-                <Checkbox
-                    label={label}
-                    key={category}
-                    name={category} 
-                    checked={this.props.categories.includes(category)}
-                    onChange={this.props.onChange}
-                />
-            );
-        });
-
+    const checkboxes = props.labels.map(label => {
+        const category = label.toLowerCase().replace(/(-| |\\|\/)/g, '_');
         return (
-            <div className='pb2'>
-                <div className="pb2 f4">{this.props.title}</div>
-                {checkboxes}
-            </div>
+            <Checkbox
+                label={label}
+                key={category}
+                name={category} 
+                checked={props.categories.includes(category)}
+                onChange={props.onChange}
+            />
         );
+    });
 
-    }
+    return (
+        <div className='pb2'>
+            <div className="pb2 f4">{props.title}</div>
+            {checkboxes}
+        </div>
+    );
 }
 
 
@@ -113,8 +106,6 @@ class AnnotationsForm extends Component {
 
 
     onSubmit () {
-        // submit the annotations
-        
         const data = {
             comment: this.state.comment,
             categories: this.state.categories,
@@ -131,13 +122,10 @@ class AnnotationsForm extends Component {
                 this.setState({submissionStatus: 'success'});
             })
             .catch(error => this.setState({submissionStatus: 'danger'}));
-
     }
 
 
     fetchData () {
-        // load the list of categories into state.categories
-        // load the comment string into state.comment
         fetch(`${settings.apiUrl}/annotations/${this.props.cellLineId}`)
             .then(response => {
                 if (!response.ok) {
@@ -213,6 +201,7 @@ class AnnotationsForm extends Component {
                     className={'bp3-button'}
                     onClick={event => this.onSubmit()}
                     intent={this.state.submissionStatus || 'none'}
+                    disabled={this.props.readOnly}
                 />
             </form>
         );

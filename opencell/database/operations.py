@@ -485,6 +485,7 @@ class PolyclonalLineOperations:
 
         if kind in ['all', 'scalars']:
             payload['scalars'] = self.construct_scalars_payload()
+            payload['annotations'] = self.line.annotation.categories if self.line.annotation else None
 
         if kind in ['all', 'facs'] and self.line.facs_dataset:
             payload['facs_histograms'] = self.line.facs_dataset[0].simplify_histograms()

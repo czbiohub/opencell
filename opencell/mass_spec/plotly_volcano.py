@@ -19,9 +19,11 @@ def volcano_plot(v_df, bait, fcd1):
     print("Number of Significant Hits: " + str(hits.shape[0]))
     no_hits = bait_vals[~bait_vals['hits']]
 
-    xmax = hits['enrichment'].max() + 1
-    ymax = hits['pvals'].max() + 4
-
+    xmax = hits['enrichment'].max() + 3
+    if hits.shape[0] > 0:
+        ymax = hits['pvals'].max() + 4
+    else:
+        ymax = 30
     # FCD plot calculation
     x1 = np.array(list(np.linspace(-12, -1 * fcd1[1] - 0.001, 200))
         + list(np.linspace(fcd1[1] + 0.001, 12, 200)))
@@ -75,7 +77,10 @@ def comparison_volcano(v_df, v2_df, bait, fcd, fcd2):
         no_hits = bait_vals[~bait_vals['hits']]
 
         xmax = hits['enrichment'].max() + 3
-        ymax = hits['pvals'].max() + 4
+        if hits.shape[0] > 0:
+            ymax = hits['pvals'].max() + 4
+        else:
+            ymax = 30
 
         x1 = np.array(list(np.linspace(-12, -1 * fcds[i-1][1] - 0.001, 200))
             + list(np.linspace(fcds[i-1][1] + 0.001, 12, 200)))
@@ -122,8 +127,11 @@ def mult_volcano(v_df, baits):
         print("Number of Significant Hits: " + str(hits.shape[0]))
         no_hits = bait_vals[~bait_vals['hits']]
 
-        xmax = hits['enrichment'].max() + 1
-        ymax = hits['pvals'].max() + 4
+        xmax = hits['enrichment'].max() + 3
+        if hits.shape[0] > 0:
+            ymax = hits['pvals'].max() + 4
+        else:
+            ymax = 30
         if xmax > g_xmax:
             g_xmax = xmax
         if ymax > g_ymax:

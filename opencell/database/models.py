@@ -103,6 +103,8 @@ class CellLine(Base):
     annotation = db.orm.relationship(
         'CellLineAnnotation', back_populates='cell_line', uselist=False)
 
+    pulldown = db.orm.relationship('Pulldown', back_populates='cell_line')
+
 
     def __init__(self, line_type, name=None, notes=None, parent_id=None):
         '''

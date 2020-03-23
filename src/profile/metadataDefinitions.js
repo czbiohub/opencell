@@ -18,7 +18,7 @@ const cellLineMetadataDefinitions = [
                 manualMetadata[targetName]?.description ||
                 uniprotMetadata[targetName]?.protein_name
             );
-            name = name ? name : '';
+            name = name || '';
             name = name.split('(')[0].split(',')[0].trim();
             name = name.length > maxLength ? `${name.slice(0, maxLength)}...` : name;
             return name
@@ -81,6 +81,36 @@ const cellLineMetadataDefinitions = [
         id: 'facs_grade',
         accessor: row => facsGrades[`${row.metadata?.plate_id}-${row.metadata?.well_id}`],
         Header: 'FACS',
+        units: '',
+    },{
+        id: 'publication_ready',
+        accessor: row => String(row.annotations?.includes('publication_ready')),
+        Header: 'Pub ready',
+        units: '',
+    },{
+        id: 're_image',
+        accessor: row => String(row.annotations?.includes('re_image')),
+        Header: 'Re-image',
+        units: '',
+    },{
+        id: 'no_gfp',
+        accessor: row => String(row.annotations?.includes('no_gfp')),
+        Header: 'No GFP',
+        units: '',
+    },{
+        id: 'heterogeneous_gfp',
+        accessor: row => String(row.annotations?.includes('heterogeneous_gfp')),
+        Header: 'Het GFP',
+        units: '',
+    },{
+        id: 're_sort',
+        accessor: row => String(row.annotations?.includes('re_sort')),
+        Header: 'Re-sort',
+        units: '',
+    },{
+        id: 'all_annotations',
+        accessor: row => ','.concat(row.annotations),
+        Header: 'All annotations',
         units: '',
     }
 ];

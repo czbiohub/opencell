@@ -5,16 +5,13 @@ import classNames from 'classnames';
 import { Button, Radio, RadioGroup, MenuItem } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
 
-import Slider from '../profile/slider.jsx';
-import ButtonGroup from '../profile/buttonGroup.jsx';
-import CellLineTable from '../profile/cellLineTable.jsx';
-
 import 'tachyons';
 import 'react-table/react-table.css';
 import "@blueprintjs/core/lib/css/blueprint.css";
 
 import settings from '../common/settings.js';
 import * as utils from '../common/utils.js';
+import CellLineTable from '../profile/cellLineTable.jsx';
 import { SectionHeader, MetadataContainer } from '../profile/common.jsx';
 import {fovMetadataDefinitions} from '../profile/metadataDefinitions.js';
 
@@ -293,7 +290,7 @@ export default class FOVCurator extends Component {
                     </div>
 
                     {/* FOV annotation submission and clear buttons */}
-                    <div className="w-20 pl3 flex" style={{flexDirection: 'column'}}>
+                    <div className="w-30 pl3 flex" style={{flexDirection: 'column'}}>
                         <SectionHeader title='ROI controls'/>
                         <Button
                             text={'Update'}

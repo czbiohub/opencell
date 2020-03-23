@@ -2,17 +2,19 @@ import os
 import re
 import enum
 import json
+import pdb
+import imp
 import numpy as np
 import pandas as pd
 import sqlalchemy as db
-import pdb
-import imp
 from contextlib import contextmanager
+
+from opencell import constants
 from opencell.database import operations
 from opencell.database import models
 from opencell.database import ms_models
 from opencell.imaging import processors
-from opencell import constants
+
 
 imp.reload(operations)
 
@@ -94,3 +96,66 @@ class PulldownOperations(operations.PolyclonalLineOperations):
             pulldown_well_rep2=row.pulldown_well_rep2,
             pulldown_well_rep3=row.pulldown_well_rep3,)
         operations.add_and_commit(session, pulldown_data, errors=errors)
+
+class HitsOperations():
+    '''
+    '''
+
+    def insert_protein_group(self, session, row, errors='warn'):
+        """
+        from a pd row, insert a protein group data
+        """
+        # remove duplicate entry
+        dup_group = (session.query(ms_models.ProteinGroup)\
+            .filter(ms_models.ProteinGroup.id == row.name)\
+            .all())
+        if len(dup_group) == 1:
+            operations.delete_and_commit(session, dup_group[0])
+        pg_data = ms_models.ProteinGroup(
+            id=row.name,
+            gene_names=row.gene_names
+        )
+        operations.add_and_commit(session, pg_data, errors=errors)
+
+
+    def insert_hits(self, session, row, plate_id, target_name, errors='warn'):
+        """
+        from a pd row, insert a single hit data
+        """
+        # get plate_id and target name
+        plate_id = plate_id
+        target_name = target_name
+
+        # remove duplicate entries
+        dup_hit = (session.query(ms_models.Hits)\
+            .join(ms_models.Pulldown)\
+            .filter(ms_models.Hits.protein_group_id == row.name)\
+            .filter(ms_models.Pulldown.pulldown_plate_id == plate_id)
+            .all())
+        if len(dup_hit) == 1:
+            operations.delete_and_commit(session, dup_hit[0])
+
+
+        # get pulldown_id
+        # filter first for specific pulldown plate
+        pulldowns = session.query(ms_models.Pulldown)\
+            .filter(ms_models.Pulldown.pulldown_plate_id == plate_id)
+        for instance in pulldowns:
+            if instance.target_name() == target_name:
+                break
+        try:
+            pulldown_id = instance.id
+            hits_data = ms_models.Hits(
+                protein_group_id=row.name,
+                pulldown_id=pulldown_id,
+                pval=row.pvals,
+                enrichment=row.enrichment,
+                hit=row.hits,
+                imputed=row.imputed)
+        except Exception:
+            if errors == 'raise':
+                raise
+            if errors == 'warn':
+                print("Pulldown id not found %s, %s" % plate_id, target_name)
+
+        operations.add_and_commit(session, hits_data, errors=errors)

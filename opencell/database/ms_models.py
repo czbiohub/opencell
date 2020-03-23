@@ -1,14 +1,15 @@
 import re
 import enum
+import sys
 import numpy as np
 import pandas as pd
+
 import sqlalchemy as db
-import sys
-# import sqlalchemy.org
 import sqlalchemy.ext.declarative
 from sqlalchemy.dialects import postgresql
-from opencell.database import models
+
 from opencell import constants
+from opencell.database import models
 from opencell.database import utils
 
 
@@ -51,8 +52,8 @@ class Pulldown(Base):
         return self.cell_line.get_crispr_design().target_name
 
     def __repr__(self):
-        return "<Bait(id=%s, pulldown_plate=%s, pulldown_well=%s)>" % \
-            (self.id, self.pulldown_plate_id, self.pulldown_well_id)
+        return "<Bait(id=%s, pulldown_plate=%s, target=%s)>" % \
+            (self.id, self.pulldown_plate_id, self.target_name())
 
 
 

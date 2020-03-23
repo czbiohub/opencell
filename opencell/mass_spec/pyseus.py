@@ -8,18 +8,16 @@ import scipy
 import re
 import pandas as pd
 import numpy as np
+from itertools import repeat
+from multiprocessing import Pool
 from multiprocessing import Queue
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
-from itertools import repeat
-from multiprocessing import Pool
+from sklearn.metrics.pairwise import cosine_similarity
 from scipy.spatial.distance import pdist
 from scipy.spatial.distance import squareform
 from scipy.stats import percentileofscore
-from sklearn.metrics.pairwise import cosine_similarity
-
-
 
 
 def process_raw_file(file_name, filter_rows=True, fix_col_names=True,

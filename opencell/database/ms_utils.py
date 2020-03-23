@@ -17,7 +17,7 @@ def format_ms_plate(plate_id):
 
         # If the plate ends with subheading such as 0009.2, denoted by the
         # decimal, save the decimal
-        sub_result = re.search(r'(.[0-9]+$)', plate_id)
+        sub_result = re.search(r'(\.[0-9]+$)', plate_id)
         if sub_result:
             sub_plate = sub_result.groups()[0]
 

@@ -228,7 +228,6 @@ def cluster_dfs(pca_df, k=4, n_init=100):
     # bait names
     bait_names = list(pca_df.index)
     bait_names = pys.new_col_names(bait_names, ['median '], [''])
-
     clustered_df = pd.DataFrame(clustered_baits)
     clustered_df.rename(columns={0: 'cluster'}, inplace=True)
     clustered_df.index = bait_names
@@ -505,6 +504,16 @@ def pval_remove_significants(imputed_df, fc_vars1, fc_vars2):
     outputs = p.starmap(second_round_pval, multi_args2)
 
     master_df = pd.concat(outputs, axis=1)
+
+    # join gene names to the df
+    gene_names = imputed_df[[('Info', 'Protein IDs'), ('Info', 'Gene names')]]
+    gene_names.set_index(('Info', 'Protein IDs'), drop=True, inplace=True)
+    gene_names.rename(columns={'Info': 'gene_names'}, inplace=True)
+    gene_names.rename(columns={'Gene names': 'gene_names'}, inplace=True)
+
+
+    master_df = pd.concat([master_df, gene_names], axis=1, join='inner')
+
 
     return master_df
 

@@ -198,9 +198,7 @@ class MicroscopyFOVROI(Resource):
     def get(self, roi_id, channel, kind):
         '''
         Get the stack for a given roi_id as a tiled PNG
-
         Note that, for now, `kind` is hard-coded
-
         '''
 
         roi = (

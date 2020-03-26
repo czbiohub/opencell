@@ -648,30 +648,23 @@ class MicroscopyFOVOperations:
         add_and_commit(session, row, errors='raise')
 
 
-    def insert_cell_layer_alignment_result(self, session, result):
+    def _insert_rois(self, session, result, roi_kind):
         '''
-        Insert result from the align_cell_layer method
+        result : tuple of (error_info, roi_props) returned by FOVProcessor.crop_rois
+        roi_kind : 'corner' or 'annotated'
         '''
-        result = to_jsonable(result)
-        row = models.MicroscopyFOVResult(
-            fov_id=self.fov_id,
-            kind='cell-layer-alignment',
-            data=result)
-        add_and_commit(session, row, errors='raise')
 
-
-    def insert_corner_rois(self, session, result):
-        '''
-        Insert the four ROIs cropped from each corner of an FOV
-        result : a list of roi_props (possibly empty)
-        '''
+        # FOVProcessor.crop_annotated_roi returns None if no manual annotation existed
+        if result is None:
+            return
 
         result, all_roi_props = result
-
         result = to_jsonable(result)
+        result_kind = '%s-roi-cropping' % roi_kind
+
         row = models.MicroscopyFOVResult(
             fov_id=self.fov_id,
-            kind='corner-roi-cropping',
+            kind=result_kind,
             data=result)
         add_and_commit(session, row, errors='raise')
 
@@ -680,12 +673,22 @@ class MicroscopyFOVOperations:
             roi_props = to_jsonable(roi_props)
             roi = models.MicroscopyFOVROI(
                 fov_id=self.fov_id,
-                kind='corner',
+                kind=roi_kind,
                 props=roi_props
             )
             rois.append(roi)
         add_and_commit(session, rois, errors='raise')
 
 
-    def insert_thumbnails(self, session, thumbnails):
-        pass
+    def insert_corner_rois(self, session, result):
+        '''
+        Insert the four ROIs cropped from each corner of an FOV
+        '''
+        self._insert_rois(session, result, roi_kind='corner')
+
+
+    def insert_annotated_roi(self, session, result):
+        '''
+        Insert the single manually-annotated ROI (if any)
+        '''
+        self._insert_rois(session, result, roi_kind='annotated')

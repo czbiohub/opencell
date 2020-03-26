@@ -115,6 +115,7 @@ class FOVProcessor:
             target_name=crispr_design.target_name,
             all_roi_rows=all_roi_rows)
 
+        processor.fov = fov
         return processor
 
 
@@ -401,8 +402,45 @@ class FOVProcessor:
 
     def crop_corner_rois(self, dst_root):
         '''
-        Crop a 600x600 ROI at each corner of the cell-layer-cropped z-stacks,
+        '''
+        fov_size = 1024
+        roi_size = 600
+        maxx = fov_size - roi_size
+        roi_top_left_positions = [
+            (0, 0),
+            (0, maxx),
+            (maxx, 0),
+            (maxx, maxx)
+        ]
+        return self._crop_rois(dst_root, roi_size, roi_top_left_positions)
+
+
+    def crop_annotated_roi(self, dst_root):
+        '''
+        Crop the manually annotated ROI (assumes an annotation exists)
+        '''
+
+        roi_size = 600
+        roi_top_left_positions = [
+            (
+                self.fov.annotation.roi_position_top,
+                self.fov.annotation.roi_position_left,
+            )
+        ]
+        return self._crop_rois(dst_root, roi_size, roi_top_left_positions)
+
+
+    def _crop_rois(self, dst_root, roi_size, roi_top_left_positions):
+        '''
+        Crop one or more ROIs from the cell-layer-cropped z-stacks,
         downsample the intensities from uint16 to uint8, and save each ROI as a tiled PNG
+
+        Arguments
+        ---------
+        dst_root :
+        roi_size : the size of the ROI to crop (usually 600x600)
+        roi_top_left_positions : the position of the top left corner of each ROI
+            (as a list of (row, column) tuples)
 
         Returns
         -------
@@ -419,10 +457,6 @@ class FOVProcessor:
         if tiff is None:
             result['error'] = 'Raw TIFF file for fov %s does not exist' % self.fov_id
             return result, all_roi_props
-
-        # the size of the full FOV and the size of the ROIs to crop from each corner
-        fov_size = 1024
-        roi_size = 600
 
         # the top and bottom of the cell layer, relative to its center, in microns
         # (these were empirically determined)
@@ -451,22 +485,15 @@ class FOVProcessor:
         if alignment_result.get('error'):
             result['error'] = alignment_result['error']
 
-        # for now, the top and bottom inds are the full extent of the cropped stack
-        bottom_ind = 0
-        top_ind = aligned_stacks['405'].shape[0]
+        # for now, the ROIs span the full extent of the cell-layer-cropped stack
+        min_z_ind = 0
+        max_z_ind = aligned_stacks['405'].shape[0]
 
         # the shape of each ROI
-        roi_shape = (roi_size, roi_size, top_ind - bottom_ind)
+        roi_shape = (roi_size, roi_size, max_z_ind - min_z_ind)
 
-        # the position of the top left corner of each of the four ROIs
-        min_ind = 0
-        max_ind = fov_size - roi_size
-        roi_top_left_positions = [
-            (min_ind, min_ind, bottom_ind),
-            (min_ind, max_ind, bottom_ind),
-            (max_ind, min_ind, bottom_ind),
-            (max_ind, max_ind, bottom_ind)
-        ]
+        # append the z-position to the ROI positions
+        roi_top_left_positions = [(*pos, min_z_ind) for pos in roi_top_left_positions]
 
         for roi_position in roi_top_left_positions:
             roi_props = {
@@ -481,13 +508,6 @@ class FOVProcessor:
             roi_props = self.crop_and_save_roi(roi_props, aligned_stacks, dst_root)
             all_roi_props.append(roi_props)
         return result, all_roi_props
-
-
-    def crop_best_roi(self, dst_root):
-        '''
-        Find and crop the ROI with the highest ROI score
-        '''
-        pass
 
 
     def crop_and_save_roi(self, roi_props, stacks, dst_root):
@@ -544,17 +564,6 @@ class FOVProcessor:
             imageio.imsave(dst_filepath, tile, format='jpg', quality=90)
 
         return roi_props
-
-
-    def generate_ijclean(self, dst_root):
-        '''
-        Append the IJMetadata tags to the raw tiff so that it can be opened in ImageJ
-        with the correct psuedocolors and black/white points
-        '''
-        # attempt to load and split the TIFF
-        tiff = self.load_raw_tiff()
-        if not tiff:
-            return
 
 
     @staticmethod

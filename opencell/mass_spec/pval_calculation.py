@@ -495,6 +495,7 @@ def pval_remove_significants(imputed_df, fc_vars1, fc_vars2):
 
     master_neg.reset_index(inplace=True, drop=True)
 
+
     fc_var1, fc_var2 = fc_vars2[0], fc_vars2[1]
 
     multi_args2 = zip(bait_list, repeat(imputed_df), repeat(master_neg),
@@ -523,13 +524,18 @@ def first_round_pval(bait, df, num, total, fc_var1, fc_var2):
     from negative controls """
 
     # initiate other variables required for the fx
-    gene_list = df[('Info', 'Protein IDs')].tolist()
+    # gene_list = df[('Info', 'Protein IDs')].tolist()
 
-    # construct a negative control by dropping all similar baits
+    gene_list = df[('Info', 'Gene names')].tolist()
+    # construct a negative control
     temporary = df.copy()
     neg_control = df.copy()
     temporary.drop('Info', level='Baits', inplace=True, axis=1)
     neg_control.drop('Info', level='Baits', inplace=True, axis=1)
+
+    # drop the bait
+    neg_control[bait] = neg_control[bait].where(
+        neg_control[bait] > 100, np.nan)
 
 
     # calculate the neg con median and stds
@@ -568,6 +574,7 @@ def first_round_pval(bait, df, num, total, fc_var1, fc_var2):
     # Get genes names of all the hits
     hits = set(pe_df[pe_df['hits']].index.tolist())
 
+
     # Remove hits from the negative control
     replicates = list(neg_series)
 
@@ -589,7 +596,7 @@ def second_round_pval(bait, df, neg_control, num, total, fc_var1, fc_var2):
     # initiate other variables required for the fx
     gene_list = df[('Info', 'Protein IDs')].tolist()
 
-    # construct a negative control by dropping all similar baits
+    # construct a negative control
     temporary = df.copy()
     neg_control = neg_control.copy()
     temporary.drop('Info', level='Baits', inplace=True, axis=1)
@@ -615,6 +622,7 @@ def second_round_pval(bait, df, neg_control, num, total, fc_var1, fc_var2):
     # perform the p value calculations
     pval_series = pd.Series(bait_series, index=gene_list, name='pvals')
     pval_series = pval_series.apply(get_pvals, args=[neg_control.T])
+
 
     # Find positive hits from enrichment and pval calculations
     pe_df = pd.concat([enrich_series, pval_series], axis=1)
@@ -668,6 +676,8 @@ def enrichment_pvals_dfs(imputed_df, cluster_df):
         pval_master_df[cat[1]] = imputed_df[cat]
 
     return enrichment_df, pval_master_df
+
+
 
 
 def get_pvals(x, control_df):

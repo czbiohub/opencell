@@ -493,8 +493,7 @@ def main():
         # only process annotated FOVs
         fovs = (
             Session.query(models.MicroscopyFOV)
-            .join(models.MicroscopyFOVAnnotation)
-            .filter(models.MicroscopyFOVAnnotation.id.isnot(None))
+            .filter(models.MicroscopyFOV.annotation.has())
         ).all()
         do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
 

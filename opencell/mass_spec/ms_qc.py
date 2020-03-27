@@ -559,7 +559,7 @@ def pulldown_plot(summary, output, plate):
 
     if not os.path.isdir(output):
         os.mkdir(output)
-    fig, ax = plt.subplots(3, 1, figsize=(10, 10))
+    fig, ax = plt.subplots(3, 1, figsize=(20, 10))
     _ = sns.violinplot(x='experiment', y='identified peptides', data=summary,
         inner='quartile', ax=ax[0])
     ax[0].set(ylim=(0, 5000))

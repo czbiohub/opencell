@@ -14,6 +14,23 @@ import { fovMetadataDefinitions } from './metadataDefinitions.js';
 import 'tachyons';
 import './Profile.css';
 
+function roiLabel (roi) {
+    return roi && `FOV ${roi.fov_id} (ROI ${roi.id}) (${roi.kind[0].toUpperCase()})`
+}
+
+function roiItemRenderer (roi, props) {
+    if (!props.modifiers.matchesPredicate) return null;
+    return (
+        <MenuItem
+            key={roi.id}
+            text={`FOV ${roi.fov_id}`}
+            label={`(ROI ${roi.id}) (${roi.kind[0].toUpperCase()})`}
+            active={props.modifiers.active}
+            onClick={props.handleClick}
+        />
+    );
+};
+
 
 export default class ViewerContainer extends Component {
 
@@ -80,20 +97,7 @@ export default class ViewerContainer extends Component {
 
     render () {
         
-        if (!this.props.fovs.length) return null;
-
-        function renderROIItem (roi, props) {
-            if (!props.modifiers.matchesPredicate) return null;
-            return (
-                <MenuItem
-                    key={roi.id}
-                    text={`FOV ${roi.fov_id}`}
-                    label={`(ROI ${roi.id})`}
-                    active={props.modifiers.active}
-                    onClick={props.handleClick}
-                />
-            );
-        };
+        if (!this.props.rois.length) return null;
 
         let localizationContent;
         if (this.state.localizationMode==='Volume') {
@@ -103,8 +107,9 @@ export default class ViewerContainer extends Component {
             localizationContent = <SliceViewer volumes={this.volumes} {...this.state}/>
         }
         
+        // the current FOV and ROI
         const fov = this.props.fovs.filter(fov => fov.id == this.props.fovId)[0];
-        const allROIs = [...this.props.fovs[0].rois, ...this.props.fovs[1].rois];
+        const roi = this.props.rois.filter(roi => roi.id == this.props.roiId)[0];
 
         return (
             <div>
@@ -128,19 +133,19 @@ export default class ViewerContainer extends Component {
                     </div>
                     <div className="dib pr3">
                         <Select 
-                            items={allROIs} 
-                            itemRenderer={renderROIItem} 
+                            activeItem={roi}
+                            items={this.props.rois} 
+                            itemRenderer={roiItemRenderer} 
                             filterable={false}
                             onItemSelect={roi => {
                                 this.setState({stacksLoaded: false});
                                 this.props.changeRoi(roi.id, roi.fov_id)}
                             }
-                            activeItem={allROIs.filter(roi => roi.id === this.props.roiId)[0]}
                         >
                             <Button 
                                 className="bp3-button-custom"
-                                text={`FOV ${this.props.fovId} (ROI ${this.props.roiId})`}
                                 rightIcon="double-caret-vertical"
+                                text={roiLabel(roi)}
                             />
                         </Select>
                     </div>

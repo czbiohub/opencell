@@ -16,18 +16,27 @@ export default class Overview extends Component {
 
     constructor (props) {
         super(props);
-        this.state = {};
+        this.state = {
+            rois: [],
+            roiId: undefined,
+            fovId: undefined,
+        };
     }
 
-    componentDidMount () {    
-    }
 
     componentDidUpdate(prevProps) {
 
         if (prevProps.cellLineId===this.props.cellLineId) return;
+        if (!this.props.fovs.length) return;
+
+        // concat all ROIs and sort by kind ('corner' or 'annotated')
+        let rois = [].concat(...this.props.fovs.map(fov => fov.rois));
+        rois = rois.sort((roi1, roi2) => roi1.kind > roi2.kind ? 1 : -1);
+
         this.setState({
-            fovId: this.props.fovs[0].id,
-            roiId: this.props.fovs[0].rois[0].id,
+            rois,
+            roiId: rois[0].id,
+            fovId: rois[0].fov_id,
         });
     }
 
@@ -66,6 +75,7 @@ export default class Overview extends Component {
                         <SectionHeader title='Localization'/>
                         <ViewerContainer
                             fovs={this.props.fovs}
+                            rois={this.state.rois}
                             fovId={this.state.fovId}
                             roiId={this.state.roiId}
                             changeRoi={(roiId, fovId) => this.setState({roiId, fovId})}
@@ -97,7 +107,7 @@ export default class Overview extends Component {
 
 
                 {/* table of all targets */}
-                <div className="w-90 pt0 pl4 pb5">
+                <div className="w-100 pt0 pl4 pb5">
                     <SectionHeader title='All cell lines'/>
                     <CellLineTable 
                         cellLineId={this.props.cellLineId}

@@ -36,8 +36,8 @@ class App extends Component {
             cellLineId: null,
             targetName: null,
             linesLoaded: false,
-            showAnnotations: this.urlParams.get('annotations')==='yes',
-            showFOVCurator: this.urlParams.get('fovcurator')==='yes',
+            showAnnotations: this.urlParams.get('mode')==='target_annotation',
+            showFOVCurator: this.urlParams.get('mode')==='fov_annotation',
         };
 
         this.changeTarget = this.changeTarget.bind(this);
@@ -53,12 +53,14 @@ class App extends Component {
         // check that the target has changed
         if (cellLine.metadata.cell_line_id===this.state.cellLineId) return;
 
-        // only the top two FOVs are available in the volume/slicer viewer
+        // only the top two highest-scoring FOVs, plus any FOVs with manual annotations,
+        // are available in the volume/slicer viewer
         // (we assume the FOVs are sorted by score)
-        const viewableFovs = [cellLine.fovs[0], cellLine.fovs[1]];
+        const topTwoFovs = cellLine.fovs.slice(0, 2);
+        const annotatedFovs = cellLine.fovs.slice(2).filter(fov => fov.annotation);
+        const viewableFovs = [...topTwoFovs, ...annotatedFovs];
 
         this.cellLine = cellLine;
-
         this.setState({
             cellLineId: cellLine.metadata.cell_line_id,
             targetName: cellLine.metadata.target_name,

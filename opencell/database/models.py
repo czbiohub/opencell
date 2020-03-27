@@ -531,6 +531,10 @@ class MicroscopyDataset(Base):
     # (the absolute path to these directories is context-dependent)
     root_directory = db.Column(db.String)
 
+    # all columns from the pipeline-microscopy-master-key as a JSON object
+    # (for reference/convenience only)
+    raw_metadata = db.Column(postgresql.JSONB)
+
     @db.orm.validates('pml_id')
     def validate_pml_id(self, key, value):
         match = re.match(r'^PML[0-9]{4}$', value)

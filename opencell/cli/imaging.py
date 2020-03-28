@@ -199,7 +199,7 @@ def insert_raw_pipeline_microscopy_fovs(session, root_dir, pml_id, errors='warn'
         group_metadata = metadata.get_group(group)
         try:
             pcl_ops = operations.PolyclonalLineOperations.from_plate_well(session, plate_id, well_id)
-        except Exception:
+        except ValueError:
             print('No polyclonal line for (%s, %s)' % group)
             continue
         pcl_ops.insert_microscopy_fovs(session, group_metadata, errors=errors)
@@ -380,11 +380,14 @@ def main():
         inspect_plate_microscopy_metadata(manager)
 
     # insert all FOVs from the 'PlateMicroscopy' directory
+    # (should only be called once, when initially populating a new database,
+    # because the 'PlateMicroscopy' directory is static)
     if args.insert_plate_microscopy_fovs:
         with operations.session_scope(db_url) as session:
             insert_plate_microscopy_fovs(session, cache_dir=args.cache_dir, errors='warn')
 
     # insert the FOVs from a dataset in the 'raw-pipeline-microscopy' directory
+    # (this is called to update the database with the FOVs from new PML datasets)
     if args.insert_fovs:
         with operations.session_scope(db_url) as session:
             insert_raw_pipeline_microscopy_fovs(

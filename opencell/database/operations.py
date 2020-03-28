@@ -625,12 +625,12 @@ class MicroscopyFOVOperations:
         result = to_jsonable(result)
 
         rows = []
-        for channel, b64_string in result['b64_strings'].items():
+        for channel, encoded_im in result['encoded_ims'].items():
             row = models.Thumbnail(
                 fov_id=self.fov_id,
                 size=result.get('size'),
                 channel=channel,
-                data=b64_string)
+                data=encoded_im)
             rows.append(row)
         add_and_commit(session, rows, errors='raise')
 

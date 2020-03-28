@@ -309,8 +309,8 @@ class FOVProcessor:
         ims['488'] = tifffile.imread(filepath_488)[..., None]
         ims['rgb'] = self.make_rgb(ims['405'], ims['488'])
 
-        b64_strings = {}
-        for key, im in ims.items():
+        encoded_ims = {}
+        for channel, im in ims.items():
             # use downscale_local_mean to reduce noise
             im = skimage.transform.downscale_local_mean(im, factors=(scale, scale, 1))
             # crop the last row and column to eliminate edge effects
@@ -318,12 +318,12 @@ class FOVProcessor:
             # cast to uint8 again (downscale_local_mean outputs float64)
             im = utils.autoscale(im)
             # base64 encode
-            b64_strings[key] = utils.b64encode_image(im, format='jpg', quality=quality)
+            encoded_ims[channel] = utils.b64encode_image(im, format='jpg', quality=quality)
 
         result = {
             'size': im.shape[0],
             'quality': quality,
-            'b64_strings': b64_strings,
+            'encoded_ims': encoded_ims,
         }
         return result
 

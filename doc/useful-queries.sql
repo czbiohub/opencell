@@ -42,8 +42,7 @@ order by score desc;
 
 
 -- filter by existence of a json key (where `data` is a JSON-typed column)
-select * from microscopy_fov_result
-where data::jsonb ? 'num_nuclei';
+select * from microscopy_fov_result where data::jsonb ? 'num_nuclei';
 
 -- groupby a json value
 select data::json ->> 'num_nuclei' as n, count(*) as c from microscopy_fov_result
@@ -61,6 +60,9 @@ where 're_sort' = any (cats);
 
 -- drop all rows from all microscopy-related tables
 TRUNCATE microscopy_dataset CASCADE;
+
+-- rename a table
+ALTER TABLE table_name RENAME TO new_table_name;
 
 -- rename a column
 ALTER TABLE table_name RENAME COLUMN column_name TO new_column_name;
@@ -83,6 +85,13 @@ ADD CONSTRAINT fk_microscopy_fov_result_fov_id_microscopy_fov FOREIGN KEY (fov_i
    ON UPDATE NO ACTION
    ON DELETE CASCADE;
 
+
+-- count FOVs per dataset
+select d.pml_id as pml_id, d.date, count(fov.id) from microscopy_dataset d
+left join microscopy_fov fov on d.pml_id = fov.pml_id
+group by d.pml_id, d.date
+order by d.pml_id desc;
+
 -- delete FOVs and descendents from particular datasets
 delete from microscopy_fov_result
 where fov_id in (
@@ -96,15 +105,15 @@ where pml_id in ('PML0227', 'PML0233', 'PML0234');
 delete from microscopy_fov_result
 where fov_id in (
 	select id from microscopy_fov where pml_id in (
-		select pml_id from microscopy_dataset where root_directory like 'raw_%'
+		select pml_id from microscopy_dataset where root_directory = 'raw_pipeline_microscopy'
 	)
 );
 
--- select (or delete) all but the most recent result of a particular kind for each FOV
+-- select (or delete) all but the most recent MicroscopyFOVResult of a particular kind for each FOV
 select * from microscopy_fov_result
 where kind = 'fov-features'
-and (fov_id, timestamp) not in (
-	select fov_id, max(timestamp) from microscopy_fov_result
+and (fov_id, date_created) not in (
+	select fov_id, max(date_created) from microscopy_fov_result
 	where kind = 'fov-features'
 	group by fov_id
 );

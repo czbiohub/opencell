@@ -626,7 +626,7 @@ class MicroscopyFOVOperations:
 
         rows = []
         for channel, encoded_im in result['encoded_ims'].items():
-            row = models.Thumbnail(
+            row = models.MicroscopyThumbnail(
                 fov_id=self.fov_id,
                 size=result.get('size'),
                 channel=channel,

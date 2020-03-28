@@ -648,6 +648,18 @@ class MicroscopyFOVOperations:
         add_and_commit(session, row, errors='raise')
 
 
+    def insert_clean_tiff_metadata(self, session, result):
+        '''
+        Insert result from the generate_clean_tiff method
+        '''
+        result = to_jsonable(result)
+        row = models.MicroscopyFOVResult(
+            fov_id=self.fov_id,
+            kind='clean-tiff-metadata',
+            data=result)
+        add_and_commit(session, row, errors='raise')
+
+
     def _insert_rois(self, session, result, roi_kind):
         '''
         result : tuple of (error_info, roi_props) returned by FOVProcessor.crop_rois

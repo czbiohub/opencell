@@ -65,10 +65,10 @@ class MassSpecHits(Base):
     id = db.Column(db.Integer, primary_key=True)
 
     # hased string of sorted Uniprot peptide IDs that compose the protein group
-    protein_group_id = db.Column(db.String, db.ForeignKey('ms_protein_group.id'))
+    ms_protein_group_id = db.Column(db.String, db.ForeignKey('ms_protein_group.id'))
 
     # foreign key of each pulldown target from pulldown table
-    pulldown_id = db.Column(db.Integer, db.ForeignKey('ms_pulldown.id'))
+    ms_pulldown_id = db.Column(db.Integer, db.ForeignKey('ms_pulldown.id'))
 
     # p value of the specific prey's MS intensity
     pval = db.Column(db.Float)

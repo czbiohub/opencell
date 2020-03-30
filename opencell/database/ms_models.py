@@ -88,7 +88,7 @@ class MassSpecHits(Base):
 
     # constraints
     __table_args__ = (
-            db.UniqueConstraint(pulldown_id, protein_group_id),
+            db.UniqueConstraint(ms_pulldown_id, ms_protein_group_id),
     )
 
 class MassSpecProteinGroup(Base):

@@ -19,31 +19,28 @@ cell_line_type_enum = models.cell_line_type_enum
 well_id_enum = models.well_id_enum
 
 
-class Pulldown(Base):
+class MassSpecPulldown(Base):
     '''
     every bait (cell_line) used in MS analysis
     '''
 
-    __tablename__ = 'pulldown'
+    __tablename__ = 'ms_pulldown'
 
     # Columns
     id = db.Column(db.Integer, primary_key=True)
+    # polyclonal cell line from OpenCell
     cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'))
-    pulldown_plate_id = db.Column(db.String,
-        db.ForeignKey('pulldown_plate.id'))
 
-    pulldown_well_rep1 = db.Column(db.String)
-    pulldown_well_rep2 = db.Column(db.String)
-    pulldown_well_rep3 = db.Column(db.String)
-
-
-    # dataset_id = db.Column(db.String)
+    # MS pulldown plates prepped by the ML group, ID takes format of CZBMPI_###
+    ms_pulldown_plate_id = db.Column(db.String,
+        db.ForeignKey('ms_pulldown_plate.id'))
 
 
     # Relationships
-    cell_line = db.orm.relationship('CellLine', back_populates='pulldown')
-    hits = db.orm.relationship('Hits', back_populates='pulldown')
-    pulldown_plate = db.orm.relationship("PulldownPlate", back_populates='pulldown')
+    cell_line = db.orm.relationship('CellLine', back_populates='ms_pulldown')
+    ms_hits = db.orm.relationship('MassSpecHits', back_populates='ms_pulldown')
+    ms_pulldown_plate = db.orm.relationship("MassSpecPulldownPlate",
+        back_populates='ms_pulldown')
 
 
 
@@ -57,66 +54,77 @@ class Pulldown(Base):
 
 
 
-class Hits(Base):
+class MassSpecHits(Base):
     '''
     every identified hits in the base
     '''
 
-    __tablename__ = 'hits'
+    __tablename__ = 'ms_hits'
 
     # Columns
     id = db.Column(db.Integer, primary_key=True)
 
-    # target string is ProteinIDs (collection of uniprot protein ids)
-    protein_group_id = db.Column(db.String, db.ForeignKey('protein_group.id'))
-    pulldown_id = db.Column(db.Integer, db.ForeignKey('pulldown.id'))
+    # hased string of sorted Uniprot peptide IDs that compose the protein group
+    protein_group_id = db.Column(db.String, db.ForeignKey('ms_protein_group.id'))
+
+    # foreign key of each pulldown target from pulldown table
+    pulldown_id = db.Column(db.Integer, db.ForeignKey('ms_pulldown.id'))
+
+    # p value of the specific prey's MS intensity
     pval = db.Column(db.Float)
+
+    # enrichment of the prey's MS intensity
     enrichment = db.Column(db.Float)
-    hit = db.Column(db.Boolean)
-    imputed = db.Column(db.Boolean)
+
+    # boolean specifying whether the hit is significant based on FDR threshold
+    is_significant_hit = db.Column(db.Boolean)
+
+    # boolean specifying whether the hit is composed only of imputed values
+    is_imputed = db.Column(db.Boolean)
 
     # Relationships
-    pulldown = db.orm.relationship('Pulldown', back_populates='hits')
-    protein_group = db.orm.relationship('ProteinGroup', back_populates='hits')
+    ms_pulldown = db.orm.relationship('MassSpecPulldown', back_populates='ms_hits')
+    ms_protein_group = db.orm.relationship('MassSpecProteinGroup', back_populates='ms_hits')
 
     # constraints
     __table_args__ = (
             db.UniqueConstraint(pulldown_id, protein_group_id),
     )
 
-class ProteinGroup(Base):
+class MassSpecProteinGroup(Base):
     '''
     every protein Group identified by msms in experiments
     '''
 
-    __tablename__ = 'protein_group'
+    __tablename__ = 'ms_protein_group'
 
-    # Columns
+    # id is a hash of unique set of peptide Uniprot ids that compose the protein group
     id = db.Column(db.String, primary_key=True)
 
-    # For now, a list of all proteins mapped to the group
-    gene_names = db.Column(db.String)
+    # a list of all proteins mapped to the protein group
+    gene_names = db.Column(db.ARRAY(db.String))
 
     # Relationships
-    hits = db.orm.relationship('Hits', back_populates='protein_group')
+    ms_hits = db.orm.relationship('MassSpecHits', back_populates='ms_protein_group')
 
 
-class PulldownPlate(Base):
+class MassSpecPulldownPlate(Base):
     '''
     every MS plate prepped by the ML Group
 
     '''
-    __tablename__ = "pulldown_plate"
+    __tablename__ = "ms_pulldown_plate"
 
     # Columns
     id = db.Column(db.String, primary_key=True)
+
+    # link to the google sheet design of the plate mapping out pulldown
+    # target locations by well
     plate_design_link = db.Column(db.String)
+
+    # Description of the pulldown (whether it is a repeat or subset, etc)
     plate_subset = db.Column(db.String)
-    cell_prep = db.Column(db.String)
-    ms_prep = db.Column(db.String)
-    prep_date = db.Column(db.DateTime)
-    ship_date = db.Column(db.DateTime)
-    quant_date = db.Column(db.DateTime)
 
     # Relationships
-    pulldown = db.orm.relationship("Pulldown", back_populates='pulldown_plate')
+    ms_pulldown = db.orm.relationship("MassSpecPulldown",
+        back_populates='ms_pulldown_plate')

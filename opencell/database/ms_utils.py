@@ -1,6 +1,8 @@
 import re
+import hashlib
 import numpy as np
 from datetime import datetime
+
 
 def format_ms_plate(plate_id):
     """
@@ -44,24 +46,36 @@ def reformat_pulldown_table(pulldown_db):
     combine multiple rows with different replicates into a single row,
     and add columns for well info for different replicates"""
 
-    full = pulldown_db.copy()
-    abridged = full.copy()
+
+    abridged = pulldown_db.copy()
 
     # drop replicate and pulldown_well_id from abridged, and drop replicates
-    abridged.drop(columns= ['replicate', 'pulldown_well_id','note_on_prep'],
+    abridged.drop(columns= ['replicate', 'pulldown_well_id', 'note_on_prep'],
         inplace=True)
-    abridged = abridged.dropna(how='any', subset=['design_id', 'well_id'])
+    abridged = abridged.dropna(how='any', subset=['design_id'])
     abridged.drop_duplicates(inplace=True)
 
-    # add replicates' well number to each row of abridged
-    for rep_n  in [1,2,3]:
-        rep = full[full['replicate']==rep_n][['design_id',
-            'well_id','pulldown_plate_id','pulldown_well_id']]
-        col_id = 'pulldown_well_rep' + str(rep_n)
-        rep.rename(columns={'pulldown_well_id': col_id},
-            inplace=True)
-        abridged = abridged.merge(rep, how='inner', on=['design_id',
-            'well_id', 'pulldown_plate_id'])
-
-
     return abridged
+
+
+def hash_proteingroup_id(protein_id):
+    """
+    protein group ids are made of a list of uniprot IDs in a strong form, joined by
+    a semicolon. this convenience function converts sorts the uniprot IDs by alphabet
+    and then hashes it using hashlib
+    """
+
+    # split the string into  a list
+    prot_list = protein_id.split(';')
+
+    # sort the list of strings, and then convert back to string
+    prot_list.sort()
+    protein_id = prot_list.join(';')
+
+    # encode into utf-8 bytes
+    protein_bytes = bytes(protein_id, 'utf-8')
+
+    # hash the string in SHA-256
+    prot_hash = hashlib.sha256(protein_bytes).hexdigest()
+
+    return prot_hash

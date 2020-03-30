@@ -70,7 +70,7 @@ def hash_proteingroup_id(protein_id):
 
     # sort the list of strings, and then convert back to string
     prot_list.sort()
-    protein_id = prot_list.join(';')
+    protein_id = ';'.join(prot_list)
 
     # encode into utf-8 bytes
     protein_bytes = bytes(protein_id, 'utf-8')

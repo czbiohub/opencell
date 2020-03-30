@@ -50,7 +50,7 @@ class MassSpecPulldown(Base):
 
     def __repr__(self):
         return "<Bait(id=%s, pulldown_plate=%s, target=%s)>" % \
-            (self.id, self.pulldown_plate_id, self.target_name())
+            (self.id, self.ms_pulldown_plate_id, self.target_name())
 
 
 

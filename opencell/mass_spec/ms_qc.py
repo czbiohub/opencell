@@ -554,12 +554,12 @@ def pulldown_summary(plate, renamed, transformed, rep_re, pep_re):
     return master, no_match
 
 
-def pulldown_plot(summary, output, plate):
+def pulldown_plot(summary, output, plate, width=20):
     """Plot a summary figure and save a pdf to the designated output folder"""
 
     if not os.path.isdir(output):
         os.mkdir(output)
-    fig, ax = plt.subplots(3, 1, figsize=(20, 10))
+    fig, ax = plt.subplots(3, 1, figsize=(width, 10))
     _ = sns.violinplot(x='experiment', y='identified peptides', data=summary,
         inner='quartile', ax=ax[0])
     ax[0].set(ylim=(0, 5000))

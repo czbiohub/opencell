@@ -90,7 +90,7 @@ export default class Overview extends Component {
                                 <SectionHeader title='Annotations'/>    
                                 <AnnotationsForm 
                                     cellLineId={this.props.cellLineId} 
-                                    fovIds={this.props.fovs.map(fov => fov.id)}
+                                    fovIds={this.props.fovs.map(fov => fov.metadata.id)}
                                 />
                             </div>
                         ) : (

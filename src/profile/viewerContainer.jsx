@@ -108,7 +108,7 @@ export default class ViewerContainer extends Component {
         }
         
         // the current FOV and ROI
-        const fov = this.props.fovs.filter(fov => fov.id == this.props.fovId)[0];
+        const fov = this.props.fovs.filter(fov => fov.metadata.id == this.props.fovId)[0];
         const roi = this.props.rois.filter(roi => roi.id == this.props.roiId)[0];
 
         return (

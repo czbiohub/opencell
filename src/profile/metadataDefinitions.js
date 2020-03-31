@@ -120,37 +120,37 @@ const fovMetadataDefinitions = [
     {
         id: 'laser_power',
         Header: 'Laser power',
-        accessor: fov => fov.laser_power_488?.toFixed(1),
+        accessor: fov => fov.metadata?.laser_power_488?.toFixed(1),
         units: '%',
     },{
         id: 'exposure_time',
         Header: 'Exposure time',
-        accessor: fov => fov.exposure_time_488?.toFixed(),
+        accessor: fov => fov.metadata?.exposure_time_488?.toFixed(),
         units: 'ms',
     },{
         id: 'max_intensity',
         Header: 'Max intensity',
-        accessor: fov => fov.max_intensity_488,
+        accessor: fov => fov.metadata?.max_intensity_488,
         units: '',
     },{
         id: 'score',
         Header: 'Score',
-        accessor: fov => fov.score?.toFixed(2) || 'NA',
+        accessor: fov => fov.metadata?.score?.toFixed(2) || 'NA',
         units: '',
     },{
         id: 'step_size',
         Header: 'Step size',
-        accessor: fov => fov.z_step_size?.toFixed(1),
+        accessor: fov => fov.metadata?.z_step_size?.toFixed(1),
         units: 'um',
     },{
         id: 'pml_id',
         Header: 'Dataset ID',
-        accessor: fov => fov.pml_id,
+        accessor: fov => fov.metadata?.pml_id,
         units: '',
     },{
         id: 'fov_id',
         Header: 'FOV ID',
-        accessor: fov => fov.id,
+        accessor: fov => fov.metadata?.id,
         units: '',
     }
 ];

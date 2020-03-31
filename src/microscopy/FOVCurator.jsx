@@ -49,11 +49,11 @@ function Thumbnail (props) {
         'thumbnail', 
         {
             'thumbnail-annotated': !!props.fov.annotation,
-            'thumbnail-active': props.fov.id===props.fovId,
+            'thumbnail-active': props.fov.metadata.id===props.fovId,
         }
     );
     return (
-        <div className='pa1' onClick={() => props.changeFov(props.fov.id)}>
+        <div className='pa1' onClick={() => props.changeFov(props.fov.metadata.id)}>
             <img className={className} src={`data:image/jpg;base64,${props.fov.thumbnails.data}`}/>
         </div>
     );
@@ -132,7 +132,7 @@ export default class FOVCurator extends Component {
         const url = `${settings.apiUrl}/lines/${this.props.cellLineId}?kind=thumbnails`;
         d3.json(url).then(line => {
             this.data = line;
-            this.setState({loaded: true, fovId: this.state.fovId || this.data.fovs[0].id});
+            this.setState({loaded: true, fovId: this.state.fovId || this.data.fovs[0].metadata.id});
         });
     }
 
@@ -220,10 +220,15 @@ export default class FOVCurator extends Component {
     render () {
 
         const clientRoiSize = this.state.fovScale * this.roiSize;
-        const fov = this.data?.fovs.filter(fov => fov.id === this.state.fovId)[0];
+        const fov = this.data?.fovs.filter(fov => fov.metadata.id === this.state.fovId)[0];
         
         const thumbnails = this.data?.fovs.map(fov => {
-            return <Thumbnail key={fov.id} fov={fov} fovId={this.state.fovId} changeFov={this.changeFov}/>;
+            return <Thumbnail 
+                key={fov.metadata.id} 
+                fov={fov} 
+                fovId={this.state.fovId} 
+                changeFov={this.changeFov}
+            />;
         });
 
         return (
@@ -245,7 +250,7 @@ export default class FOVCurator extends Component {
                         note that 'white-space: pre-line' allows '\n' to create a newline 
                         */}
                         <div className="pt3" style={{whiteSpace: 'pre-line'}}>
-                            {fov?.src_filename.replace(/\//g, '\n') || 'NA'}
+                            {fov?.metadata.src_filename.replace(/\//g, '\n') || 'NA'}
                         </div>
 
                         <div className='pt3'>

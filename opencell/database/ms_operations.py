@@ -12,7 +12,6 @@ from contextlib import contextmanager
 from opencell import constants
 from opencell.database import operations
 from opencell.database import models
-from opencell.database import ms_models
 from opencell.database import ms_utils
 from opencell.imaging import processors
 
@@ -30,7 +29,7 @@ class MassSpecPolyclonalOperations(operations.PolyclonalLineOperations):
         if self.line.ms_pulldown:
             operations.delete_and_commit(session, self.line.ms_pulldown)
 
-        pulldown_data = ms_models.MassSpecPulldown(
+        pulldown_data = models.MassSpecPulldown(
             cell_line=self.line,
             ms_pulldown_plate_id=row.pulldown_plate_id)
         operations.add_and_commit(session, pulldown_data, errors=errors)
@@ -40,14 +39,14 @@ class MassSpecPolyclonalOperations(operations.PolyclonalLineOperations):
         """ From a pd row, insert a single pulldown plate data """
         # drop any existing data
         line = (
-            session.query(ms_models.MassSpecPulldownPlate)
-            .filter(ms_models.MassSpecPulldownPlate.id == row.id)
+            session.query(models.MassSpecPulldownPlate)
+            .filter(models.MassSpecPulldownPlate.id == row.id)
             .all()
         )
 
         if len(line) == 1:
             operations.delete_and_commit(session, line[0])
-        plate_data = ms_models.MassSpecPulldownPlate(
+        plate_data = models.MassSpecPulldownPlate(
             id=row.id,
             plate_design_link=row.plate_design_link,
             plate_subset=row.plate_number_subset
@@ -101,8 +100,8 @@ class MassSpecPulldownOperations():
         protein_group_id = ms_utils.hash_proteingroup_id(row.name)
 
         # remove duplicate entry
-        dup_group = (session.query(ms_models.MassSpecProteinGroup)\
-            .filter(ms_models.MassSpecProteinGroup.id == protein_group_id)\
+        dup_group = (session.query(models.MassSpecProteinGroup)\
+            .filter(models.MassSpecProteinGroup.id == protein_group_id)\
             .all())
         if len(dup_group) == 1:
             operations.delete_and_commit(session, dup_group[0])
@@ -110,7 +109,7 @@ class MassSpecPulldownOperations():
             gene_names = row.gene_names.split(';')
         else:
             gene_names = None
-        pg_data = ms_models.MassSpecProteinGroup(
+        pg_data = models.MassSpecProteinGroup(
             id=protein_group_id,
             gene_names=gene_names
         )
@@ -119,9 +118,9 @@ class MassSpecPulldownOperations():
     @staticmethod
     def remove_target_hits(session, plate_id, target_name, errors='warn'):
         # remove duplicate entries / bulk commit
-        dup_hits = session.query(ms_models.MassSpecHits)\
-            .join(ms_models.MassSpecPulldown)\
-            .filter(ms_models.MassSpecPulldown.ms_pulldown_plate_id == plate_id)\
+        dup_hits = session.query(models.MassSpecHits)\
+            .join(models.MassSpecPulldown)\
+            .filter(models.MassSpecPulldown.ms_pulldown_plate_id == plate_id)\
             .all()
 
         for instance in dup_hits:
@@ -140,8 +139,8 @@ class MassSpecPulldownOperations():
     def get_pulldown_id(session, plate_id, target_name):
         # get pulldown_id
         # filter first for specific pulldown plate
-        pulldowns = session.query(ms_models.MassSpecPulldown)\
-            .filter(ms_models.MassSpecPulldown.ms_pulldown_plate_id == plate_id)\
+        pulldowns = session.query(models.MassSpecPulldown)\
+            .filter(models.MassSpecPulldown.ms_pulldown_plate_id == plate_id)\
             .all()
         for instance in pulldowns:
             if instance.target_name() == target_name:
@@ -155,7 +154,7 @@ class MassSpecPulldownOperations():
         """
         protein_group_id = ms_utils.hash_proteingroup_id(row.name)
         try:
-            hits_data = ms_models.MassSpecHits(
+            hits_data = models.MassSpecHits(
                 ms_protein_group_id=protein_group_id,
                 ms_pulldown_id=pulldown_id,
                 pval=row.pvals,

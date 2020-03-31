@@ -52,11 +52,13 @@ group by n order by c desc;
 select count(fov_id) as n, (props::json ->> 'position')::json ->> 2 as p from microscopy_fov_roi
 group by p order by n desc;
 
--- the number of annotations with a particular category flagged
+-- the number of cell line annotations with a particular category
 select * from(
 	select *, array(select json_array_elements_text(categories::json)) as cats
 	from cell_line_annotation) ants
-where 're_sort' = any (cats);
+where 're_sort' = any(cats);
+
+
 
 -- drop all rows from all microscopy-related tables
 TRUNCATE microscopy_dataset CASCADE;
@@ -117,3 +119,16 @@ and (fov_id, date_created) not in (
 	where kind = 'fov-features'
 	group by fov_id
 );
+
+-- all targets *not* annotated 'no_gfp' and without any annotated FOVs
+select * from (
+	select *, array(select json_array_elements_text(categories::json)) as cats
+	from cell_line_annotation
+) cla
+left join cell_line_metadata clm on cla.cell_line_id = clm.cell_line_id
+where clm.cell_line_id not in (
+	select cell_line_id from microscopy_fov_annotation ant
+	left join microscopy_fov fov on fov.id = ant.fov_id
+)
+and not ('no_gfp' = any(cats))
+order by (plate_id, well_id);

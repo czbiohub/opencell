@@ -526,7 +526,8 @@ class PolyclonalLineOperations:
         '''
         payload = []
         for fov in self.line.fovs:
-            fov_payload = {
+            fov_payload = {}
+            fov_metadata = {
                 'id': fov.id,
                 'score': fov.get_score(),
                 'pml_id': fov.dataset.pml_id,
@@ -539,9 +540,14 @@ class PolyclonalLineOperations:
             # append the 488 exposure settings
             metadata = fov.get_result('raw-tiff-metadata')
             if metadata:
-                fov_payload['laser_power_488'] = metadata.data.get('laser_power_488_488')
-                fov_payload['exposure_time_488'] = metadata.data.get('exposure_time_488')
-                fov_payload['max_intensity_488'] = metadata.data.get('max_intensity_488')
+                fov_metadata['laser_power_488'] = metadata.data.get('laser_power_488_488')
+                fov_metadata['exposure_time_488'] = metadata.data.get('exposure_time_488')
+                fov_metadata['max_intensity_488'] = metadata.data.get('max_intensity_488')
+
+            # whether the FOV can be cropped in z
+            metadata = fov.get_result('clean-tiff-metadata')
+            if metadata:
+                fov_metadata['z_stack_complete'] = metadata.data.get('error') is None
 
             if kind in ['all', 'rois']:
                 fov_payload['rois'] = [roi.as_dict() for roi in fov.rois]
@@ -550,6 +556,7 @@ class PolyclonalLineOperations:
                 thumbnail = fov.get_thumbnail('rgb')
                 fov_payload['thumbnails'] = thumbnail.as_dict() if thumbnail else None
 
+            fov_payload['metadata'] = fov_metadata
             payload.append(fov_payload)
 
         # sort FOVs by score (unscored FOVs last)

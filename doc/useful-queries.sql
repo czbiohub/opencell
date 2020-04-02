@@ -120,7 +120,13 @@ and (fov_id, date_created) not in (
 	group by fov_id
 );
 
--- all targets *not* annotated 'no_gfp' and without any annotated FOVs
+-- FOVs that cannot be 'cleaned' (that is, cropped in z)
+select * from microscopy_fov_result
+where kind = 'clean-tiff-metadata'
+and data ->> 'error' is not null
+order by date_created desc;
+
+-- all targets that are *not* annotated 'no_gfp' and that do not have any annotated FOVs
 select * from (
 	select *, array(select json_array_elements_text(categories::json)) as cats
 	from cell_line_annotation

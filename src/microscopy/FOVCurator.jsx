@@ -45,16 +45,28 @@ async function deleteData(url) {
 
 
 function Thumbnail (props) {
-    const className = classNames(
+
+    const metadata = props.fov.metadata;
+    const imgClassName = classNames(
         'thumbnail', 
         {
             'thumbnail-annotated': !!props.fov.annotation,
-            'thumbnail-active': props.fov.metadata.id===props.fovId,
+            'thumbnail-flagged': (!metadata.z_stack_complete || metadata.max_intensity_488===65535),
         }
     );
+
+    const divClassName = classNames(
+        'pa1', 'thumbnail-container',
+        {
+            'thumbnail-container-active': metadata.id===props.fovId
+        }
+    );
+
+    const noDataFlag = props.fov.hasOwnProperty('thumbnails');
+
     return (
-        <div className='pa1' onClick={() => props.changeFov(props.fov.metadata.id)}>
-            <img className={className} src={`data:image/jpg;base64,${props.fov.thumbnails.data}`}/>
+        <div className={divClassName} onClick={() => props.changeFov(metadata.id)}>
+            <img className={imgClassName} src={`data:image/jpg;base64,${props.fov.thumbnails?.data}`}/>
         </div>
     );
 }

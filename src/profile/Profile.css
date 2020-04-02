@@ -293,13 +293,17 @@ in order for the plots to be vertically aligned */
     grid-template-columns: repeat(auto-fit, 100px);
 }
 
-.thumbnail:hover {
-    opacity: .7;
+.thumbnail-container:hover {
+    border: 1px solid #aaa;
 }
 
-.thumbnail-active {
-    opacity: .7;
-    /* border: 2px solid #db3737; */
+.thumbnail-container-active,
+.thumbnail-container-active:hover {
+    border: 1px solid #111;
+}
+
+.thumbnail-flagged {
+    opacity: .5;
 }
 
 .thumbnail-annotated {

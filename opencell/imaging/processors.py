@@ -484,6 +484,7 @@ class FOVProcessor:
         # so that align_cell_layer was not able to crop around it)
         if alignment_result.get('error'):
             result['error'] = alignment_result['error']
+            return result, all_roi_props
 
         # for now, the ROIs span the full extent of the cell-layer-cropped stack
         min_z_ind = 0

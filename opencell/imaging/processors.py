@@ -460,7 +460,7 @@ class FOVProcessor:
 
         # the top and bottom of the cell layer, relative to its center, in microns
         # (these were empirically determined)
-        cell_layer_rel_bottom = -5
+        cell_layer_rel_bottom = -4
         cell_layer_rel_top = 6
 
         # the desired step size of the final stack in microns
@@ -473,7 +473,7 @@ class FOVProcessor:
 
         # the number of slices the resampled stack must have
         # (should be equal to (rel_top - rel_buttom) / target_step_size)
-        required_num_slices = 55
+        required_num_slices = 50
 
         # crop around the cell layer in z
         aligned_stacks, alignment_result = tiff.align_cell_layer(

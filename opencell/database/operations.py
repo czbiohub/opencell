@@ -560,7 +560,7 @@ class PolyclonalLineOperations:
             payload.append(fov_payload)
 
         # sort FOVs by score (unscored FOVs last)
-        payload = sorted(payload, key=lambda row: row.get('score') or -2)[::-1]
+        payload = sorted(payload, key=lambda row: row['metadata'].get('score') or -2)[::-1]
         return payload
 
 

@@ -12,8 +12,8 @@ from opencell.imaging import processors
 from opencell import constants
 import numpy as np
 import psycopg2
-from psycopg2.extensions import register_adapter, AsIs
-psycopg2.extensions.register_adapter(np.int64, psycopg2._psycopg.AsIs)
+# from psycopg2.extensions import register_adapter, AsIs
+# psycopg2.extensions.register_adapter(np.int64, psycopg2._psycopg.AsIs)
 
 @contextmanager
 def session_scope(url, echo=False):

@@ -27,27 +27,24 @@ def format_ms_plate(plate_id):
         result = re.search(r'([0-9]+)', plate_id)
         if result:
             plate_number = result.groups()[0]
-
         try:
             plate_number = int(plate_number)
-        except Exception:
-            # plate_number = 9999
+        except TypeError:
             return None
 
         plate_id = ('CZBMPI_%04d' % plate_number)
-        if sub_plate:
-            if sub_plate != '.0':
-                plate_id = plate_id + sub_plate
+        if sub_plate and sub_plate != '.0':
+            plate_id = plate_id + sub_plate
 
     return plate_id
 
-def reformat_pulldown_table(pulldown_db):
+def reformat_pulldown_table(pulldown_df):
     """
     combine multiple rows with different replicates into a single row,
     and add columns for well info for different replicates"""
 
 
-    abridged = pulldown_db.copy()
+    abridged = pulldown_df.copy()
 
     # drop replicate and pulldown_well_id from abridged, and drop replicates
     abridged.drop(columns= ['replicate', 'pulldown_well_id', 'note_on_prep'],
@@ -58,24 +55,25 @@ def reformat_pulldown_table(pulldown_db):
     return abridged
 
 
-def hash_proteingroup_id(protein_id):
+def hash_protein_group_id(protein_id):
     """
     protein group ids are made of a list of uniprot IDs in a strong form, joined by
     a semicolon. this convenience function converts sorts the uniprot IDs by alphabet
     and then hashes it using hashlib
+    The purpose of this method is to generate a unique ID from a unique set of uniprot
+    IDs, which can then be used as a primary key for the MassSpecProteinGroup table
     """
 
     # split the string into  a list
-    prot_list = protein_id.split(';')
+    protein_list = protein_id.split(';')
 
     # sort the list of strings, and then convert back to string
-    prot_list.sort()
-    protein_id = ';'.join(prot_list)
+    protein_list.sort()
 
     # encode into utf-8 bytes
-    protein_bytes = bytes(protein_id, 'utf-8')
+    protein_bytes = bytes(str(protein_list), 'utf-8')
 
     # hash the string in SHA-256
-    prot_hash = hashlib.sha256(protein_bytes).hexdigest()
+    hashed_protein_id = hashlib.sha256(protein_bytes).hexdigest()
 
-    return prot_hash
+    return hashed_protein_id, protein_list

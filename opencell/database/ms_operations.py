@@ -3,7 +3,6 @@ import re
 import enum
 import json
 import pdb
-import imp
 import numpy as np
 import pandas as pd
 import sqlalchemy as db
@@ -16,45 +15,46 @@ from opencell.database import ms_utils
 from opencell.imaging import processors
 
 
-imp.reload(operations)
+
+def insert_pulldown_plate(session, row, errors='warn'):
+    """ From a pd row, insert a single pulldown plate data """
+    # drop any existing data
+    line = (
+        session.query(models.MassSpecPulldownPlate)
+        .filter(models.MassSpecPulldownPlate.id == row.id)
+        .all()
+    )
+
+    if len(line) == 1:
+        operations.delete_and_commit(session, line[0])
+    plate = models.MassSpecPulldownPlate(
+        id=row.id,
+        plate_design_link=row.plate_design_link,
+        description=row.plate_number_subset
+    )
+    operations.add_and_commit(session, plate, errors=errors)
+
 
 class MassSpecPolyclonalOperations(operations.PolyclonalLineOperations):
     '''
     '''
 
-    def insert_pulldown_row(self, session, row, errors='warn'):
+    def insert_pulldown(self, session, row, errors='warn'):
         """ From a pd row, insert a single pulldown data """
 
         # drop any row that has same pulldown information
-        if self.line.ms_pulldown:
-            operations.delete_and_commit(session, self.line.ms_pulldown)
+        if self.line.mass_spec_pulldowns:
+            for pulldown in self.line.mass_spec_pulldowns:
+                if pulldown.mass_spec_pulldown_plate_id == row.pulldown_plate_id:
+                    operations.delete_and_commit(session, pulldown)
 
-        pulldown_data = models.MassSpecPulldown(
+        pulldown = models.MassSpecPulldown(
             cell_line=self.line,
-            ms_pulldown_plate_id=row.pulldown_plate_id)
-        operations.add_and_commit(session, pulldown_data, errors=errors)
-
-    @staticmethod
-    def insert_pulldown_plate(session, row, errors='warn'):
-        """ From a pd row, insert a single pulldown plate data """
-        # drop any existing data
-        line = (
-            session.query(models.MassSpecPulldownPlate)
-            .filter(models.MassSpecPulldownPlate.id == row.id)
-            .all()
-        )
-
-        if len(line) == 1:
-            operations.delete_and_commit(session, line[0])
-        plate_data = models.MassSpecPulldownPlate(
-            id=row.id,
-            plate_design_link=row.plate_design_link,
-            plate_subset=row.plate_number_subset
-        )
-        operations.add_and_commit(session, plate_data, errors=errors)
+            mass_spec_pulldown_plate_id=row.pulldown_plate_id)
+        operations.add_and_commit(session, pulldown, errors=errors)
 
 
-class MassSpecPulldownOperations():
+class MassSpecPulldownOperations:
     '''
     '''
 
@@ -63,8 +63,7 @@ class MassSpecPulldownOperations():
         convenience method tying together multiple definitions
         for each target, add entire rows to the database by bulk_save_objects
         """
-        split = target.split('_')
-        plate_id, target_name = split[0], split[1]
+        plate_id, target_name = target.split('_')
         plate_id = ms_utils.format_ms_plate(plate_id)
 
         # remove existing hits under same target
@@ -97,35 +96,37 @@ class MassSpecPulldownOperations():
         """
 
         # get hashed protein group id
-        protein_group_id = ms_utils.hash_proteingroup_id(row.name)
+        protein_group_id, protein_list = ms_utils.hash_protein_group_id(row.name)
 
         # remove duplicate entry
-        dup_group = (session.query(models.MassSpecProteinGroup)\
-            .filter(models.MassSpecProteinGroup.id == protein_group_id)\
+        dup_groups = (
+            session.query(models.MassSpecProteinGroup)
+            .filter(models.MassSpecProteinGroup.id == protein_group_id)
             .all())
-        if len(dup_group) == 1:
-            operations.delete_and_commit(session, dup_group[0])
+        if len(dup_groups) == 1:
+            operations.delete_and_commit(session, dup_groups[0])
         if row.gene_names:
             gene_names = row.gene_names.split(';')
         else:
             gene_names = None
-        pg_data = models.MassSpecProteinGroup(
+        protein_group = models.MassSpecProteinGroup(
             id=protein_group_id,
-            gene_names=gene_names
+            gene_names=gene_names,
+            protein_names=protein_list
         )
-        operations.add_and_commit(session, pg_data, errors=errors)
+        operations.add_and_commit(session, protein_group, errors=errors)
 
     @staticmethod
     def remove_target_hits(session, plate_id, target_name, errors='warn'):
         # remove duplicate entries / bulk commit
-        dup_hits = session.query(models.MassSpecHits)\
+        dup_hits = session.query(models.MassSpecHit)\
             .join(models.MassSpecPulldown)\
             .filter(models.MassSpecPulldown.ms_pulldown_plate_id == plate_id)\
             .all()
 
-        for instance in dup_hits:
-            if instance.ms_pulldown.target_name() == target_name:
-                session.delete(instance)
+        for hit in dup_hits:
+            if hit.ms_pulldown.get_target_name() == target_name:
+                session.delete(hit)
         try:
             session.commit()
         except Exception as exception:
@@ -142,29 +143,24 @@ class MassSpecPulldownOperations():
         pulldowns = session.query(models.MassSpecPulldown)\
             .filter(models.MassSpecPulldown.ms_pulldown_plate_id == plate_id)\
             .all()
-        for instance in pulldowns:
-            if instance.target_name() == target_name:
-                break
-        return instance.id
+        for pulldown in pulldowns:
+            if pulldown.get_target_name() == target_name:
+                return pulldown.id
 
     @staticmethod
     def create_hit(row, plate_id, target_name, pulldown_id, errors='warn'):
         """
         from a pd row, insert a single hit data
         """
-        protein_group_id = ms_utils.hash_proteingroup_id(row.name)
-        try:
-            hits_data = models.MassSpecHits(
-                ms_protein_group_id=protein_group_id,
-                ms_pulldown_id=pulldown_id,
-                pval=row.pvals,
-                enrichment=row.enrichment,
-                is_significant_hit=row.hits,
-                is_imputed=row.imputed)
-        except Exception:
-            if errors == 'raise':
-                raise
-            if errors == 'warn':
-                print("Pulldown id not found %s, %s" % plate_id, target_name)
+        protein_group_id = ms_utils.hash_protein_group_id(row.name)
 
-        return hits_data
+        hit = models.MassSpecHit(
+            ms_protein_group_id=protein_group_id,
+            ms_pulldown_id=pulldown_id,
+            pval=row.pvals,
+            enrichment=row.enrichment,
+            is_significant_hit=row.hits,
+            is_minor_hit=row.minor_hits,
+            is_imputed=row.imputed)
+
+        return hit

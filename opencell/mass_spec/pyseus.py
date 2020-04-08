@@ -57,8 +57,8 @@ def process_raw_file(file_name, filter_rows=True, fix_col_names=True,
 
     # start a new list of cols that will be included in the new df
 
-    selected_cols = ['Protein IDs', 'Protein names', 'Gene names',
-                    'Fasta headers']
+    selected_cols = ['Protein IDs', 'Majority protein IDs', 'Protein names',
+        'Gene names', 'Fasta headers']
     # select all intensity columns
     lfq_intensity_cols = select_intensity_cols(col_names, 'LFQ intensity')
     intensity_cols = select_intensity_cols(col_names, 'intensity')
@@ -105,8 +105,8 @@ def transform_intensities(orig_df, intensity_type='LFQ intensity', func=np.log2)
 
     # obtain a list of intensity column names
     intensity_cols = select_intensity_cols(list(orig_df), intensity_type)
-    selected_cols = ['Protein IDs', 'Protein names', 'Gene names',
-                    'Fasta headers']
+    selected_cols = ['Protein IDs', 'Protein names', 'Majority protein IDs',
+        'Gene names', 'Fasta headers']
     selected_cols = selected_cols + intensity_cols
     transformed = transformed[selected_cols]
 
@@ -351,7 +351,8 @@ def bool_imputes(imputed_df, drop_col_list=None):
     rtype imputes_only pd dataframe"""
 
     if drop_col_list is None:
-        drop_col_list = ['Protein names', 'Gene names', 'Protein IDs', 'Fasta headers']
+        drop_col_list = ['Protein names', 'Gene names', 'Protein IDs',
+        'Majority protein IDs', 'Fasta headers']
 
     alls = imputed_df.copy()
     # Drop the added layer of col headings for technical groups

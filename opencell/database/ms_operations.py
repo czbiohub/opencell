@@ -121,11 +121,11 @@ class MassSpecPulldownOperations:
         # remove duplicate entries / bulk commit
         dup_hits = session.query(models.MassSpecHit)\
             .join(models.MassSpecPulldown)\
-            .filter(models.MassSpecPulldown.ms_pulldown_plate_id == plate_id)\
+            .filter(models.MassSpecPulldown.mass_spec_pulldown_plate_id == plate_id)\
             .all()
 
         for hit in dup_hits:
-            if hit.ms_pulldown.get_target_name() == target_name:
+            if hit.pulldown.get_target_name() == target_name:
                 session.delete(hit)
         try:
             session.commit()
@@ -141,7 +141,7 @@ class MassSpecPulldownOperations:
         # get pulldown_id
         # filter first for specific pulldown plate
         pulldowns = session.query(models.MassSpecPulldown)\
-            .filter(models.MassSpecPulldown.ms_pulldown_plate_id == plate_id)\
+            .filter(models.MassSpecPulldown.mass_spec_pulldown_plate_id == plate_id)\
             .all()
         for pulldown in pulldowns:
             if pulldown.get_target_name() == target_name:
@@ -152,11 +152,11 @@ class MassSpecPulldownOperations:
         """
         from a pd row, insert a single hit data
         """
-        protein_group_id = ms_utils.hash_protein_group_id(row.name)
+        hashed_protein_id, _ = ms_utils.hash_protein_group_id(row.name)
 
         hit = models.MassSpecHit(
-            ms_protein_group_id=protein_group_id,
-            ms_pulldown_id=pulldown_id,
+            mass_spec_protein_group_id=hashed_protein_id,
+            mass_spec_pulldown_id=pulldown_id,
             pval=row.pvals,
             enrichment=row.enrichment,
             is_significant_hit=row.hits,

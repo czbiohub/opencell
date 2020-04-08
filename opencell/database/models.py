@@ -103,6 +103,8 @@ class CellLine(Base):
     annotation = db.orm.relationship(
         'CellLineAnnotation', back_populates='cell_line', uselist=False)
 
+    mass_spec_pulldowns = db.orm.relationship('MassSpecPulldown', back_populates='cell_line')
+
 
     def __init__(self, line_type, name=None, notes=None, parent_id=None):
         '''
@@ -753,3 +755,145 @@ class CellLineAnnotation(Base):
 
     # the client-side timestamp, app state, etc
     client_metadata = db.Column(postgresql.JSONB)
+
+
+class MassSpecPulldown(Base):
+    '''
+    every bait (cell_line) used in MS analysis
+    '''
+
+    __tablename__ = 'mass_spec_pulldown'
+
+    # Columns
+    id = db.Column(db.Integer, primary_key=True)
+    # polyclonal cell line from OpenCell
+    cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'))
+
+    # MS pulldown plates prepped by the ML group, ID takes format of CZBMPI_###
+    mass_spec_pulldown_plate_id = db.Column(db.String,
+        db.ForeignKey('mass_spec_pulldown_plate.id'))
+
+    # timestamp column
+    date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
+
+    # Relationships
+    # one to one
+    cell_line = db.orm.relationship('CellLine', uselist=False,
+        back_populates='mass_spec_pulldowns')
+    # one to many
+    hits = db.orm.relationship('MassSpecHit', back_populates='pulldown')
+    # one to one
+    pulldown_plate = db.orm.relationship("MassSpecPulldownPlate", uselist=False,
+        back_populates='pulldowns')
+
+
+
+    def get_target_name(self):
+        """convenience method to get target_name for each pulldown"""
+        return self.cell_line.get_crispr_design().target_name
+
+    def __repr__(self):
+        return "<Bait(id=%s, pulldown_plate=%s, target=%s)>" % \
+            (self.id, self.mass_spec_pulldown_plate_id, self.target_name())
+
+
+
+class MassSpecHit(Base):
+    '''
+    A hit is an identified protein group with a mass-spec intensity value in each
+    pulldown. Here the table is populated with precomputed enrichment and p-value
+    of the hit compared to a base distribution.
+    '''
+
+    __tablename__ = 'mass_spec_hits'
+
+    # Columns
+    id = db.Column(db.Integer, primary_key=True)
+
+    # hased string of sorted Uniprot peptide IDs that compose the protein group
+    mass_spec_protein_group_id = db.Column(db.String, db.ForeignKey('mass_spec_protein_group.id'))
+
+    # foreign key of each pulldown target from pulldown table
+    mass_spec_pulldown_id = db.Column(db.Integer, db.ForeignKey('mass_spec_pulldown.id'))
+
+    # p value of the specific prey's MS intensity
+    pval = db.Column(db.Float, nullable=False)
+
+    # enrichment of the prey's MS intensity
+    enrichment = db.Column(db.Float, nullable=False)
+
+    # boolean specifying whether the hit is significant based on FDR threshold
+    is_significant_hit = db.Column(db.Boolean)
+
+    # boolean specifying whether the hit is significant based on a lower FDR threshold
+    is_minor_hit = db.Column(db.Boolean)
+
+    # boolean specifying whether the hit is composed only of imputed values
+    is_imputed = db.Column(db.Boolean)
+
+    # timestamp column
+    date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
+
+    # Relationships
+    # one to one
+    pulldown = db.orm.relationship('MassSpecPulldown', uselist=False,
+        back_populates='hits')
+    # one to one
+    protein_group = db.orm.relationship('MassSpecProteinGroup', uselist=False,
+        back_populates='hits')
+
+    # constraints
+    # A hit needs to have a unique set of target (pulldown) and the prey (protein_group)
+    __table_args__ = (
+            db.UniqueConstraint(mass_spec_pulldown_id, mass_spec_protein_group_id),
+    )
+
+class MassSpecProteinGroup(Base):
+    '''
+    every protein Group identified by msms in experiments
+    '''
+
+    __tablename__ = 'mass_spec_protein_group'
+
+    # id is a hash of unique set of peptide Uniprot ids that compose the protein group
+    id = db.Column(db.String, primary_key=True)
+
+    # a list of all proteins mapped to the protein group
+    gene_names = db.Column(postgresql.ARRAY(db.String))
+
+    # a list of all protein Uniprot ids, sorted
+    protein_names = db.Column(postgresql.ARRAY(db.String))
+    # timestamp column
+    date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
+
+    # Relationships
+    # one to many
+    hits = db.orm.relationship('MassSpecHit', back_populates='protein_group')
+
+
+
+class MassSpecPulldownPlate(Base):
+    '''
+    every MS plate prepped by the ML Group
+
+    '''
+    __tablename__ = "mass_spec_pulldown_plate"
+
+    # Columns
+    # format is of the form 'CZBMPI_{plate_num:04d}'
+    id = db.Column(db.String, primary_key=True)
+
+    # link to the google sheet design of the plate mapping out pulldown
+    # target locations by well
+    plate_design_link = db.Column(db.String)
+
+    # Description of the pulldown (whether it is a repeat or subset, etc)
+    description = db.Column(db.String)
+
+    # timestamp column
+    date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
+
+    # Relationships
+    # one to many
+    pulldowns = db.orm.relationship("MassSpecPulldown",
+        back_populates='pulldown_plate')

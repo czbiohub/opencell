@@ -44,7 +44,7 @@ def format_plate_design_id(design_id):
         plate_number = None
 
         # the design_id either begins with 'plate' or is the plate_number itself
-        result = re.match('^plate ?([0-9]+)$', design_id.lower())
+        result = re.match('^p?(?:late)? ?([0-9]+)$', design_id.lower())
         if result:
             plate_number = result.groups()[0]
         else:

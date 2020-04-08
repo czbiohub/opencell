@@ -123,7 +123,7 @@ def heatmap_atl3_frac(atl3_target_frac, bait, output_dir):
 
     # Set up log colormap axes
     vmin = atl3_target_frac.min().min()
-    vmax = atl3_target_frac.max().max()
+    vmax = atl3_target_frac.max().max() + 5
     lognorm = LogNorm(vmin=vmin, vmax=vmax)
     cbar_ticks = [math.pow(10, i) for i in range(math.floor(math.log10(vmin)),
         1+math.ceil(math.log10(vmax)))]
@@ -157,7 +157,7 @@ def heatmap_atl3_raw(atl3_target, bait, output_dir):
     elif bait == 'CLTA':
         fig, ax = plt.subplots(figsize=(12, 24))
         ax.tick_params(axis="y", labelsize=7)
-    ax = sns.heatmap(atl3_target, cmap="YlGnBu")
+    ax = sns.heatmap(atl3_target, cmap="YlGnBu", vmin=10, vmax=26)
     ax.set_ylim(atl3_target.shape[0], 0)
     ax.set_title(bait + " Known Targets (Raw intensity, log2)", fontsize=20)
     ax.tick_params(axis="x", labelsize=14)
@@ -554,23 +554,23 @@ def pulldown_summary(plate, renamed, transformed, rep_re, pep_re):
     return master, no_match
 
 
-def pulldown_plot(summary, output):
+def pulldown_plot(summary, output, plate, width=20):
     """Plot a summary figure and save a pdf to the designated output folder"""
 
     if not os.path.isdir(output):
         os.mkdir(output)
-    fig, ax = plt.subplots(3, 1, figsize=(10, 10))
+    fig, ax = plt.subplots(3, 1, figsize=(width, 10))
     _ = sns.violinplot(x='experiment', y='identified peptides', data=summary,
-        inner='quartile', width=0.1, ax=ax[0])
-    ax[0].set(ylim=(0, 6000))
+        inner='quartile', ax=ax[0])
+    ax[0].set(ylim=(0, 5000))
     _ = sns.violinplot(x='experiment', y='total intensity', data=summary,
-        inner='quartile', width=0.1, ax=ax[1])
-    ax[1].set(ylim=(26, 34))
+        inner='quartile', ax=ax[1])
+    ax[1].set(ylim=(26, 32))
     # ax[1].set_yscale('log')
 
     _ = sns.violinplot(x='experiment', y='match intensity', data=summary,
-        inner='quartile', width=0.1, ax=ax[2])
-    ax[2].set(ylim=(0, 40))
+        inner='quartile', ax=ax[2])
+    ax[2].set(ylim=(12, 32))
     ax[0].set_xlabel('')
     ax[1].set_xlabel('')
     ax[2].set_xlabel('Experiment', fontsize=18)
@@ -585,7 +585,7 @@ def pulldown_plot(summary, output):
     plt.close(3)
 
     fig.tight_layout()
-    plt.savefig(output + 'p14_summary.pdf', bbox_inches='tight')
+    plt.savefig(output + plate + '_summary.pdf', bbox_inches='tight')
 
 
 def hela_plot(hela_summary, output):

@@ -180,8 +180,11 @@ def insert_microscopy_datasets(session, metadata, root_directory, update=False, 
     '''
     '''
     for _, row in metadata.iterrows():
-        dataset = session.query(models.MicroscopyDataset)\
-            .filter(models.MicroscopyDataset.pml_id == row.pml_id).all()
+        dataset = (
+            session.query(models.MicroscopyDataset)
+            .filter(models.MicroscopyDataset.pml_id == row.pml_id)
+            .all()
+        )
         if dataset:
             if update:
                 dataset = dataset.pop()
@@ -195,6 +198,7 @@ def insert_microscopy_datasets(session, metadata, root_directory, update=False, 
 
         dataset.date = row.date
         dataset.root_directory = root_directory
+        dataset.raw_metadata = json.loads(row.to_json())
         ops.add_and_commit(session, dataset, errors=errors)
 
 
@@ -244,6 +248,7 @@ def main():
     if args.insert_raw_pipeline_microscopy_datasets:
         metadata = pd.read_csv(args.microscopy_master_key)
         metadata.rename(columns={'id': 'pml_id'}, inplace=True)
+        metadata.dropna(how='any', subset=['pml_id'], axis=0, inplace=True)
         insert_microscopy_datasets(
             session,
             metadata,

@@ -78,6 +78,7 @@ def parse_args():
         'calculate_z_profiles',
         'generate_clean_tiffs',
         'crop_corner_rois',
+        'crop_annotated_rois',
         'process_all_fovs',
     ]
 
@@ -198,7 +199,7 @@ def insert_raw_pipeline_microscopy_fovs(session, root_dir, pml_id, errors='warn'
         group_metadata = metadata.get_group(group)
         try:
             pcl_ops = operations.PolyclonalLineOperations.from_plate_well(session, plate_id, well_id)
-        except Exception:
+        except ValueError:
             print('No polyclonal line for (%s, %s)' % group)
             continue
         pcl_ops.insert_microscopy_fovs(session, group_metadata, errors=errors)
@@ -262,12 +263,13 @@ def do_fov_tasks(Session, args, processor_method_name, processor_method_kwargs, 
         'calculate_z_profiles': 'insert_z_profiles',
         'generate_clean_tiff': 'insert_clean_tiff_metadata',
         'crop_corner_rois': 'insert_corner_rois',
+        'crop_annotated_roi': 'insert_annotated_roi',
     }
 
     # the name of the FOVOperations method that inserts the results of the processor method
     operator_method_name = operator_method_names.get(processor_method_name)
 
-    # if a list of FOVs was not provided, select all FOVs
+    # if a list of FOVs was not provided, processor all FOVs
     if fovs is None:
         fovs = Session.query(models.MicroscopyFOV).all()
 
@@ -378,11 +380,14 @@ def main():
         inspect_plate_microscopy_metadata(manager)
 
     # insert all FOVs from the 'PlateMicroscopy' directory
+    # (should only be called once, when initially populating a new database,
+    # because the 'PlateMicroscopy' directory is static)
     if args.insert_plate_microscopy_fovs:
         with operations.session_scope(db_url) as session:
             insert_plate_microscopy_fovs(session, cache_dir=args.cache_dir, errors='warn')
 
     # insert the FOVs from a dataset in the 'raw-pipeline-microscopy' directory
+    # (this is called to update the database with the FOVs from new PML datasets)
     if args.insert_fovs:
         with operations.session_scope(db_url) as session:
             insert_raw_pipeline_microscopy_fovs(
@@ -446,7 +451,6 @@ def main():
 
     # generate thumbnails with a given size and quality
     if args.generate_fov_thumbnails:
-
         method_name = 'generate_fov_thumbnails'
         method_kwargs = {
             'dst_root': args.dst_root,
@@ -483,6 +487,18 @@ def main():
             ) as file:
                 file.write(str(error))
             raise
+
+
+    if args.crop_annotated_rois:
+        method_name = 'crop_annotated_roi'
+        method_kwargs = {'dst_root': args.dst_root}
+
+        # only process annotated FOVs
+        fovs = (
+            Session.query(models.MicroscopyFOV)
+            .filter(models.MicroscopyFOV.annotation.has())
+        ).all()
+        do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
 
 
 if __name__ == '__main__':

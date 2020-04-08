@@ -5,15 +5,12 @@ import json
 import numpy as np
 import pandas as pd
 import sqlalchemy as db
-
 from contextlib import contextmanager
-from opencell.database import models
-from opencell.imaging import processors
+
 from opencell import constants
-import numpy as np
-import psycopg2
-# from psycopg2.extensions import register_adapter, AsIs
-# psycopg2.extensions.register_adapter(np.int64, psycopg2._psycopg.AsIs)
+from opencell.database import models
+from opencell.imaging.processors import FOVProcessor
+
 
 @contextmanager
 def session_scope(url, echo=False):
@@ -488,6 +485,7 @@ class PolyclonalLineOperations:
 
         if kind in ['all', 'scalars']:
             payload['scalars'] = self.construct_scalars_payload()
+            payload['annotations'] = self.line.annotation.categories if self.line.annotation else None
 
         if kind in ['all', 'facs'] and self.line.facs_dataset:
             payload['facs_histograms'] = self.line.facs_dataset[0].simplify_histograms()
@@ -528,21 +526,41 @@ class PolyclonalLineOperations:
         '''
         payload = []
         for fov in self.line.fovs:
-            fov_payload = {
-                'fov_id': fov.id,
+            fov_payload = {}
+            fov_metadata = {
+                'id': fov.id,
+                'score': fov.get_score(),
                 'pml_id': fov.dataset.pml_id,
                 'src_filename': fov.raw_filename,
-                'score': fov.get_score(),
+                'z_step_size': FOVProcessor.z_step_size(fov.dataset.pml_id),
             }
+
+            fov_payload['annotation'] = fov.annotation.as_dict() if fov.annotation else None
+
+            # append the 488 exposure settings
+            metadata = fov.get_result('raw-tiff-metadata')
+            if metadata:
+                fov_metadata['laser_power_488'] = metadata.data.get('laser_power_488_488')
+                fov_metadata['exposure_time_488'] = metadata.data.get('exposure_time_488')
+                fov_metadata['max_intensity_488'] = metadata.data.get('max_intensity_488')
+
+            # whether the FOV can be cropped in z
+            metadata = fov.get_result('clean-tiff-metadata')
+            if metadata:
+                fov_metadata['z_stack_complete'] = metadata.data.get('error') is None
+
             if kind in ['all', 'rois']:
                 fov_payload['rois'] = [roi.as_dict() for roi in fov.rois]
-            if kind in ['all', 'thumbnails']:
-                fov_payload['thumbnails'] = fov.get_thumbnail('rgb').as_dict()
 
+            if kind in ['all', 'thumbnails']:
+                thumbnail = fov.get_thumbnail('rgb')
+                fov_payload['thumbnails'] = thumbnail.as_dict() if thumbnail else None
+
+            fov_payload['metadata'] = fov_metadata
             payload.append(fov_payload)
 
         # sort FOVs by score (unscored FOVs last)
-        payload = sorted(payload, key=lambda row: row.get('score') or -1)[::-1]
+        payload = sorted(payload, key=lambda row: row['metadata'].get('score') or -2)[::-1]
         return payload
 
 
@@ -614,12 +632,12 @@ class MicroscopyFOVOperations:
         result = to_jsonable(result)
 
         rows = []
-        for channel, b64_string in result['b64_strings'].items():
-            row = models.Thumbnail(
+        for channel, encoded_im in result['encoded_ims'].items():
+            row = models.MicroscopyThumbnail(
                 fov_id=self.fov_id,
                 size=result.get('size'),
                 channel=channel,
-                data=b64_string)
+                data=encoded_im)
             rows.append(row)
         add_and_commit(session, rows, errors='raise')
 
@@ -637,30 +655,35 @@ class MicroscopyFOVOperations:
         add_and_commit(session, row, errors='raise')
 
 
-    def insert_cell_layer_alignment_result(self, session, result):
+    def insert_clean_tiff_metadata(self, session, result):
         '''
-        Insert result from the align_cell_layer method
+        Insert result from the generate_clean_tiff method
         '''
         result = to_jsonable(result)
         row = models.MicroscopyFOVResult(
             fov_id=self.fov_id,
-            kind='cell-layer-alignment',
+            kind='clean-tiff-metadata',
             data=result)
         add_and_commit(session, row, errors='raise')
 
 
-    def insert_corner_rois(self, session, result):
+    def _insert_rois(self, session, result, roi_kind):
         '''
-        Insert the four ROIs cropped from each corner of an FOV
-        result : a list of roi_props (possibly empty)
+        result : tuple of (error_info, roi_props) returned by FOVProcessor.crop_rois
+        roi_kind : 'corner' or 'annotated'
         '''
+
+        # FOVProcessor.crop_annotated_roi returns None if no manual annotation existed
+        if result is None:
+            return
 
         result, all_roi_props = result
-
         result = to_jsonable(result)
+        result_kind = '%s-roi-cropping' % roi_kind
+
         row = models.MicroscopyFOVResult(
             fov_id=self.fov_id,
-            kind='corner-roi-cropping',
+            kind=result_kind,
             data=result)
         add_and_commit(session, row, errors='raise')
 
@@ -669,12 +692,22 @@ class MicroscopyFOVOperations:
             roi_props = to_jsonable(roi_props)
             roi = models.MicroscopyFOVROI(
                 fov_id=self.fov_id,
-                kind='corner',
+                kind=roi_kind,
                 props=roi_props
             )
             rois.append(roi)
         add_and_commit(session, rois, errors='raise')
 
 
-    def insert_thumbnails(self, session, thumbnails):
-        pass
+    def insert_corner_rois(self, session, result):
+        '''
+        Insert the four ROIs cropped from each corner of an FOV
+        '''
+        self._insert_rois(session, result, roi_kind='corner')
+
+
+    def insert_annotated_roi(self, session, result):
+        '''
+        Insert the single manually-annotated ROI (if any)
+        '''
+        self._insert_rois(session, result, roi_kind='annotated')

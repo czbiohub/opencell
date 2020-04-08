@@ -533,6 +533,10 @@ class MicroscopyDataset(Base):
     # (the absolute path to these directories is context-dependent)
     root_directory = db.Column(db.String)
 
+    # all columns from the pipeline-microscopy-master-key as a JSON object
+    # (for reference/convenience only)
+    raw_metadata = db.Column(postgresql.JSONB)
+
     @db.orm.validates('pml_id')
     def validate_pml_id(self, key, value):
         match = re.match(r'^PML[0-9]{4}$', value)
@@ -581,7 +585,11 @@ class MicroscopyFOV(Base):
 
     # one-to-many relationship with thumbnails
     thumbnails = db.orm.relationship(
-        'Thumbnail', back_populates='fov', cascade='all, delete-orphan')
+        'MicroscopyThumbnail', back_populates='fov', cascade='all, delete-orphan')
+
+    # one-to-one with microscopy_fov_annotation
+    annotation = db.orm.relationship(
+        'MicroscopyFOVAnnotation', back_populates='fov', uselist=False, cascade='all, delete-orphan')
 
     # round_id is either 'R01' (initial post-sort imaging)
     # or 'R02' (thawed-plate imaging)
@@ -646,9 +654,9 @@ class MicroscopyFOV(Base):
         '''
         return (
             db.orm.object_session(self)
-            .query(Thumbnail)
-            .filter(Thumbnail.fov_id == self.id)
-            .filter(Thumbnail.channel == channel)
+            .query(MicroscopyThumbnail)
+            .filter(MicroscopyThumbnail.fov_id == self.id)
+            .filter(MicroscopyThumbnail.channel == channel)
             .first()
         )
 
@@ -665,7 +673,7 @@ class MicroscopyFOVResult(Base):
 
     id = db.Column(db.Integer, primary_key=True)
     fov_id = db.Column(db.Integer, db.ForeignKey('microscopy_fov.id'))
-    timestamp = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
+    date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
 
     fov = db.orm.relationship('MicroscopyFOV', back_populates='results', uselist=False)
 
@@ -695,10 +703,10 @@ class MicroscopyFOVROI(Base):
 
     id = db.Column(db.Integer, primary_key=True)
     fov_id = db.Column(db.Integer, db.ForeignKey('microscopy_fov.id'))
-    timestamp = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
+    date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
 
     fov = db.orm.relationship('MicroscopyFOV', back_populates='rois', uselist=False)
-    thumbnails = db.orm.relationship('Thumbnail', back_populates='roi')
+    thumbnails = db.orm.relationship('MicroscopyThumbnail', back_populates='roi')
 
     # kind of ROI: either 'corner', 'top-scoring', 'single-nucleus', 'single-cell'
     kind = db.Column(db.String)
@@ -709,16 +717,17 @@ class MicroscopyFOVROI(Base):
     props = db.Column(postgresql.JSONB)
 
 
-class Thumbnail(Base):
+class MicroscopyThumbnail(Base):
     '''
-    An image thumbnail of either an ROI or an FOV
+    A base64-encoded thumbnail of either an ROI or an FOV
     '''
 
-    __tablename__ = 'thumbnail'
+    __tablename__ = 'microscopy_thumbnail'
 
     id = db.Column(db.Integer, primary_key=True)
     fov_id = db.Column(db.Integer, db.ForeignKey('microscopy_fov.id'))
     roi_id = db.Column(db.Integer, db.ForeignKey('microscopy_fov_roi.id'))
+    date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
 
     fov = db.orm.relationship('MicroscopyFOV', back_populates='thumbnails', uselist=False)
     roi = db.orm.relationship('MicroscopyFOVROI', back_populates='thumbnails', uselist=False)
@@ -757,6 +766,30 @@ class CellLineAnnotation(Base):
     client_metadata = db.Column(postgresql.JSONB)
 
 
+class MicroscopyFOVAnnotation(Base):
+    '''
+    '''
+
+    __tablename__ = 'microscopy_fov_annotation'
+    id = db.Column(db.Integer, primary_key=True)
+
+    # one-to-one relationship with microscopy_fov
+    fov_id = db.Column(db.Integer, db.ForeignKey('microscopy_fov.id'))
+    fov = db.orm.relationship('MicroscopyFOV', back_populates='annotation', uselist=False)
+
+    date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
+
+    # the row and column of the top-left corner of the user-selected ROI
+    roi_position_top = db.Column(db.Integer)
+    roi_position_left = db.Column(db.Integer)
+
+    # the list of categories to which the FOV belongs (currently unused)
+    categories = db.Column(postgresql.JSONB)
+
+    # the client-side timestamp, app state, etc
+    client_metadata = db.Column(postgresql.JSONB)
+
+   
 class MassSpecPulldown(Base):
     '''
     every bait (cell_line) used in MS analysis

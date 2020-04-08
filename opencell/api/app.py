@@ -69,6 +69,7 @@ def create_app(args):
 
     api.add_resource(resources.MicroscopyFOV, '/fovs/<string:channel>/<string:kind>/<int:fov_id>')
     api.add_resource(resources.MicroscopyFOVROI, '/rois/<string:channel>/<string:kind>/<int:roi_id>')
+    api.add_resource(resources.MicroscopyFOVAnnotation, '/fov_annotations/<int:fov_id>')
 
     api.init_app(app)
 

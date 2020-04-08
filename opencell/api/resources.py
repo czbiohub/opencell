@@ -1,5 +1,8 @@
 import os
+import io
 import urllib
+import imageio
+import tifffile
 import pandas as pd
 import sqlalchemy as db
 
@@ -12,9 +15,10 @@ from flask import (
     abort
 )
 
-from opencell.imaging.processors import FOVProcessor
-from opencell.database import models, operations
+from opencell.imaging import utils
 from opencell.api.cache import cache
+from opencell.database import models, operations
+from opencell.imaging.processors import FOVProcessor
 
 
 # copied from https://stackoverflow.com/questions/24816799/how-to-use-flask-cache-with-flask-restful
@@ -155,9 +159,6 @@ class MicroscopyFOV(Resource):
         Currently, only works for kind = 'proj'
         '''
 
-        if kind == 'proj':
-            ext = 'tif'
-
         fov = (
             current_app.Session.query(models.MicroscopyFOV)
             .filter(models.MicroscopyFOV.id == fov_id)
@@ -165,23 +166,31 @@ class MicroscopyFOV(Resource):
         )
 
         if not fov:
-            # this means the fov_id was not valid
-            # TODO: return 404?
-            pass
+            abort(404)
 
         processor = FOVProcessor.from_database(fov)
-        filepath = processor.dst_filepath(
-            dst_root=current_app.config.get('opencell_microscopy_root'),
-            kind=kind,
-            channel=channel,
-            ext=ext)
+        dst_root = current_app.config.get('opencell_microscopy_root')
+        filepath_405 = processor.dst_filepath(dst_root, kind='proj', channel='405', ext='tif')
+        filepath_488 = processor.dst_filepath(dst_root, kind='proj', channel='488', ext='tif')
 
-        file = send_file(
-            open(filepath, 'rb'),
+        ims = {}
+        ims['405'] = tifffile.imread(filepath_405)[..., None]
+        ims['488'] = tifffile.imread(filepath_488)[..., None]
+        ims['rgb'] = processor.make_rgb(ims['405'], ims['488'])
+
+        im = ims.get(channel)
+        if channel in ['405', '488']:
+            im = utils.autoscale(im, p=1)
+
+        file = io.BytesIO()
+        imageio.imsave(file, im, format='jpg', quality=90)
+        file.seek(0)
+
+        return send_file(
+            file,
             as_attachment=True,
-            attachment_filename=filepath.split(os.sep)[-1])
-
-        return file
+            attachment_filename='FOV%04d_%s-%s.jpg' % (fov_id, kind.upper(), channel.upper())
+        )
 
 
 class MicroscopyFOVROI(Resource):
@@ -189,9 +198,7 @@ class MicroscopyFOVROI(Resource):
     def get(self, roi_id, channel, kind):
         '''
         Get the stack for a given roi_id as a tiled PNG
-
         Note that, for now, `kind` is hard-coded
-
         '''
 
         roi = (
@@ -219,23 +226,26 @@ class MicroscopyFOVROI(Resource):
 
 class CellLineAnnotation(Resource):
 
-    def get(self, cell_line_id):
-        '''
-        '''
-
-        line = (
+    @staticmethod
+    def get_cell_line(cell_line_id):
+        return (
             current_app.Session.query(models.CellLine)
             .filter(models.CellLine.id == cell_line_id)
             .first()
         )
 
+
+    def get(self, cell_line_id):
+        '''
+        '''
+
+        line = self.get_cell_line(cell_line_id)
         if line.annotation is not None:
             return jsonify({
                 'comment': line.annotation.comment,
                 'categories': line.annotation.categories,
                 'client_metadata': line.annotation.client_metadata,
             })
-
         abort(404)
 
 
@@ -243,13 +253,7 @@ class CellLineAnnotation(Resource):
         '''
         '''
         data = request.get_json()
-
-        line = (
-            current_app.Session.query(models.CellLine)
-            .filter(models.CellLine.id == cell_line_id)
-            .first()
-        )
-
+        line = self.get_cell_line(cell_line_id)
         annotation = line.annotation
         if annotation is None:
             annotation = models.CellLineAnnotation(cell_line_id=cell_line_id)
@@ -267,3 +271,60 @@ class CellLineAnnotation(Resource):
             abort(500, str(error))
 
         return jsonify(annotation.as_dict())
+
+
+class MicroscopyFOVAnnotation(Resource):
+
+    @staticmethod
+    def get_fov(fov_id):
+        return (
+            current_app.Session.query(models.MicroscopyFOV)
+            .filter(models.MicroscopyFOV.id == fov_id)
+            .first()
+        )
+
+
+    def get(self, fov_id):
+        '''
+        '''
+        fov = self.get_fov(fov_id)
+        if fov.annotation is not None:
+            return jsonify(fov.annotation.as_dict())
+        abort(404, 'FOV %s does not have an annotation' % fov_id)
+
+
+    def put(self, fov_id):
+
+        data = request.get_json()
+        fov = self.get_fov(fov_id)
+        annotation = fov.annotation
+        if annotation is None:
+            annotation = models.MicroscopyFOVAnnotation(fov_id=fov_id)
+
+        annotation.categories = data.get('categories')
+        annotation.client_metadata = data.get('client_metadata')
+        annotation.roi_position_top = data.get('roi_position_top')
+        annotation.roi_position_left = data.get('roi_position_left')
+
+        try:
+            operations.add_and_commit(
+                current_app.Session,
+                annotation,
+                errors='raise')
+        except Exception as error:
+            abort(500, str(error))
+
+        return jsonify(annotation.as_dict())
+
+
+    def delete(self, fov_id):
+
+        fov = self.get_fov(fov_id)
+        if fov.annotation is None:
+            return abort(404, 'FOV %s does not have an annotation' % fov_id)
+
+        try:
+            operations.delete_and_commit(current_app.Session, fov.annotation)
+        except Exception as error:
+            abort(500, str(error))
+        return ('', 204)

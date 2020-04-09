@@ -441,26 +441,39 @@ class RawPipelineTIFF(MicroManagerTIFF):
         return center_of_mass, raw_profile
 
 
-    def align_cell_layer(self, rel_bottom, rel_top, step_size):
+    def align_cell_layer(
+        self, cell_layer_bottom, cell_layer_top, step_size, bottom_wiggle_room=0
+    ):
         '''
         Approximately align the 405 and 488 stacks to correct for chromatic aberration,
         and crop around the cell layer so that it is in the center of the stack
 
-        rel_bottom, rel_top : the position of the bottom and top of the cell layer,
-            relative to the center of the cell layer, in an integer number of microns
-            (rel_bottom should be negative)
+        cell_layer_bottom : the position of the bottom of the cell layer, in microns,
+            relative to the center of the cell layer (should be negative)
+        cell_layer_top : the position of the top of cell layer, in microns,
+            relative to the center (should be positive)
+        step_size : the z-step size of the stack (in microns)
+            (note that the step size is not included in the MicroManager metadata,
+            so it must be provided by the user)
+        bottom_wiggle_room : optional 'wiggle room', in microns, for the cell_layer_bottom;
+            if the actual bottom of the stack is within this distance of cell_layer_bottom,
+            the stack is still cropped, and the bottom of the cropped stack padded with zeros.
+            For example, if cell_layer_bottom is -5um but the actual bottom is at -4.5um,
+            setting bottom_wiggle_room to 1um would allow the stack to be cropped
+            (because -4.5 + 5 < 1)
         '''
 
+        stacks = {}
         result = {}
 
         stack_405 = self.stacks[self.laser_405].copy()
         stack_488 = self.stacks[self.laser_488].copy()
 
         # hard-coded chromatic aberration offset in microns
-        # this is an empirically estimated median offset
+        # this is an empirically estimated median offset,
         # obtained by inspecting z-stacks from nucleus-localized targets
         chromatic_aberration_offset = 1.0
-        offset_ind = int(chromatic_aberration_offset / step_size)
+        offset_ind = int(chromatic_aberration_offset/step_size)
 
         stack_405 = stack_405[:-offset_ind, :, :]
         stack_488 = stack_488[offset_ind:, :, :]
@@ -470,19 +483,36 @@ class RawPipelineTIFF(MicroManagerTIFF):
         cell_layer_center = np.round(cell_layer_center)
 
         # absolute position, in number of z-slices, of the top and bottom of the cell layer
-        bottom_ind = int(cell_layer_center + rel_bottom / step_size)
-        top_ind = int(cell_layer_center + rel_top / step_size)
+        bottom_ind = int(np.floor(cell_layer_center + cell_layer_bottom/step_size))
+        top_ind = int(np.ceil(cell_layer_center + cell_layer_top/step_size))
 
-        if bottom_ind < 0:
-            result['error'] = 'The cell layer center was too close to the bottom of the stack'
-        elif top_ind >= stack_405.shape[0]:
-            result['error'] = 'The cell layer center was too close to the top of the stack'
-        else:
-            stack_405 = stack_405[bottom_ind:top_ind, :, :]
-            stack_488 = stack_488[bottom_ind:top_ind, :, :]
-
-        result['offset_488_405'] = offset_ind
+        # log some parameters (for debugging, mostly)
+        result['stack_shape'] = stack_405.shape
         result['crop_window'] = [bottom_ind, top_ind]
         result['cell_layer_center'] = cell_layer_center
+        result['chromatic_aberration_offset'] = offset_ind
+
+        pad_depth = None
+        if bottom_ind < 0:
+            if abs(bottom_ind) <= np.round(bottom_wiggle_room/step_size):
+                pad_depth = abs(bottom_ind)
+                bottom_ind = 0
+            else:
+                result['error'] = 'The cell layer center was too close to the bottom of the stack'
+                return stacks, result
+
+        if top_ind >= stack_405.shape[0]:
+            result['error'] = 'The cell layer center was too close to the top of the stack'
+            return stacks, result
+
+        stack_405 = stack_405[bottom_ind:top_ind, :, :]
+        stack_488 = stack_488[bottom_ind:top_ind, :, :]
+
+        if pad_depth:
+            result['warning'] = 'The bottom of the stack was padded by %s slices' % pad_depth
+            padding = np.zeros((*stack_405.shape[:2], pad_depth), dtype=stack_405.dtype)
+            stack_405 = np.concatenate((padding, stack_405), axis=0)
+            stack_488 = np.concatenate((padding, stack_488), axis=0)
+
         stacks = {'405': stack_405, '488': stack_488}
         return stacks, result

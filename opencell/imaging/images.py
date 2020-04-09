@@ -487,6 +487,7 @@ class RawPipelineTIFF(MicroManagerTIFF):
         top_ind = int(np.ceil(cell_layer_center + cell_layer_top/step_size))
 
         # log some parameters (for debugging, mostly)
+        result['padded'] = False
         result['stack_shape'] = stack_405.shape
         result['crop_window'] = [bottom_ind, top_ind]
         result['cell_layer_center'] = cell_layer_center
@@ -508,9 +509,11 @@ class RawPipelineTIFF(MicroManagerTIFF):
         stack_405 = stack_405[bottom_ind:top_ind, :, :]
         stack_488 = stack_488[bottom_ind:top_ind, :, :]
 
+        # pad the bottom of the stack if necessary
         if pad_depth:
-            result['warning'] = 'The bottom of the stack was padded by %s slices' % pad_depth
-            padding = np.zeros((*stack_405.shape[:2], pad_depth), dtype=stack_405.dtype)
+            result['padded'] = True
+            result['pad_depth'] = pad_depth
+            padding = np.zeros((pad_depth, *stack_405.shape[1:]), dtype=stack_405.dtype)
             stack_405 = np.concatenate((padding, stack_405), axis=0)
             stack_488 = np.concatenate((padding, stack_488), axis=0)
 

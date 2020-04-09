@@ -486,11 +486,16 @@ class FOVProcessor:
             bottom_wiggle_room=bottom_wiggle_room
         )
 
+        result['cell_layer_top'] = cell_layer_top
+        result['cell_layer_bottom'] = cell_layer_bottom
+        result['bottom_wiggle_room'] = bottom_wiggle_room
+        result['alignment_result'] = alignment_result
+
         # if an alignment error occured, log it and do not continue
         # (these errors occur when the cell layer center was too close
         # to the top or bottom of the z-stack)
         if alignment_result.get('error'):
-            result['error'] = alignment_result['error']
+            result['error'] = 'An error ocurred in align_cell_layer'
             return result, all_roi_props
 
         # for now, the ROIs span the full extent of the cell-layer-cropped stack

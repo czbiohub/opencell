@@ -759,13 +759,33 @@ def multi_pval(cluster, clustered):
     return [enrch_clust.T, pval_df.T]
 
 
-
 def calc_thresh(enrich, fc_var1, fc_var2):
     """simple function to get FCD thresh to recognize hits"""
     if enrich < fc_var2:
         return np.inf
     else:
         return fc_var1 / (abs(enrich) - fc_var2)
+
+
+def insert_imputes_to_pval_df(pval_df, imputed_df, intensity_re, grouping_re):
+    """ the pval df does not have the column of booleans showing whether
+    the the prey intensity values are imputed or not. this convenience function
+    concatenates these columns
+    """
+    imputed_df = imputed_df.copy()
+    pval_df = pval_df.copy()
+
+    # identify all imputed values from the dataframe
+    imputes_only = pys.bool_imputes(imputed_df)
+    grouped_imputes = pys.group_replicates(imputes_only, intensity_re, grouping_re)
+
+    # identify preys which have imputed values in all three replicates
+    all_imputes = pys.imputed_bool_df(grouped_imputes)
+
+    imputes_joined = pd.concat([pval_df, all_imputes], join='inner', axis=1)
+    imputes_joined.sort_index(axis=1, inplace=True)
+
+    return imputes_joined
 
 
 def two_fdrs(pval_df, fdr1, fdr2):

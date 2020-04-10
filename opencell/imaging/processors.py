@@ -602,6 +602,7 @@ class FOVProcessor:
                 multichannel=False,
                 preserve_range=True,
                 anti_aliasing=False,
+                mode='reflect',
                 order=1
             )
 

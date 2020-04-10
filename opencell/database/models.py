@@ -809,9 +809,37 @@ class MicroscopyFOVAnnotation(Base):
     client_metadata = db.Column(postgresql.JSONB)
 
 
+class MassSpecPulldownPlate(Base):
+    '''
+    A mass spec plate prepped by the ML Group
+
+    Note that these plates consist of sets of pulldowns and are distinct from the plates
+    of crispr designs that appear in the plate_design and plate_instance tables
+
+    '''
+    __tablename__ = 'mass_spec_pulldown_plate'
+
+    # format is of the form 'CZBMPI_{plate_num:04d}'
+    id = db.Column(db.String, primary_key=True)
+
+    # link to the google sheet design of the plate mapping out pulldown
+    # target locations by well
+    plate_design_link = db.Column(db.String)
+
+    # Description of the pulldown (whether it is a repeat or subset, etc)
+    description = db.Column(db.String)
+
+    # timestamp column
+    date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
+
+    # one plate to many pulldowns
+    pulldowns = db.orm.relationship('MassSpecPulldown', back_populates='pulldown_plate')
+
+
 class MassSpecPulldown(Base):
     '''
-    every bait (cell_line) used in MS analysis
+    A pulldown performed on a cell_line and analyzed by ms-ms
+    (in which the GFP-tagged target was used as the 'bait')
     '''
 
     __tablename__ = 'mass_spec_pulldown'
@@ -842,10 +870,33 @@ class MassSpecPulldown(Base):
             (self.id, self.mass_spec_pulldown_plate_id, self.get_target_name())
 
 
+class MassSpecProteinGroup(Base):
+    '''
+    A protein group identified by msms in experiments
+    '''
+
+    __tablename__ = 'mass_spec_protein_group'
+
+    # id is a hash of unique set of peptide Uniprot ids that compose the protein group
+    id = db.Column(db.String, primary_key=True)
+
+    # a list of all protein names mapped to the protein group
+    gene_names = db.Column(postgresql.ARRAY(db.String))
+
+    # a list of all peptide Uniprot ids
+    protein_names = db.Column(postgresql.ARRAY(db.String))
+
+    # timestamp column
+    date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
+
+    # one protein_group to many hits
+    hits = db.orm.relationship('MassSpecHit', back_populates='protein_group')
+
+
 class MassSpecHit(Base):
     '''
-    A hit is an identified protein group with a mass-spec intensity value in each
-    pulldown. Here the table is populated with precomputed enrichment and p-value
+    A hit is a protein group identified in a pulldown and associated with a mass-spec intensity.
+    Here the table is populated with the pre-computed enrichment and p-value
     of the hit compared to a base distribution.
     '''
 
@@ -877,8 +928,7 @@ class MassSpecHit(Base):
     date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
 
     # many hits to one pulldown
-    pulldown = db.orm.relationship(
-        'MassSpecPulldown', back_populates='hits', uselist=False)
+    pulldown = db.orm.relationship('MassSpecPulldown', back_populates='hits', uselist=False)
 
     # one hit to one protein_group
     protein_group = db.orm.relationship(
@@ -888,50 +938,3 @@ class MassSpecHit(Base):
     __table_args__ = (
             db.UniqueConstraint(pulldown_id, protein_group_id),
     )
-
-
-class MassSpecProteinGroup(Base):
-    '''
-    every protein Group identified by msms in experiments
-    '''
-
-    __tablename__ = 'mass_spec_protein_group'
-
-    # id is a hash of unique set of peptide Uniprot ids that compose the protein group
-    id = db.Column(db.String, primary_key=True)
-
-    # a list of all protein names mapped to the protein group
-    gene_names = db.Column(postgresql.ARRAY(db.String))
-
-    # a list of all peptide Uniprot ids
-    protein_names = db.Column(postgresql.ARRAY(db.String))
-
-    # timestamp column
-    date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
-
-    # one protein_group to many hits
-    hits = db.orm.relationship('MassSpecHit', back_populates='protein_group')
-
-
-class MassSpecPulldownPlate(Base):
-    '''
-    every MS plate prepped by the ML Group
-
-    '''
-    __tablename__ = 'mass_spec_pulldown_plate'
-
-    # format is of the form 'CZBMPI_{plate_num:04d}'
-    id = db.Column(db.String, primary_key=True)
-
-    # link to the google sheet design of the plate mapping out pulldown
-    # target locations by well
-    plate_design_link = db.Column(db.String)
-
-    # Description of the pulldown (whether it is a repeat or subset, etc)
-    description = db.Column(db.String)
-
-    # timestamp column
-    date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
-
-    # one plate to many pulldowns
-    pulldowns = db.orm.relationship('MassSpecPulldown', back_populates='pulldown_plate')

@@ -488,7 +488,7 @@ class PolyclonalLineOperations:
             payload['annotations'] = self.line.annotation.categories if self.line.annotation else None
 
         if kind in ['all', 'facs'] and self.line.facs_dataset:
-            payload['facs_histograms'] = self.line.facs_dataset[0].simplify_histograms()
+            payload['facs_histograms'] = self.line.facs_dataset.simplify_histograms()
 
         if kind in ['all', 'rois', 'thumbnails']:
             payload['fovs'] = self.construct_fov_payload(kind=kind)
@@ -504,18 +504,16 @@ class PolyclonalLineOperations:
 
         # the sequencing percentages
         if self.line.sequencing_dataset:
-            sequencing_dataset = self.line.sequencing_dataset[0]
             scalars.update({
-                'hdr_all': sequencing_dataset.scalars.get('hdr_all'),
-                'hdr_modified': sequencing_dataset.scalars.get('hdr_modified')
+                'hdr_all': self.line.sequencing_dataset.scalars.get('hdr_all'),
+                'hdr_modified': self.line.sequencing_dataset.scalars.get('hdr_modified')
             })
 
         # the FACS area and relative median intensity
         if self.line.facs_dataset:
-            facs_dataset = self.line.facs_dataset[0]
             scalars.update({
-                'facs_area': facs_dataset.scalars.get('area'),
-                'facs_intensity': facs_dataset.scalars.get('rel_median_log')
+                'facs_area': self.line.facs_dataset.scalars.get('area'),
+                'facs_intensity': self.line.facs_dataset.scalars.get('rel_median_log')
             })
         return scalars
 

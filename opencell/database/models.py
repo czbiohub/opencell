@@ -454,7 +454,11 @@ class FACSDataset(Base):
     __tablename__ = 'facs_dataset'
 
     cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'), primary_key=True)
-    cell_line = db.orm.relationship('CellLine', backref='facs_dataset')
+
+    # one dataset to one cell_line
+    cell_line = db.orm.relationship(
+        'CellLine', backref=db.orm.backref('facs_dataset', uselist=False)
+    )
 
     # histograms
     histograms = db.Column(postgresql.JSONB)
@@ -500,10 +504,13 @@ class SequencingDataset(Base):
     __tablename__ = 'sequencing_dataset'
 
     cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'), primary_key=True)
-    cell_line = db.orm.relationship('CellLine', backref='sequencing_dataset')
 
-    # extracted properties
-    # (percent HDR among all alleles and modified alleles)
+    # one dataset to one cell_line
+    cell_line = db.orm.relationship(
+        'CellLine', backref=db.orm.backref('sequencing_dataset', uselist=False)
+    )
+
+    # extracted properties (percent HDR among all alleles and modified alleles)
     scalars = db.Column(postgresql.JSONB)
 
 
@@ -789,7 +796,7 @@ class MicroscopyFOVAnnotation(Base):
     # the client-side timestamp, app state, etc
     client_metadata = db.Column(postgresql.JSONB)
 
-   
+
 class MassSpecPulldown(Base):
     '''
     every bait (cell_line) used in MS analysis

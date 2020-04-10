@@ -789,7 +789,7 @@ class MicroscopyFOVAnnotation(Base):
     # the client-side timestamp, app state, etc
     client_metadata = db.Column(postgresql.JSONB)
 
-   
+
 class MassSpecPulldown(Base):
     '''
     every bait (cell_line) used in MS analysis
@@ -827,7 +827,7 @@ class MassSpecPulldown(Base):
 
     def __repr__(self):
         return "<Bait(id=%s, pulldown_plate=%s, target=%s)>" % \
-            (self.id, self.mass_spec_pulldown_plate_id, self.target_name())
+            (self.id, self.mass_spec_pulldown_plate_id, self.get_target_name())
 
 
 

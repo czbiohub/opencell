@@ -525,6 +525,8 @@ class PolyclonalLineOperations:
         payload = []
         for fov in self.line.fovs:
             fov_payload = {}
+
+            # basic metadata
             fov_metadata = {
                 'id': fov.id,
                 'score': fov.get_score(),
@@ -542,10 +544,12 @@ class PolyclonalLineOperations:
                 fov_metadata['exposure_time_488'] = metadata.data.get('exposure_time_488')
                 fov_metadata['max_intensity_488'] = metadata.data.get('max_intensity_488')
 
-            # whether the FOV can be cropped in z
+            # the position of the cell layer center (relative to the bottom of the stack)
             metadata = fov.get_result('clean-tiff-metadata')
-            if metadata:
-                fov_metadata['z_stack_complete'] = metadata.data.get('error') is None
+            if metadata and metadata.data.get('cell_layer_center') is not None:
+                fov_metadata['cell_layer_center'] = (
+                    metadata.data.get('cell_layer_center') * fov_metadata['z_step_size']
+                )
 
             if kind in ['all', 'rois']:
                 fov_payload['rois'] = [roi.as_dict() for roi in fov.rois]

@@ -143,10 +143,10 @@ const fovMetadataDefinitions = [
         accessor: fov => fov.metadata?.z_step_size?.toFixed(1),
         units: 'um',
     },{
-        id: 'z_stack_complete',
-        Header: 'Z-stack complete',
-        accessor: fov => String(fov.metadata?.z_stack_complete),
-        units: '',
+        id: 'cell_layer_center',
+        Header: 'Cell layer center',
+        accessor: fov => fov.metadata?.cell_layer_center?.toFixed(2),
+        units: 'um',
     },{
         id: 'pml_id',
         Header: 'Dataset ID',

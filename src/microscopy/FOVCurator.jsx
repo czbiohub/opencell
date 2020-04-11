@@ -51,7 +51,7 @@ function Thumbnail (props) {
         'thumbnail', 
         {
             'thumbnail-annotated': !!props.fov.annotation,
-            'thumbnail-flagged': (!metadata.z_stack_complete || metadata.max_intensity_488===65535),
+            'thumbnail-flagged': (metadata.cell_layer_center < 4 || metadata.max_intensity_488===65535),
         }
     );
 

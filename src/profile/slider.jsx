@@ -30,7 +30,7 @@ class Slider extends Component {
                     className="dib slider" 
                     min={this.props.min} 
                     max={this.props.max}
-                    value={this.props.value}
+                    value={parseInt(this.props.value)}
                     onChange={this.onChange}/>
                 </div>
             </div>

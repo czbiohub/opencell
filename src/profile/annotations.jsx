@@ -27,7 +27,7 @@ const qcLabels = [
     'No GFP', 'Low GFP', 'Low HDR',
     'Over-exposed', 'Disk artifact', 'Confluency off',
     'Cross-contamination', 'Re-sort',
-    'Interesting', 'Pretty',
+    'Interesting', 'Pretty', 'Mitotic cells'
 ];
 
 

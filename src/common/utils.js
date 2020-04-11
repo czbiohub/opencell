@@ -5,7 +5,7 @@ export function loadImage(url, onLoad) {
     // hard-coded xy size and number of z-slices
     // WARNING: these must match the stack to be loaded
     const imageSize = 600;
-    const numSlices = 65;
+    const numSlices = 55;
 
     const imageWidth = imageSize;
     const imageHeight = imageSize*numSlices;

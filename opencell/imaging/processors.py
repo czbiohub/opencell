@@ -96,9 +96,7 @@ class FOVProcessor:
         or a clonal descendent of a polyclonal line)
         '''
 
-        well_id = fov.cell_line.electroporation_line.well_id
-        plate_design = fov.cell_line.electroporation_line.electroporation.plate_instance.plate_design
-        crispr_design = [d for d in plate_design.crispr_designs if d.well_id == well_id].pop()
+        crispr_design = fov.cell_line.get_crispr_design()
 
         # roi_props for all ROIs cropped from this FOV (will often be empty)
         all_roi_rows = [roi.as_dict() for roi in fov.rois]
@@ -107,8 +105,8 @@ class FOVProcessor:
             fov_id=fov.id,
             pml_id=fov.dataset.pml_id,
             parental_line=fov.cell_line.parent.name,
-            plate_id=plate_design.design_id,
-            well_id=well_id,
+            plate_id=crispr_design.plate_design_id,
+            well_id=crispr_design.well_id,
             site_num=fov.site_num,
             src_type=fov.dataset.root_directory,
             raw_filepath=fov.raw_filename,
@@ -356,8 +354,8 @@ class FOVProcessor:
 
         # the z-position of the top and bottom of the cell layer,
         # relative to the cell layer center, in microns
-        rel_bottom = -5
-        rel_top = 6
+        cell_layer_bottom = -5
+        cell_layer_top = 6
 
         # the desired step size of the clean TIFFs in um
         target_step_size = 0.5
@@ -370,7 +368,7 @@ class FOVProcessor:
 
         step_size = self.z_step_size(self.pml_id)
         try:
-            stacks, result = tiff.align_cell_layer(rel_bottom, rel_top, step_size)
+            stacks, result = tiff.align_cell_layer(cell_layer_bottom, cell_layer_top, step_size)
         except Exception as error:
             result['error'] = str(error)
 
@@ -396,6 +394,7 @@ class FOVProcessor:
         stack = np.concatenate((stacks['405'][None, :], stacks['488'][None, :]), axis=0)
         dst_filepath = self.dst_filepath(dst_root, kind='clean', ext='tif')
         tifffile.imsave(dst_filepath, stack, dtype='uint16')
+
         result['final_stack_shape'] = stack.shape
         return result
 
@@ -405,12 +404,13 @@ class FOVProcessor:
         '''
         fov_size = 1024
         roi_size = 600
-        maxx = fov_size - roi_size
+        min_coord = 0
+        max_coord = fov_size - roi_size
         roi_top_left_positions = [
-            (0, 0),
-            (0, maxx),
-            (maxx, 0),
-            (maxx, maxx)
+            (min_coord, min_coord),
+            (min_coord, max_coord),
+            (max_coord, min_coord),
+            (max_coord, max_coord)
         ]
         return self._crop_rois(dst_root, roi_size, roi_top_left_positions)
 
@@ -460,8 +460,11 @@ class FOVProcessor:
 
         # the top and bottom of the cell layer, relative to its center, in microns
         # (these were empirically determined)
-        cell_layer_rel_bottom = -4
-        cell_layer_rel_top = 6
+        cell_layer_bottom = -5
+        cell_layer_top = 6
+
+        # wiggle room for the cell layer bottom (in microns)
+        bottom_wiggle_room = 1
 
         # the desired step size of the final stack in microns
         # (this is chosen to correspond to the xy pixel size,
@@ -473,17 +476,26 @@ class FOVProcessor:
 
         # the number of slices the resampled stack must have
         # (should be equal to (rel_top - rel_buttom) / target_step_size)
-        required_num_slices = 50
+        required_num_slices = 55
 
-        # crop around the cell layer in z
+        # crop (and maybe pad) around the cell layer in z
         aligned_stacks, alignment_result = tiff.align_cell_layer(
-            cell_layer_rel_bottom, cell_layer_rel_top, original_step_size)
+            cell_layer_bottom,
+            cell_layer_top,
+            step_size=original_step_size,
+            bottom_wiggle_room=bottom_wiggle_room
+        )
 
-        # if an alignment error occured, log it and attempt to continue
-        # (these errors occur when the cell layer center was too close to the edge of the z-stack,
-        # so that align_cell_layer was not able to crop around it)
+        result['cell_layer_top'] = cell_layer_top
+        result['cell_layer_bottom'] = cell_layer_bottom
+        result['bottom_wiggle_room'] = bottom_wiggle_room
+        result['alignment_result'] = alignment_result
+
+        # if an alignment error occured, log it and do not continue
+        # (these errors occur when the cell layer center was too close
+        # to the top or bottom of the z-stack)
         if alignment_result.get('error'):
-            result['error'] = alignment_result['error']
+            result['error'] = 'An error ocurred in align_cell_layer'
             return result, all_roi_props
 
         # for now, the ROIs span the full extent of the cell-layer-cropped stack
@@ -501,7 +513,6 @@ class FOVProcessor:
                 'shape': roi_shape,
                 'position': roi_position,
                 'xy_coords': (*roi_position[:2], *roi_shape[:2]),
-                'cell_layer_center_ind': alignment_result['cell_layer_center'],
                 'target_step_size': target_step_size,
                 'original_step_size': original_step_size,
                 'required_num_slices': required_num_slices,
@@ -530,12 +541,12 @@ class FOVProcessor:
             )
 
             # crop the raw stack
-            cropped_stack = stacks[channel][
+            stack = stacks[channel]
+            cropped_stack = stack[
                 z_ind:(z_ind + num_z),
                 row_ind:(row_ind + num_rows),
                 col_ind:(col_ind + num_cols)
-            ]
-            cropped_stack = cropped_stack.copy()
+            ].copy()
 
             # move the z dimension from the first to the last axis
             cropped_stack = np.moveaxis(cropped_stack, 0, -1)
@@ -559,7 +570,7 @@ class FOVProcessor:
             roi_props['min_intensity_%s' % channel] = min_intensity
             roi_props['max_intensity_%s' % channel] = max_intensity
 
-            # save the stack itself
+            # save the stack itself as a one-dimensional tile of z-slices
             cropped_stack = np.moveaxis(cropped_stack, -1, 0)
             tile = np.concatenate([zslice for zslice in cropped_stack], axis=0)
             imageio.imsave(dst_filepath, tile, format='jpg', quality=90)
@@ -570,13 +581,13 @@ class FOVProcessor:
     @staticmethod
     def maybe_resample_stack(stack, original_step_size, target_step_size, required_num_slices):
         '''
-        Resample and possibly crop or pad a z-stack so that it has the specified number of z-slices
+        Resample and possibly crop or pad a z-stack
+        so that it has the required number of z-slices
 
         stack : 3D numpy array with dimensions (x, y, z)
         original_step_size : the z-step size of the original stack (in microns)
-        target_step_size : the z-step size after resampling (in microns)
+        target_step_size : the desired z-step size after resampling (in microns)
         required_num_slices : the number of z-slices the resampled stack must have
-            (usually chosen so that the voxels of the resampled stack will be isotropic)
         '''
 
         did_resample_stack = False
@@ -591,21 +602,21 @@ class FOVProcessor:
                 multichannel=False,
                 preserve_range=True,
                 anti_aliasing=False,
-                order=1)
+                mode='reflect',
+                order=1
+            )
 
-        # pad or crop the stack in z so that there are the required number of slices
+        # pad or crop z-slices from the end (top) of the z-stack
+        # so that the stack has the required number of slices
         num_rows, num_cols, num_slices = stack.shape
         if num_slices < required_num_slices:
-            pad = np.zeros((num_rows, num_cols, required_num_slices - num_slices), dtype=stack.dtype)
+            pad = np.zeros(
+                (num_rows, num_cols, required_num_slices - num_slices),
+                dtype=stack.dtype
+            )
             stack = np.concatenate((stack, pad), axis=2)
-
         elif num_slices > required_num_slices:
-            num_extra = num_slices - required_num_slices
-            crop_ind = int(np.floor(num_extra/2))
-            if np.mod(num_extra, 2) == 0:
-                stack = stack[:, :, crop_ind:-crop_ind]
-            else:
-                stack = stack[:, :, crop_ind:-(crop_ind + 1)]
+            stack = stack[:, :, :required_num_slices]
 
         return stack, did_resample_stack
 

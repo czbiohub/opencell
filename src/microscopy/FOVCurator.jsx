@@ -62,11 +62,14 @@ function Thumbnail (props) {
         }
     );
 
-    const noDataFlag = props.fov.hasOwnProperty('thumbnails');
-
     return (
         <div className={divClassName} onClick={() => props.changeFov(metadata.id)}>
             <img className={imgClassName} src={`data:image/jpg;base64,${props.fov.thumbnails?.data}`}/>
+            <div className='thumbnail-caption'>
+                <span>{`${metadata.pml_id}`}</span>
+                <br></br>
+                <span>{`FOV ${metadata.id}`}</span>
+            </div>
         </div>
     );
 }

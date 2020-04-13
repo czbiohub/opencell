@@ -310,6 +310,11 @@ in order for the plots to be vertically aligned */
     border: 2px solid #db3737;
 }
 
+.thumbnail-caption {
+    text-align: center;
+    font-size: 12px;
+}
+
 .fov-curator-roi {
     position: absolute;
     pointer-events: none;

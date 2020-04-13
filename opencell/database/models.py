@@ -845,7 +845,7 @@ class MassSpecPulldown(Base):
     __tablename__ = 'mass_spec_pulldown'
     id = db.Column(db.Integer, primary_key=True)
     cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'))
-    pulldown_plate_id = db.Column(db.String, db.ForeignKey('pulldown_plate.id'))
+    pulldown_plate_id = db.Column(db.String, db.ForeignKey('mass_spec_pulldown_plate.id'))
 
     # timestamp column
     date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
@@ -907,7 +907,7 @@ class MassSpecHit(Base):
     protein_group_id = db.Column(db.String, db.ForeignKey('mass_spec_protein_group.id'))
 
     # foreign key of each pulldown target from pulldown table
-    pulldown_id = db.Column(db.Integer, db.ForeignKey('pulldown.id'))
+    pulldown_id = db.Column(db.Integer, db.ForeignKey('mass_spec_pulldown.id'))
 
     # p-value of the hit's MS intensity
     pval = db.Column(db.Float, nullable=False)

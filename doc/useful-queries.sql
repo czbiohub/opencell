@@ -1,3 +1,8 @@
+-- force drop all connections
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE datname = 'opencelldb';
+
 
 -- cell line metadata
 CREATE OR REPLACE VIEW public.cell_line_metadata AS
@@ -94,6 +99,14 @@ left join microscopy_fov fov on d.pml_id = fov.pml_id
 group by d.pml_id, d.date
 order by d.pml_id desc;
 
+-- count FOVs (or pulldowns) per cell line
+select * from cell_line_metadata
+left join (
+	select cell_line_id, count(*) as n from microscopy_fov
+	group by cell_line_id
+	order by n desc
+) pd using (cell_line_id);
+
 -- delete FOVs and descendents from particular datasets
 delete from microscopy_fov_result
 where fov_id in (
@@ -138,3 +151,7 @@ where clm.cell_line_id not in (
 )
 and not ('no_gfp' = any(cats))
 order by (plate_id, well_id);
+
+-- group results by day
+select count(*), to_char(date_created, 'YYYY-MM-DD') as d from microscopy_fov_result
+group by d;

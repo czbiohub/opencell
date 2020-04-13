@@ -45,7 +45,7 @@ class MassSpecPolyclonalOperations(operations.PolyclonalLineOperations):
         # drop any row that has same pulldown information
         if self.line.mass_spec_pulldowns:
             for pulldown in self.line.mass_spec_pulldowns:
-                if pulldown.mass_spec_pulldown_plate_id == row.pulldown_plate_id:
+                if pulldown.pulldown_plate_id == row.pulldown_plate_id:
                     operations.delete_and_commit(session, pulldown)
 
         pulldown = models.MassSpecPulldown(
@@ -121,7 +121,7 @@ class MassSpecPulldownOperations:
         # remove duplicate entries / bulk commit
         dup_hits = session.query(models.MassSpecHit)\
             .join(models.MassSpecPulldown)\
-            .filter(models.MassSpecPulldown.mass_spec_pulldown_plate_id == plate_id)\
+            .filter(models.MassSpecPulldown.pulldown_plate_id == plate_id)\
             .all()
 
         for hit in dup_hits:
@@ -141,7 +141,7 @@ class MassSpecPulldownOperations:
         # get pulldown_id
         # filter first for specific pulldown plate
         pulldowns = session.query(models.MassSpecPulldown)\
-            .filter(models.MassSpecPulldown.mass_spec_pulldown_plate_id == plate_id)\
+            .filter(models.MassSpecPulldown.pulldown_plate_id == plate_id)\
             .all()
         for pulldown in pulldowns:
             if pulldown.get_target_name() == target_name:
@@ -155,8 +155,8 @@ class MassSpecPulldownOperations:
         hashed_protein_id, _ = ms_utils.hash_protein_group_id(row.name)
 
         hit = models.MassSpecHit(
-            mass_spec_protein_group_id=hashed_protein_id,
-            mass_spec_pulldown_id=pulldown_id,
+            protein_group_id=hashed_protein_id,
+            pulldown_id=pulldown_id,
             pval=row.pvals,
             enrichment=row.enrichment,
             is_significant_hit=row.hits,

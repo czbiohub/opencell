@@ -50,7 +50,7 @@ class MassSpecPolyclonalOperations(operations.PolyclonalLineOperations):
 
         pulldown = models.MassSpecPulldown(
             cell_line=self.line,
-            mass_spec_pulldown_plate_id=row.pulldown_plate_id)
+            pulldown_plate_id=row.pulldown_plate_id)
         operations.add_and_commit(session, pulldown, errors=errors)
 
 

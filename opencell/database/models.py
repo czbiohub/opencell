@@ -867,7 +867,7 @@ class MassSpecPulldown(Base):
 
     def __repr__(self):
         return "<Bait(id=%s, pulldown_plate=%s, target=%s)>" % \
-            (self.id, self.mass_spec_pulldown_plate_id, self.get_target_name())
+            (self.id, self.pulldown_plate_id, self.get_target_name())
 
 
 class MassSpecProteinGroup(Base):

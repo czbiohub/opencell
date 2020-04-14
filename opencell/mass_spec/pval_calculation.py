@@ -759,10 +759,62 @@ def multi_pval(cluster, clustered):
     return [enrch_clust.T, pval_df.T]
 
 
-
 def calc_thresh(enrich, fc_var1, fc_var2):
     """simple function to get FCD thresh to recognize hits"""
     if enrich < fc_var2:
         return np.inf
     else:
         return fc_var1 / (abs(enrich) - fc_var2)
+
+
+def insert_imputes_to_pval_df(pval_df, imputed_df, intensity_re, grouping_re):
+    """ the pval df does not have the column of booleans showing whether
+    the the prey intensity values are imputed or not. this convenience function
+    concatenates these columns
+    """
+    imputed_df = imputed_df.copy()
+    pval_df = pval_df.copy()
+
+    # identify all imputed values from the dataframe
+    imputes_only = pys.bool_imputes(imputed_df)
+    grouped_imputes = pys.group_replicates(imputes_only, intensity_re, grouping_re)
+
+    # identify preys which have imputed values in all three replicates
+    all_imputes = pys.imputed_bool_df(grouped_imputes)
+
+    imputes_joined = pd.concat([pval_df, all_imputes], join='inner', axis=1)
+    imputes_joined.sort_index(axis=1, inplace=True)
+
+    return imputes_joined
+
+
+def two_fdrs(pval_df, fdr1, fdr2):
+    """ compute 1% FDR and 5% FDR """
+
+    pval_df = pval_df.copy()
+
+    # get a list of baits
+    baits = list(set([x[0] for x in list(pval_df) if x[0] != 'gene_names']))
+
+
+    # Find hits for FDR1 and FDR2
+    for bait in baits:
+        pval = pval_df[bait]['pvals']
+        enrichment = pval_df[bait]['enrichment']
+        # 1% thresh
+
+        first_thresh = enrichment.apply(calc_thresh,
+            args=[fdr1[0], fdr1[1]])
+
+        # 5% thresh
+        second_thresh = enrichment.apply(calc_thresh,
+            args=[fdr2[0], fdr2[1]])
+
+        pval_df[(bait, 'hits')] = np.where(
+            (pval > first_thresh), True, False)
+
+        pval_df[(bait, 'minor_hits')] = np.where(
+            ((pval < first_thresh) & (pval > second_thresh)), True, False)
+
+    pval_df.sort_index(axis=1, inplace=True)
+    return pval_df

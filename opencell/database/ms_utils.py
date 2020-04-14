@@ -3,6 +3,19 @@ import hashlib
 import numpy as np
 from datetime import datetime
 
+def find_mismatching_target_names(plates_df, hits_df):
+    """
+    Identify and print gene names that are mismatching between the plates
+    dataframe and the hits dataframe so that the names could be manually changed
+    """
+
+    # get target names from hits_df
+    hits_genes = set([x[0].split('_')[1] for x in list(hits_df) if 'P0' in x[0]])
+
+    # get target names from plates_df
+    plate_genes = set(plates_df['target_name'].values.tolist())
+
+    return hits_genes - plate_genes
 
 def format_ms_plate(plate_id):
     """

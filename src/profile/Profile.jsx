@@ -53,12 +53,8 @@ class App extends Component {
         // check that the target has changed
         if (cellLine.metadata.cell_line_id===this.state.cellLineId) return;
 
-        // only the top two highest-scoring FOVs, plus any FOVs with manual annotations,
-        // are available in the volume/slicer viewer
-        // (we assume the FOVs are sorted by score)
-        const topTwoFovs = cellLine.fovs.slice(0, 2);
-        const annotatedFovs = cellLine.fovs.slice(2).filter(fov => fov.annotation);
-        const viewableFovs = [...topTwoFovs, ...annotatedFovs];
+        // only FOVs with manual annotations are displayed in the volume/slice viewer
+        const viewableFovs = cellLine.fovs.filter(fov => fov.annotation);
 
         this.cellLine = cellLine;
         this.setState({

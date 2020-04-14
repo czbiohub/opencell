@@ -97,7 +97,7 @@ export default class ViewerContainer extends Component {
 
     render () {
         
-        if (!this.props.rois.length) return null;
+        if (!this.props.rois.length) return (<div className="f3 tc pa5">No ROIs found</div>);
 
         let localizationContent;
         if (this.state.localizationMode==='Volume') {
@@ -106,11 +106,11 @@ export default class ViewerContainer extends Component {
         if (this.state.localizationMode==='Slice') {
             localizationContent = <SliceViewer volumes={this.volumes} {...this.state}/>
         }
-        
+
         // the current FOV and ROI
         const fov = this.props.fovs.filter(fov => fov.metadata.id == this.props.fovId)[0];
         const roi = this.props.rois.filter(roi => roi.id == this.props.roiId)[0];
-
+    
         return (
             <div>
 

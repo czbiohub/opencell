@@ -27,16 +27,13 @@ export default class Overview extends Component {
     componentDidUpdate(prevProps) {
 
         if (prevProps.cellLineId===this.props.cellLineId) return;
-        if (!this.props.fovs.length) return;
 
-        // concat all ROIs and sort by kind ('corner' or 'annotated')
+        // concat all ROIs (because fov.rois is a list)
         let rois = [].concat(...this.props.fovs.map(fov => fov.rois));
-        rois = rois.sort((roi1, roi2) => roi1.kind > roi2.kind ? 1 : -1);
-
         this.setState({
             rois,
-            roiId: rois[0].id,
-            fovId: rois[0].fov_id,
+            roiId: rois[0]?.id,
+            fovId: rois[0]?.fov_id,
         });
     }
 

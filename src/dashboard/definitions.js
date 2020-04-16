@@ -42,7 +42,7 @@ const sequencingColormapName = 'PuBu';
 export const columnDefs = [
     {
         Header: 'Plate ID',
-        accessor: 'plate_design_id',
+        accessor: 'plate_id',
         width: 50,
     },{
         Header: 'Well ID',
@@ -71,14 +71,15 @@ export const columnDefs = [
         Header: 'Term',
         accessor: 'target_terminus',
         width: 50,
-        accessor: row => row.target_terminus[0],
+        accessor: row => row.target_terminus ? row.target_terminus[0] : null,
     },{
         Header: 'ENST ID',
         accessor: 'transcript_id',
         width: 150,
     },{
+        id: 'hek_tpm',
         Header: 'TPM (HEK293)',
-        accessor: 'hek_tpm',
+        accessor: row => row.scalars?.hek_tpm,
         getProps: scalarCellStyle('OrRd', [0, 2000]),
     },{
         Header: 'Protospacer name',
@@ -101,23 +102,13 @@ export const columnDefs = [
     },{
         id: 'facs_area',
         Header: 'FACS area',
-        accessor: row => row.facs_results ? row.facs_results.area : undefined,
+        accessor: row => row.scalars?.facs_area,
         getProps: scalarCellStyle(facsColormapName, [0, 1]),
     },{
         id: 'facs_rel_median_log',
         Header: 'FACS intensity (median)',
-        accessor: row => row.facs_results ? row.facs_results.rel_median_log : undefined,
+        accessor: row => row.scalars?.facs_intensity,
         getProps: scalarCellStyle(facsColormapName, [0, 2]),
-    },{
-        id: 'facs_rel_percentile99_log',
-        Header: 'FACS intensity (max)',
-        accessor: row => row.facs_results ? row.facs_results.rel_percentile99_log : undefined,
-        getProps: scalarCellStyle(facsColormapName, [0, 3]),
-    },{
-        id: 'facs_raw_std',
-        Header: 'FACS width',
-        accessor: row => row.facs_results ? row.facs_results.raw_std : undefined,
-        getProps: scalarCellStyle(facsColormapName, [0, 1500]),
     },{
         id: 'facs_plot',
         Header: 'FACS plot',
@@ -138,12 +129,12 @@ export const columnDefs = [
     },{
         id: 'hdr_all',
         Header: 'HDR (all)',
-        accessor: row => row.sequencing_results ? row.sequencing_results.hdr_all : undefined,
+        accessor: row => row.scalars?.hdr_all,
         getProps: scalarCellStyle(sequencingColormapName, [0, 1]),
     },{
         id: 'hdr_modified',
         Header: 'HDR (modified)',
-        accessor: row => row.sequencing_results ? row.sequencing_results.hdr_modified : undefined,
+        accessor: row => row.scalars?.hdr_modified,
         getProps: scalarCellStyle(sequencingColormapName, [0, 1]),
     },
 ];
@@ -159,7 +150,7 @@ columnDefs.forEach(def => def.width = def.width ? def.width : 100);
 
 // default selected columns in react-table mode
 export const defaultSelectedColumnIds = [
-    'plate_design_id', 
+    'plate_id', 
     'well_id', 
     'target_name', 
     'target_family', 
@@ -175,7 +166,7 @@ export const columnGroups = [
     {
         name: 'Metadata',
         ids: [
-            'plate_design_id', 
+            'plate_id', 
             'well_id', 
             'cell_line_id',
             'electroporation_date',
@@ -205,8 +196,6 @@ export const columnGroups = [
         ids: [
             'facs_area',
             'facs_rel_median_log',
-            'facs_rel_percentile99_log',
-            'facs_raw_std',
             'facs_plot',
         ],
     },{
@@ -229,7 +218,7 @@ export const columnGroups = [
 export const filterDefs = [
     {
         name: 'Plate ID',
-        accessor: 'plate_design_id',
+        accessor: 'plate_id',
         values: [],
     },{
         name: 'Gene family',

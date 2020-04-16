@@ -145,7 +145,7 @@ class FACSPlot extends Component {
 
     fetchAndConstructData () {
 
-        fetch(`${settings.apiRoot}/lines/${this.props.cellLineId}?kind=facs`)
+        fetch(`${settings.apiUrl}/lines/${this.props.cellLineId}?kind=facs`)
             .then(result => result.json())
             .then(data => {
                     this.constructLineData(data.facs_histograms);

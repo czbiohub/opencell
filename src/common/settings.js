@@ -1,8 +1,15 @@
 
+// z-stack shape
+const zStackShape = [600, 600, 55];
 
-const localApi = 'http://localhost:5000';
-const capApi = 'http://cap.czbiohub.org:5001';
+
+// API URLs
+const devApi = 'http://localhost:5000';
+const prodApi = `http://${window.location.host}/api`;
+
+let apiUrl = devApi;
 
 export default {
-    apiRoot: localApi,
+    zStackShape,
+    apiUrl,
 }

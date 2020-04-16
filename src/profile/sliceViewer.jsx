@@ -6,14 +6,14 @@ import 'tachyons';
 import './Profile.css';
 
 
-class SliceViz extends Component {
+export default class SliceViewer extends Component {
 
     constructor (props) {
 
         super(props);
         this.state = {};
 
-        this.initViz = this.initViz.bind(this);
+        this.initViewer = this.initViewer.bind(this);
         this.maybeInitData = this.maybeInitData.bind(this);
         this.displaySlice = this.displaySlice.bind(this);
 
@@ -36,7 +36,7 @@ class SliceViz extends Component {
 
     
     componentDidMount() {
-        this.initViz();
+        this.initViewer();
         if (this.props.stacksLoaded) {
             this.maybeInitData();
             this.displaySlice();
@@ -77,7 +77,7 @@ class SliceViz extends Component {
     }
 
 
-    initViz() {
+    initViewer() {
 
         // how to display an image given a linearized uint8 array
         // https://stackoverflow.com/questions/42410080/draw-an-exisiting-arraybuffer-into-a-canvas-without-copying
@@ -120,11 +120,12 @@ class SliceViz extends Component {
 
         if (!this.props.volumes) return;
 
-        const scaleIntensity = (intensity, min, max) => {
+        const scaleIntensity = (intensity, min, max, gamma) => {
             if (intensity < min) return 0;
             if (intensity > max) return 255;
             intensity -= min;
             intensity /= (max - min);
+            intensity = Math.pow(intensity, gamma);
             intensity *= 255;
             return intensity;
         }
@@ -138,13 +139,16 @@ class SliceViz extends Component {
             const ind = this.volumeInds[this.props.localizationChannel];
     
             const [min, max] = [dapiRange, gfpRange][ind];
+            const gamma = [this.props.dapiGamma, this.props.gfpGamma][ind];
+
             const slice = this.props.volumes[ind].data.slice(
-                this.props.zIndex*this.numPx, (this.props.zIndex + 1)*this.numPx);
-            
+                this.props.zIndex*this.numPx, (this.props.zIndex + 1)*this.numPx
+            );
+
             let val;
             let sliceInd = 0;
             for (let ind = 0; ind < this.imData.length; ind += 4) {
-                val = scaleIntensity(slice[sliceInd], min, max);
+                val = scaleIntensity(slice[sliceInd], min, max, gamma);
                 this.imData[ind] = val;
                 this.imData[ind + 1] = val;
                 this.imData[ind + 2] = val;
@@ -168,8 +172,8 @@ class SliceViz extends Component {
             let gfpVal, dapiVal;
             for (let ind = 0; ind < this.imData.length; ind += 4) {
 
-                gfpVal = scaleIntensity(slices[this.gfpInd][sliceInd], gfpRange[0], gfpRange[1]);
-                dapiVal = scaleIntensity(slices[this.dapiInd][sliceInd], dapiRange[0], dapiRange[1]);
+                gfpVal = scaleIntensity(slices[this.gfpInd][sliceInd], gfpRange[0], gfpRange[1], this.props.gfpGamma);
+                dapiVal = scaleIntensity(slices[this.dapiInd][sliceInd], dapiRange[0], dapiRange[1], this.props.dapiGamma);
 
                 this.imData[ind] = gfpVal + redRatio*dapiVal;
                 this.imData[ind + 1] = gfpVal + greenRatio*dapiVal;
@@ -205,5 +209,3 @@ class SliceViz extends Component {
         );
     }
 }
-
-export default SliceViz;

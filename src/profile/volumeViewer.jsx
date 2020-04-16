@@ -4,22 +4,23 @@ import * as THREE from 'three';
 
 import React, { Component } from 'react';
 
+import settings from '../common/settings.js';
+
 // imports required for volume renderings from three.js examples
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { VolumeRenderShader1 } from 'three/examples/jsm/shaders/VolumeShader.js';
+import { VolumeRenderShader1 } from './VolumeShader.js';
 
 import 'tachyons';
 import './Profile.css';
 
 
-class VolumeViz extends Component {
+export default class VolumeViewer extends Component {
 
     constructor (props) {
-
         super(props);
         this.state = {};
 
-        this.initViz = this.initViz.bind(this);
+        this.initViewer = this.initViewer.bind(this);
         this.renderVolume = this.renderVolume.bind(this);
         this.updateUniforms = this.updateUniforms.bind(this);
 
@@ -28,21 +29,22 @@ class VolumeViz extends Component {
 
         this.getMinMax = this.getMinMax.bind(this);
         this.getVolume = this.getVolume.bind(this);
-
     }
 
 
-    getMinMax() {
+    getMinMax(channel) {
+
         const minMaxs = {
-            'DAPI': [this.props.dapiMin, this.props.dapiMax],
-            'GFP': [this.props.gfpMin, this.props.gfpMax],
-            'Both': [this.props.gfpMin, this.props.gfpMax],
+            'DAPI': [this.props.dapiMin/100, this.props.dapiMax/100, this.props.dapiGamma],
+            'GFP': [this.props.gfpMin/100, this.props.gfpMax/100, this.props.gfpGamma],
         };
-        return minMaxs[this.props.localizationChannel].map(val => val/100);
+
+        minMaxs['Both'] = minMaxs['GFP'];
+        return minMaxs[channel];
     }
 
 
-    getVolume() {
+    getVolume(channel) {
         // WARNING: the channel indicies here must match those found in App.componentDidMount
         const inds = {
             'DAPI': 0,
@@ -50,15 +52,15 @@ class VolumeViz extends Component {
             'Both': 1,
         };
 
-        return this.props.volumes[inds[this.props.localizationChannel]];
+        return this.props.volumes[inds[channel]];
     }
-    
+
 
     componentDidMount() {
         // data-independent threejs initialization
-        this.initViz();
+        this.initViewer();
 
-        // if the data (NRRD files) have loaded
+        // if the stacks (as PNG tiles) have loaded
         if (this.props.stacksLoaded) {
             this.maybeCreateMaterial();
             this.updateUniforms(['u_data', 'u_clim']);
@@ -69,10 +71,10 @@ class VolumeViz extends Component {
     componentDidUpdate(prevProps) {
 
         // HACK: if the app hasn't loaded, the user has changed targets,
-        // which means we are waiting for the NRRD files to load,
+        // which means we are waiting for the z-stacks to load,
         // and this method will fire again once they do (and stacksLoaded is set to true)
         // Here, we go around react and use a state-independent flag to remember this fact
-        // in order to reload the texture when this method is called again after the NRRD files have loaded
+        // in order to reload the texture when this method is called again after the stacks have loaded
         if (!this.props.stacksLoaded) {
             this.reloadTexture = true;
             return;
@@ -90,24 +92,24 @@ class VolumeViz extends Component {
         } else {
             this.updateUniforms(['u_clim']);
         }
-
     }
 
+    
     updateUniforms(fields) {
 
         if (fields.includes('u_data')) {
-            this.material_gray.uniforms['u_data'].value = this.createTexture(this.getVolume());
+            this.material_gray.uniforms['u_data'].value = this.createTexture(this.getVolume(this.props.localizationChannel));
         }
         if (fields.includes('u_clim')) {
-            this.material_gray.uniforms['u_clim'].value.set(...this.getMinMax());
+            this.material_gray.uniforms['u_clim'].value.set(...this.getMinMax(this.props.localizationChannel));
         }
 
         // the blue material for two-color mode
         if (fields.includes('u_data')) {
-            this.material_blue.uniforms['u_data'].value = this.createTexture(this.props.volumes[0]);
+            this.material_blue.uniforms['u_data'].value = this.createTexture(this.getVolume('DAPI'));
         }
         if (fields.includes('u_clim')) {
-            this.material_blue.uniforms['u_clim'].value.set(this.props.dapiMin/100, this.props.dapiMax/100);
+            this.material_blue.uniforms['u_clim'].value.set(...this.getMinMax('DAPI'));
         }
 
         // only show the blue mesh (DAPI) in two-color mode
@@ -117,7 +119,7 @@ class VolumeViz extends Component {
     }
 
 
-    initViz() {
+    initViewer() {
 
         // set the height of the canvas to the container's width
         const containerAspect = 1;
@@ -197,7 +199,7 @@ class VolumeViz extends Component {
         // hack-ish way to determine whether this method has already been called once
         if (this.material_gray) return;
 
-        const volume = this.getVolume();
+        const volume = this.getVolume(this.props.localizationChannel);
 
         const shape = [volume.xLength, volume.yLength, volume.zLength];
         const center = shape.map(val => val/2 - .5);
@@ -278,7 +280,6 @@ class VolumeViz extends Component {
         //group.scale.set(1, 1, 2);
 
         this.scene.add(group);
-
     }
 
 
@@ -296,5 +297,3 @@ class VolumeViz extends Component {
         );
     }
 }
-
-export default VolumeViz;

@@ -15,59 +15,56 @@ button:focus {
     outline: none;
 }
 
-/* override tachyon's blue */
-.blue {
-    color: #01a1dd;
-}
-
-.container-header {
-    color: #333;
-}
-
-.opencell-logo {
-    font-size: 40px;
-    font-weight: 100;
-    letter-spacing: 2px;
-}
-
 .loading-overlay {
     position: absolute;
+    top: 0px;
+    left: 0px;
     width: 100%;
     height: 100%;
     background-color: white;
     opacity: .7;
 }
 
-
-.header-metadata ul {
-    margin-left: 0px;
-    list-style: none;
-    display: block;
-    clear: none;
-    white-space: nowrap;
-
+/* override tachyon's blue */
+.blue {
+    color: #01a1dd;
 }
 
-.header-metadata li {
-    display: inline-block;
-    vertical-align: top;
-    margin-right: 30px;
+.flex-0-0-auto {
+    flex: 0 0 auto;
 }
 
-.header-metadata abbr {
+
+.header-container > div {
+    flex: 0 0 auto;
+}
+
+.header-opencell-title {
+    font-size: 40px;
+    font-weight: 100;
+    letter-spacing: 2px;
+}
+
+.header-target-name {
+    font-size: 66px;
+}
+
+.header-metadata-item {
+    margin-right: 25px;
+}
+
+.header-metadata-item abbr {
     text-decoration: none;
     line-height: 1em;
     margin-left: 2px;
     font-size: 14px;
 }
 
-.header-metadata-label {
-    display: block;
+.header-metadata-item-label {
     color: #aaa;
 }
 
 .header-search-label {
-    display: block;
     color: #aaa;
     padding-top: 5px;
 }
@@ -80,6 +77,10 @@ button:focus {
     text-transform: uppercase;
 }
 
+/* the header for each main panel/section */
+.section-header {
+    color: #333;
+}
 
 
 /* --------------------- custom div-based buttons --------------------- */
@@ -87,22 +88,19 @@ button:focus {
     display: inline-block;
 	width: auto;
     cursor: pointer;
-    padding-left: 3px;
-    padding-right: 3px;
+    padding: 4px;
     margin-right: 10px;
-    border-bottom: 1px solid #333;
     line-height: 1.42;
+    border-bottom: 1px solid #333;
 }
 
 .simple-button:hover {
-	background-color: #eee;
+    background-color: #d1d4d622;
 }
 
 .simple-button-active, .simple-button-active:hover {
     font-weight: bold;
-    /* background-color: #ddd; rgba(78, 174, 234, 0.3); */
-    background-color: #ddd;
-    border-bottom: none;
+    background-color: #d1d4d64d;
 }
 
 .simple-button-group-label {
@@ -129,10 +127,10 @@ button:focus {
     outline: none; 
     -webkit-transition: .2s; 
     transition: opacity .2s;
-  }
+}
   
-  /* The slider handle (use -webkit- (Chrome, Opera, Safari, Edge) and -moz- (Firefox) to override default look) */ 
-  .slider::-webkit-slider-thumb {
+/* The slider handle (use -webkit- (Chrome, Opera, Safari, Edge) and -moz- (Firefox) to override default look) */ 
+.slider::-webkit-slider-thumb {
     -webkit-appearance: none; 
     appearance: none;
     width: 15px; 
@@ -140,52 +138,69 @@ button:focus {
     border-radius: 50%;
     background: #666;
     cursor: pointer; 
-  }
-  
-  .slider::-moz-range-thumb {
+}
+
+.slider::-moz-range-thumb {
     width: 15px;
     height: 15px;
     border-radius: 50%;
     background: #666; 
     cursor: pointer; 
-  }
+}
 
 
 
 /* --------------------- Volcano plot --------------------- */
 
-  .scatterplot-container .tick line {
-      stroke: #ccc;
-      stroke-width: 1px;
-      stroke-dasharray: 2;
-  }
+.scatterplot-container .tick line {
+    stroke: #ccc;
+    stroke-width: 1px;
+    stroke-dasharray: 2;
+}
 
-  .scatterplot-container .axis path {
-      stroke: #cccccc00 !important;
-      stroke-width: 1px;
-  }
+.scatterplot-container .axis path {
+    stroke: #cccccc00 !important;
+    stroke-width: 1px;
+}
 
-  .scatterplot-container .axis text {
-      font-size: 12px;
-  }
+.scatterplot-container .axis text {
+    font-size: 12px;
+}
 
-  .scatter-caption {
-      font-size: 12px;
-      pointer-events: none;
-  }
+.scatter-caption {
+    font-size: 12px;
+    pointer-events: none;
+}
 
-  .volcano-fdr-line {
-      fill: none;
-      stroke: #333;
-      stroke-width: 1px;
-      stroke-dasharray: 4;
-  }
+.volcano-fdr-line {
+    fill: none;
+    stroke: #333;
+    stroke-width: 1px;
+    stroke-dasharray: 4;
+}
+
+
+.protein-function-container {
+    height: 150px;
+    overflow: auto;
+    line-height: 1.33;
+}
+
+/* expression and facs plot containers should have the same margins
+in order for the plots to be vertically aligned */
+.expression-plot-container, 
+.facs-plot-container {
+    margin-left: -20px;
+    margin-right: 10px;
+    margin-top: 10px;
+}
+
 
 
 /* --------------------- expression scatterplot and FACS plot --------------------- */
 
-.facs-container .tick path, 
-.facs-container .axis line,
+.facs-plot-container .tick path, 
+.facs-plot-container .axis line,
 .expression-plot-container .tick path, 
 .expression-plot-container .axis line {
     stroke: #ccc;
@@ -194,12 +209,12 @@ button:focus {
 }
 
 /* the bottom-most horizontal axis line in the FACS plot should be solid and darker */
-.facs-container .axis .bottom line {
+.facs-plot-container .axis .bottom line {
     stroke: #666;
     stroke-dasharray: none;
 }
 
-.facs-container .axis text,
+.facs-plot-container .axis text,
 .expression-plot-container .axis text {
     font-size: 14px;
 }
@@ -210,33 +225,32 @@ button:focus {
 /* --------------------- d3-tip styles --------------------- */
 /* copied from d3-tip examples: https://github.com/caged/d3-tip */
 
-  .d3-tip {
+.d3-tip {
     padding: 12px;
     background: rgba(0, 0, 0, 0.8);
     color: #fff;
     border-radius: 4px;
     pointer-events: none;
-  }
-  
-  /* Creates a small triangle extender for the tooltip */
-  .d3-tip:after {
+}
+
+/* Creates a small triangle extender for the tooltip */
+.d3-tip:after {
     box-sizing: border-box;
     display: inline;
     font-size: 10px;
-    width: 100%;
     line-height: 1;
     color: rgba(0, 0, 0, 0.8);
     position: absolute;
     pointer-events: none;
-  }
+}
 
-  .d3-tip.n:after {
+.d3-tip.n:after {
     content: "\25BC";
     margin: -1px 0 0 0;
     top: 100%;
     left: 0;
     text-align: center;
-  }
+}
 
 
 
@@ -266,4 +280,47 @@ button:focus {
 
 .ReactTable .rt-tbody .rt-tr-group:hover {
 	background-color: #eee;
+}
+
+
+
+/* --------------------- FOV curator --------------------- */
+
+.thumbnail-grid {
+    display: grid;
+    grid-auto-flow: row;
+    grid-template-rows: auto;
+    grid-template-columns: repeat(auto-fit, 100px);
+}
+
+.thumbnail-container:hover {
+    border: 1px solid #aaa;
+}
+
+.thumbnail-container-active,
+.thumbnail-container-active:hover {
+    border: 1px solid #111;
+}
+
+.thumbnail-flagged {
+    opacity: .5;
+}
+
+.thumbnail-annotated {
+    border: 2px solid #db3737;
+}
+
+.thumbnail-caption {
+    text-align: center;
+    font-size: 12px;
+}
+
+.fov-curator-roi {
+    position: absolute;
+    pointer-events: none;
+    border: 2px solid #db3737;
+}
+
+.fov-curator-roi-new {
+    border-style: dashed;
 }

@@ -68,7 +68,7 @@ export default class Overview extends Component {
 
                     {/* Center column - sliceViewer and volumeViewer */}
                     {/* note the hard-coded width (because the ROIs are always 600px */}
-                    <div className="pl3 pr3" style={{flexBasis: '650px'}}>
+                    <div className="pl3 pr3" style={{width: '650px'}}>
                         <SectionHeader title='Localization'/>
                         <ViewerContainer
                             fovs={this.props.fovs}

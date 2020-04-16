@@ -40,28 +40,31 @@ export default class ViewerContainer extends Component {
         // the number of slices in the z-stacks
         this.numSlices = settings.zStackShape[2];
 
+        // default values for the display settings
+        this.defaultDisplayState = {
+            gfpMin: 0,
+            gfpMax: 50,
+            gfpGamma: 1,
+            dapiMin: 5,
+            dapiMax: 50,
+            dapiGamma: 1,
+        }
+
         this.state = {
 
             stacksLoaded: false,
 
             // 'Volume' or 'Slice'
-            localizationMode: 'Slice',
+            localizationMode: "Slice",
 
-            // 'GFP' or 'DAPI' or 'Both'
-            localizationChannel: 'Both',
-
-            // initial slider values
-            gfpMin: 0,
-            gfpMax: 50,
-            gfpGamma: 1,
-
-            dapiMin: 5,
-            dapiMax: 50,
-            dapiGamma: 1,
+            // 'GFP', 'DAPI', or 'Both'
+            localizationChannel: "Both",
 
             // the middle of the z-stack
             zIndex: parseInt(this.numSlices/2),
         };
+
+        this.state = {...this.defaultDisplayState, ...this.state};
     }
 
 
@@ -125,14 +128,14 @@ export default class ViewerContainer extends Component {
             {/* display controls */}
             <div className="pt3 pb2">
                 <div className='fl w-100 pb3'>
-                    <div className='dib pr4'>
+                    <div className='dib pr3'>
                         <ButtonGroup 
                             label='Mode' 
                             values={['Slice', 'Volume']}
                             activeValue={this.state.localizationMode}
                             onClick={value => this.setState({localizationMode: value})}/>
                     </div>
-                    <div className='dib pr4'>
+                    <div className='dib pr3'>
                         <ButtonGroup 
                             label='Channel' 
                             values={['DAPI', 'GFP', 'Both']}
@@ -156,6 +159,13 @@ export default class ViewerContainer extends Component {
                                 text={roiLabel(roi)}
                             />
                         </Select>
+                    </div>
+                    <div className="dib pr3">
+                        <Button
+                            className="pl2 bp3-button-custom"
+                            text={"Reset"}
+                            onClick={() => this.setState({...this.defaultDisplayState})}
+                        />
                     </div>
                 </div>
             </div>

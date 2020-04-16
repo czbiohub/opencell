@@ -40,3 +40,7 @@ label.bp3-label {
 	-webkit-box-shadow: none !important;
 	background-color: rgba(209, 212, 214, 0.3) !important; /* color from bp3-menu-item:hover */
 }
+
+.bp3-button-custom:hover {
+	background-color: rgba(209, 212, 214, 0.6) !important;
+}

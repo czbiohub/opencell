@@ -35,8 +35,11 @@ function roiItemRenderer (roi, props) {
 export default class ViewerContainer extends Component {
 
     constructor (props) {
-
         super(props);
+
+        // the number of slices in the z-stacks
+        this.numSlices = settings.zStackShape[2];
+
         this.state = {
 
             stacksLoaded: false,
@@ -50,9 +53,14 @@ export default class ViewerContainer extends Component {
             // initial slider values
             gfpMin: 0,
             gfpMax: 50,
+            gfpGamma: 1,
+
             dapiMin: 5,
             dapiMax: 50,
-            zIndex: 27, // the middle of the 55-slice stack
+            dapiGamma: 1,
+
+            // the middle of the z-stack
+            zIndex: parseInt(this.numSlices/2),
         };
     }
 
@@ -160,7 +168,7 @@ export default class ViewerContainer extends Component {
             {/* Localization controls - min/max/z-index sliders */}
             <div className='flex flex-wrap w-100 pt2 pb2'>
                 <div className='flex-0-0-auto w-50'>
-                    <div className=''>DAPI range</div>
+                    <div className=''>{`DAPI range: [${this.state.dapiMin}, ${this.state.dapiMax}]`}</div>
                     <Slider 
                         label='Min'
                         min={0} max={100} value={this.state.dapiMin}
@@ -169,10 +177,16 @@ export default class ViewerContainer extends Component {
                         label='Max'
                         min={0} max={150} value={this.state.dapiMax}
                         onChange={value => this.setState({dapiMax: value})}/>
+
+                    <div className='pt2'>{`DAPI gamma: ${this.state.dapiGamma.toFixed(2)}`}</div>                    
+                    <Slider 
+                        label='Gamma'
+                        min={.5} max={2} step={0.05} value={this.state.dapiGamma}
+                        onChange={value => this.setState({dapiGamma: parseFloat(value)})}/>
                 </div>
 
                 <div className='flex-0-0-auto w-50'>
-                    <div className=''>GFP range</div>
+                    <div className=''>{`GFP range: [${this.state.gfpMin}, ${this.state.gfpMax}]`}</div>
                     <Slider 
                         label='Min'
                         min={0} max={100} value={this.state.gfpMin}
@@ -181,14 +195,20 @@ export default class ViewerContainer extends Component {
                         label='Max'
                         min={0} max={150} value={this.state.gfpMax}
                         onChange={value => this.setState({gfpMax: value})}/>
+
+                    <div className='pt2'>{`GFP gamma: ${this.state.gfpGamma.toFixed(2)}`}</div>                    
+                    <Slider 
+                        label='Gamma'
+                        min={.5} max={2} step={0.05} value={this.state.gfpGamma}
+                        onChange={value => this.setState({gfpGamma: parseFloat(value)})}/>
                 </div>
 
                 <div className='flex-0-0-auto w-100 pt2'>
-                    <div className=''>Z-slice</div>
+                    <div className=''>{`Z-slice: ${this.state.zIndex + 1}/${this.numSlices}`}</div>
                     <Slider 
                         label='z-index'
-                        min={0} max={55} value={this.state.zIndex}
-                        onChange={value => this.setState({zIndex: value})}/>
+                        min={0} max={this.numSlices - 1} value={this.state.zIndex}
+                        onChange={value => this.setState({zIndex: parseInt(value)})}/>
                 </div>
             </div>
             

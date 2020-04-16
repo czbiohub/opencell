@@ -1,9 +1,15 @@
 
+// z-stack shape
+const zStackShape = [600, 600, 55];
 
+
+// API URLs
 const devApi = 'http://localhost:5000';
-const prodApiLocal = 'http://opencell.czbiohub.org/api';
 const prodApi = `http://${window.location.host}/api`;
 
+let apiUrl = devApi;
+
 export default {
-    apiUrl: prodApi,
+    zStackShape,
+    apiUrl,
 }

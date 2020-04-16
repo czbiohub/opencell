@@ -1,11 +1,13 @@
 
+import settings from './settings.js';
+
 
 export function loadImage(url, onLoad) {
 
     // hard-coded xy size and number of z-slices
     // WARNING: these must match the stack to be loaded
-    const imageSize = 600;
-    const numSlices = 55;
+    const imageSize = settings.zStackShape[0];
+    const numSlices = settings.zStackShape[2];
 
     const imageWidth = imageSize;
     const imageHeight = imageSize*numSlices;

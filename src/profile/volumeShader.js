@@ -4,19 +4,19 @@
  * Shaders to render 3D volumes using raycasting.
  * The applied techniques are based on similar implementations in the Visvis and Vispy projects.
  * This is not the only approach, therefore it's marked 1.
+ * 
+ * *** Modified by Keith Cheveralls as part of the OpenCell project at the Chan Zuckerberg Biohub ***
+ * 
  */
 
-import {
-	Vector2,
-	Vector3
-} from "../../../build/three.module.js";
+import * as THREE from 'three';
 
 var VolumeRenderShader1 = {
 	uniforms: {
-				"u_size": { value: new Vector3( 1, 1, 1 ) },
+				"u_size": { value: new THREE.Vector3( 1, 1, 1 ) },
 				"u_renderstyle": { value: 0 },
 				"u_renderthreshold": { value: 0.5 },
-				"u_clim": { value: new Vector2( 1, 1 ) },
+				"u_clim": { value: new THREE.Vector3( 1, 1, 1) },
 				"u_data": { value: null },
 				"u_cmdata": { value: null }
 		},
@@ -102,7 +102,7 @@ var VolumeRenderShader1 = {
 				'uniform vec3 u_size;',
 				'uniform int u_renderstyle;',
 				'uniform float u_renderthreshold;',
-				'uniform vec2 u_clim;',
+				'uniform vec3 u_clim;',
 
 				'uniform sampler3D u_data;',
 				'uniform sampler2D u_cmdata;',
@@ -182,6 +182,7 @@ var VolumeRenderShader1 = {
 
 				'vec4 apply_colormap(float val) {',
 						'val = (val - u_clim[0]) / (u_clim[1] - u_clim[0]);',
+						'val = pow(val, u_clim[2]);',
 						'return texture2D(u_cmdata, vec2(val, 0.5));',
 				'}',
 

@@ -4,9 +4,11 @@ import * as THREE from 'three';
 
 import React, { Component } from 'react';
 
+import settings from '../common/settings.js';
+
 // imports required for volume renderings from three.js examples
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { VolumeRenderShader1 } from 'three/examples/jsm/shaders/VolumeShader.js';
+import { VolumeRenderShader1 } from './VolumeShader.js';
 
 import 'tachyons';
 import './Profile.css';
@@ -15,7 +17,6 @@ import './Profile.css';
 export default class VolumeViewer extends Component {
 
     constructor (props) {
-
         super(props);
         this.state = {};
 
@@ -28,21 +29,22 @@ export default class VolumeViewer extends Component {
 
         this.getMinMax = this.getMinMax.bind(this);
         this.getVolume = this.getVolume.bind(this);
-
     }
 
 
-    getMinMax() {
+    getMinMax(channel) {
+
         const minMaxs = {
-            'DAPI': [this.props.dapiMin, this.props.dapiMax],
-            'GFP': [this.props.gfpMin, this.props.gfpMax],
-            'Both': [this.props.gfpMin, this.props.gfpMax],
+            'DAPI': [this.props.dapiMin/100, this.props.dapiMax/100, this.props.dapiGamma],
+            'GFP': [this.props.gfpMin/100, this.props.gfpMax/100, this.props.gfpGamma],
         };
-        return minMaxs[this.props.localizationChannel].map(val => val/100);
+
+        minMaxs['Both'] = minMaxs['GFP'];
+        return minMaxs[channel];
     }
 
 
-    getVolume() {
+    getVolume(channel) {
         // WARNING: the channel indicies here must match those found in App.componentDidMount
         const inds = {
             'DAPI': 0,
@@ -50,9 +52,9 @@ export default class VolumeViewer extends Component {
             'Both': 1,
         };
 
-        return this.props.volumes[inds[this.props.localizationChannel]];
+        return this.props.volumes[inds[channel]];
     }
-    
+
 
     componentDidMount() {
         // data-independent threejs initialization
@@ -96,18 +98,18 @@ export default class VolumeViewer extends Component {
     updateUniforms(fields) {
 
         if (fields.includes('u_data')) {
-            this.material_gray.uniforms['u_data'].value = this.createTexture(this.getVolume());
+            this.material_gray.uniforms['u_data'].value = this.createTexture(this.getVolume(this.props.localizationChannel));
         }
         if (fields.includes('u_clim')) {
-            this.material_gray.uniforms['u_clim'].value.set(...this.getMinMax());
+            this.material_gray.uniforms['u_clim'].value.set(...this.getMinMax(this.props.localizationChannel));
         }
 
         // the blue material for two-color mode
         if (fields.includes('u_data')) {
-            this.material_blue.uniforms['u_data'].value = this.createTexture(this.props.volumes[0]);
+            this.material_blue.uniforms['u_data'].value = this.createTexture(this.getVolume('DAPI'));
         }
         if (fields.includes('u_clim')) {
-            this.material_blue.uniforms['u_clim'].value.set(this.props.dapiMin/100, this.props.dapiMax/100);
+            this.material_blue.uniforms['u_clim'].value.set(...this.getMinMax('DAPI'));
         }
 
         // only show the blue mesh (DAPI) in two-color mode
@@ -197,7 +199,7 @@ export default class VolumeViewer extends Component {
         // hack-ish way to determine whether this method has already been called once
         if (this.material_gray) return;
 
-        const volume = this.getVolume();
+        const volume = this.getVolume(this.props.localizationChannel);
 
         const shape = [volume.xLength, volume.yLength, volume.zLength];
         const center = shape.map(val => val/2 - .5);
@@ -278,7 +280,6 @@ export default class VolumeViewer extends Component {
         //group.scale.set(1, 1, 2);
 
         this.scene.add(group);
-
     }
 
 

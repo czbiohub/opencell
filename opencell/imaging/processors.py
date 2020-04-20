@@ -173,11 +173,11 @@ class FOVProcessor:
 
         The full path is of the form '{kind}/{dst_plate_dir}/{dst_filename}'
         dst_plate_dir is of the form 'czML0383-P0001'
-        dst_filename is of the form 'czML0383-P0001-A01-PML0123-S01_CLTA_{kind}-{channel}'
+        dst_filename is of the form 'czML0383-P0001-A01-PML0123-S01_{kind}-{channel}'
 
         If `kind` is 'crop' and if roi_coords are provided,
         then the roi_coords are included in the filename:
-        'czML00383-P0001-A01-PML0123-S01_CLTA_CROP-0424-0000-0600-0600-CH405'
+        'czML00383-P0001-A01-PML0123-S01_CROP-0424-0000-0600-0600-CH405'
 
         '''
 
@@ -217,7 +217,7 @@ class FOVProcessor:
             os.makedirs(dst_dirpath, exist_ok=True)
 
         # construct the destination filename
-        dst_filename = f'{dst_plate_dir}-{self.well_id}-{self.pml_id}-{self.site_id}_{self.target_name}_{appendix}.{ext}'  # noqa: E501
+        dst_filename = f'{dst_plate_dir}-{self.well_id}-{self.pml_id}-{self.site_id}_{appendix}.{ext}'  # noqa: E501
         return os.path.join(dst_dirpath, dst_filename)
 
 

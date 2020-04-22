@@ -48,19 +48,21 @@ class Base(object):
             d[column.name] = value
         return d
 
+
 Base = db.ext.declarative.declarative_base(cls=Base, metadata=metadata)
 
 
-# enum types
 class TerminusTypeEnum(enum.Enum):
     N_TERMINUS = 'N_TERMINUS'
     C_TERMINUS = 'C_TERMINUS'
     INTERNAL = 'INTERNAL'
 
+
 class CellLineTypeEnum(enum.Enum):
     PROGENITOR = 'PROGENITOR'
     POLYCLONAL = 'POLYCLONAL'
     MONOCLONAL = 'MONOCLONAL'
+
 
 terminus_type_enum = db.Enum(TerminusTypeEnum, name='terminus_type_enum')
 cell_line_type_enum = db.Enum(CellLineTypeEnum, name='cell_line_type_enum')
@@ -80,9 +82,6 @@ class CellLine(Base):
     __tablename__ = 'cell_line'
 
     id = db.Column(db.Integer, primary_key=True)
-
-    # parent_id is only null for progenitor cell lines
-    parent_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'), nullable=True)
     line_type = db.Column(cell_line_type_enum, nullable=False)
 
     # optional human-readable name
@@ -91,58 +90,40 @@ class CellLine(Base):
     # optional human-readable notes
     notes = db.Column(db.String, nullable=True)
 
-    children = db.orm.relationship('CellLine')
+    # parent_id is only null for progenitor cell lines
+    parent_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'), nullable=True)
     parent = db.orm.relationship('CellLine', remote_side=[id])
+    children = db.orm.relationship('CellLine')
 
-    # electroporation_line that generated the cell line (if any)
-    electroporation_line = db.orm.relationship(
-        'ElectroporationLine', back_populates='cell_line', uselist=False)
+    # the electroporation that generated the cell line (if any)
+    electroporation_id = db.Column(db.Integer, db.ForeignKey('electroporation.id'), nullable=True)
+    electroporation = db.orm.relationship(
+        'Electroporation',
+        back_populates='cell_lines',
+        uselist=False,
+        foreign_keys=[electroporation_id])
 
-    # manual annotation
+    # the crispr design used to generate the cell line (if any)
+    crispr_design_id = db.Column(db.Integer, db.ForeignKey('crispr_design.id'), nullable=True)
+    crispr_design = db.orm.relationship(
+        'CrisprDesign', back_populates='cell_lines', uselist=False)
+
+    # one cell line to one manual annotation
     annotation = db.orm.relationship(
         'CellLineAnnotation', back_populates='cell_line', uselist=False)
 
-    mass_spec_pulldowns = db.orm.relationship('MassSpecPulldown', back_populates='cell_line')
-
-
-    def __init__(self, line_type, name=None, notes=None, parent_id=None):
-        '''
-        For simplicity, we only allow instantiation using an explicit parent_id,
-        not by providing a list of children instances or a parent instance
-        '''
-        if parent_id is None and line_type != CellLineTypeEnum.PROGENITOR.value:
-            raise ValueError('A parent_id is required for all derived cell lines')
-
-        self.line_type = line_type
-        self.parent_id = parent_id
-        self.name = name
-        self.notes = notes
+    # one cell_line to many pulldowns
+    pulldowns = db.orm.relationship('MassSpecPulldown', back_populates='cell_line')
 
 
     def __repr__(self):
-        return "<CellLine(id=%s, parent_id=%s, type='%s')>" % \
-            (self.id, self.parent_id, self.line_type)
-
-
-    def get_crispr_design(self):
-        '''
-        Get the crispr design used to generate the cell line
-        Note that this method assumes the cell line is a polyclonal line;
-        more complex queries will be necessary for clonal lines or re-sorted polyclonal lines
-        '''
-        if not self.electroporation_line:
-            return None
-
-        well_id = self.electroporation_line.well_id
-        design = [
-            design for design in (
-                self.electroporation_line
-                .electroporation
-                .plate_instance
-                .plate_design
-                .crispr_designs
-            ) if design.well_id == well_id]
-        return design[0]
+        return "<CellLine(id=%s, parent_id=%s, type='%s', target='%s')>" % \
+            (
+                self.id,
+                self.parent_id,
+                self.line_type.value,
+                self.crispr_design.target_name if self.crispr_design else None
+            )
 
 
     def get_top_scoring_fovs(self, ntop):
@@ -177,14 +158,9 @@ class PlateDesign(Base):
     design_date = db.Column(db.Date)
     design_notes = db.Column(db.String)
 
-    # one-to-many relationships with crispr_design and plate_instance
+    # one plate design to many crispr designs
     crispr_designs = db.orm.relationship(
         'CrisprDesign',
-        back_populates='plate_design',
-        cascade='all, delete, delete-orphan')
-
-    plate_instances = db.orm.relationship(
-        'PlateInstance',
         back_populates='plate_design',
         cascade='all, delete, delete-orphan')
 
@@ -231,9 +207,7 @@ class CrisprDesign(Base):
     __tablename__ = 'crispr_design'
 
     id = db.Column(db.Integer, primary_key=True)
-
     well_id = db.Column(well_id_enum, nullable=False)
-    plate_design_id = db.Column(db.String, db.ForeignKey('plate_design.design_id'), nullable=False)
 
     # gene/protein name
     target_name = db.Column(db.String, nullable=False)
@@ -269,13 +243,22 @@ class CrisprDesign(Base):
     protospacer_notes = db.Column(db.String)
     protospacer_sequence = db.Column(db.String, nullable=False)
 
-    # many designs to one plate (96 wells per plate)
-    plate_design = db.orm.relationship('PlateDesign', back_populates='crispr_designs')
+    # the plate_design on which this crispr_design appears
+    plate_design_id = db.Column(
+        db.String, db.ForeignKey('plate_design.design_id'), nullable=False)
+
+    # many crispr_designs to one plate_design (96 wells per plate)
+    plate_design = db.orm.relationship(
+        'PlateDesign', back_populates='crispr_designs', uselist=False)
+
+    # one crispr_design to many cell lines
+    cell_lines = db.orm.relationship('CellLine', back_populates='crispr_design')
 
     # the well_id must be unique in each plate design
     __table_args__ = (
         db.UniqueConstraint(plate_design_id, well_id),
     )
+
 
     def __repr__(self):
         return "<CrisprDesign(target_name='%s')>" % self.target_name
@@ -334,106 +317,33 @@ class CrisprDesign(Base):
         return value
 
 
-class PlateInstance(Base):
-    '''
-    A physical instance of a plate design
-
-    Currently (2019-07-01), there is no meaningful distinction between
-    a plate 'design' and a plate 'instance', because there is only one physical instance
-    of each design. This table is included in anticipation of future experiments
-    in which new physical instances of the same plate design are created and should be tracked.
-
-    Note that, technically, each plate instance is prepared by combining several reagents,
-    two of which - the guides and the repair templates - themselves exist on separate plates,
-    and it is not yet clear whether a replicate preparation of the same plate design
-    from the same physical reagents should correspond to a new 'instance',
-    or whether the reagents themselves must be distinct.
-
-    '''
-    __tablename__ = 'plate_instance'
-
-    id = db.Column(db.Integer, primary_key=True)
-    instance_date = db.Column(db.Date)
-    instance_notes = db.Column(db.String)
-    plate_design_id = db.Column(db.String, db.ForeignKey('plate_design.design_id'), nullable=False)
-
-    # many instances to one plate_design
-    plate_design = db.orm.relationship('PlateDesign', back_populates='plate_instances')
-
-    # one instance to many electroporations
-    electroporations = db.orm.relationship('Electroporation', back_populates='plate_instance')
-
-    def __repr__(self):
-        return "<PlateInstance(plate_design_id='%s', id=%s)>" % (self.plate_design_id, self.id)
-
 
 class Electroporation(Base):
     '''
     A single electroporation event/experiment
 
-    Although a serial primary key is used, we require that the columns
-    (cell_line_id, plate_instance_id, and electroporation_date) be unique
-    to reflect the fact that the same plate would/should never be electroporated
-    more than once on the same day.
-
+    Note that although electroporations are performed on an entire 96-well plate at once,
+    this table only explicitly references the cell_lines table (and not the plate_design table).
+    If necessary, the plate_design that was electroporated can be retrieved from the cell_lines
+    via cell_line.crispr_design.plate_design.
     '''
     __tablename__ = 'electroporation'
 
     id = db.Column(db.Integer, primary_key=True)
     electroporation_date = db.Column(db.Date, nullable=False)
 
-    plate_instance_id = db.Column(db.Integer, db.ForeignKey('plate_instance.id'), nullable=False)
-    plate_instance = db.orm.relationship('PlateInstance', back_populates='electroporations')
-
     # the id of the progenitor cell line (the line that was used in the electroporation)
-    cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'), nullable=False)
-    cell_line = db.orm.relationship('CellLine')
+    progenitor_cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'), nullable=False)
+
+    # one electroporation to one progenitor cell line
+    progenitor_cell_line = db.orm.relationship(
+        'CellLine', foreign_keys=[progenitor_cell_line_id], uselist=False)
 
     # one electroporation to many cell lines
-    # (these are the polyclonal liens directly generated by the electroporation)
-    electroporation_lines = db.orm.relationship(
-        'ElectroporationLine', back_populates='electroporation')
+    # (these are the polyclonal lines generated by the electroporation)
+    cell_lines = db.orm.relationship(
+        'CellLine', back_populates='electroporation', foreign_keys='CellLine.electroporation_id')
 
-    # a plate should never be electroporated multiple times on the same day
-    __table_args__ = (
-        db.UniqueConstraint(cell_line_id, plate_instance_id, electroporation_date),
-    )
-
-    def __repr__(self):
-        return "<Electroporation(cell_line_id=%s, plate_design_id=%s, electroporation_date=%s)>" % \
-            (self.cell_line_id, self.plate_instance.plate_design_id, self.electroporation_date)
-
-
-class ElectroporationLine(Base):
-    '''
-    Association table that maps cell lines to the electroporation and well_id
-    from which they originated.
-
-    We use a composite primary key on (electroporation_id, cell_line_id).
-
-    Note that there are no constraints on the type or number of cell lines
-    associated with an electroporation, even though currently (July 2019),
-    only a single polyclonal line is generated from each electroporation and well_id.
-    This flexibility is intended to anticipate a possibly future workflow
-    in which multiple monoclonal lines are generated from each electroporation,
-    without an intermediate polyclonal line.
-
-    '''
-
-    __tablename__ = 'electroporation_line'
-
-    well_id = db.Column(well_id_enum, nullable=False)
-
-    # one-to-one with CellLine
-    cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'), primary_key=True)
-    cell_line = db.orm.relationship('CellLine', back_populates='electroporation_line')
-
-    electroporation_id = db.Column(
-        db.Integer, db.ForeignKey('electroporation.id'), primary_key=True)
-
-    # many lines to one electroporation
-    electroporation = db.orm.relationship(
-        'Electroporation', back_populates='electroporation_lines')
 
 
 class FACSDataset(Base):
@@ -813,9 +723,8 @@ class MassSpecPulldownPlate(Base):
     '''
     A mass spec plate prepped by the ML Group
 
-    Note that these plates consist of sets of pulldowns and are distinct from the plates
-    of crispr designs that appear in the plate_design and plate_instance tables
-
+    Note that these plates consist of sets of pulldowns performed on some subset of cell lines,
+    and are totally unrelated to the plates of crispr designs in the plate_design table.
     '''
     __tablename__ = 'mass_spec_pulldown_plate'
 
@@ -851,8 +760,7 @@ class MassSpecPulldown(Base):
     date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
 
     # one pulldown to one cell line
-    cell_line = db.orm.relationship(
-        'CellLine', back_populates='mass_spec_pulldowns', uselist=False)
+    cell_line = db.orm.relationship('CellLine', back_populates='pulldowns', uselist=False)
 
     # one pulldown to many hits
     hits = db.orm.relationship('MassSpecHit', back_populates='pulldown')
@@ -863,7 +771,7 @@ class MassSpecPulldown(Base):
 
     def get_target_name(self):
         '''Convenience method to get target_name for each pulldown'''
-        return self.cell_line.get_crispr_design().target_name
+        return self.cell_line.crispr_design.target_name
 
     def __repr__(self):
         return "<Bait(id=%s, pulldown_plate=%s, target=%s)>" % \
@@ -935,6 +843,4 @@ class MassSpecHit(Base):
         'MassSpecProteinGroup', back_populates='hits', uselist=False)
 
     # A hit needs to have a unique set of target (pulldown) and the prey (protein_group)
-    __table_args__ = (
-            db.UniqueConstraint(pulldown_id, protein_group_id),
-    )
+    __table_args__ = (db.UniqueConstraint(pulldown_id, protein_group_id),)

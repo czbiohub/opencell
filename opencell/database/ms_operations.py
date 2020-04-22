@@ -43,14 +43,15 @@ class MassSpecPolyclonalOperations(operations.PolyclonalLineOperations):
         """ From a pd row, insert a single pulldown data """
 
         # drop any row that has same pulldown information
-        if self.line.mass_spec_pulldowns:
-            for pulldown in self.line.mass_spec_pulldowns:
+        if self.line.pulldowns:
+            for pulldown in self.line.pulldowns:
                 if pulldown.pulldown_plate_id == row.pulldown_plate_id:
                     operations.delete_and_commit(session, pulldown)
 
         pulldown = models.MassSpecPulldown(
             cell_line=self.line,
-            pulldown_plate_id=row.pulldown_plate_id)
+            pulldown_plate_id=row.pulldown_plate_id
+        )
         operations.add_and_commit(session, pulldown, errors=errors)
 
 
@@ -91,14 +92,12 @@ class MassSpecPulldownOperations:
         # proper pulldown_id
         pulldown_id = pulldowns[0].id
 
-
         # remove existing hits under same pulldown
         self.remove_target_hits(session, pulldown_id, errors=errors)
 
-
         # add all Hit instances to a list
         all_hits = []
-        for i, row in target_hits.iterrows():
+        for _, row in target_hits.iterrows():
             hit = self.create_hit(row, pulldown_id)
             all_hits.append(hit)
 
@@ -113,6 +112,7 @@ class MassSpecPulldownOperations:
             if errors == 'warn':
                 print('Error in bulk_save: %s' % exception)
 
+
     @staticmethod
     def insert_protein_group(session, row, errors='warn'):
         """
@@ -126,13 +126,16 @@ class MassSpecPulldownOperations:
         dup_groups = (
             session.query(models.MassSpecProteinGroup)
             .filter(models.MassSpecProteinGroup.id == protein_group_id)
-            .all())
+            .all()
+        )
         if len(dup_groups) == 1:
             operations.delete_and_commit(session, dup_groups[0])
+
         if row.gene_names:
             gene_names = row.gene_names.split(';')
         else:
             gene_names = None
+
         protein_group = models.MassSpecProteinGroup(
             id=protein_group_id,
             gene_names=gene_names,
@@ -140,16 +143,21 @@ class MassSpecPulldownOperations:
         )
         operations.add_and_commit(session, protein_group, errors=errors)
 
+
     @staticmethod
     def remove_target_hits(session, pulldown_id, errors='warn'):
-        # remove duplicate entries / bulk commit
-        dup_hits = session.query(models.MassSpecHit)\
-            .join(models.MassSpecPulldown)\
-            .filter(models.MassSpecPulldown.id == pulldown_id)\
+        '''
+        remove duplicate entries
+        '''
+        duplicate_hits = (
+            session.query(models.MassSpecHit)
+            .join(models.MassSpecPulldown)
+            .filter(models.MassSpecPulldown.id == pulldown_id)
             .all()
-
-        for hit in dup_hits:
+        )
+        for hit in duplicate_hits:
             session.delete(hit)
+
         try:
             session.commit()
         except Exception as exception:
@@ -157,13 +165,13 @@ class MassSpecPulldownOperations:
             if errors == 'raise':
                 raise
             if errors == 'warn':
-                print('Error in bulk_deletion: %s' % exception)
+                print('Error in remove_target_hits: %s' % exception)
 
 
     @staticmethod
     def create_hit(row, pulldown_id):
         """
-        from a pd row, insert a single hit data
+        From a pd row, create a MassSpecHit instance
         """
         hashed_protein_id, _ = ms_utils.hash_protein_group_id(row.name)
 
@@ -174,6 +182,7 @@ class MassSpecPulldownOperations:
             enrichment=row.enrichment,
             is_significant_hit=row.hits,
             is_minor_hit=row.minor_hits,
-            is_imputed=row.imputed)
+            is_imputed=row.imputed
+        )
 
         return hit

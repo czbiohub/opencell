@@ -127,38 +127,19 @@ def get_or_create_progenitor_cell_line(session, name, notes=None, create=False):
     return cell_line
 
 
-def get_plate_instance(session, plate_design_id, plate_instance_id):
-    '''
-    Convenience method to retrieve an instance of a plate design
-    by specifying a design_id and/or an instance_id
-
-    If a design_id is provided without an instance_id, then there must be only one instance
-    of the design. If there is more than one instance, an error is raised.
-
-    If an instance_id is provided without a design_id, then we assume the user has looked up
-    the correct instance_id.
-
-    If both a design_id and an instance_id are provided, we check that the instance_id is indeed
-    an instance of the specified design.
-    '''
-    pass
-
-
 class PlateOperations:
     '''
-    Operations that create or modify a particular plate *design*
+    Operations that create or modify a particular plate design
 
     Methods
     -------
     from_id
-    create_plate_design
-    create_plate_instance
-    create_crispr_design
-
+    get_or_create_plate_design
+    create_crispr_designs
     '''
 
-    def __init__(self, plate):
-        self.plate = plate
+    def __init__(self, plate_design):
+        self.plate_design = plate_design
 
 
     @classmethod
@@ -167,28 +148,22 @@ class PlateOperations:
         Initialize from a design_id
         '''
 
-        plate = (
+        plate_design = (
             session.query(models.PlateDesign)
             .filter(models.PlateDesign.design_id == design_id)
             .first()
         )
-
-        if plate is None:
+        if plate_design is None:
             raise ValueError('Plate design %s does not exist' % design_id)
-
-        # sanity check that there's at least one instance of the design
-        if not plate.plate_instances:
-            print('Warning: no plate instances exist for plate design %s' % design_id)
-
-        return cls(plate)
+        return cls(plate_design)
 
 
     @classmethod
     def get_or_create_plate_design(cls, session, design_id, date=None, notes=None):
         '''
-        Get or create a new plate design and the first instance of it
-
-        **This is intended to be the only way in which new plate designs are created**
+        Get or create a new plate design
+        Note that this method is intended to be the only way
+        in which new plate designs are created
 
         If the design_id already exists, we issue a warning
         but load and instantiate from the existing plate
@@ -202,33 +177,15 @@ class PlateOperations:
             pass
 
         # note that date and notes may be None
-        plate = models.PlateDesign(design_id=design_id, design_date=date, design_notes=notes)
-
-        # automatically create the first instance of the new design
-        plate.plate_instances.append(
-            models.PlateInstance(
-                instance_date=None,
-                instance_notes='auto-generated first instance')
-        )
-
+        plate_design = models.PlateDesign(
+            design_id=design_id, design_date=date, design_notes=notes)
         try:
-            add_and_commit(session, plate)
+            add_and_commit(session, plate_design)
         except Exception:
-            print('Error creating design %s' % plate.design_id)
+            print('Error creating design %s' % plate_design.design_id)
             raise
 
-        return cls(plate)
-
-
-    def create_plate_instance(self, date=None, notes=None):
-        '''
-        Manually create a new instance of the plate
-
-        Note that this is not implemented (as of 2019-06-28),
-        because there is currently only one instance of each plate
-        (and it is created automatically in create_plate_design)
-        '''
-        raise NotImplementedError
+        return cls(plate_design)
 
 
     def create_crispr_designs(
@@ -251,7 +208,9 @@ class PlateOperations:
         '''
 
         # crop the library to the current plate
-        designs = library_snapshot.loc[library_snapshot.plate_id == self.plate.design_id].copy()
+        designs = library_snapshot.loc[
+            library_snapshot.plate_id == self.plate_design.design_id
+        ].copy()
 
         # discard the plate_id
         designs.drop(labels=['plate_id'], axis=1, inplace=True)
@@ -268,75 +227,42 @@ class PlateOperations:
 
         # delete all existing crispr designs
         if drop_existing:
-            delete_and_commit(session, self.plate.crispr_designs)
+            delete_and_commit(session, self.plate_design.crispr_designs)
 
         # create all designs and maybe warn about errors
-        for ind, design in designs.iterrows():  # pylint: disable=unused-variable
-            self.plate.crispr_designs.append(models.CrisprDesign(**design))
-            add_and_commit(session, self.plate, errors=errors)
+        for _, design in designs.iterrows():
+            self.plate_design.crispr_designs.append(models.CrisprDesign(**design))
+            add_and_commit(session, self.plate_design, errors=errors)
 
 
-class ElectroporationOperations:
+def create_electroporation(session, progenitor_cell_line, plate_design, date, errors='warn'):
     '''
-    Operations that create or modify an electroporation event
+    Create the polyclonal lines generated by electroporating a single plate
+
+    Parameters
+    ----------
+    progenitor_cell_line : the CellLine instance corresponding to the electroporated cell line
+    plate_design : the PlateDesign instance corresponding to the electroporated plate
+    date : the date, as a string, of the electroporation
+            (required to disambiguate electroporations of the same plate)
     '''
 
-    def __init__(self, electroporation):
-        self.electroporation = electroporation
+    # create the electroporation
+    electroporation = models.Electroporation(
+        progenitor_cell_line=progenitor_cell_line,
+        electroporation_date=date
+    )
+    add_and_commit(session, electroporation, errors=errors)
 
-
-    @classmethod
-    def create_electroporation(cls, session, cell_line, plate_instance, date, errors='warn'):
-        '''
-        Create a new electroporation
-
-        Note that this *automatically* generates 96 new polyclonal cell lines.
-
-        Parameters
-        ----------
-        cell_line : an instance of CellLine corresponding to the cell line used
-        plate_instance : the PlateInstance corresponding to the plate electroporated
-        date : the date, as a string, of the electroporation
-               (required to disambiguate electroporations of the same plate)
-
-        Returns
-        -------
-        The Electroporation instance corresponding to the new electroporation
-
-        '''
-
-        electroporation = models.Electroporation(
-            cell_line=cell_line,
-            plate_instance=plate_instance,
-            electroporation_date=date)
-
-        add_and_commit(session, electroporation, errors=errors)
-
-        # create a polyclonal line for each crispr design
-        for design in electroporation.plate_instance.plate_design.crispr_designs:
-
-            cell_line = models.CellLine(
-                parent_id=electroporation.cell_line.id,
-                line_type='POLYCLONAL')
-
-            ep_line = models.ElectroporationLine(
-                well_id=design.well_id,
-                cell_line=cell_line)
-
-            electroporation.electroporation_lines.append(ep_line)
-            add_and_commit(session, electroporation, errors=errors)
-
-        return cls(electroporation)
-
-
-    @classmethod
-    def from_plate_design_id(cls, plate_design_id):
-        '''
-        Convenience method to get the electroporation from a plate_design_id,
-        assuming that there is only one electroporation, and one instance, of the design
-
-        '''
-        raise NotImplementedError
+    # create a polyclonal line for each crispr design
+    for crispr_design in plate_design.crispr_designs:
+        cell_line = models.CellLine(
+            parent_id=progenitor_cell_line.id,
+            electroporation=electroporation,
+            crispr_design=crispr_design,
+            line_type='POLYCLONAL',
+        )
+        add_and_commit(session, cell_line, errors=errors)
 
 
 class PolyclonalLineOperations:
@@ -363,26 +289,27 @@ class PolyclonalLineOperations:
     @classmethod
     def from_plate_well(cls, session, design_id, well_id):
         '''
-        Convenience method to retrieve the cell line corresponding to a plate design and a well id,
-        *assuming* that there is only one electroporation of one instance of the plate design.
+        Convenience method to retrieve the cell line
+        corresponding to a plate design and a well id
+        (assuming that there is only one such cell line)
         '''
 
-        lines = (
-            session.query(models.CellLine)
-            .join(models.ElectroporationLine)
-            .join(models.Electroporation)
-            .join(models.PlateInstance)
-            .filter(models.PlateInstance.plate_design_id == design_id)
-            .filter(models.ElectroporationLine.well_id == well_id)
-            .all()
+        design = (
+            session.query(models.CrisprDesign)
+            .filter(models.CrisprDesign.plate_design_id == design_id)
+            .filter(models.CrisprDesign.well_id == well_id)
+            .one_or_none()
         )
 
-        if len(lines) > 1:
-            raise ValueError('More than one line found for well %s of plate %s' % (well_id, design_id))
-        if not lines:
-            raise ValueError('No line found for well %s of plate %s' % (well_id, design_id))
+        if not design or not design.cell_lines:
+            raise ValueError('No cell line found for well %s of plate %s' %
+                (well_id, design_id))
 
-        return cls(lines[0])
+        if len(design.cell_lines) > 1:
+            raise ValueError('More than one cell line exists for well %s of plate %s' %
+                (well_id, design_id))
+
+        return cls(design.cell_lines[0])
 
 
     @classmethod
@@ -393,19 +320,22 @@ class PolyclonalLineOperations:
         If there is more than one cell_line for the target_name,
         then the PolyClonalLineOperations class is instantiated using the first such cell_line
         '''
-        cds = (
+
+        designs = (
             session.query(models.CrisprDesign)
             .filter(db.func.lower(models.CrisprDesign.target_name) == db.func.lower(target_name))
             .all()
         )
 
-        if len(cds) > 1:
-            print('Warning: %s cell lines found for target %s' % (len(cds), target_name))
-        if len(cds) == 0:
+        lines = []
+        [lines.extend(design.cell_lines) for design in designs]
+
+        if len(lines) > 1:
+            print('Warning: %s cell lines found for target_name %s' % (len(lines), target_name))
+        if not lines:
             raise ValueError('No cells lines found for target %s' % target_name)
 
-        cd = cds[0]
-        return cls.from_plate_well(session, cd.plate_design_id, cd.well_id)
+        return cls(lines[0])
 
 
     def insert_facs_dataset(self, session, histograms, scalars, errors='warn'):
@@ -466,9 +396,7 @@ class PolyclonalLineOperations:
 
         Note that, awkwardly, the RNAseq data is a column in the crispr_design table
         '''
-
-        # the crispr design for this line
-        design = self.line.get_crispr_design()
+        design = self.line.crispr_design
 
         # metadata object included in every playload
         metadata = {

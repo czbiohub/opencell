@@ -80,27 +80,18 @@ def populate(session, data_dir, errors='warn'):
     errors : one of 'raise', 'warn', 'ignore'
     '''
 
-    # -----------------------------------------------------------------------------------
-    #
-    # create progenitor cell line
-    # (this is the parental line for Plates 1-19)
-    # Note the hard-coded progenitor cell line name
-    #
-    # -----------------------------------------------------------------------------------
+    # create the progenitor cell line used for Plates 1-19
+    # (note the hard-coded progenitor cell line name)
     print('Inserting progenitor cell line for plates 1-19')
     ops.get_or_create_progenitor_cell_line(
         session,
         name=constants.PARENTAL_LINE_NAME,
         notes='mNG1-10 in HEK293',
-        create=True)
+        create=True
+    )
 
-    # -----------------------------------------------------------------------------------
-    #
-    # Insert crispr designs from Library snapshot
-    #
-    # -----------------------------------------------------------------------------------
+    # create the crispr designs
     print('Inserting crispr designs for plates 1-19')
-
     library_snapshot = file_utils.load_library_snapshot(
         os.path.join(data_dir, '2019-06-26_mNG11_HEK_library.csv'))
 
@@ -108,34 +99,30 @@ def populate(session, data_dir, errors='warn'):
     for plate_id in plate_ids:
         print('Inserting crispr designs for %s' % plate_id)
         plate_ops = ops.PlateOperations.get_or_create_plate_design(session, plate_id)
-        plate_ops.create_crispr_designs(session, library_snapshot, drop_existing=False, errors=errors)
+        plate_ops.create_crispr_designs(
+            session, library_snapshot, drop_existing=False, errors=errors)
 
-    # -----------------------------------------------------------------------------------
-    #
-    # Insert electroporations and create polyclonal lines
-    # Note the hard-coded progenitor line name
-    #
-    # -----------------------------------------------------------------------------------
+    # create the electroporations and polyclonal lines
     print('Inserting electroporations and polyclonal lines for plates 1-19')
-
     electroporation_history = file_utils.load_electroporation_history(
         os.path.join(data_dir, '2019-06-24_electroporations.csv'))
 
-    progenitor_line = ops.get_or_create_progenitor_cell_line(session, constants.PARENTAL_LINE_NAME)
+    progenitor_line = ops.get_or_create_progenitor_cell_line(
+        session, constants.PARENTAL_LINE_NAME)
+
     for _, row in electroporation_history.iterrows():
         print('Inserting electroporation of %s' % row.plate_id)
 
-        # get the first (and, we assume, only) plate instance
-        # of this electroporations's plate design
-        plate_ops = ops.PlateOperations.from_id(session, row.plate_id)
-        plate_instance = plate_ops.plate.plate_instances[0]
-
-        ops.ElectroporationOperations.create_electroporation(
+        # we assume here that there is only one plate instance
+        # of the electroporation plate design
+        plate_design = ops.PlateOperations.from_id(session, row.plate_id).plate_design
+        ops.create_electroporation(
             session,
             progenitor_line,
-            plate_instance,
+            plate_design,
             date=row.date,
-            errors=errors)
+            errors=errors
+        )
 
 
 def insert_facs(session, facs_results_dir, errors='warn'):

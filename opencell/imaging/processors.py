@@ -96,7 +96,7 @@ class FOVProcessor:
         or a clonal descendent of a polyclonal line)
         '''
 
-        crispr_design = fov.cell_line.get_crispr_design()
+        crispr_design = fov.cell_line.crispr_design
 
         # roi_props for all ROIs cropped from this FOV (will often be empty)
         all_roi_rows = [roi.as_dict() for roi in fov.rois]
@@ -194,7 +194,7 @@ class FOVProcessor:
             row = [row for row in self.all_roi_rows if row['id'] == roi_id]
             if not row:
                 raise ValueError('ROI %s is not an ROI of FOV %s' % (roi_id, self.fov_id))
-            roi_props = row.pop()['props']
+            roi_props = row[0]['props']
 
         # append the ROI coords if roi_props exists
         # (we don't validate these, but we assume they correspond to

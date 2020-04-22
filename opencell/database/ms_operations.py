@@ -18,15 +18,16 @@ from opencell.imaging import processors
 
 def insert_pulldown_plate(session, row, errors='warn'):
     """ From a pd row, insert a single pulldown plate data """
+
     # drop any existing data
     line = (
         session.query(models.MassSpecPulldownPlate)
         .filter(models.MassSpecPulldownPlate.id == row.id)
-        .all()
+        .one_or_none()
     )
+    if line:
+        operations.delete_and_commit(session, line)
 
-    if len(line) == 1:
-        operations.delete_and_commit(session, line[0])
     plate = models.MassSpecPulldownPlate(
         id=row.id,
         plate_design_link=row.plate_design_link,

@@ -116,7 +116,7 @@ def populate(session, data_dir, errors='warn'):
         # we assume here that there is only one plate instance
         # of the electroporation plate design
         plate_design = ops.PlateOperations.from_id(session, row.plate_id).plate_design
-        ops.create_electroporation(
+        ops.create_polyclonal_lines(
             session,
             progenitor_line,
             plate_design,
@@ -170,11 +170,10 @@ def insert_microscopy_datasets(session, metadata, root_directory, update=False, 
         dataset = (
             session.query(models.MicroscopyDataset)
             .filter(models.MicroscopyDataset.pml_id == row.pml_id)
-            .all()
+            .one_or_none()
         )
         if dataset:
             if update:
-                dataset = dataset.pop()
                 print('Warning: updating existing entry for %s' % row.pml_id)
             else:
                 print('Warning: dataset %s already exists' % row.pml_id)

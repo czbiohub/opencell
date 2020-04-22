@@ -141,9 +141,8 @@ class MicroscopyFOV(Resource):
         fov = (
             current_app.Session.query(models.MicroscopyFOV)
             .filter(models.MicroscopyFOV.id == fov_id)
-            .first()
+            .one_or_none()
         )
-
         if not fov:
             abort(404)
 
@@ -183,7 +182,7 @@ class MicroscopyFOVROI(Resource):
         roi = (
             current_app.Session.query(models.MicroscopyFOVROI)
             .filter(models.MicroscopyFOVROI.id == roi_id)
-            .first()
+            .one()
         )
 
         processor = FOVProcessor.from_database(roi.fov)
@@ -210,7 +209,7 @@ class CellLineAnnotation(Resource):
         return (
             current_app.Session.query(models.CellLine)
             .filter(models.CellLine.id == cell_line_id)
-            .first()
+            .one()
         )
 
 
@@ -259,7 +258,7 @@ class MicroscopyFOVAnnotation(Resource):
         return (
             current_app.Session.query(models.MicroscopyFOV)
             .filter(models.MicroscopyFOV.id == fov_id)
-            .first()
+            .one()
         )
 
 

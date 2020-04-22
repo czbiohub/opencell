@@ -564,7 +564,7 @@ class MicroscopyFOV(Base):
             .query(MicroscopyFOVResult)
             .filter(MicroscopyFOVResult.fov_id == self.id)
             .filter(MicroscopyFOVResult.kind == kind)
-            .first()
+            .one_or_none()
         )
 
     def get_score(self):
@@ -582,7 +582,7 @@ class MicroscopyFOV(Base):
             .query(MicroscopyThumbnail)
             .filter(MicroscopyThumbnail.fov_id == self.id)
             .filter(MicroscopyThumbnail.channel == channel)
-            .first()
+            .one_or_none()
         )
 
 

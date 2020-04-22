@@ -364,7 +364,7 @@ def main():
         dataset = (
             Session.query(models.MicroscopyDataset)
             .filter(models.MicroscopyDataset.pml_id == args.pml_id)
-            .first()
+            .one()
         )
         fovs = dataset.fovs
 

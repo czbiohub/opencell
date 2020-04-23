@@ -255,7 +255,8 @@ def create_polyclonal_lines(
     # create the electroporation
     electroporation = models.Electroporation(
         progenitor_cell_line=progenitor_cell_line,
-        electroporation_date=date
+        plate_design=plate_design,
+        date_performed=date
     )
     add_and_commit(session, electroporation, errors=errors)
 

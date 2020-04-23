@@ -74,7 +74,7 @@ def populate(session, data_dir, errors='warn'):
     Initialize and populate the opencell database
     from a set of 'snapshot' CSVs of various google spreadsheets
 
-    This loads the crispr designs, plates, electroporations, polyclonal lines,
+    This inserts the plate designs, crispr designs, electroporations, and polyclonal lines
     for Plates 1-19
 
     errors : one of 'raise', 'warn', 'ignore'
@@ -112,9 +112,6 @@ def populate(session, data_dir, errors='warn'):
 
     for _, row in electroporation_history.iterrows():
         print('Inserting electroporation of %s' % row.plate_id)
-
-        # we assume here that there is only one plate instance
-        # of the electroporation plate design
         plate_design = ops.PlateOperations.from_id(session, row.plate_id).plate_design
         ops.create_polyclonal_lines(
             session,

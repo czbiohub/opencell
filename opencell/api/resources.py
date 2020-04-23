@@ -17,7 +17,7 @@ from flask import (
 
 from opencell.imaging import utils
 from opencell.api.cache import cache
-from opencell.database import models, operations
+from opencell.database import models, operations, payloads
 from opencell.imaging.processors import FOVProcessor
 
 
@@ -111,8 +111,7 @@ class PolyclonalLines(Resource):
 
         payload = []
         for line in query.all():
-            ops = operations.PolyclonalLineOperations(line)
-            payload.append(ops.construct_payload(kind=kind))
+            payload.append(payloads.construct_payload(line, kind=kind))
         return jsonify(payload)
 
 
@@ -125,7 +124,7 @@ class PolyclonalLine(Resource):
         kind = args.get('kind')
         ops = operations.PolyclonalLineOperations.from_line_id(
             current_app.Session, cell_line_id)
-        return jsonify(ops.construct_payload(kind=kind))
+        return jsonify(payloads.construct_payload(ops.line, kind=kind))
 
 
 class MicroscopyFOV(Resource):
@@ -164,11 +163,8 @@ class MicroscopyFOV(Resource):
         imageio.imsave(file, im, format='jpg', quality=90)
         file.seek(0)
 
-        return send_file(
-            file,
-            as_attachment=True,
-            attachment_filename='FOV%04d_%s-%s.jpg' % (fov_id, kind.upper(), channel.upper())
-        )
+        filename = 'FOV%04d_%s-%s.jpg' % (fov_id, kind.upper(), channel.upper())
+        return send_file(file, as_attachment=True, attachment_filename=filename)
 
 
 class MicroscopyFOVROI(Resource):

@@ -3,6 +3,7 @@ import hashlib
 import numpy as np
 from datetime import datetime
 
+
 def find_mismatching_target_names(plates_df, hits_df):
     """
     Identify and print gene names that are mismatching between the plates
@@ -16,6 +17,7 @@ def find_mismatching_target_names(plates_df, hits_df):
     plate_genes = set(plates_df['target_name'].values.tolist())
 
     return hits_genes - plate_genes
+
 
 def format_ms_plate(plate_id):
     """
@@ -51,20 +53,21 @@ def format_ms_plate(plate_id):
 
     return plate_id
 
+
 def reformat_pulldown_table(pulldown_df):
     """
     combine multiple rows with different replicates into a single row,
-    and add columns for well info for different replicates"""
-
-
+    and add columns for well info for different replicates
+    """
     abridged = pulldown_df.copy()
 
     # drop replicate and pulldown_well_id from abridged, and drop replicates
-    abridged.drop(columns= ['replicate', 'pulldown_well_id', 'note_on_prep'],
-        inplace=True)
+    abridged.drop(
+        columns=['replicate', 'pulldown_well_id', 'note_on_prep'],
+        inplace=True
+    )
     abridged = abridged.dropna(how='any', subset=['design_id'])
     abridged.drop_duplicates(inplace=True)
-
     return abridged
 
 

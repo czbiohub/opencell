@@ -61,7 +61,6 @@ def create_app(args):
     api = Api()
     api.add_resource(resources.Plates, '/plates')
     api.add_resource(resources.Plate, '/plates/<string:plate_id>/')
-    api.add_resource(resources.Electroporations, '/electroporations')
 
     api.add_resource(resources.PolyclonalLines, '/lines')
     api.add_resource(resources.PolyclonalLine, '/lines/<int:cell_line_id>')

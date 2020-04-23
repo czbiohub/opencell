@@ -31,6 +31,9 @@ def session():
 
     yield session
 
+    # drop the tables
+    models.Base.metadata.create_all(connection)
+
     # close the session and rollback everything (including calls to commit)
     session.close()
     transaction.rollback()

@@ -8,46 +8,8 @@ import sqlalchemy as db
 from contextlib import contextmanager
 
 from opencell import constants
-from opencell.database import models
+from opencell.database import models, utils
 from opencell.imaging.processors import FOVProcessor
-
-
-def add_and_commit(session, instances, errors='raise'):
-
-    if not isinstance(instances, list):
-        instances = [instances]
-
-    for instance in instances:
-        try:
-            session.add(instance)
-            session.commit()
-        except Exception as exception:
-            session.rollback()
-            if errors == 'raise':
-                raise
-            if errors == 'warn':
-                print('Error in add_and_commit: %s' % exception)
-
-
-def delete_and_commit(session, instances):
-
-    if not isinstance(instances, list):
-        instances = [instances]
-
-    for instance in instances:
-        try:
-            session.delete(instance)
-            session.commit()
-        except Exception:
-            session.rollback()
-            raise
-
-
-def to_jsonable(data):
-    '''
-    hackish way to make a dict JSON-safe
-    '''
-    return json.loads(pd.Series(data=data).to_json())
 
 
 def get_or_create_progenitor_cell_line(session, name, notes=None, create=False):
@@ -85,7 +47,7 @@ def get_or_create_progenitor_cell_line(session, name, notes=None, create=False):
     elif create:
         print("Creating progenitor cell line with name '%s'" % name)
         cell_line = models.CellLine(name=name, notes=notes, line_type='PROGENITOR')
-        add_and_commit(session, cell_line, errors='raise')
+        utils.add_and_commit(session, cell_line, errors='raise')
     else:
         cell_line = None
         print("A progenitor cell line with name '%s' does not exist" % name)
@@ -109,7 +71,7 @@ def get_or_create_plate_design(session, design_id, date=None, notes=None, create
             plate_design = models.PlateDesign(
                 design_id=design_id, design_date=date, design_notes=notes
             )
-            add_and_commit(session, plate_design, errors='warn')
+            utils.add_and_commit(session, plate_design, errors='warn')
         else:
             raise ValueError('plate_design %s does not exist')
 
@@ -156,12 +118,12 @@ def create_crispr_designs(
 
     # delete all existing crispr designs
     if drop_existing:
-        delete_and_commit(session, plate_design.crispr_designs)
+        utils.delete_and_commit(session, plate_design.crispr_designs)
 
     # create the crispr designs
     for _, design in designs.iterrows():
         plate_design.crispr_designs.append(models.CrisprDesign(**design))
-    add_and_commit(session, plate_design, errors=errors)
+    utils.add_and_commit(session, plate_design, errors=errors)
 
 
 def create_polyclonal_lines(
@@ -197,7 +159,7 @@ def create_polyclonal_lines(
             line_type='POLYCLONAL',
         )
         electroporation.cell_lines.append(cell_line)
-    add_and_commit(session, electroporation, errors=errors)
+    utils.add_and_commit(session, electroporation, errors=errors)
 
 
 class PolyclonalLineOperations:
@@ -279,13 +241,13 @@ class PolyclonalLineOperations:
 
         # drop any existing data
         if self.line.facs_dataset:
-            delete_and_commit(session, self.line.facs_dataset)
+            utils.delete_and_commit(session, self.line.facs_dataset)
 
         facs_dataset = models.FACSDataset(
             cell_line=self.line,
-            scalars=to_jsonable(scalars),
-            histograms=to_jsonable(histograms))
-        add_and_commit(session, facs_dataset, errors=errors)
+            scalars=utils.to_jsonable(scalars),
+            histograms=utils.to_jsonable(histograms))
+        utils.add_and_commit(session, facs_dataset, errors=errors)
 
 
     def insert_sequencing_dataset(self, session, scalars, errors='warn'):
@@ -295,12 +257,12 @@ class PolyclonalLineOperations:
 
         # drop any existing data
         if self.line.sequencing_dataset:
-            delete_and_commit(session, self.line.sequencing_dataset)
+            utils.delete_and_commit(session, self.line.sequencing_dataset)
 
         sequencing_dataset = models.SequencingDataset(
             cell_line=self.line,
-            scalars=to_jsonable(scalars))
-        add_and_commit(session, sequencing_dataset, errors=errors)
+            scalars=utils.to_jsonable(scalars))
+        utils.add_and_commit(session, sequencing_dataset, errors=errors)
 
 
     def insert_microscopy_fovs(self, session, metadata, errors='warn'):
@@ -321,7 +283,7 @@ class PolyclonalLineOperations:
                 imaging_round_id=row.imaging_round_id,
             )
             fovs.append(fov)
-        add_and_commit(session, fovs, errors=errors)
+        utils.add_and_commit(session, fovs, errors=errors)
 
 
     def construct_payload(self, kind=None):

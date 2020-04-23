@@ -7,7 +7,7 @@ import pandas as pd
 import sqlalchemy as db
 
 from opencell import constants
-from opencell.database import models
+from opencell.database import models, utils
 from opencell.imaging.processors import FOVProcessor
 
 
@@ -40,7 +40,7 @@ class MicroscopyFOVOperations:
             (this should be the output of FOVProcessor.process_raw_tiff)
         '''
 
-        result = to_jsonable(result)
+        result = utils.to_jsonable(result)
         metadata = result.get('metadata')
         events = result.get('events')
 
@@ -48,14 +48,14 @@ class MicroscopyFOVOperations:
             fov_id=self.fov_id,
             kind='raw-tiff-metadata',
             data=metadata)
-        add_and_commit(session, row, errors='raise')
+        utils.add_and_commit(session, row, errors='raise')
 
         if len(events):
             row = models.MicroscopyFOVResult(
                 fov_id=self.fov_id,
                 kind='raw-tiff-processing-events',
                 data=events)
-            add_and_commit(session, row, errors='raise')
+            utils.add_and_commit(session, row, errors='raise')
 
 
     def insert_fov_features(self, session, result):
@@ -63,12 +63,12 @@ class MicroscopyFOVOperations:
         Insert FOV features
         result : dict returned by FOVProcessor.calculate_fov_features
         '''
-        result = to_jsonable(result)
+        result = utils.to_jsonable(result)
         row = models.MicroscopyFOVResult(
             fov_id=self.fov_id,
             kind='fov-features',
             data=result)
-        add_and_commit(session, row, errors='raise')
+        utils.add_and_commit(session, row, errors='raise')
 
 
     def insert_fov_thumbnails(self, session, result):
@@ -76,7 +76,7 @@ class MicroscopyFOVOperations:
         Insert FOV thumbnails
         result : dict returned by FOVProcessor.generate_fov_thumbnails
         '''
-        result = to_jsonable(result)
+        result = utils.to_jsonable(result)
 
         rows = []
         for channel, encoded_im in result['encoded_ims'].items():
@@ -86,7 +86,7 @@ class MicroscopyFOVOperations:
                 channel=channel,
                 data=encoded_im)
             rows.append(row)
-        add_and_commit(session, rows, errors='raise')
+        utils.add_and_commit(session, rows, errors='raise')
 
 
     def insert_z_profiles(self, session, result):
@@ -94,7 +94,7 @@ class MicroscopyFOVOperations:
         Insert z-profiles
         result : dict returned by FOVProcessor.calculate_z_profiles
         '''
-        result = to_jsonable(result)
+        result = utils.to_jsonable(result)
         row = models.MicroscopyFOVResult(
             fov_id=self.fov_id,
             kind='z-profiles',
@@ -106,12 +106,12 @@ class MicroscopyFOVOperations:
         '''
         Insert result from the generate_clean_tiff method
         '''
-        result = to_jsonable(result)
+        result = utils.to_jsonable(result)
         row = models.MicroscopyFOVResult(
             fov_id=self.fov_id,
             kind='clean-tiff-metadata',
             data=result)
-        add_and_commit(session, row, errors='raise')
+        utils.add_and_commit(session, row, errors='raise')
 
 
     def _insert_rois(self, session, result, roi_kind):
@@ -125,25 +125,25 @@ class MicroscopyFOVOperations:
             return
 
         result, all_roi_props = result
-        result = to_jsonable(result)
+        result = utils.to_jsonable(result)
         result_kind = '%s-roi-cropping' % roi_kind
 
         row = models.MicroscopyFOVResult(
             fov_id=self.fov_id,
             kind=result_kind,
             data=result)
-        add_and_commit(session, row, errors='raise')
+        utils.add_and_commit(session, row, errors='raise')
 
         rois = []
         for roi_props in all_roi_props:
-            roi_props = to_jsonable(roi_props)
+            roi_props = utils.to_jsonable(roi_props)
             roi = models.MicroscopyFOVROI(
                 fov_id=self.fov_id,
                 kind=roi_kind,
                 props=roi_props
             )
             rois.append(roi)
-        add_and_commit(session, rois, errors='raise')
+        utils.add_and_commit(session, rois, errors='raise')
 
 
     def insert_corner_rois(self, session, result):

@@ -15,6 +15,42 @@ def url_from_credentials(credentials_filepath):
     return url.format(**credentials)
 
 
+def add_and_commit(session, instances, errors='raise'):
+    if not isinstance(instances, list):
+        instances = [instances]
+
+    for instance in instances:
+        try:
+            session.add(instance)
+            session.commit()
+        except Exception as exception:
+            session.rollback()
+            if errors == 'raise':
+                raise
+            if errors == 'warn':
+                print('Error in add_and_commit: %s' % exception)
+
+
+def delete_and_commit(session, instances):
+    if not isinstance(instances, list):
+        instances = [instances]
+
+    for instance in instances:
+        try:
+            session.delete(instance)
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+
+
+def to_jsonable(data):
+    '''
+    hackish way to make a dict JSON-safe
+    '''
+    return json.loads(pd.Series(data=data).to_json())
+
+
 def format_well_id(well_id):
     '''
     Zero-pad well_ids like 'A1' to 'A01'

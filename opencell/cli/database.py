@@ -90,7 +90,7 @@ def populate(session, data_dir, errors='warn'):
         create=True
     )
 
-    # create the crispr designs
+    # create the plate and crispr designs
     print('Inserting crispr designs for plates 1-19')
     library_snapshot = file_utils.load_library_snapshot(
         os.path.join(data_dir, '2019-06-26_mNG11_HEK_library.csv'))
@@ -98,9 +98,14 @@ def populate(session, data_dir, errors='warn'):
     plate_ids = sorted(set(library_snapshot.plate_id))
     for plate_id in plate_ids:
         print('Inserting crispr designs for %s' % plate_id)
-        plate_ops = ops.PlateOperations.get_or_create_plate_design(session, plate_id)
-        plate_ops.create_crispr_designs(
-            session, library_snapshot, drop_existing=False, errors=errors)
+
+        # create the plate design
+        plate_design = ops.get_or_create_plate_design(session, plate_id, create=True)
+
+        # create the crispr designs
+        ops.create_crispr_designs(
+            session, plate_design, library_snapshot, drop_existing=False, errors=errors
+        )
 
     # create the electroporations and polyclonal lines
     print('Inserting electroporations and polyclonal lines for plates 1-19')
@@ -111,8 +116,8 @@ def populate(session, data_dir, errors='warn'):
         session, constants.PARENTAL_LINE_NAME)
 
     for _, row in electroporation_history.iterrows():
-        print('Inserting electroporation of %s' % row.plate_id)
-        plate_design = ops.PlateOperations.from_id(session, row.plate_id).plate_design
+        print('Inserting electroporation and cell lines for %s' % row.plate_id)
+        plate_design = ops.get_or_create_plate_design(session, row.plate_id)
         ops.create_polyclonal_lines(
             session,
             progenitor_line,

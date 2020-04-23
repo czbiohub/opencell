@@ -111,127 +111,86 @@ def get_or_create_progenitor_cell_line(session, name, notes=None, create=False):
     )
     if cell_line is not None:
         print("Warning: a cell line with the name '%s' already exists" % name)
-
     elif create:
         print("Creating progenitor cell line with name '%s'" % name)
         cell_line = models.CellLine(name=name, notes=notes, line_type='PROGENITOR')
         add_and_commit(session, cell_line, errors='raise')
-
     else:
         cell_line = None
-        print(
-            "No progenitor cell line with name '%s' found; use create=True to force its creation"
-            % name)
+        print("A progenitor cell line with name '%s' does not exist" % name)
 
     return cell_line
 
 
-class PlateOperations:
+def get_or_create_plate_design(session, design_id, date=None, notes=None, create=False):
     '''
-    Operations that create or modify a particular plate design
-
-    Methods
-    -------
-    from_id
-    get_or_create_plate_design
-    create_crispr_designs
+    Get or create a new plate design
+    note that date and notes may be None
     '''
 
-    def __init__(self, plate_design):
-        self.plate_design = plate_design
+    plate_design = (
+        session.query(models.PlateDesign)
+        .filter(models.PlateDesign.design_id == design_id)
+        .one_or_none()
+    )
+    if plate_design is None:
+        if create:
+            plate_design = models.PlateDesign(
+                design_id=design_id, design_date=date, design_notes=notes
+            )
+            add_and_commit(session, plate_design, errors='warn')
+        else:
+            raise ValueError('plate_design %s does not exist')
+
+    return plate_design
 
 
-    @classmethod
-    def from_id(cls, session, design_id):
-        '''
-        Initialize from a design_id
-        '''
+def create_crispr_designs(
+    session,
+    plate_design,
+    library_snapshot,
+    drop_existing=False,
+    errors='warn'
+):
+    '''
+    Insert all crispr designs for a given plate design,
+    using a snapshot of the library spreadsheet.
 
-        plate_design = (
-            session.query(models.PlateDesign)
-            .filter(models.PlateDesign.design_id == design_id)
-            .one_or_none()
-        )
-        if plate_design is None:
-            raise ValueError('Plate design %s does not exist' % design_id)
-        return cls(plate_design)
+    Parameters
+    ----------
+    session : sqlalchemy session
+    plate_design : PlateDesign instance corresponding to the plate
+        whose crispr designs are to be inserted
+    library_snapshot : a snapshot of the library spreadsheet as a pandas dataframe
+    drop_existing : whether to drop any existing crispr designs linked to this plate
+    '''
 
+    # crop the library to the current plate
+    designs = library_snapshot.loc[
+        library_snapshot.plate_id == plate_design.design_id
+    ].copy()
 
-    @classmethod
-    def get_or_create_plate_design(cls, session, design_id, date=None, notes=None):
-        '''
-        Get or create a new plate design
-        Note that this method is intended to be the only way
-        in which new plate designs are created
+    # discard the plate_id
+    designs.drop(labels=['plate_id'], axis=1, inplace=True)
 
-        If the design_id already exists, we issue a warning
-        but load and instantiate from the existing plate
-        '''
+    # coerce nan to None (sqlalchemy doesn't coerce np.nan to NULL)
+    designs.replace({pd.np.nan: None}, inplace=True)
 
-        try:
-            plate_operations = cls.from_id(session, design_id)
-            print('Warning: design_id %s already exists; loading existing design' % design_id)
-            return plate_operations
-        except ValueError:
-            pass
+    # check that we have the expected number of designs/wells
+    if designs.shape[0] != len(constants.DATABASE_WELL_IDS):
+        raise ValueError('%s crispr designs found but 96 are expected' % designs.shape[0])
 
-        # note that date and notes may be None
-        plate_design = models.PlateDesign(
-            design_id=design_id, design_date=date, design_notes=notes)
-        try:
-            add_and_commit(session, plate_design)
-        except Exception:
-            print('Error creating design %s' % plate_design.design_id)
-            raise
+    # drop the negative (empty) controls
+    designs = designs.loc[designs.target_name != 'empty_control']
 
-        return cls(plate_design)
+    # delete all existing crispr designs
+    if drop_existing:
+        delete_and_commit(session, plate_design.crispr_designs)
 
-
-    def create_crispr_designs(
-        self,
-        session,
-        library_snapshot,
-        drop_existing=False,
-        errors='warn'
-    ):
-        '''
-        Convenience method to insert all crispr designs for the current plate
-        from a snapshot of the library spreadsheet.
-
-        Parameters
-        ----------
-        session : sqlalchemy session
-        library_snapshot : a snapshot of the library spreadsheet as a pandas dataframe
-        drop_existing : whether to drop any existing crispr designs linked to this plate
-
-        '''
-
-        # crop the library to the current plate
-        designs = library_snapshot.loc[
-            library_snapshot.plate_id == self.plate_design.design_id
-        ].copy()
-
-        # discard the plate_id
-        designs.drop(labels=['plate_id'], axis=1, inplace=True)
-
-        # coerce nan to None (sqlalchemy doesn't coerce np.nan to NULL)
-        designs.replace({pd.np.nan: None}, inplace=True)
-
-        # check that we have the expected number of designs/wells
-        if designs.shape[0] != len(constants.DATABASE_WELL_IDS):
-            raise ValueError('%s designs found; expected 96' % designs.shape[0])
-
-        # drop the negative (empty) controls
-        designs = designs.loc[designs.target_name != 'empty_control']
-
-        # delete all existing crispr designs
-        if drop_existing:
-            delete_and_commit(session, self.plate_design.crispr_designs)
-
-        # create all designs and maybe warn about errors
-        for _, design in designs.iterrows():
-            self.plate_design.crispr_designs.append(models.CrisprDesign(**design))
-            add_and_commit(session, self.plate_design, errors=errors)
+    # create the crispr designs
+    for _, design in designs.iterrows():
+        plate_design.crispr_designs.append(models.CrisprDesign(**design))
+    add_and_commit(session, plate_design, errors=errors)
 
 
 def create_polyclonal_lines(
@@ -252,13 +211,11 @@ def create_polyclonal_lines(
             (required to disambiguate electroporations of the same plate)
     '''
 
-    # create the electroporation
     electroporation = models.Electroporation(
         progenitor_cell_line=progenitor_cell_line,
         plate_design=plate_design,
         date_performed=date
     )
-    add_and_commit(session, electroporation, errors=errors)
 
     # create a polyclonal line for each crispr design
     for crispr_design in plate_design.crispr_designs:
@@ -268,7 +225,8 @@ def create_polyclonal_lines(
             crispr_design=crispr_design,
             line_type='POLYCLONAL',
         )
-        add_and_commit(session, cell_line, errors=errors)
+        electroporation.cell_lines.append(cell_line)
+    add_and_commit(session, electroporation, errors=errors)
 
 
 class PolyclonalLineOperations:

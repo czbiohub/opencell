@@ -1,6 +1,7 @@
 import re
 import json
 import datetime
+import pandas as pd
 
 
 def url_from_credentials(credentials_filepath):

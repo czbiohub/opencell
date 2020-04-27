@@ -18,6 +18,7 @@ from flask import (
 from opencell.imaging import utils
 from opencell.api.cache import cache
 from opencell.database import models, operations, payloads
+from opencell.database import utils as db_utils
 from opencell.imaging.processors import FOVProcessor
 
 
@@ -237,7 +238,7 @@ class CellLineAnnotation(Resource):
         annotation.client_metadata = data.get('client_metadata')
 
         try:
-            operations.add_and_commit(
+            db_utils.add_and_commit(
                 current_app.Session,
                 annotation,
                 errors='raise')
@@ -281,7 +282,7 @@ class MicroscopyFOVAnnotation(Resource):
         annotation.roi_position_left = data.get('roi_position_left')
 
         try:
-            operations.add_and_commit(
+            db_utils.add_and_commit(
                 current_app.Session,
                 annotation,
                 errors='raise')
@@ -298,7 +299,7 @@ class MicroscopyFOVAnnotation(Resource):
             return abort(404, 'FOV %s does not have an annotation' % fov_id)
 
         try:
-            operations.delete_and_commit(current_app.Session, fov.annotation)
+            db_utils.delete_and_commit(current_app.Session, fov.annotation)
         except Exception as error:
             abort(500, str(error))
         return ('', 204)

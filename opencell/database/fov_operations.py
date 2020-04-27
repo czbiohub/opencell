@@ -99,7 +99,7 @@ class MicroscopyFOVOperations:
             fov_id=self.fov_id,
             kind='z-profiles',
             data=result)
-        add_and_commit(session, row, errors='raise')
+        utils.add_and_commit(session, row, errors='raise')
 
 
     def insert_clean_tiff_metadata(self, session, result):

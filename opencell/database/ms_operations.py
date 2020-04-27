@@ -10,7 +10,7 @@ from contextlib import contextmanager
 
 from opencell import constants
 from opencell.database import operations
-from opencell.database import models
+from opencell.database import models, utils
 from opencell.database import ms_utils
 from opencell.imaging import processors
 
@@ -26,14 +26,14 @@ def insert_pulldown_plate(session, row, errors='warn'):
         .one_or_none()
     )
     if line:
-        operations.delete_and_commit(session, line)
+        utils.delete_and_commit(session, line)
 
     plate = models.MassSpecPulldownPlate(
         id=row.id,
         plate_design_link=row.plate_design_link,
         description=row.plate_number_subset
     )
-    operations.add_and_commit(session, plate, errors=errors)
+    utils.add_and_commit(session, plate, errors=errors)
 
 
 class MassSpecPolyclonalOperations(operations.PolyclonalLineOperations):
@@ -47,13 +47,13 @@ class MassSpecPolyclonalOperations(operations.PolyclonalLineOperations):
         if self.line.pulldowns:
             for pulldown in self.line.pulldowns:
                 if pulldown.pulldown_plate_id == row.pulldown_plate_id:
-                    operations.delete_and_commit(session, pulldown)
+                    utils.delete_and_commit(session, pulldown)
 
         pulldown = models.MassSpecPulldown(
             cell_line=self.line,
             pulldown_plate_id=row.pulldown_plate_id
         )
-        operations.add_and_commit(session, pulldown, errors=errors)
+        utils.add_and_commit(session, pulldown, errors=errors)
 
 
 class MassSpecPulldownOperations:
@@ -130,7 +130,7 @@ class MassSpecPulldownOperations:
             .all()
         )
         if len(dup_groups) == 1:
-            operations.delete_and_commit(session, dup_groups[0])
+            utils.delete_and_commit(session, dup_groups[0])
 
         if row.gene_names:
             gene_names = row.gene_names.split(';')
@@ -142,7 +142,7 @@ class MassSpecPulldownOperations:
             gene_names=gene_names,
             protein_names=protein_list
         )
-        operations.add_and_commit(session, protein_group, errors=errors)
+        utils.add_and_commit(session, protein_group, errors=errors)
 
 
     @staticmethod

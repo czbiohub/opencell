@@ -17,7 +17,8 @@ from flask import (
 
 from opencell.imaging import utils
 from opencell.api.cache import cache
-from opencell.database import models, operations
+from opencell.database import models, operations, payloads
+from opencell.database import utils as db_utils
 from opencell.imaging.processors import FOVProcessor
 
 
@@ -111,8 +112,7 @@ class PolyclonalLines(Resource):
 
         payload = []
         for line in query.all():
-            ops = operations.PolyclonalLineOperations(line)
-            payload.append(ops.construct_payload(kind=kind))
+            payload.append(payloads.construct_payload(line, kind=kind))
         return jsonify(payload)
 
 
@@ -125,7 +125,7 @@ class PolyclonalLine(Resource):
         kind = args.get('kind')
         ops = operations.PolyclonalLineOperations.from_line_id(
             current_app.Session, cell_line_id)
-        return jsonify(ops.construct_payload(kind=kind))
+        return jsonify(payloads.construct_payload(ops.line, kind=kind))
 
 
 class MicroscopyFOV(Resource):
@@ -164,11 +164,8 @@ class MicroscopyFOV(Resource):
         imageio.imsave(file, im, format='jpg', quality=90)
         file.seek(0)
 
-        return send_file(
-            file,
-            as_attachment=True,
-            attachment_filename='FOV%04d_%s-%s.jpg' % (fov_id, kind.upper(), channel.upper())
-        )
+        filename = 'FOV%04d_%s-%s.jpg' % (fov_id, kind.upper(), channel.upper())
+        return send_file(file, as_attachment=True, attachment_filename=filename)
 
 
 class MicroscopyFOVROI(Resource):
@@ -241,7 +238,7 @@ class CellLineAnnotation(Resource):
         annotation.client_metadata = data.get('client_metadata')
 
         try:
-            operations.add_and_commit(
+            db_utils.add_and_commit(
                 current_app.Session,
                 annotation,
                 errors='raise')
@@ -285,7 +282,7 @@ class MicroscopyFOVAnnotation(Resource):
         annotation.roi_position_left = data.get('roi_position_left')
 
         try:
-            operations.add_and_commit(
+            db_utils.add_and_commit(
                 current_app.Session,
                 annotation,
                 errors='raise')
@@ -302,7 +299,7 @@ class MicroscopyFOVAnnotation(Resource):
             return abort(404, 'FOV %s does not have an annotation' % fov_id)
 
         try:
-            operations.delete_and_commit(current_app.Session, fov.annotation)
+            db_utils.delete_and_commit(current_app.Session, fov.annotation)
         except Exception as error:
             abort(500, str(error))
         return ('', 204)

@@ -5,78 +5,9 @@ import json
 import numpy as np
 import pandas as pd
 import sqlalchemy as db
-from contextlib import contextmanager
 
 from opencell import constants
-from opencell.database import models
-from opencell.imaging.processors import FOVProcessor
-
-
-@contextmanager
-def session_scope(url, echo=False):
-
-    engine = db.create_engine(url, echo=echo)
-    Session = db.orm.sessionmaker(bind=engine)
-    session = Session()
-
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
-
-
-def add_all(session, rows):
-    try:
-        session.add_all(rows)
-        session.commit()
-    except Exception as exception:
-        session.rollback()
-        print('Error in add_all: %s' % str(exception))
-
-
-def add_and_commit(session, instances, errors='raise'):
-    '''
-    Add and commit instances (rows) one at a time,
-    raising or warning about any errors that occur
-    '''
-    if not isinstance(instances, list):
-        instances = [instances]
-
-    for instance in instances:
-        try:
-            session.add(instance)
-            session.commit()
-        except Exception as exception:
-            session.rollback()
-            if errors == 'raise':
-                raise
-            if errors == 'warn':
-                print('Error in add_and_commit: %s' % exception)
-
-
-def delete_and_commit(session, instances):
-
-    if not isinstance(instances, list):
-        instances = [instances]
-
-    for instance in instances:
-        try:
-            session.delete(instance)
-            session.commit()
-        except Exception:
-            session.rollback()
-            raise
-
-
-def to_jsonable(data):
-    '''
-    hackish way to make a dict JSON-safe
-    '''
-    return json.loads(pd.Series(data=data).to_json())
+from opencell.database import models, utils
 
 
 def get_or_create_progenitor_cell_line(session, name, notes=None, create=False):
@@ -114,7 +45,7 @@ def get_or_create_progenitor_cell_line(session, name, notes=None, create=False):
     elif create:
         print("Creating progenitor cell line with name '%s'" % name)
         cell_line = models.CellLine(name=name, notes=notes, line_type='PROGENITOR')
-        add_and_commit(session, cell_line, errors='raise')
+        utils.add_and_commit(session, cell_line, errors='raise')
     else:
         cell_line = None
         print("A progenitor cell line with name '%s' does not exist" % name)
@@ -138,7 +69,7 @@ def get_or_create_plate_design(session, design_id, date=None, notes=None, create
             plate_design = models.PlateDesign(
                 design_id=design_id, design_date=date, design_notes=notes
             )
-            add_and_commit(session, plate_design, errors='warn')
+            utils.add_and_commit(session, plate_design, errors='warn')
         else:
             raise ValueError('plate_design %s does not exist')
 
@@ -185,12 +116,12 @@ def create_crispr_designs(
 
     # delete all existing crispr designs
     if drop_existing:
-        delete_and_commit(session, plate_design.crispr_designs)
+        utils.delete_and_commit(session, plate_design.crispr_designs)
 
     # create the crispr designs
     for _, design in designs.iterrows():
         plate_design.crispr_designs.append(models.CrisprDesign(**design))
-    add_and_commit(session, plate_design, errors=errors)
+    utils.add_and_commit(session, plate_design, errors=errors)
 
 
 def create_polyclonal_lines(
@@ -226,7 +157,7 @@ def create_polyclonal_lines(
             line_type='POLYCLONAL',
         )
         electroporation.cell_lines.append(cell_line)
-    add_and_commit(session, electroporation, errors=errors)
+    utils.add_and_commit(session, electroporation, errors=errors)
 
 
 class PolyclonalLineOperations:
@@ -308,13 +239,13 @@ class PolyclonalLineOperations:
 
         # drop any existing data
         if self.line.facs_dataset:
-            delete_and_commit(session, self.line.facs_dataset)
+            utils.delete_and_commit(session, self.line.facs_dataset)
 
         facs_dataset = models.FACSDataset(
             cell_line=self.line,
-            scalars=to_jsonable(scalars),
-            histograms=to_jsonable(histograms))
-        add_and_commit(session, facs_dataset, errors=errors)
+            scalars=utils.to_jsonable(scalars),
+            histograms=utils.to_jsonable(histograms))
+        utils.add_and_commit(session, facs_dataset, errors=errors)
 
 
     def insert_sequencing_dataset(self, session, scalars, errors='warn'):
@@ -324,12 +255,12 @@ class PolyclonalLineOperations:
 
         # drop any existing data
         if self.line.sequencing_dataset:
-            delete_and_commit(session, self.line.sequencing_dataset)
+            utils.delete_and_commit(session, self.line.sequencing_dataset)
 
         sequencing_dataset = models.SequencingDataset(
             cell_line=self.line,
-            scalars=to_jsonable(scalars))
-        add_and_commit(session, sequencing_dataset, errors=errors)
+            scalars=utils.to_jsonable(scalars))
+        utils.add_and_commit(session, sequencing_dataset, errors=errors)
 
 
     def insert_microscopy_fovs(self, session, metadata, errors='warn'):
@@ -350,257 +281,4 @@ class PolyclonalLineOperations:
                 imaging_round_id=row.imaging_round_id,
             )
             fovs.append(fov)
-        add_and_commit(session, fovs, errors=errors)
-
-
-    def construct_payload(self, kind=None):
-        '''
-        Construct the JSON payload returned by the lines/ endpoint of the API
-
-        Note that, awkwardly, the RNAseq data is a column in the crispr_design table
-        '''
-        design = self.line.crispr_design
-
-        # metadata object included in every playload
-        metadata = {
-            'cell_line_id': self.line.id,
-            'well_id': design.well_id,
-            'plate_id': design.plate_design_id,
-            'target_name': design.target_name,
-            'target_family': design.target_family,
-            'target_terminus': design.target_terminus.value[0],
-            'transcript_id': design.transcript_id,
-            'hek_tpm': design.hek_tpm,
-        }
-        payload = {'metadata': metadata}
-
-        if kind in ['all', 'scalars']:
-            payload['scalars'] = self.construct_scalars_payload()
-            payload['annotations'] = self.line.annotation.categories if self.line.annotation else None
-
-        if kind in ['all', 'facs'] and self.line.facs_dataset:
-            payload['facs_histograms'] = self.line.facs_dataset.simplify_histograms()
-
-        if kind in ['all', 'rois', 'thumbnails']:
-            payload['fovs'] = self.construct_fov_payload(kind=kind)
-
-        return payload
-
-
-    def construct_scalars_payload(self):
-        '''
-        Aggregate various scalar properties/features/results
-        '''
-        scalars = {}
-
-        # the sequencing percentages
-        if self.line.sequencing_dataset:
-            scalars.update({
-                'hdr_all': self.line.sequencing_dataset.scalars.get('hdr_all'),
-                'hdr_modified': self.line.sequencing_dataset.scalars.get('hdr_modified')
-            })
-
-        # the FACS area and relative median intensity
-        if self.line.facs_dataset:
-            scalars.update({
-                'facs_area': self.line.facs_dataset.scalars.get('area'),
-                'facs_intensity': self.line.facs_dataset.scalars.get('rel_median_log')
-            })
-        return scalars
-
-
-    def construct_fov_payload(self, kind=None):
-        '''
-        JSON payload describing the FOVs and ROIs
-        '''
-        payload = []
-        for fov in self.line.fovs:
-            fov_payload = {}
-
-            # basic metadata
-            fov_metadata = {
-                'id': fov.id,
-                'score': fov.get_score(),
-                'pml_id': fov.dataset.pml_id,
-                'src_filename': fov.raw_filename,
-                'z_step_size': FOVProcessor.z_step_size(fov.dataset.pml_id),
-            }
-
-            fov_payload['annotation'] = fov.annotation.as_dict() if fov.annotation else None
-
-            # append the 488 exposure settings
-            metadata = fov.get_result('raw-tiff-metadata')
-            if metadata:
-                fov_metadata['laser_power_488'] = metadata.data.get('laser_power_488_488')
-                fov_metadata['exposure_time_488'] = metadata.data.get('exposure_time_488')
-                fov_metadata['max_intensity_488'] = metadata.data.get('max_intensity_488')
-
-            # the position of the cell layer center (relative to the bottom of the stack)
-            metadata = fov.get_result('clean-tiff-metadata')
-            if metadata and metadata.data.get('cell_layer_center') is not None:
-                fov_metadata['cell_layer_center'] = (
-                    metadata.data.get('cell_layer_center') * fov_metadata['z_step_size']
-                )
-
-            if kind in ['all', 'rois']:
-                fov_payload['rois'] = [roi.as_dict() for roi in fov.rois]
-
-            if kind in ['all', 'thumbnails']:
-                thumbnail = fov.get_thumbnail('rgb')
-                fov_payload['thumbnails'] = thumbnail.as_dict() if thumbnail else None
-
-            fov_payload['metadata'] = fov_metadata
-            payload.append(fov_payload)
-
-        # sort FOVs by score (unscored FOVs last)
-        payload = sorted(payload, key=lambda row: row['metadata'].get('score') or -2)[::-1]
-        return payload
-
-
-class MicroscopyFOVOperations:
-    '''
-    Methods to insert metadata associated with, or 'children' of, microscopy FOVs
-
-    FOV-associated metadata includes the raw tiff metadata, FOV features, and thumbnails,
-    FOV 'children' include the ROIs cropped from each FOV
-
-    NOTE: instances of this class cannot be associated with instances of models.MicroscopyFOV
-    (in the way that, for example, PolyclonalLineOperations instances
-    are associated with instances of models.CellLine)
-    because they may be passed to dask.delayed-wrapped methods
-
-    '''
-
-    def __init__(self, fov_id):
-        self.fov_id = fov_id
-
-
-    def insert_raw_tiff_metadata(self, session, result):
-        '''
-        Insert the raw tiff metadata and raw TIFF processing events
-        generated by FOVProcessor.process_raw_tiff
-
-        Parameters
-        ----------
-        result : dict with 'metadata' and 'events' keys
-            (this should be the output of FOVProcessor.process_raw_tiff)
-        '''
-
-        result = to_jsonable(result)
-        metadata = result.get('metadata')
-        events = result.get('events')
-
-        row = models.MicroscopyFOVResult(
-            fov_id=self.fov_id,
-            kind='raw-tiff-metadata',
-            data=metadata)
-        add_and_commit(session, row, errors='raise')
-
-        if len(events):
-            row = models.MicroscopyFOVResult(
-                fov_id=self.fov_id,
-                kind='raw-tiff-processing-events',
-                data=events)
-            add_and_commit(session, row, errors='raise')
-
-
-    def insert_fov_features(self, session, result):
-        '''
-        Insert FOV features
-        result : dict returned by FOVProcessor.calculate_fov_features
-        '''
-        result = to_jsonable(result)
-        row = models.MicroscopyFOVResult(
-            fov_id=self.fov_id,
-            kind='fov-features',
-            data=result)
-        add_and_commit(session, row, errors='raise')
-
-
-    def insert_fov_thumbnails(self, session, result):
-        '''
-        Insert FOV thumbnails
-        result : dict returned by FOVProcessor.generate_fov_thumbnails
-        '''
-        result = to_jsonable(result)
-
-        rows = []
-        for channel, encoded_im in result['encoded_ims'].items():
-            row = models.MicroscopyThumbnail(
-                fov_id=self.fov_id,
-                size=result.get('size'),
-                channel=channel,
-                data=encoded_im)
-            rows.append(row)
-        add_and_commit(session, rows, errors='raise')
-
-
-    def insert_z_profiles(self, session, result):
-        '''
-        Insert z-profiles
-        result : dict returned by FOVProcessor.calculate_z_profiles
-        '''
-        result = to_jsonable(result)
-        row = models.MicroscopyFOVResult(
-            fov_id=self.fov_id,
-            kind='z-profiles',
-            data=result)
-        add_and_commit(session, row, errors='raise')
-
-
-    def insert_clean_tiff_metadata(self, session, result):
-        '''
-        Insert result from the generate_clean_tiff method
-        '''
-        result = to_jsonable(result)
-        row = models.MicroscopyFOVResult(
-            fov_id=self.fov_id,
-            kind='clean-tiff-metadata',
-            data=result)
-        add_and_commit(session, row, errors='raise')
-
-
-    def _insert_rois(self, session, result, roi_kind):
-        '''
-        result : tuple of (error_info, roi_props) returned by FOVProcessor.crop_rois
-        roi_kind : 'corner' or 'annotated'
-        '''
-
-        # FOVProcessor.crop_annotated_roi returns None if no manual annotation existed
-        if result is None:
-            return
-
-        result, all_roi_props = result
-        result = to_jsonable(result)
-        result_kind = '%s-roi-cropping' % roi_kind
-
-        row = models.MicroscopyFOVResult(
-            fov_id=self.fov_id,
-            kind=result_kind,
-            data=result)
-        add_and_commit(session, row, errors='raise')
-
-        rois = []
-        for roi_props in all_roi_props:
-            roi_props = to_jsonable(roi_props)
-            roi = models.MicroscopyFOVROI(
-                fov_id=self.fov_id,
-                kind=roi_kind,
-                props=roi_props
-            )
-            rois.append(roi)
-        add_and_commit(session, rois, errors='raise')
-
-
-    def insert_corner_rois(self, session, result):
-        '''
-        Insert the four ROIs cropped from each corner of an FOV
-        '''
-        self._insert_rois(session, result, roi_kind='corner')
-
-
-    def insert_annotated_roi(self, session, result):
-        '''
-        Insert the single manually-annotated ROI (if any)
-        '''
-        self._insert_rois(session, result, roi_kind='annotated')
+        utils.add_and_commit(session, fovs, errors=errors)

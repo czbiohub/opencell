@@ -152,7 +152,7 @@ def insert_facs(session, facs_results_dir, errors='warn'):
 
         # the polyclonal line
         try:
-            pcl_ops = ops.PolyclonalLineOperations.from_plate_well(session, plate_id, well_id)
+            line_ops = ops.PolyclonalLineOperations.from_plate_well(session, plate_id, well_id)
         except ValueError:
             print('No polyclonal line for (%s, %s)' % (plate_id, well_id))
             continue
@@ -162,7 +162,7 @@ def insert_facs(session, facs_results_dir, errors='warn'):
         histograms = facs_histograms.get((row.plate_id, row.well_id))
 
         scalars = dict(row.drop(['plate_id', 'well_id']))
-        pcl_ops.insert_facs_dataset(session, histograms=histograms, scalars=scalars, errors=errors)
+        line_ops.insert_facs_dataset(session, histograms=histograms, scalars=scalars, errors=errors)
 
 
 def insert_microscopy_datasets(session, metadata, root_directory, update=False, errors='warn'):

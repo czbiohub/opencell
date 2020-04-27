@@ -113,6 +113,9 @@ class CellLine(Base):
     annotation = db.orm.relationship(
         'CellLineAnnotation', back_populates='cell_line', uselist=False)
 
+    # one cell_line to many FOVs
+    fovs = db.orm.relationship('MicroscopyFOV', back_populates='cell_line')
+
     # one cell_line to many pulldowns
     pulldowns = db.orm.relationship('MassSpecPulldown', back_populates='cell_line')
 
@@ -481,6 +484,9 @@ class MicroscopyDataset(Base):
     # (for reference/convenience only)
     raw_metadata = db.Column(postgresql.JSONB)
 
+    # one dataset to many FOVs
+    fovs = db.orm.relationship('MicroscopyFOV', back_populates='dataset')
+
     @db.orm.validates('pml_id')
     def validate_pml_id(self, key, value):
         match = re.match(r'^PML[0-9]{4}$', value)
@@ -513,11 +519,11 @@ class MicroscopyFOV(Base):
 
     # many FOVs to one cell_line
     cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'))
-    cell_line = db.orm.relationship('CellLine', backref='fovs')
+    cell_line = db.orm.relationship('CellLine', back_populates='fovs', uselist=False)
 
     # many FOVs to one microscopy_dataset
     pml_id = db.Column(db.String, db.ForeignKey('microscopy_dataset.pml_id'))
-    dataset = db.orm.relationship('MicroscopyDataset', backref='fovs')
+    dataset = db.orm.relationship('MicroscopyDataset', back_populates='fovs', uselist=False)
 
     # one FOV to many FOV results
     results = db.orm.relationship(

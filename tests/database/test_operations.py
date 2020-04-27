@@ -20,9 +20,6 @@ def insert_plates(session):
             session, plate_design, library_snapshot, drop_existing=False, errors='raise'
         )
 
-    electroporation_history = file_utils.load_electroporation_history(
-        os.path.join(data_dir, '2019-06-24_electroporations.csv')
-    )
     progenitor_line = operations.get_or_create_progenitor_cell_line(
         session, constants.PARENTAL_LINE_NAME
     )
@@ -126,7 +123,9 @@ def test_create_polyclonal_lines(session):
     lines = session.query(models.CellLine).filter(models.CellLine.line_type == 'POLYCLONAL').all()
     assert len(lines) == 96*2
 
-    # check the lines associated with the electroporation of plate1
+    # check the number of lines associated with the electroporation of plate1
+    # (note that later plates have fewer than 96 lines per plate/electropration,
+    # because some well are negative controls)
     ep = (
         session.query(models.Electroporation)
         .filter(models.Electroporation.plate_design_id == 'P0001')

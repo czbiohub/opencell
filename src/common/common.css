@@ -35,6 +35,7 @@ label.bp3-label {
 }
 
 .bp3-button-custom {
+	border-radius: 5px;
 	background-image: none !important;
 	box-shadow: none !important;
 	-webkit-box-shadow: none !important;
@@ -42,5 +43,6 @@ label.bp3-label {
 }
 
 .bp3-button-custom:hover {
-	background-color: rgba(209, 212, 214, 0.6) !important;
+	background-color: rgba(209, 212, 214, 0.7) !important;
 }
+

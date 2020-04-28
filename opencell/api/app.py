@@ -59,16 +59,26 @@ def create_app(args):
     cache.init_app(app)
 
     api = Api()
-    api.add_resource(resources.Plates, '/plates')
+
+    # plate designs
     api.add_resource(resources.Plate, '/plates/<string:plate_id>/')
 
-    api.add_resource(resources.PolyclonalLines, '/lines')
-    api.add_resource(resources.PolyclonalLine, '/lines/<int:cell_line_id>')
-    api.add_resource(resources.CellLineAnnotation, '/annotations/<int:cell_line_id>')
+    # cell line metadata
+    api.add_resource(resources.CellLines, '/lines')
+    api.add_resource(resources.CellLine, '/lines/<int:cell_line_id>')
 
-    api.add_resource(resources.MicroscopyFOV, '/fovs/<string:channel>/<string:kind>/<int:fov_id>')
-    api.add_resource(resources.MicroscopyFOVROI, '/rois/<string:channel>/<string:kind>/<int:roi_id>')
-    api.add_resource(resources.MicroscopyFOVAnnotation, '/fov_annotations/<int:fov_id>')
+    # cell-line-dependent datasets
+    api.add_resource(resources.FACSDataset, '/lines/<int:cell_line_id>/facs')
+    api.add_resource(resources.CellLineFOVs, '/lines/<int:cell_line_id>/fovs')
+    api.add_resource(resources.CellLinePulldown, '/lines/<int:cell_line_id>/pulldown')
+    api.add_resource(resources.CellLineAnnotation, '/lines/<int:cell_line_id>/annotation')
+
+    # FOV and ROI image data (z-stacks and z-projections)
+    api.add_resource(resources.MicroscopyFOV, '/fovs/<int:fov_id>/<string:kind>/<string:channel>')
+    api.add_resource(resources.MicroscopyFOVROI, '/rois/<int:roi_id>/<string:kind>/<string:channel>')
+
+    # FOV annotations (always one annotation per FOV)
+    api.add_resource(resources.MicroscopyFOVAnnotation, '/fovs/<int:fov_id>/annotation')
 
     api.init_app(app)
 

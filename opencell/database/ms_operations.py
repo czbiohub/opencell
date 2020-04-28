@@ -128,7 +128,7 @@ class MassSpecPulldownOperations:
             .filter(models.MassSpecProteinGroup.id == protein_group_id)
             .all())
         if len(dup_groups) == 1:
-            operations.delete_and_commit(session, dup_groups[0])
+            return
         if row.gene_names:
             gene_names = row.gene_names.split(';')
         else:

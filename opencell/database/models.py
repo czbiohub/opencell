@@ -865,10 +865,10 @@ class MassSpecHit(Base):
     is_imputed = db.Column(db.Boolean)
 
     # interaction stoichiometry of the prey relative to the target
-    interaction_stoi = db.Column(db.Float)
+    interaction_stoich = db.Column(db.Float)
 
     # abundance stoichiometry of the prey relative to the garget
-    abundance_stoi = db.Column(db.Float)
+    abundance_stoich = db.Column(db.Float)
 
     # timestamp column
     date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())

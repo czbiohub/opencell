@@ -183,7 +183,9 @@ class MassSpecPulldownOperations:
             enrichment=row.enrichment,
             is_significant_hit=row.hits,
             is_minor_hit=row.minor_hits,
-            is_imputed=row.imputed
+            is_imputed=row.imputed,
+            interaction_stoi=row.interaction_stoi,
+            abundance_stoi=row.abundance_stoi
         )
 
         return hit

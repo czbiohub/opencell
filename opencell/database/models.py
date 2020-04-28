@@ -783,7 +783,8 @@ class MassSpecPulldown(Base):
     __tablename__ = 'mass_spec_pulldown'
     id = db.Column(db.Integer, primary_key=True)
     cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'))
-    pulldown_plate_id = db.Column(db.String, db.ForeignKey('mass_spec_pulldown_plate.id'))
+    pulldown_plate_id = db.Column(
+        db.String, db.ForeignKey('mass_spec_pulldown_plate.id'), nullable=False)
 
     # timestamp column
     date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
@@ -841,10 +842,12 @@ class MassSpecHit(Base):
     id = db.Column(db.Integer, primary_key=True)
 
     # hashed string of sorted Uniprot peptide IDs that compose the protein group
-    protein_group_id = db.Column(db.String, db.ForeignKey('mass_spec_protein_group.id'))
+    protein_group_id = db.Column(
+        db.String, db.ForeignKey('mass_spec_protein_group.id'))
 
     # foreign key of each pulldown target from pulldown table
-    pulldown_id = db.Column(db.Integer, db.ForeignKey('mass_spec_pulldown.id'))
+    pulldown_id = db.Column(
+        db.Integer, db.ForeignKey('mass_spec_pulldown.id'), nullable=False)
 
     # p-value of the hit's MS intensity
     pval = db.Column(db.Float, nullable=False)
@@ -860,6 +863,12 @@ class MassSpecHit(Base):
 
     # boolean specifying whether the hit is composed only of imputed values
     is_imputed = db.Column(db.Boolean)
+
+    # interaction stoichiometry of the prey relative to the target
+    interaction_stoi = db.Column(db.Float)
+
+    # abundance stoichiometry of the prey relative to the garget
+    abundance_stoi = db.Column(db.Float)
 
     # timestamp column
     date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())

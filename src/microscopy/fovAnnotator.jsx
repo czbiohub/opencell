@@ -87,11 +87,12 @@ function RoiOutline (props) {
 };
 
 
-export default class FOVCurator extends Component {
+export default class FovAnnotator extends Component {
 
     constructor (props) {
         super(props);
 
+        this.fovs = [];
         this.state = {
             fovId: undefined,
             pixelRoiTop: undefined,
@@ -144,10 +145,10 @@ export default class FOVCurator extends Component {
     fetchData () {
         if (!this.props.cellLineId) return;
         this.setState({loaded: false, roiVisible: false});
-        const url = `${settings.apiUrl}/lines/${this.props.cellLineId}?kind=thumbnails`;
-        d3.json(url).then(line => {
-            this.data = line;
-            this.setState({loaded: true, fovId: this.state.fovId || this.data.fovs[0].metadata.id});
+        const url = `${settings.apiUrl}/lines/${this.props.cellLineId}/fovs?include=thumbnails`;
+        d3.json(url).then(fovs => {
+            this.fovs = fovs;
+            this.setState({loaded: true, fovId: this.state.fovId || fovs[0]?.metadata.id});
         });
     }
 
@@ -184,7 +185,6 @@ export default class FOVCurator extends Component {
 
     onSubmit () {
         // submit an FOV annotation
-        
         this.setState({deletionStatus: ''});
         if (isNaN(this.state.pixelRoiLeft) || isNaN(this.state.pixelRoiTop)) {
             this.setState({submissionStatus: 'danger'});
@@ -200,7 +200,7 @@ export default class FOVCurator extends Component {
             }
         };
 
-        putData(`${settings.apiUrl}/fov_annotations/${this.state.fovId}`, data)
+        putData(`${settings.apiUrl}/fovs/${this.state.fovId}/annotation`, data)
             .then(response => {
                 console.log(response.json());
                 if (!response.ok) throw new Error('Error submitting FOV annotation');
@@ -208,19 +208,17 @@ export default class FOVCurator extends Component {
                 this.fetchData();
             })
             .catch(error => this.setState({submissionStatus: 'danger'}));
-
     }
 
     onClear () {
         // clear an existing FOV annotation
-
         this.setState({
             pixelRoiTop: undefined,
             pixelRoiLeft: undefined,
             submissionStatus: ''
         });
 
-        deleteData(`${settings.apiUrl}/fov_annotations/${this.state.fovId}`)
+        deleteData(`${settings.apiUrl}/fovs/${this.state.fovId}/annotation`)
             .then(response => {
                 console.log(response);
                 if (!response.ok) throw new Error('Error deleting FOV annotation');
@@ -231,13 +229,14 @@ export default class FOVCurator extends Component {
     }
 
 
-
     render () {
 
+        if (!this.fovs.length) return (<div className="f3 tc pa5">No ROIs found</div>);
+
         const clientRoiSize = this.state.fovScale * this.roiSize;
-        const fov = this.data?.fovs.filter(fov => fov.metadata.id === this.state.fovId)[0];
+        const fov = this.fovs.filter(fov => fov.metadata.id === this.state.fovId)[0];
         
-        const thumbnails = this.data?.fovs.map(fov => {
+        const thumbnails = this.fovs.map(fov => {
             return <Thumbnail 
                 key={fov.metadata.id} 
                 fov={fov} 
@@ -281,7 +280,7 @@ export default class FOVCurator extends Component {
                                 width='600px' 
                                 ref={this.FOVImgRef}
                                 onClick={event => this.onFOVClick(event)}
-                                src={`${settings.apiUrl}/fovs/rgb/proj/${this.state.fovId}`}
+                                src={`${settings.apiUrl}/fovs/${this.state.fovId}/proj/rgb`}
                                 onLoad={() => {this.setState({loaded: true}); this.updateFovScale()}}
                             />
 

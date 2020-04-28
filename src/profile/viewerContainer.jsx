@@ -95,8 +95,8 @@ export default class ViewerContainer extends Component {
         // the order of the channels in the `filepaths` array below matters,
         // because it is *independently* hard-coded in SliceViewer and VolumeViewer
         const filepaths = [
-            `${settings.apiUrl}/rois/405/crop/${this.props.roiId}`,
-            `${settings.apiUrl}/rois/488/crop/${this.props.roiId}`,
+            `${settings.apiUrl}/rois/${this.props.roiId}/crop/405`,
+            `${settings.apiUrl}/rois/${this.props.roiId}/crop/488`,
         ];
 
         Promise.all(filepaths.map(loadStack)).then(volumes => {

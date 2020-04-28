@@ -69,7 +69,7 @@ function CheckboxGroup (props) {
 }
 
 
-class AnnotationsForm extends Component {
+export default class TargetAnnotator extends Component {
 
     constructor (props) {
 
@@ -115,10 +115,10 @@ class AnnotationsForm extends Component {
             }
         };
 
-        putData(`${settings.apiUrl}/annotations/${this.props.cellLineId}`, data)
+        putData(`${settings.apiUrl}/lines/${this.props.cellLineId}/annotation`, data)
             .then(response => {
                 console.log(response);
-                if (!response.ok) throw new Error('Error submitting annotations');
+                if (!response.ok) throw new Error('Error submitting annotation');
                 this.setState({submissionStatus: 'success'});
             })
             .catch(error => this.setState({submissionStatus: 'danger'}));
@@ -126,10 +126,10 @@ class AnnotationsForm extends Component {
 
 
     fetchData () {
-        fetch(`${settings.apiUrl}/annotations/${this.props.cellLineId}`)
+        fetch(`${settings.apiUrl}/lines/${this.props.cellLineId}/annotation`)
             .then(response => {
                 if (!response.ok) {
-                    throw new Error(`Error getting annotations for cell line ${this.props.cellLineId}`);
+                    throw new Error(`Error getting annotation for cell line ${this.props.cellLineId}`);
                 }
                 return response.json();
             })
@@ -209,5 +209,3 @@ class AnnotationsForm extends Component {
     }
 
 }
-
-export default AnnotationsForm;

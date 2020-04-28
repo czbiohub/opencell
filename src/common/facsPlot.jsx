@@ -102,9 +102,7 @@ class FACSPlot extends Component {
 
     constructLineData (data) {
 
-        if (!data || !data.x) {
-            return;
-        }
+        if (!data || !data.x) return;
 
         const sampleLine = {
             id: 'sample',
@@ -139,16 +137,14 @@ class FACSPlot extends Component {
 
         // line data to pass to XYFrame
         this.lines = {sample: sampleLine, ref: refLine, gfp: gfpLine};
-
     }
 
 
     fetchAndConstructData () {
-
-        fetch(`${settings.apiUrl}/lines/${this.props.cellLineId}?kind=facs`)
+        fetch(`${settings.apiUrl}/lines/${this.props.cellLineId}/facs`)
             .then(result => result.json())
             .then(data => {
-                    this.constructLineData(data.facs_histograms);
+                    this.constructLineData(data.histograms);
                     this.setState({loaded: true});
                 },
                 error => console.log(error)
@@ -157,7 +153,6 @@ class FACSPlot extends Component {
 
 
     componentDidMount () {
-
         // only fetch the data if it was not passed as a prop
         if (this.props.data) {
             this.constructLineData(props.data);
@@ -168,8 +163,7 @@ class FACSPlot extends Component {
     }
 
 
-    componentDidUpdate(prevProps) {
-
+    componentDidUpdate (prevProps) {
         // re-fetch the data only if it was not passed as a prop and if the cellLineId has changed
         if (this.props.cellLineId!==prevProps.cellLineId) {
             this.fetchAndConstructData();

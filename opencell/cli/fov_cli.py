@@ -17,9 +17,11 @@ import pandas as pd
 import sqlalchemy as sa
 import dask.diagnostics
 
-from opencell.database import models, operations
+from opencell.database import models
+from opencell.database import operations
 from opencell.database import utils as db_utils
 from opencell.imaging.processors import FOVProcessor
+from opencell.database.fov_operations import MicroscopyFOVOperations
 from opencell.imaging.managers import PlateMicroscopyManager
 
 try:
@@ -163,11 +165,11 @@ def insert_plate_microscopy_fovs(session, cache_dir=None, errors='warn'):
         group_metadata = metadata.get_group(group)
 
         try:
-            pcl_ops = operations.PolyclonalLineOperations.from_plate_well(session, plate_id, well_id)
+            line_ops = operations.PolyclonalLineOperations.from_plate_well(session, plate_id, well_id)
         except Exception:
             print('No polyclonal line for (%s, %s)' % group)
             continue
-        pcl_ops.insert_microscopy_fovs(session, group_metadata, errors=errors)
+        line_ops.insert_microscopy_fovs(session, group_metadata, errors=errors)
 
 
 def insert_raw_pipeline_microscopy_fovs(session, root_dir, pml_id, errors='warn'):
@@ -198,11 +200,11 @@ def insert_raw_pipeline_microscopy_fovs(session, root_dir, pml_id, errors='warn'
         plate_id, well_id = group
         group_metadata = metadata.get_group(group)
         try:
-            pcl_ops = operations.PolyclonalLineOperations.from_plate_well(session, plate_id, well_id)
+            line_ops = operations.PolyclonalLineOperations.from_plate_well(session, plate_id, well_id)
         except ValueError:
             print('No polyclonal line for (%s, %s)' % group)
             continue
-        pcl_ops.insert_microscopy_fovs(session, group_metadata, errors=errors)
+        line_ops.insert_microscopy_fovs(session, group_metadata, errors=errors)
 
 
 @dask.delayed
@@ -216,7 +218,7 @@ def do_fov_task(
 ):
     '''
     fov_processor : an instance of the imaging.processor.FOVProcessor class
-    fov_operator : an instance of the database.operations.MicroscopyFOVOperations class
+    fov_operator : an instance of the database.fov_operations.MicroscopyFOVOperations class
     '''
 
     error_log = {'fov_id': fov_processor.fov_id, 'method': processor_method_name}
@@ -280,7 +282,7 @@ def do_fov_tasks(Session, args, processor_method_name, processor_method_kwargs, 
     # (note the awkward nomenclature mismatch here;
     # we call an instance of the FOVOperations class an `fov_operator`)
     fov_processors = [FOVProcessor.from_database(fov) for fov in fovs]
-    fov_operators = [operations.MicroscopyFOVOperations(fov.id) for fov in fovs]
+    fov_operators = [MicroscopyFOVOperations(fov.id) for fov in fovs]
 
     # set the src_roots
     for fov_processor in fov_processors:
@@ -297,7 +299,8 @@ def do_fov_tasks(Session, args, processor_method_name, processor_method_kwargs, 
             fov_operator,
             processor_method_name,
             processor_method_kwargs,
-            operator_method_name)
+            operator_method_name
+        )
         tasks.append(task)
 
     # do the tasks
@@ -364,7 +367,7 @@ def main():
         dataset = (
             Session.query(models.MicroscopyDataset)
             .filter(models.MicroscopyDataset.pml_id == args.pml_id)
-            .first()
+            .one()
         )
         fovs = dataset.fovs
 
@@ -383,15 +386,13 @@ def main():
     # (should only be called once, when initially populating a new database,
     # because the 'PlateMicroscopy' directory is static)
     if args.insert_plate_microscopy_fovs:
-        with operations.session_scope(db_url) as session:
-            insert_plate_microscopy_fovs(session, cache_dir=args.cache_dir, errors='warn')
+        insert_plate_microscopy_fovs(Session, cache_dir=args.cache_dir, errors='warn')
 
     # insert the FOVs from a dataset in the 'raw-pipeline-microscopy' directory
     # (this is called to update the database with the FOVs from new PML datasets)
     if args.insert_fovs:
-        with operations.session_scope(db_url) as session:
-            insert_raw_pipeline_microscopy_fovs(
-                session, args.raw_pipeline_microscopy_dir, pml_id=args.pml_id, errors='warn')
+        insert_raw_pipeline_microscopy_fovs(
+            Session, args.raw_pipeline_microscopy_dir, pml_id=args.pml_id, errors='warn')
 
     # process all raw tiffs
     if args.process_raw_tiffs:

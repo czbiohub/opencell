@@ -1,3 +1,8 @@
+-- force drop all connections
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE datname = 'opencelldb';
+
 
 -- cell line metadata
 CREATE OR REPLACE VIEW public.cell_line_metadata AS
@@ -6,11 +11,7 @@ CREATE OR REPLACE VIEW public.cell_line_metadata AS
     cd.target_name,
     cell_line.id AS cell_line_id
    FROM crispr_design cd
-     INNER JOIN plate_design pd ON pd.design_id::text = cd.plate_design_id::text
-     INNER JOIN plate_instance pi ON pd.design_id::text = pi.plate_design_id::text
-     INNER JOIN electroporation ep ON pi.id = ep.plate_instance_id
-     INNER JOIN electroporation_line epl ON ep.id = epl.electroporation_id AND cd.well_id = epl.well_id
-     INNER JOIN cell_line ON cell_line.id = epl.cell_line_id
+     INNER JOIN cell_line ON cell_line.crispr_design_id = cd.id
   ORDER BY (ROW(cd.plate_design_id, cd.well_id));
 
 
@@ -94,6 +95,14 @@ left join microscopy_fov fov on d.pml_id = fov.pml_id
 group by d.pml_id, d.date
 order by d.pml_id desc;
 
+-- count FOVs (or pulldowns) per cell line
+select * from cell_line_metadata
+left join (
+	select cell_line_id, count(*) as n from microscopy_fov
+	group by cell_line_id
+	order by n desc
+) pd using (cell_line_id);
+
 -- delete FOVs and descendents from particular datasets
 delete from microscopy_fov_result
 where fov_id in (
@@ -138,3 +147,18 @@ where clm.cell_line_id not in (
 )
 and not ('no_gfp' = any(cats))
 order by (plate_id, well_id);
+
+-- group results by day
+select count(*), to_char(date_created, 'YYYY-MM-DD') as d from microscopy_fov_result
+group by d;
+
+
+-- count pulldowns per cell line
+select * from cell_line_metadata
+right join (
+	select cell_line_id, count(*) as n from mass_spec_pulldown pd
+	left join cell_line_metadata clm using (cell_line_id)
+	group by cell_line_id
+	having count(*) > 1
+) pd using (cell_line_id)
+order by n desc

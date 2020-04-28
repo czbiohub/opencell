@@ -17,7 +17,8 @@ from flask import (
 
 from opencell.imaging import utils
 from opencell.api.cache import cache
-from opencell.database import models, operations
+from opencell.database import models, operations, payloads
+from opencell.database import utils as db_utils
 from opencell.imaging.processors import FOVProcessor
 
 
@@ -50,7 +51,7 @@ class Plate(Resource):
         plate = (
             current_app.Session.query(models.PlateDesign)
             .filter(models.PlateDesign.design_id == plate_id)
-            .first()
+            .one_or_none()
         )
 
         targets = [d.target_name for d in plate.crispr_designs]
@@ -59,23 +60,6 @@ class Plate(Resource):
             'plate_id': plate.design_id,
             'targets': targets,
         }
-
-
-class Electroporations(Resource):
-
-    def get(self):
-        '''
-        Show all extant electroporations
-        '''
-        eps = current_app.Session.query(models.Electroporation).all()
-
-        eps = [{
-            'date': str(ep.electroporation_date),
-            'plate_id': ep.plate_instance.plate_design_id
-        } for ep in eps]
-
-        eps = sorted(eps, key=lambda d: d['plate_id'])
-        return eps
 
 
 class PolyclonalLines(Resource):
@@ -96,34 +80,30 @@ class PolyclonalLines(Resource):
         if kind is not None and kind not in valid_kinds:
             abort(404)
 
-        cell_line_metadata = current_app.views.get('cell_line_metadata')
-        query = current_app.Session.query(cell_line_metadata)
+        query = current_app.Session.query(models.CrisprDesign)
         if plate_id:
-            query = query.filter(cell_line_metadata.columns.plate_id == plate_id)
+            query = query.filter(models.CrisprDesign.plate_design_id == plate_id)
 
         # look for an exact match to the target_name; if none, filter by startswith
         if target_name:
             exact_query = query.filter(
-                db.func.lower(cell_line_metadata.columns.target_name) == target_name.lower()
+                db.func.lower(models.CrisprDesign.target_name) == target_name.lower()
             )
             if not exact_query.all():
                 query = query.filter(
-                    db.func.lower(cell_line_metadata.columns.target_name)
+                    db.func.lower(models.CrisprDesign.target_name)
                     .startswith(target_name.lower())
                 )
             else:
                 query = exact_query
 
-        metadata = pd.DataFrame(
-            data=query.all(),
-            columns=[column.name for column in cell_line_metadata.columns]
-        )
+        ids = []
+        [ids.extend([line.id for line in design.cell_lines]) for design in query.all()]
 
         query = (
             current_app.Session.query(models.CellLine)
-            .filter(models.CellLine.id.in_(list(metadata.cell_line_id)))
+            .filter(models.CellLine.id.in_(ids))
         )
-
         if kind == 'microscopy':
             query = query.options(
                 db.orm.joinedload(models.CellLine.fovs, innerjoin=True)
@@ -132,8 +112,7 @@ class PolyclonalLines(Resource):
 
         payload = []
         for line in query.all():
-            ops = operations.PolyclonalLineOperations(line)
-            payload.append(ops.construct_payload(kind=kind))
+            payload.append(payloads.construct_payload(line, kind=kind))
         return jsonify(payload)
 
 
@@ -146,7 +125,7 @@ class PolyclonalLine(Resource):
         kind = args.get('kind')
         ops = operations.PolyclonalLineOperations.from_line_id(
             current_app.Session, cell_line_id)
-        return jsonify(ops.construct_payload(kind=kind))
+        return jsonify(payloads.construct_payload(ops.line, kind=kind))
 
 
 class MicroscopyFOV(Resource):
@@ -162,9 +141,8 @@ class MicroscopyFOV(Resource):
         fov = (
             current_app.Session.query(models.MicroscopyFOV)
             .filter(models.MicroscopyFOV.id == fov_id)
-            .first()
+            .one_or_none()
         )
-
         if not fov:
             abort(404)
 
@@ -186,11 +164,8 @@ class MicroscopyFOV(Resource):
         imageio.imsave(file, im, format='jpg', quality=90)
         file.seek(0)
 
-        return send_file(
-            file,
-            as_attachment=True,
-            attachment_filename='FOV%04d_%s-%s.jpg' % (fov_id, kind.upper(), channel.upper())
-        )
+        filename = 'FOV%04d_%s-%s.jpg' % (fov_id, kind.upper(), channel.upper())
+        return send_file(file, as_attachment=True, attachment_filename=filename)
 
 
 class MicroscopyFOVROI(Resource):
@@ -204,7 +179,7 @@ class MicroscopyFOVROI(Resource):
         roi = (
             current_app.Session.query(models.MicroscopyFOVROI)
             .filter(models.MicroscopyFOVROI.id == roi_id)
-            .first()
+            .one()
         )
 
         processor = FOVProcessor.from_database(roi.fov)
@@ -231,7 +206,7 @@ class CellLineAnnotation(Resource):
         return (
             current_app.Session.query(models.CellLine)
             .filter(models.CellLine.id == cell_line_id)
-            .first()
+            .one()
         )
 
 
@@ -263,7 +238,7 @@ class CellLineAnnotation(Resource):
         annotation.client_metadata = data.get('client_metadata')
 
         try:
-            operations.add_and_commit(
+            db_utils.add_and_commit(
                 current_app.Session,
                 annotation,
                 errors='raise')
@@ -280,7 +255,7 @@ class MicroscopyFOVAnnotation(Resource):
         return (
             current_app.Session.query(models.MicroscopyFOV)
             .filter(models.MicroscopyFOV.id == fov_id)
-            .first()
+            .one()
         )
 
 
@@ -307,7 +282,7 @@ class MicroscopyFOVAnnotation(Resource):
         annotation.roi_position_left = data.get('roi_position_left')
 
         try:
-            operations.add_and_commit(
+            db_utils.add_and_commit(
                 current_app.Session,
                 annotation,
                 errors='raise')
@@ -324,7 +299,7 @@ class MicroscopyFOVAnnotation(Resource):
             return abort(404, 'FOV %s does not have an annotation' % fov_id)
 
         try:
-            operations.delete_and_commit(current_app.Session, fov.annotation)
+            db_utils.delete_and_commit(current_app.Session, fov.annotation)
         except Exception as error:
             abort(500, str(error))
         return ('', 204)

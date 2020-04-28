@@ -18,7 +18,7 @@ jobs:
         env:
           # no need to specify a username because, for now,
           # the tests connect as the default 'postgres' user
-          POSTGRES_DB: opencelldb_test
+          POSTGRES_DB: opencelldb-test
           POSTGRES_PASSWORD: password
 
     steps:

@@ -11,6 +11,66 @@ from Bio import SeqIO
 from collections import defaultdict
 
 
+def compute_stoich_df(m_imputed, seq_df, rnaseq, pvals, target_re=r'P\d{3}_(.*)'):
+    """
+    wrapper function to generate interaction stoich data
+    and abundance stoich data in a dataframe
+    """
+
+    pvals = pvals.copy()
+    rnaseq = rnaseq.copy()
+
+    stoi_df = multi_theoretical_peptides(m_imputed, seq_df)
+    stoi_df = pys.median_replicates(stoi_df)
+    divided = divide_by_theoretical_peptides(stoi_df, 'median ')
+    final_stoi = divide_by_bait(divided)
+
+    # remove median headings
+    col_names = list(final_stoi)
+    med_RE = ['median ']
+    replacement_RE = ['']
+    new_cols = pys.new_col_names(col_names, med_RE, replacement_RE)
+    final_stoi = pys.rename_cols(final_stoi, col_names, new_cols)
+
+    final_stoi = rnaseq_abundance_stoichiometry(final_stoi, rnaseq)
+    final_stoi.set_index('Protein IDs', drop=True, inplace=True)
+    tpm_vals = final_stoi[['Gene names', 'tpm_ave']].copy()
+
+    final_stoi.drop(
+        columns=['Gene names', 'Protein names', 'Majority protein IDs',
+        'Fasta headers', 'tpm_ave'], inplace=True)
+
+
+    baits = list(final_stoi)
+
+    # Append abundance stoichiometries
+    abundance_stoi = pd.DataFrame()
+    for bait in baits:
+        pvals[(bait, 'interaction_stoi')] = None
+        pvals[(bait, 'abundance_stoi')] = None
+        target = re.search(target_re, bait).groups()[0]
+        target_row = tpm_vals[tpm_vals['Gene names'] == target]
+        if target_row.shape[0] == 1:
+            target_tpm = target_row['tpm_ave'].item()
+            if target_tpm:
+                if target_tpm > 0:
+                    abundance_stoi[bait] = tpm_vals['tpm_ave'] / target_tpm
+
+    abundance_stoi.columns = pd.MultiIndex.from_product(
+        [abundance_stoi.columns, ['abundance_stoi']])
+    pvals.update(abundance_stoi, join='left')
+
+    # Append interaction stoichiometries
+    interaction_stoi = final_stoi.copy()
+    interaction_stoi.columns = pd.MultiIndex.from_product(
+        [interaction_stoi.columns, ['interaction_stoi']])
+    pvals.update(interaction_stoi, join='left')
+
+    pvals.sort_index(inplace=True, axis=1)
+    return pvals
+
+
+
 def fasta_df(addr):
     # read Uniprot fasta file
     seq_dict = {rec.id : rec.seq.__str__() for rec in SeqIO.parse(addr, "fasta")}
@@ -170,10 +230,10 @@ def rnaseq_abundance_stoichiometry(stoich_df, rnaseq_df):
             if gene in rnaseq_gene_set:
                 missing_dict[genes].append(gene)
 
-    completely_missing = genes_missing - set(missing_dict.keys())
+    # completely_missing = genes_missing - set(missing_dict.keys())
 
-    stoich_drop_idx = stoich_df[stoich_df['Gene names'].isin(completely_missing)].index
-    stoich_df.drop(stoich_drop_idx, inplace=True)
+    # stoich_drop_idx = stoich_df[stoich_df['Gene names'].isin(completely_missing)].index
+    # stoich_df.drop(stoich_drop_idx, inplace=True)
 
     rnaseq_stoich = rnaseq_df[rnaseq_df['gene'].isin(genes_intersect)]
 
@@ -185,8 +245,8 @@ def rnaseq_abundance_stoichiometry(stoich_df, rnaseq_df):
 
     stoich_df.set_index('Gene names', drop=True, inplace=True)
     rnaseq_stoich.set_index('gene', drop=True, inplace=True)
-
-    stoich_df = stoich_df.join(rnaseq_stoich, sort=True)
+    stoich_df['tpm_ave'] = None
+    stoich_df.update(rnaseq_stoich, join='left')
     stoich_df = stoich_df.reset_index().rename(columns={'index': 'Gene names'})
 
     return stoich_df

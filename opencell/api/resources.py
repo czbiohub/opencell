@@ -1,19 +1,12 @@
 import os
 import io
+import flask
 import urllib
 import imageio
 import tifffile
 import pandas as pd
 import sqlalchemy as db
-
 from flask_restful import Resource, reqparse
-from flask import (
-    current_app,
-    jsonify,
-    request,
-    send_file,
-    abort
-)
 
 from opencell.imaging import utils
 from opencell.api.cache import cache
@@ -24,8 +17,8 @@ from opencell.imaging.processors import FOVProcessor
 
 # copied from https://stackoverflow.com/questions/24816799/how-to-use-flask-cache-with-flask-restful
 def cache_key():
-    args = request.args
-    key = request.path + '?' + urllib.parse.urlencode([
+    args = flask.request.args
+    key = flask.request.path + '?' + urllib.parse.urlencode([
         (k, v) for k in sorted(args) for v in sorted(args.getlist(k))
     ])
     return key
@@ -35,7 +28,7 @@ class Plate(Resource):
 
     def get(self, plate_id):
         plate = (
-            current_app.Session.query(models.PlateDesign)
+            flask.current_app.Session.query(models.PlateDesign)
             .filter(models.PlateDesign.design_id == plate_id)
             .one_or_none()
         )
@@ -54,10 +47,10 @@ class CellLines(Resource):
     @cache.cached(timeout=3600, key_prefix=cache_key)
     def get(self):
 
-        args = request.args
+        args = flask.request.args
         plate_id = args.get('plate')
         target_name = args.get('target')
-        query = current_app.Session.query(models.CrisprDesign)
+        query = flask.current_app.Session.query(models.CrisprDesign)
 
         # filter crispr designs by plate_id
         if plate_id:
@@ -83,12 +76,12 @@ class CellLines(Resource):
         [ids.extend([line.id for line in design.cell_lines]) for design in query.all()]
 
         lines = (
-            current_app.Session.query(models.CellLine)
+            flask.current_app.Session.query(models.CellLine)
             .filter(models.CellLine.id.in_(ids))
             .all()
         )
         payload = [payloads.cell_line_payload(line) for line in lines]
-        return jsonify(payload)
+        return flask.jsonify(payload)
 
 
 class CellLineResource(Resource):
@@ -96,9 +89,9 @@ class CellLineResource(Resource):
     @staticmethod
     def get_cell_line(cell_line_id):
         return (
-            current_app.Session.query(models.CellLine)
+            flask.current_app.Session.query(models.CellLine)
             .filter(models.CellLine.id == cell_line_id)
-            .one()
+            .one_or_none()
         )
 
     def get(self, cell_line_id):
@@ -116,7 +109,7 @@ class CellLine(CellLineResource):
     def get(self, cell_line_id):
         line = self.get_cell_line(cell_line_id)
         payload = payloads.cell_line_payload(line)
-        return jsonify(payload)
+        return flask.jsonify(payload)
 
 
 class FACSDataset(CellLineResource):
@@ -124,9 +117,9 @@ class FACSDataset(CellLineResource):
     def get(self, cell_line_id):
         line = self.get_cell_line(cell_line_id)
         if not line.facs_dataset:
-            return abort(404)
+            return flask.abort(404)
         payload = payloads.facs_payload(line.facs_dataset)
-        return jsonify(payload)
+        return flask.jsonify(payload)
 
 
 class CellLineFOVs(CellLineResource):
@@ -137,18 +130,18 @@ class CellLineFOVs(CellLineResource):
 
         line = self.get_cell_line(cell_line_id)
         if not line.fovs:
-            return abort(404, 'There are no FOVs associated with the cell line')
+            return flask.abort(404, 'There are no FOVs associated with the cell line')
 
-        include = request.args.get('include')
+        include = flask.request.args.get('include')
         include = include.split(',') if include else []
         if not set(include).issubset(['rois', 'thumbnails']):
-            return abort(404, 'Invalid value passed to the include parameter')
+            return flask.abort(404, 'Invalid value passed to the include parameter')
 
         payload = [payloads.fov_payload(fov, include) for fov in line.fovs]
 
         # sort by FOV score (unscored FOVs last)
         payload = sorted(payload, key=lambda row: row['metadata'].get('score') or -2)[::-1]
-        return jsonify(payload)
+        return flask.jsonify(payload)
 
 
 class CellLinePulldown(CellLineResource):
@@ -163,7 +156,7 @@ class CellLinePulldown(CellLineResource):
 
         # TODO: logic to determine which pulldown is the 'good' one
         payload = payloads.pulldown_payload(line.pulldowns[0])
-        return jsonify(payload)
+        return flask.jsonify(payload)
 
 
 class MicroscopyFOV(Resource):
@@ -177,18 +170,18 @@ class MicroscopyFOV(Resource):
         channel : one of '405', '488', or 'rgb'
         '''
         if kind != 'proj':
-            abort(404, 'Invalid kind')
+            flask.abort(404, 'Invalid kind')
 
         fov = (
-            current_app.Session.query(models.MicroscopyFOV)
+            flask.current_app.Session.query(models.MicroscopyFOV)
             .filter(models.MicroscopyFOV.id == fov_id)
             .one_or_none()
         )
         if not fov:
-            abort(404, 'Invalid fov_id')
+            flask.abort(404, 'Invalid fov_id')
 
         processor = FOVProcessor.from_database(fov)
-        dst_root = current_app.config.get('opencell_microscopy_root')
+        dst_root = flask.current_app.config.get('opencell_microscopy_root')
         filepath_405 = processor.dst_filepath(dst_root, kind='proj', channel='405', ext='tif')
         filepath_488 = processor.dst_filepath(dst_root, kind='proj', channel='488', ext='tif')
 
@@ -209,7 +202,7 @@ class MicroscopyFOV(Resource):
         file.seek(0)
 
         filename = 'FOV%04d_%s-%s.jpg' % (fov_id, kind.upper(), channel.upper())
-        return send_file(file, as_attachment=True, attachment_filename=filename)
+        return flask.send_file(file, as_attachment=True, attachment_filename=filename)
 
 
 class MicroscopyFOVROI(Resource):
@@ -225,26 +218,26 @@ class MicroscopyFOVROI(Resource):
             because z-stacks are constructed separately for each channel
         '''
         if kind != 'crop':
-            abort(404, 'Invalid kind')
+            flask.abort(404, 'Invalid kind')
 
         roi = (
-            current_app.Session.query(models.MicroscopyFOVROI)
+            flask.current_app.Session.query(models.MicroscopyFOVROI)
             .filter(models.MicroscopyFOVROI.id == roi_id)
             .one_or_none()
         )
         if not roi:
-            abort(404, 'Invalid roi_id')
+            flask.abort(404, 'Invalid roi_id')
 
         processor = FOVProcessor.from_database(roi.fov)
         filepath = processor.dst_filepath(
-            dst_root=current_app.config.get('opencell_microscopy_root'),
+            dst_root=flask.current_app.config.get('opencell_microscopy_root'),
             roi_id=roi_id,
             channel=channel,
             kind='crop',
             ext='jpg'
         )
 
-        file = send_file(
+        file = flask.send_file(
             open(filepath, 'rb'),
             as_attachment=True,
             attachment_filename=filepath.split(os.sep)[-1]
@@ -260,17 +253,17 @@ class CellLineAnnotation(CellLineResource):
 
         line = self.get_cell_line(cell_line_id)
         if line.annotation is not None:
-            return jsonify({
+            return flask.jsonify({
                 'comment': line.annotation.comment,
                 'categories': line.annotation.categories,
                 'client_metadata': line.annotation.client_metadata,
             })
-        abort(404)
+        flask.abort(404)
 
 
     def put(self, cell_line_id):
 
-        data = request.get_json()
+        data = flask.request.get_json()
         line = self.get_cell_line(cell_line_id)
         annotation = line.annotation
         if annotation is None:
@@ -282,13 +275,13 @@ class CellLineAnnotation(CellLineResource):
 
         try:
             db_utils.add_and_commit(
-                current_app.Session,
+                flask.current_app.Session,
                 annotation,
                 errors='raise')
         except Exception as error:
-            abort(500, str(error))
+            flask.abort(500, str(error))
 
-        return jsonify(annotation.as_dict())
+        return flask.jsonify(annotation.as_dict())
 
 
 class MicroscopyFOVAnnotation(Resource):
@@ -296,22 +289,22 @@ class MicroscopyFOVAnnotation(Resource):
     @staticmethod
     def get_fov(fov_id):
         return (
-            current_app.Session.query(models.MicroscopyFOV)
+            flask.current_app.Session.query(models.MicroscopyFOV)
             .filter(models.MicroscopyFOV.id == fov_id)
-            .one()
+            .one_or_none()
         )
 
 
     def get(self, fov_id):
         fov = self.get_fov(fov_id)
         if fov.annotation is not None:
-            return jsonify(fov.annotation.as_dict())
-        abort(404, 'FOV %s does not have an annotation' % fov_id)
+            return flask.jsonify(fov.annotation.as_dict())
+        flask.abort(404, 'FOV %s does not have an annotation' % fov_id)
 
 
     def put(self, fov_id):
 
-        data = request.get_json()
+        data = flask.request.get_json()
         fov = self.get_fov(fov_id)
         annotation = fov.annotation
         if annotation is None:
@@ -324,23 +317,23 @@ class MicroscopyFOVAnnotation(Resource):
 
         try:
             db_utils.add_and_commit(
-                current_app.Session,
+                flask.current_app.Session,
                 annotation,
                 errors='raise'
             )
         except Exception as error:
-            abort(500, str(error))
-        return jsonify(annotation.as_dict())
+            flask.abort(500, str(error))
+        return flask.jsonify(annotation.as_dict())
 
 
     def delete(self, fov_id):
 
         fov = self.get_fov(fov_id)
         if fov.annotation is None:
-            return abort(404, 'FOV %s does not have an annotation' % fov_id)
+            return flask.abort(404, 'FOV %s does not have an annotation' % fov_id)
 
         try:
-            db_utils.delete_and_commit(current_app.Session, fov.annotation)
+            db_utils.delete_and_commit(flask.current_app.Session, fov.annotation)
         except Exception as error:
-            abort(500, str(error))
+            flask.abort(500, str(error))
         return ('', 204)

@@ -108,7 +108,7 @@ export default class ViewerContainer extends Component {
 
     render () {
         
-        if (!this.props.rois.length) return (<div className="f3 tc pa5">No ROIs found</div>);
+        if (!this.props.rois.length) return (<div className="f2 tc loading-overlay">No ROIs found</div>);
 
         let localizationContent;
         if (this.state.localizationMode==='Volume') {
@@ -123,7 +123,8 @@ export default class ViewerContainer extends Component {
         const roi = this.props.rois.filter(roi => roi.id == this.props.roiId)[0];
     
         return (
-            <div>
+            // use relative position so that the loading-overlay div only overlays this component
+            <div className='relative'>
 
             {/* display controls */}
             <div className="pt3 pb2">
@@ -231,7 +232,7 @@ export default class ViewerContainer extends Component {
                 scale={4}
             />
 
-            {this.state.stacksLoaded ? (null) : (<div className='loading-overlay'/>)}
+            {this.state.stacksLoaded ? (null) : (<div className="f2 tc loading-overlay">Loading...</div>)}
 
         </div>
         );

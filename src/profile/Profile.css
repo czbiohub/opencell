@@ -16,11 +16,20 @@ button:focus {
 }
 
 .loading-overlay {
+    /* these properties force the div to overlay its parent,
+    if the parent position is set to 'relative' */
     position: absolute;
     top: 0px;
     left: 0px;
     width: 100%;
     height: 100%;
+
+    /* these properties vertically center text content */
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    flex-direction: column;
+
     background-color: white;
     opacity: .7;
 }

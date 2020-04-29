@@ -128,7 +128,15 @@ def hit_payload(hit):
         'abundance_stoich',
     ]
 
-    payload = {column: getattr(hit, column) for column in columns}
+    payload = {}
+    for column in columns:
+        val = getattr(hit, column)
+        # check for infs, which flask.jsonify serializes to 'Infinity',
+        # but which cannot be parsed by d3.json in the frontend
+        if val is not None:
+            if np.isinf(val) or np.isnan(val):
+                val = None
+        payload[column] = val
 
     # retrieve the gene_name from the hit's protein group
     payload['gene_name'] = hit.protein_group.gene_names[0] if hit.protein_group else None

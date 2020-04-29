@@ -107,7 +107,7 @@ export default class Overview extends Component {
                             <div>
                                 <SectionHeader title='Interactions'/>
                                 <VolcanoPlotContainer
-                                    targetName={this.props.targetName}
+                                    cellLineId={this.props.cellLineId}
                                     changeTarget={this.props.onSearchChange}
                                 />
                             </div>

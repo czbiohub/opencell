@@ -33,7 +33,6 @@ export default class VolcanoPlotContainer extends Component {
 
         return (
             <div>
-            
                 {/* display controls */}
                 <div className="pt3 pb2">
 
@@ -53,13 +52,7 @@ export default class VolcanoPlotContainer extends Component {
                                 activeValue={this.state.showLabels}
                                 onClick={value => this.setState({showLabels: value})}/>
                         </div>
-                        <div className='fr dib'>
-                            <div 
-                                className='f6 simple-button' 
-                                onClick={() => this.setState({resetZoom: !this.state.resetZoom})}>
-                                {'Reset zoom'}
-                            </div>
-                        </div>
+
                     </div>
                 </div>
 
@@ -68,15 +61,21 @@ export default class VolcanoPlotContainer extends Component {
                 <div className="fl w-100 scatterplot-container" style={{marginLeft: -20, marginTop: 10}}>
                     <VolcanoPlot
                         enrichmentAccessor={row => parseFloat(row.enrichment)}
-                        pvalueAccessor={row => parseFloat(row.pvalue)}
-                        targetName={this.props.targetName}
+                        pvalueAccessor={row => parseFloat(row.pval)}
+                        cellLineId={this.props.cellLineId}
                         changeTarget={this.props.changeTarget}
                         showLabels={this.state.showLabels}
                         resetZoom={this.state.resetZoom}
                         labelColor={this.state.labelColor}
                     />
                 </div>
-
+                <div className='fr dib'>
+                    <div 
+                        className='f6 simple-button' 
+                        onClick={() => this.setState({resetZoom: !this.state.resetZoom})}>
+                        {'Reset zoom'}
+                    </div>
+                </div>
 
             </div>
 

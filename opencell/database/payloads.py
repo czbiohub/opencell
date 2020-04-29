@@ -14,7 +14,7 @@ from opencell.imaging.processors import FOVProcessor
 
 def cell_line_payload(cell_line):
     '''
-    Construct the JSON payload returned by the lines/ endpoint of the API
+    The JSON payload returned by the /lines endpoint of the API
     Note that, awkwardly, the RNAseq data is a column in the crispr_design table
     '''
     design = cell_line.crispr_design
@@ -31,9 +31,8 @@ def cell_line_payload(cell_line):
         'hek_tpm': design.hek_tpm,
     }
 
-    scalars = {}
-
     # the sequencing percentages
+    scalars = {}
     if cell_line.sequencing_dataset:
         scalars.update({
             'hdr_all': cell_line.sequencing_dataset.scalars.get('hdr_all'),
@@ -63,7 +62,7 @@ def facs_payload(facs_dataset):
 
 def fov_payload(fov, include):
     '''
-    JSON payload describing an FOV (and its ROIs)
+    The JSON payload for an FOV (and its ROIs)
     include : an optional list of ['rois', 'thumbnails']
     '''
 
@@ -107,6 +106,30 @@ def fov_payload(fov, include):
 
 def pulldown_payload(pulldown):
     '''
+    The JSON payload for a mass spec pulldown and all of its hits
     '''
-    payload = {}
+    payload = {
+        'metadata': pulldown.as_dict(),
+        'hits': [hit_payload(hit) for hit in pulldown.hits]
+    }
+    return payload
+
+
+def hit_payload(hit):
+    '''
+    JSON payload for a single mass spec hit
+    '''
+    # the columns from the MassSpecHit table to include directly in the payload
+    columns = [
+        'pval',
+        'enrichment',
+        'is_significant_hit',
+        'interaction_stoich',
+        'abundance_stoich',
+    ]
+
+    payload = {column: getattr(hit, column) for column in columns}
+
+    # retrieve the gene_name from the hit's protein group
+    payload['gene_name'] = hit.protein_group.gene_names[0] if hit.protein_group else None
     return payload

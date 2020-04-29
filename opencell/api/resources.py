@@ -153,9 +153,21 @@ class CellLinePulldown(CellLineResource):
     '''
     def get(self, cell_line_id):
         line = self.get_cell_line(cell_line_id)
+        if not line.pulldowns:
+            return flask.abort(404, 'There are no pulldowns associated with the cell line')
 
         # TODO: logic to determine which pulldown is the 'good' one
-        payload = payloads.pulldown_payload(line.pulldowns[0])
+        # for now, we take the first pulldown with hits
+        payload = None
+        for pulldown in line.pulldowns:
+            if pulldown.hits:
+                payload = payloads.pulldown_payload(pulldown)
+                break
+
+        if not payload:
+            return flask.abort(
+                404, 'There are %d pulldowns but none have hits' % len(line.pulldowns)
+            )
         return flask.jsonify(payload)
 
 

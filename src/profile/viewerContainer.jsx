@@ -15,7 +15,7 @@ import 'tachyons';
 import './Profile.css';
 
 function roiLabel (roi) {
-    return roi && `FOV ${roi.fov_id} (ROI ${roi.id}) (${roi.kind[0].toUpperCase()})`
+    return roi && `FOV ${roi.fov_id} (${roi.kind[0].toUpperCase()})`
 }
 
 function roiItemRenderer (roi, props) {
@@ -24,7 +24,7 @@ function roiItemRenderer (roi, props) {
         <MenuItem
             key={roi.id}
             text={`FOV ${roi.fov_id}`}
-            label={`(ROI ${roi.id}) (${roi.kind[0].toUpperCase()})`}
+            label={`(${roi.kind[0].toUpperCase()})`}
             active={props.modifiers.active}
             onClick={props.handleClick}
         />
@@ -160,11 +160,14 @@ export default class ViewerContainer extends Component {
                                 this.props.changeRoi(roi.id, roi.fov_id)}
                             }
                         >
-                            <Button 
-                                className="bp3-button-custom"
-                                rightIcon="double-caret-vertical"
-                                text={roiLabel(roi)}
-                            />
+                            <div className='simple-button-group'>
+                                <div className="simple-button-group-label">Select FOV</div>
+                                <Button 
+                                    className="bp3-button-custom"
+                                    rightIcon="double-caret-vertical"
+                                    text={roiLabel(roi)}
+                                />
+                            </div>
                         </Select>
                     </div>
                     <div className="dib pr3">

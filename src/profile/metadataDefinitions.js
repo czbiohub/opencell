@@ -84,33 +84,33 @@ const cellLineMetadataDefinitions = [
         units: '',
     },{
         id: 'publication_ready',
-        accessor: row => String(row.annotations?.includes('publication_ready')),
+        accessor: row => String(row.annotation.categories?.includes('publication_ready')),
         Header: 'Pub ready',
         units: '',
     },{
         id: 're_image',
-        accessor: row => String(row.annotations?.includes('re_image')),
+        accessor: row => String(row.annotation.categories?.includes('re_image')),
         Header: 'Re-image',
         units: '',
     },{
         id: 'no_gfp',
-        accessor: row => String(row.annotations?.includes('no_gfp')),
+        accessor: row => String(row.annotation.categories?.includes('no_gfp')),
         Header: 'No GFP',
         units: '',
     },{
         id: 'heterogeneous_gfp',
-        accessor: row => String(row.annotations?.includes('heterogeneous_gfp')),
+        accessor: row => String(row.annotation.categories?.includes('heterogeneous_gfp')),
         Header: 'Het GFP',
         units: '',
     },{
         id: 're_sort',
-        accessor: row => String(row.annotations?.includes('re_sort')),
+        accessor: row => String(row.annotation.categories?.includes('re_sort')),
         Header: 'Re-sort',
         units: '',
     },{
-        id: 'all_annotations',
-        accessor: row => ','.concat(row.annotations),
-        Header: 'All annotations',
+        id: 'num_annoted_fovs',
+        accessor: row => row.counts.num_fovs_annotated,
+        Header: 'Num ant FOVs',
         units: '',
     }
 ];

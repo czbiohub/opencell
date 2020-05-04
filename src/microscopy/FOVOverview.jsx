@@ -68,13 +68,9 @@ export default class FOVOverview extends Component {
     render () {
         return (
             <div className="pa3">
-                
                 {this.data?.map(d => cellLineRow(d))}
-
                 {this.state.loaded ? (null) : (<div className='pa3 f1 loading-overlay'>Loading...</div>)}
             </div>
-
-
         );
     }
 }

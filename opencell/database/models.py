@@ -136,7 +136,7 @@ class CellLine(Base):
             )
 
 
-    def get_top_scoring_fovs(self, ntop):
+    def get_top_scoring_fovs(self, ntop=None):
         '''
         Get the n highest-scoring FOVs
         '''
@@ -151,9 +151,20 @@ class CellLine(Base):
         scores = [score for score in scores if score is not None]
         inds = inds[mask[inds]]
 
-        # the two highest-scoring FOVs
+        # the n-highest-scoring FOVs
+        ntop = len(inds) if ntop is None else ntop
         top_fovs = [self.fovs[ind] for ind in inds[:ntop]]
         return top_fovs
+
+
+    def get_best_fov(self):
+        '''
+        Get the 'best' FOV: the top-scoring FOV that is manually annotated
+        '''
+        for fov in self.fovs: # self.get_top_scoring_fovs():
+            if fov.annotation:
+                return fov
+        return None
 
 
 class PlateDesign(Base):

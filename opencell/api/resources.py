@@ -50,9 +50,11 @@ class CellLines(Resource):
         args = flask.request.args
         plate_id = args.get('plate')
         target_name = args.get('target')
-        query = flask.current_app.Session.query(models.CrisprDesign)
+        include = flask.request.args.get('include')
+        include = include.split(',') if include else []
 
         # filter crispr designs by plate_id
+        query = flask.current_app.Session.query(models.CrisprDesign)
         if plate_id:
             query = query.filter(models.CrisprDesign.plate_design_id == plate_id)
 
@@ -80,11 +82,27 @@ class CellLines(Resource):
             .filter(models.CellLine.id.in_(ids))
             .all()
         )
-        payload = [payloads.cell_line_payload(line) for line in lines]
+
+        # limit the number of lines in dev mode (to speed things up)
+        if flask.current_app.config['ENV'] == 'dev':
+            lines = lines[::10]
+
+        payload = [payloads.cell_line_payload(line, include) for line in lines]
         return flask.jsonify(payload)
 
 
 class CellLineResource(Resource):
+
+    def parse_listlike_arg(self, name, allowed_values, sep=','):
+        '''
+        Parse and validate a list-like URL parameter
+        '''
+        error = None
+        arg = flask.request.args.get(name)
+        values = arg.split(sep) if arg else []
+        if not set(values).issubset(allowed_values):
+            error = flask.abort(404, 'Invalid value passed to the %s parameter' % name)
+        return values, error
 
     @staticmethod
     def get_cell_line(cell_line_id):
@@ -95,20 +113,23 @@ class CellLineResource(Resource):
         )
 
     def get(self, cell_line_id):
-        raise NotImplementedError
+        ...
 
     def put(self, cell_line_id):
-        raise NotImplementedError
+        ...
 
     def delete(self, cell_line_id):
-        raise NotImplementedError
+        ...
 
 
 class CellLine(CellLineResource):
 
     def get(self, cell_line_id):
         line = self.get_cell_line(cell_line_id)
-        payload = payloads.cell_line_payload(line)
+        include, error = self.parse_listlike_arg('include', allowed_values=['best-fov'])
+        if error:
+            return error
+        payload = payloads.cell_line_payload(line, include)
         return flask.jsonify(payload)
 
 
@@ -132,10 +153,11 @@ class CellLineFOVs(CellLineResource):
         if not line.fovs:
             return flask.abort(404, 'There are no FOVs associated with the cell line')
 
-        include = flask.request.args.get('include')
-        include = include.split(',') if include else []
-        if not set(include).issubset(['rois', 'thumbnails']):
-            return flask.abort(404, 'Invalid value passed to the include parameter')
+        include, error = self.parse_listlike_arg(
+            name='include', allowed_values=['rois', 'thumbnails']
+        )
+        if error:
+            return error
 
         payload = [payloads.fov_payload(fov, include) for fov in line.fovs]
 

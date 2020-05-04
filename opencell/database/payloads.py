@@ -12,7 +12,7 @@ from opencell.database import models, utils
 from opencell.imaging.processors import FOVProcessor
 
 
-def cell_line_payload(cell_line):
+def cell_line_payload(cell_line, include):
     '''
     The JSON payload returned by the /lines endpoint of the API
     Note that, awkwardly, the RNAseq data is a column in the crispr_design table
@@ -46,11 +46,31 @@ def cell_line_payload(cell_line):
             'facs_intensity': cell_line.facs_dataset.scalars.get('rel_median_log')
         })
 
+    # summary stats for FOVs and pulldowns
+    counts = {
+        'num_fovs': len(cell_line.fovs),
+        'num_fovs_annotated': len([fov for fov in cell_line.fovs if fov.annotation]),
+        'num_pulldowns': len(cell_line.pulldowns),
+    }
+
+    # all of the manual annotation categories
+    annotation = {
+        'categories': cell_line.annotation.categories if cell_line.annotation else None
+    }
+
     payload = {
         'metadata': metadata,
         'scalars': scalars,
-        'annotations': cell_line.annotation.categories if cell_line.annotation else None
+        'counts': counts,
+        'annotation': annotation,
     }
+
+    # the 'best'/representative FOV for the cell line
+    if 'best-fov' in include:
+        fov = cell_line.get_best_fov()
+        if fov:
+            payload['best_fov'] = fov_payload(fov, include=['thumbnails'])
+
     return payload
 
 

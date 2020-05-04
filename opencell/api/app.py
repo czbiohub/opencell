@@ -46,18 +46,22 @@ def create_session_registry(url):
         'cell_line_metadata': cell_line_metadata_view,
         'fov_rank': fov_rank_view
     }
-
     return Session, views
 
 
 def create_app(args):
 
     app = Flask(__name__)
-    app.config.from_object(settings.DevConfig)
-    CORS(app, origins=app.config['CORS_ORIGINS'])
+
+    if args.mode == 'dev':
+        app.config.from_object(settings.DevConfig)
+    elif args.mode == 'prod':
+        app.config.from_object(settings.ProdConfig)
+
+    if app.config.get('CORS_ORIGINS'):
+        CORS(app, origins=app.config['CORS_ORIGINS'])
 
     cache.init_app(app)
-
     api = Api()
 
     # plate designs
@@ -82,16 +86,14 @@ def create_app(args):
 
     api.init_app(app)
 
-    if args.credentials:
-        credentials = args.credentials
-    else:
-        credentials = app.config['DB_CREDENTIALS_FILEPATH']
+    if args.credentials_filepath:
+        app.config['DB_CREDENTIALS_FILEPATH'] = args.credentials_filepath
 
-    if args.opencell_microscopy_root:
-        app.config['opencell_microscopy_root'] = args.opencell_microscopy_root
+    if args.opencell_microscopy_dirpath:
+        app.config['OPENCELL_MICROSCOPY_DIRPATH'] = args.opencell_microscopy_dirpath
 
     # create an instance of sqlalchemy's scoped_session registry
-    url = utils.url_from_credentials(credentials)
+    url = utils.url_from_credentials(app.config['DB_CREDENTIALS_FILEPATH'])
     app.Session, app.views = create_session_registry(url)
 
     # required to close the session instance when a request is completed
@@ -103,11 +105,10 @@ def create_app(args):
 
 
 def parse_args():
-
     parser = argparse.ArgumentParser()
-    parser.add_argument('--credentials', dest='credentials')
-    parser.add_argument('--opencell-microscopy-root', dest='opencell_microscopy_root')
-
+    parser.add_argument('--mode', dest='mode', required=True)
+    parser.add_argument('--credentials', dest='credentials_filepath')
+    parser.add_argument('--opencell-microscopy', dest='opencell_microscopy_dirpath')
     return parser.parse_args()
 
 

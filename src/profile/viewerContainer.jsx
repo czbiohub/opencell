@@ -69,9 +69,16 @@ export default class ViewerContainer extends Component {
 
 
     componentDidUpdate(prevProps, prevState, snapshot) {
-        // reload the z-stacks only if the roi has changed
+
+        // reload the z-stacks only if the ROI has changed
         if (prevProps.roiId!==this.props.roiId) {
             this.loadStacks();
+        }
+
+        // reset the GFP black point if the target has changed
+        // (because the black point is different for low-GFP targets)
+        if (prevProps.cellLineId!==this.props.cellLineId) {
+            this.setState({gfpMin: this.props.isLowGfp ? 10 : 0});
         }
     }
 

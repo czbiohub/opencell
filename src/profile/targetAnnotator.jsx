@@ -46,7 +46,6 @@ async function putData(url, data) {
 
 
 function CheckboxGroup (props) {
-
     const checkboxes = props.labels.map(label => {
         const category = label.toLowerCase().replace(/(-| |\\|\/)/g, '_');
         return (
@@ -72,7 +71,6 @@ function CheckboxGroup (props) {
 export default class TargetAnnotator extends Component {
 
     constructor (props) {
-
         super(props);
         this.state = {
             loaded: false,
@@ -84,7 +82,6 @@ export default class TargetAnnotator extends Component {
         this.onCheckboxChange.bind(this);
         this.onTextAreaChange.bind(this);
         this.onSubmit.bind(this);
-
     }
 
 

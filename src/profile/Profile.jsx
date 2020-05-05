@@ -116,6 +116,7 @@ class App extends Component {
                         />
                     ) : (
                         <Overview
+                            cellLine={this.cellLine}
                             cellLines={this.allCellLines}
                             cellLineId={this.state.cellLineId}
                             targetName={this.state.targetName}

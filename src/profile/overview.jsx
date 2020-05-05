@@ -84,10 +84,12 @@ export default class Overview extends Component {
                     <div className="pl3 pr3" style={{width: '650px'}}>
                         <SectionHeader title='Localization'/>
                         <ViewerContainer
+                            cellLineId={this.props.cellLineId}
                             fovs={this.state.fovs}
                             rois={this.state.rois}
                             fovId={this.state.fovId}
                             roiId={this.state.roiId}
+                            isLowGfp={this.props.cellLine.annotation?.categories.includes('low_gfp')}
                             changeRoi={(roiId, fovId) => this.setState({roiId, fovId})}
                         />
                     </div>

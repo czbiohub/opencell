@@ -102,7 +102,7 @@ class App extends Component {
                 <Navbar/>
 
                 {/* main container */}
-                <div className="w-100 pl4 pr4">
+                <div className="pl4 pr4" style={{width: '2000px'}}>
 
                     {/* page header and metadata */}
                     <Header cellLine={this.cellLine} onSearchChange={this.onSearchChange}/>

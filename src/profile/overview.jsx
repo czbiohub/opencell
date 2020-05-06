@@ -57,7 +57,7 @@ export default class Overview extends Component {
                 <div className="flex" style={{minWidth: '1600px'}}>
 
                     {/* Left column - about box and expression and facs plots*/}
-                    <div className="w-25 pl3 pr4 pt0">
+                    <div className="pl3 pr4 pt0" style={{width: '400px'}}>
 
                         {/* 'About' textbox */}
                         <div className='pb4'>
@@ -96,7 +96,7 @@ export default class Overview extends Component {
 
 
                     {/* Right column - annotations or volcano plot */}
-                    <div className="w-33 pl3 pb3">
+                    <div className="pl3 pb3" style={{width: '800px'}}>
                         {this.props.showTargetAnnotator ? (
                             <div>
                                 <SectionHeader title='Annotations'/>    

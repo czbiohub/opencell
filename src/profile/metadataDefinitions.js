@@ -104,13 +104,13 @@ const cellLineMetadataDefinitions = [
         units: '',
     },{
         id: 're_sort',
-        accessor: row => String(row.annotation.categories?.includes('re_sort')),
-        Header: 'Re-sort',
+        accessor: row => String(row.annotation.categories?.includes('salvageable_re_sort')),
+        Header: 'Salvageable re-sort',
         units: '',
     },{
         id: 'num_annoted_fovs',
         accessor: row => row.counts.num_fovs_annotated,
-        Header: 'Num ant FOVs',
+        Header: 'Num annotated FOVs',
         units: '',
     }
 ];

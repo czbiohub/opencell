@@ -133,7 +133,7 @@ export default class VolcanoPlot extends Component {
         });
 
         // transform when zoomed/panned
-        this.currentTransform = undefined;
+        this.zoomTransform = undefined;
     }
 
     
@@ -156,7 +156,7 @@ export default class VolcanoPlot extends Component {
 
     resetZoom () {
         // reset the pan/zoom transform
-        this.currentTransform = undefined;
+        this.zoomTransform = undefined;
         this.svg.call(this.zoom.transform, d3.zoomIdentity);
     }
 
@@ -212,6 +212,7 @@ export default class VolcanoPlot extends Component {
                       .attr('width', pp.width)
                       .attr('height', pp.height);
 
+        // semi-opaque loading status div (visible when data is loading or there is no data)
         const loadingDiv = d3.select(this.node)
                              .append('div')
                              .attr('class', 'f2 tc loading-overlay')
@@ -222,9 +223,9 @@ export default class VolcanoPlot extends Component {
 
         this.captionOpacityScale = k => {
             const val = d3.scaleLinear()
-                        .range([0, 1])
-                        .domain([2.5, 4.5])
-                        .clamp(true)(k);
+                .range([0, 1])
+                .domain([2.5, 4.5])
+                .clamp(true)(k);
             return val**2;
         };
 
@@ -267,8 +268,9 @@ export default class VolcanoPlot extends Component {
             .attr("transform", "rotate(-90)");
 
         // scatter dot container
-        const g = svg.append("g").attr("class", "dot-g")
-                .attr("clip-path", `url(#clip)`);
+        const g = svg.append("g")
+            .attr("class", "dot-g")
+            .attr("clip-path", `url(#clip)`);
 
         // clipPath to mask dots outside of the axes (needed for zooming)
         g.append("clipPath")
@@ -280,16 +282,16 @@ export default class VolcanoPlot extends Component {
             .attr("height", pp.height - pp.padTop - pp.padBottom);
 
         // legend container
-        const legend = svg.append('g')
+        svg.append('g')
             .attr('id', 'volcano-plot-legend')
             .attr('transform', `translate(0, 0)`)
             .style('fill', '#ffffff55');
         
      
         this.tip = tip()
-                .offset([-10, 0])
-                .attr("class", "d3-tip")
-                .html(d => `<strong>${d.gene_name}</strong><br>${d.protein_names}`);
+            .offset([-15, 0])
+            .attr("class", "d3-tip")
+            .html(d => `<strong>${d.gene_name}</strong>`);
         svg.call(this.tip);
 
         this.zoom = d3.zoom().on('zoom', this.onZoom);
@@ -311,9 +313,7 @@ export default class VolcanoPlot extends Component {
 
     updateLegend () {
 
-        // legend
         const legend = this.svg.select('#volcano-plot-legend');
-
         legend.selectAll("text").remove();
         legend.selectAll("rect").remove();
  
@@ -386,7 +386,7 @@ export default class VolcanoPlot extends Component {
         const calcDotColor = d => {
 
             // special color if the hit is the target (i.e., the bait) itself
-            // if (msMetadata[d.gene_id].gene_name===this.props.targetName) return chroma(this.sigModeDotColors.bait).alpha(.7);
+            if (d.gene_name===this.props.targetName) return chroma(this.sigModeDotColors.bait).alpha(.7);
             
             // if not sig, always the same color
             if (!this.hitIsSignificant(d)) return chroma(this.sigModeDotColors.notSigHit).alpha(.7);
@@ -398,7 +398,6 @@ export default class VolcanoPlot extends Component {
             
             // if we're still here and coloring by annotation (what the UI calls 'function')
             if (this.props.labelColor==='Function') {
-                // let ant = msMetadata[d.gene_id].annotation || 'Other';
                 let ant = 'Other'; 
                 const color = this.functionModeDotColors.filter(d => d.annotation===ant)[0].color;
                 return chroma(color).alpha(.6);
@@ -429,9 +428,9 @@ export default class VolcanoPlot extends Component {
         let yScale = this.yScale;
 
         // retain the zoom/pan state when the target is changed
-        if (this.currentTransform) {
-            xScale = this.currentTransform.rescaleX(xScale);
-            yScale = this.currentTransform.rescaleY(yScale);
+        if (this.zoomTransform) {
+            xScale = this.zoomTransform.rescaleX(xScale);
+            yScale = this.zoomTransform.rescaleY(yScale);
         }
 
         // create the generator the significance curves
@@ -441,7 +440,7 @@ export default class VolcanoPlot extends Component {
         this.fdrLineLeft.attr('d', line);
         this.fdrLineRight.attr('d', line);
 
-        const dots = this.g.selectAll('.scatter-dot').data(this.hits, d => d.gene_id);
+        const dots = this.g.selectAll('.scatter-dot').data(this.hits, d => d.gene_name);
 
         dots.exit().remove();
     
@@ -459,14 +458,14 @@ export default class VolcanoPlot extends Component {
                   .attr("r", plotProps.dotRadius + 2)
                   .attr("stroke", '#111')
                   .classed("scatter-dot-hover", true);
-                // tip.show(msMetadata[d.gene_id], this); 
+                tip.show(d, this); 
              })
              .on("mouseout", function (d) {
                 d3.select(this)
                   .attr("r", calcDotRadius)
                   .attr("stroke", calcDotStroke)
                   .classed("scatter-dot-hover", false);
-                // tip.hide(msMetadata[d.gene_id], this);
+                tip.hide(d, this);
              })
             .on('click', d => this.props.changeTarget(d.gene_name));
 
@@ -502,25 +501,19 @@ export default class VolcanoPlot extends Component {
         } else if (this.props.showLabels==='Never') {
             opacity = 0;
         } else {
-            opacity = this.currentTransform ? this.captionOpacityScale(this.currentTransform.k) : 0;
+            opacity = this.zoomTransform ? this.captionOpacityScale(this.zoomTransform.k) : 0;
         }
         return opacity;
     }
 
 
     onZoom () {
-
-        const transform = d3.event.transform;
-        this.currentTransform = transform;
-
-        const xScaleZoom = transform.rescaleX(this.xScale);
-        const yScaleZoom = transform.rescaleY(this.yScale);
-
-        const line = d3.line()
-            .x(d => xScaleZoom(d.x))
-            .y(d => yScaleZoom(d.y));
+        this.zoomTransform = d3.event.transform;
+        const xScaleZoom = this.zoomTransform.rescaleX(this.xScale);
+        const yScaleZoom = this.zoomTransform.rescaleY(this.yScale);
 
         // update the line generator
+        const line = d3.line().x(d => xScaleZoom(d.x)).y(d => yScaleZoom(d.y));
         this.fdrLineLeft.attr('d', line);
         this.fdrLineRight.attr('d', line);
        
@@ -535,12 +528,11 @@ export default class VolcanoPlot extends Component {
 
         this.svg.select("#x-axis").call(this.xAxis.scale(xScaleZoom));
         this.svg.select("#y-axis").call(this.yAxis.scale(yScaleZoom));
-
     }
 
 
     render() {
-        // use relative position to correctly position the loading-overlay div 
+        // the relative position is required to correctly position the loading-overlay div 
         return (
             <div className="relative" ref={node => this.node = node}/>
         );

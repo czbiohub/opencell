@@ -48,7 +48,6 @@ async function putData(url, data) {
 function CheckboxGroup (props) {
 
     const checkboxRows = props.labels.map(label => {
-
         const category = label.toLowerCase().replace(/(-| |\\|\/)/g, '_');
         let labels = [category];
         let subcategories = [category];
@@ -76,7 +75,7 @@ function CheckboxGroup (props) {
             );
         });
         return (
-            <div className='flex flex-row bb b--dashed b--black pt2'>{checkboxes}</div>
+            <div className='flex flex-row bb b--dashed b--black-30 pt2'>{checkboxes}</div>
         );
     });
 
@@ -185,7 +184,7 @@ export default class TargetAnnotator extends Component {
         return (
             <form>
                 <div className='flex flex-wrap w-100 pt3'>
-                    <div className='w-50'>
+                    <div className='w-70'>
                         <CheckboxGroup
                             title='Localization flags'
                             labels={localizationLabels}
@@ -194,7 +193,7 @@ export default class TargetAnnotator extends Component {
                             includeGrades={true}
                         />
                     </div>
-                    <div className='w-50 pl3'>
+                    <div className='w-30 pl3'>
                         <CheckboxGroup
                             title='QC flags'
                             labels={qcLabels}

@@ -1,3 +1,4 @@
+import * as d3 from 'd3';
 import React, { Component } from 'react';
 
 import CellLineTable from './cellLineTable.jsx';
@@ -5,8 +6,9 @@ import ExpressionPlot from '../common/expressionPlot.jsx';
 import FacsPlotContainer from './facsPlotContainer.jsx';
 import ViewerContainer from './viewerContainer.jsx';
 import VolcanoPlotContainer from './volcanoPlotContainer.jsx';
-import AnnotationsForm from './annotations.jsx';
+import TargetAnnotator from './targetAnnotator.jsx';
 import { SectionHeader } from './common.jsx';
+import settings from '../common/settings.js';
 
 // this is where the content for the 'About this protein' comes from
 import uniprotMetadata from '../demo/data/uniprot_metadata.json';
@@ -17,6 +19,7 @@ export default class Overview extends Component {
     constructor (props) {
         super(props);
         this.state = {
+            fovs: [],
             rois: [],
             roiId: undefined,
             fovId: undefined,
@@ -24,16 +27,26 @@ export default class Overview extends Component {
     }
 
 
-    componentDidUpdate(prevProps) {
+    componentDidUpdate (prevProps) {
 
         if (prevProps.cellLineId===this.props.cellLineId) return;
 
-        // concat all ROIs (because fov.rois is a list)
-        let rois = [].concat(...this.props.fovs.map(fov => fov.rois));
-        this.setState({
-            rois,
-            roiId: rois[0]?.id,
-            fovId: rois[0]?.fov_id,
+        // retrieve the FOV metadata
+        const url = `${settings.apiUrl}/lines/${this.props.cellLineId}/fovs?include=rois`
+        d3.json(url).then(fovs => {
+
+            // only FOVs with manual annotations should be displayed
+            const viewableFovs = fovs.filter(fov => fov.annotation);
+
+            // concat all ROIs (because fov.rois is a list)
+            let rois = [].concat(...viewableFovs.map(fov => fov.rois));
+    
+            this.setState({
+                rois,
+                fovs: viewableFovs,
+                roiId: rois[0]?.id,
+                fovId: rois[0]?.fov_id,
+            });
         });
     }
 
@@ -44,7 +57,7 @@ export default class Overview extends Component {
                 <div className="flex" style={{minWidth: '1600px'}}>
 
                     {/* Left column - about box and expression and facs plots*/}
-                    <div className="w-25 pl3 pr4 pt0">
+                    <div className="pl3 pr4 pt0" style={{width: '400px'}}>
 
                         {/* 'About' textbox */}
                         <div className='pb4'>
@@ -68,33 +81,35 @@ export default class Overview extends Component {
 
                     {/* Center column - sliceViewer and volumeViewer */}
                     {/* note the hard-coded width (because the ROIs are always 600px */}
-                    <div className="pl3 pr3" style={{flexBasis: '650px'}}>
+                    <div className="pl3 pr3" style={{width: '650px'}}>
                         <SectionHeader title='Localization'/>
                         <ViewerContainer
-                            fovs={this.props.fovs}
+                            cellLineId={this.props.cellLineId}
+                            fovs={this.state.fovs}
                             rois={this.state.rois}
                             fovId={this.state.fovId}
                             roiId={this.state.roiId}
+                            isLowGfp={this.props.cellLine.annotation?.categories.includes('low_gfp')}
                             changeRoi={(roiId, fovId) => this.setState({roiId, fovId})}
                         />
                     </div>
 
 
                     {/* Right column - annotations or volcano plot */}
-                    <div className="w-33 pl3 pb3">
-                        {this.props.showAnnotations ? (
+                    <div className="pl3 pb3" style={{width: '800px'}}>
+                        {this.props.showTargetAnnotator ? (
                             <div>
                                 <SectionHeader title='Annotations'/>    
-                                <AnnotationsForm 
+                                <TargetAnnotator 
                                     cellLineId={this.props.cellLineId} 
-                                    fovIds={this.props.fovs.map(fov => fov.metadata.id)}
+                                    fovIds={this.state.fovs.map(fov => fov.metadata.id)}
                                 />
                             </div>
                         ) : (
                             <div>
                                 <SectionHeader title='Interactions'/>
                                 <VolcanoPlotContainer
-                                    targetName={this.props.targetName}
+                                    cellLineId={this.props.cellLineId}
                                     changeTarget={this.props.onSearchChange}
                                 />
                             </div>

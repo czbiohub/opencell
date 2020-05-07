@@ -15,7 +15,7 @@ import 'tachyons';
 import './Profile.css';
 
 function roiLabel (roi) {
-    return roi && `FOV ${roi.fov_id} (ROI ${roi.id}) (${roi.kind[0].toUpperCase()})`
+    return roi && `FOV ${roi.fov_id} (${roi.kind[0].toUpperCase()})`
 }
 
 function roiItemRenderer (roi, props) {
@@ -24,7 +24,7 @@ function roiItemRenderer (roi, props) {
         <MenuItem
             key={roi.id}
             text={`FOV ${roi.fov_id}`}
-            label={`(ROI ${roi.id}) (${roi.kind[0].toUpperCase()})`}
+            label={`(${roi.kind[0].toUpperCase()})`}
             active={props.modifiers.active}
             onClick={props.handleClick}
         />
@@ -40,35 +40,45 @@ export default class ViewerContainer extends Component {
         // the number of slices in the z-stacks
         this.numSlices = settings.zStackShape[2];
 
+        // default values for the display settings
+        this.defaultDisplayState = {
+            gfpMin: 0,
+            gfpMax: 50,
+            gfpGamma: 1,
+            dapiMin: 5,
+            dapiMax: 50,
+            dapiGamma: 1,
+        }
+
         this.state = {
 
             stacksLoaded: false,
 
             // 'Volume' or 'Slice'
-            localizationMode: 'Slice',
+            localizationMode: "Slice",
 
-            // 'GFP' or 'DAPI' or 'Both'
-            localizationChannel: 'Both',
-
-            // initial slider values
-            gfpMin: 0,
-            gfpMax: 50,
-            gfpGamma: 1,
-
-            dapiMin: 5,
-            dapiMax: 50,
-            dapiGamma: 1,
+            // 'GFP', 'DAPI', or 'Both'
+            localizationChannel: "Both",
 
             // the middle of the z-stack
             zIndex: parseInt(this.numSlices/2),
         };
+
+        this.state = {...this.defaultDisplayState, ...this.state};
     }
 
 
     componentDidUpdate(prevProps, prevState, snapshot) {
-        // reload the z-stacks only if the roi has changed
+
+        // reload the z-stacks only if the ROI has changed
         if (prevProps.roiId!==this.props.roiId) {
             this.loadStacks();
+        }
+
+        // reset the GFP black point if the target has changed
+        // (because the black point is different for low-GFP targets)
+        if (prevProps.cellLineId!==this.props.cellLineId) {
+            this.setState({gfpMin: this.props.isLowGfp ? 10 : 0});
         }
     }
 
@@ -92,8 +102,8 @@ export default class ViewerContainer extends Component {
         // the order of the channels in the `filepaths` array below matters,
         // because it is *independently* hard-coded in SliceViewer and VolumeViewer
         const filepaths = [
-            `${settings.apiUrl}/rois/405/crop/${this.props.roiId}`,
-            `${settings.apiUrl}/rois/488/crop/${this.props.roiId}`,
+            `${settings.apiUrl}/rois/${this.props.roiId}/crop/405`,
+            `${settings.apiUrl}/rois/${this.props.roiId}/crop/488`,
         ];
 
         Promise.all(filepaths.map(loadStack)).then(volumes => {
@@ -105,7 +115,13 @@ export default class ViewerContainer extends Component {
 
     render () {
         
-        if (!this.props.rois.length) return (<div className="f3 tc pa5">No ROIs found</div>);
+        if (!this.props.rois.length) {
+            return (
+                <div className="relative" style={{height: "500px"}}>
+                    <div className="f2 tc loading-overlay">No ROIs found</div>
+                </div>
+            );
+        }
 
         let localizationContent;
         if (this.state.localizationMode==='Volume') {
@@ -120,19 +136,20 @@ export default class ViewerContainer extends Component {
         const roi = this.props.rois.filter(roi => roi.id == this.props.roiId)[0];
     
         return (
-            <div>
+            // use relative position so that the loading-overlay div only overlays this component
+            <div className='relative'>
 
             {/* display controls */}
             <div className="pt3 pb2">
                 <div className='fl w-100 pb3'>
-                    <div className='dib pr4'>
+                    <div className='dib pr3'>
                         <ButtonGroup 
                             label='Mode' 
                             values={['Slice', 'Volume']}
                             activeValue={this.state.localizationMode}
                             onClick={value => this.setState({localizationMode: value})}/>
                     </div>
-                    <div className='dib pr4'>
+                    <div className='dib pr3'>
                         <ButtonGroup 
                             label='Channel' 
                             values={['DAPI', 'GFP', 'Both']}
@@ -150,12 +167,22 @@ export default class ViewerContainer extends Component {
                                 this.props.changeRoi(roi.id, roi.fov_id)}
                             }
                         >
-                            <Button 
-                                className="bp3-button-custom"
-                                rightIcon="double-caret-vertical"
-                                text={roiLabel(roi)}
-                            />
+                            <div className='simple-button-group'>
+                                <div className="simple-button-group-label">Select FOV</div>
+                                <Button 
+                                    className="bp3-button-custom"
+                                    rightIcon="double-caret-vertical"
+                                    text={roiLabel(roi)}
+                                />
+                            </div>
                         </Select>
+                    </div>
+                    <div className="dib pr3">
+                        <Button
+                            className="pl2 bp3-button-custom"
+                            text={"Reset"}
+                            onClick={() => this.setState({...this.defaultDisplayState})}
+                        />
                     </div>
                 </div>
             </div>
@@ -221,7 +248,7 @@ export default class ViewerContainer extends Component {
                 scale={4}
             />
 
-            {this.state.stacksLoaded ? (null) : (<div className='loading-overlay'/>)}
+            {this.state.stacksLoaded ? (null) : (<div className="f2 tc loading-overlay">Loading...</div>)}
 
         </div>
         );

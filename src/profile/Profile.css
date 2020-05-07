@@ -16,11 +16,20 @@ button:focus {
 }
 
 .loading-overlay {
+    /* these properties force the div to overlay its parent,
+    if the parent position is set to 'relative' */
     position: absolute;
     top: 0px;
     left: 0px;
     width: 100%;
     height: 100%;
+
+    /* these properties vertically center text content */
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    flex-direction: column;
+
     background-color: white;
     opacity: .7;
 }
@@ -88,14 +97,17 @@ button:focus {
     display: inline-block;
 	width: auto;
     cursor: pointer;
-    padding: 4px;
+    padding: 4px 8px 4px 8px;
     margin-right: 10px;
     line-height: 1.42;
-    border-bottom: 1px solid #333;
+    border-radius: 5px;
+    background-color: rgba(209, 212, 214, 0.3) !important;
+    /* border-bottom: 1px solid #333; */
+
 }
 
 .simple-button:hover {
-    background-color: #d1d4d622;
+    background-color :rgba(209, 212, 214, 0.7) !important;
 }
 
 .simple-button-active, .simple-button-active:hover {
@@ -108,6 +120,7 @@ button:focus {
     color: #777;
     display: block;
     padding-right: 5px;
+    padding-bottom: 3px;
 }
 
 

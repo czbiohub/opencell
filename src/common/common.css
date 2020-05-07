@@ -35,8 +35,14 @@ label.bp3-label {
 }
 
 .bp3-button-custom {
+	border-radius: 5px;
 	background-image: none !important;
 	box-shadow: none !important;
 	-webkit-box-shadow: none !important;
 	background-color: rgba(209, 212, 214, 0.3) !important; /* color from bp3-menu-item:hover */
 }
+
+.bp3-button-custom:hover {
+	background-color: rgba(209, 212, 214, 0.7) !important;
+}
+

@@ -42,7 +42,8 @@ function SimpleButton(props) {
     const className = classNames(
         'pr2',
         'simple-button', 
-        {'simple-button-active': props.active});
+        {'simple-button-active': props.active}
+    );
 
     return <div className={className} onClick={props.onClick}>{props.text}</div>;
 }

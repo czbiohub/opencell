@@ -47,32 +47,50 @@ async function putData(url, data) {
 
 function CheckboxGroup (props) {
 
-    const checkboxes = props.labels.map(label => {
+    const checkboxRows = props.labels.map(label => {
         const category = label.toLowerCase().replace(/(-| |\\|\/)/g, '_');
+        let labels = [category];
+        let subcategories = [category];
+
+        if (props.includeGrades) {
+            const grades = [1, 2, 3];
+            labels = [...labels, ...grades];
+            subcategories = [...subcategories, ...grades.map(grade => `${category}_${grade}`)];
+        }
+
+        const checkboxes = labels.map((label, ind) => {
+            const subcategory = subcategories[ind];
+            // hack to right-justify the grade categories
+            const style = ind===1 ? {marginLeft: 'auto'} : {};
+            return (
+                <Checkbox
+                    className='pr3'
+                    style={style}
+                    label={label}
+                    key={subcategory}
+                    name={subcategory} 
+                    checked={props.categories.includes(subcategory)}
+                    onChange={props.onChange}
+                />
+            );
+        });
         return (
-            <Checkbox
-                label={label}
-                key={category}
-                name={category} 
-                checked={props.categories.includes(category)}
-                onChange={props.onChange}
-            />
+            <div className='flex flex-row bb b--dashed b--black-30 pt2'>{checkboxes}</div>
         );
     });
 
     return (
-        <div className='pb2'>
+        <div>
             <div className="pb2 f4">{props.title}</div>
-            {checkboxes}
+            {checkboxRows}
         </div>
     );
 }
 
 
-class AnnotationsForm extends Component {
+export default class TargetAnnotator extends Component {
 
     constructor (props) {
-
         super(props);
         this.state = {
             loaded: false,
@@ -84,7 +102,6 @@ class AnnotationsForm extends Component {
         this.onCheckboxChange.bind(this);
         this.onTextAreaChange.bind(this);
         this.onSubmit.bind(this);
-
     }
 
 
@@ -115,10 +132,10 @@ class AnnotationsForm extends Component {
             }
         };
 
-        putData(`${settings.apiUrl}/annotations/${this.props.cellLineId}`, data)
+        putData(`${settings.apiUrl}/lines/${this.props.cellLineId}/annotation`, data)
             .then(response => {
                 console.log(response);
-                if (!response.ok) throw new Error('Error submitting annotations');
+                if (!response.ok) throw new Error('Error submitting annotation');
                 this.setState({submissionStatus: 'success'});
             })
             .catch(error => this.setState({submissionStatus: 'danger'}));
@@ -126,10 +143,10 @@ class AnnotationsForm extends Component {
 
 
     fetchData () {
-        fetch(`${settings.apiUrl}/annotations/${this.props.cellLineId}`)
+        fetch(`${settings.apiUrl}/lines/${this.props.cellLineId}/annotation`)
             .then(response => {
                 if (!response.ok) {
-                    throw new Error(`Error getting annotations for cell line ${this.props.cellLineId}`);
+                    throw new Error(`Error getting annotation for cell line ${this.props.cellLineId}`);
                 }
                 return response.json();
             })
@@ -164,30 +181,30 @@ class AnnotationsForm extends Component {
 
 
     render () {
-
         return (
             <form>
-                
-                <div className='w-100 pt3'>
-                    <div className='fl dib w-50'>
+                <div className='flex flex-wrap w-100 pt3'>
+                    <div className='w-70'>
                         <CheckboxGroup
                             title='Localization flags'
                             labels={localizationLabels}
                             categories={this.state.categories}
                             onChange={event => this.onCheckboxChange(event)}
+                            includeGrades={true}
                         />
                     </div>
-                    <div className='fl dib w-50'>
+                    <div className='w-30 pl3'>
                         <CheckboxGroup
                             title='QC flags'
                             labels={qcLabels}
                             categories={this.state.categories}
                             onChange={event => this.onCheckboxChange(event)}
+                            includeGrades={false}
                         />
                     </div>
                 </div>
 
-                <div className='fl dib w-100'>
+                <div className='w-100 pt3'>
                     <div className="pb2 f4">{"Comments"}</div>
                     <textarea
                         style={{width: '100%', height: 100}}
@@ -209,5 +226,3 @@ class AnnotationsForm extends Component {
     }
 
 }
-
-export default AnnotationsForm;

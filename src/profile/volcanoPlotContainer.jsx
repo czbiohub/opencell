@@ -1,36 +1,54 @@
 
 import React, { Component } from 'react';
+import chroma from 'chroma-js';
+
 import ButtonGroup from './buttonGroup.jsx';
-import VolcanoPlot from './volcanoPlot.jsx';
+import MassSpecScatterPlot from './volcanoPlot.jsx';
 
 import 'tachyons';
 import './Profile.css';
 
 
+// const sigModeLegendItems = [
+//     {
+//         color: chroma(this.sigModeDotColors.bait),
+//         text: '● Selected protein',
+//     },{
+//        color: chroma(this.sigModeDotColors.sigHit).alpha(1),
+//        text: '● Significant hits',
+//     },{
+//        color: chroma(this.sigModeDotColors.notSigHit).alpha(1),
+//        text: '● Non-significant hits',
+//     },{
+//        color: chroma(this.sigModeDotColors.notSigHit).darken(2).alpha(1),
+//        text: '- - -  5% FDR curve',
+//     }
+// ];
+
+
+
 export default class VolcanoPlotContainer extends Component {
 
-
     constructor (props) {
-
         super(props);
         this.state = {
 
-            // how volcano plot dots are colored: 'Significance' or 'Function'
-            labelColor: 'Significance',
+            // either 'Volcano' or 'Stoichiometry'
+            plotMode: 'Volcano',
 
-            // when to show labels: 'Always', 'Never', 'On zoom'
-            showLabels: 'On zoom',
+            // how scatterplot dots are colored: either 'Significance' or 'Function'
+            plotColorMode: 'Significance',
 
-            // whether to reset the zoom 
+            // when to show dot captions: 'Always', 'Never', 'On zoom'
+            showPlotCaptions: 'On zoom',
+
+            // whether to reset the plot's zoom/pan transform
             // this is a hack: volcanoPlot just listens for changes to this value
             resetZoom: false,
-
         };
-
     }
 
     render () {
-
         return (
             <div>
                 {/* display controls */}
@@ -40,17 +58,17 @@ export default class VolcanoPlotContainer extends Component {
                     <div className='fl w-100 pb3'>
                         <div className='dib pr4'>
                             <ButtonGroup 
-                                label='Label color' 
-                                values={['Significance', 'Function']}
-                                activeValue={this.state.labelColor}
-                                onClick={value => this.setState({labelColor: value})}/>
+                                label='Plot mode' 
+                                values={['Volcano', 'Stoichiometry']}
+                                activeValue={this.state.plotMode}
+                                onClick={value => this.setState({plotMode: value})}/>
                         </div>
                         <div className='dib pr4'>
                             <ButtonGroup 
                                 label='Show labels' 
                                 values={['Always', 'Never', 'On zoom']}
-                                activeValue={this.state.showLabels}
-                                onClick={value => this.setState({showLabels: value})}/>
+                                activeValue={this.state.showPlotCaptions}
+                                onClick={value => this.setState({showPlotCaptions: value})}/>
                         </div>
 
                     </div>
@@ -59,24 +77,22 @@ export default class VolcanoPlotContainer extends Component {
                 {/* volcano plot
                 the hack-ish absolute margins here are to better align the svg itself*/}
                 <div className="fl w-100 scatterplot-container" style={{marginLeft: -20, marginTop: 10}}>
-                    <VolcanoPlot
-                        enrichmentAccessor={row => parseFloat(row.enrichment)}
-                        pvalueAccessor={row => parseFloat(row.pval)}
+                    <MassSpecScatterPlot
+                        mode={this.state.plotMode}
                         cellLineId={this.props.cellLineId}
                         changeTarget={this.props.changeTarget}
-                        showLabels={this.state.showLabels}
-                        resetZoom={this.state.resetZoom}
-                        labelColor={this.state.labelColor}
+                        showCaptions={this.state.showPlotCaptions}
+                        resetZoom={this.state.resetPlotZoom}
+                        colorMode={this.state.plotColorMode}
                     />
                 </div>
                 <div className='fr dib'>
                     <div 
                         className='f6 simple-button' 
-                        onClick={() => this.setState({resetZoom: !this.state.resetZoom})}>
+                        onClick={() => this.setState({resetPlotZoom: !this.state.resetPlotZoom})}>
                         {'Reset zoom'}
                     </div>
                 </div>
-
             </div>
 
         );

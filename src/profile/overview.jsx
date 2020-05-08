@@ -78,7 +78,6 @@ export default class Overview extends Component {
                         <FacsPlotContainer cellLineId={this.props.cellLineId}/>
                     </div>
 
-
                     {/* Center column - sliceViewer and volumeViewer */}
                     {/* note the hard-coded width (because the ROIs are always 600px */}
                     <div className="pl3 pr3" style={{width: '650px'}}>
@@ -89,12 +88,11 @@ export default class Overview extends Component {
                             rois={this.state.rois}
                             fovId={this.state.fovId}
                             roiId={this.state.roiId}
-                            isLowGfp={this.props.cellLine.annotation?.categories.includes('low_gfp')}
+                            isLowGfp={this.props.cellLine.annotation?.categories?.includes('low_gfp')}
                             changeRoi={(roiId, fovId) => this.setState({roiId, fovId})}
                         />
                     </div>
                 
-
                     {/* Right column - annotations or volcano plot */}
                     <div className="pl3 pb3" style={{width: '600px'}}>
                         {this.props.showTargetAnnotator ? (

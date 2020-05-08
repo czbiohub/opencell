@@ -183,7 +183,9 @@ class CellLinePulldown(CellLineResource):
         payload = None
         for pulldown in line.pulldowns:
             if pulldown.hits:
-                payload = payloads.pulldown_payload(pulldown)
+                payload = payloads.pulldown_payload(
+                    pulldown, engine=flask.current_app.Session.get_bind()
+                )
                 break
 
         if not payload:

@@ -124,40 +124,34 @@ def fov_payload(fov, include):
     return payload
 
 
-def pulldown_payload(pulldown):
+def pulldown_payload(pulldown, engine):
     '''
     The JSON payload for a mass spec pulldown and all of its hits
+    For speed, we use a direct query to retrieve and serialize the hits
     '''
-    payload = {
-        'metadata': pulldown.as_dict(),
-        'hits': [hit_payload(hit) for hit in pulldown.hits]
-    }
-    return payload
 
+    # TODO: which gene_name to select?
+    # (note that postgres uses one-based indexing)
+    hits = pd.read_sql(
+        '''
+        select pg.gene_names[1] as gene_name, hit.* from mass_spec_hit hit
+        inner join mass_spec_protein_group pg on pg.id = hit.protein_group_id
+        where hit.pulldown_id = %d
+        ''' % pulldown.id,
+        engine
+    )
 
-def hit_payload(hit):
-    '''
-    JSON payload for a single mass spec hit
-    '''
-    # the columns from the MassSpecHit table to include directly in the payload
-    columns = [
+    hits = hits[[
+        'gene_name',
         'pval',
         'enrichment',
-        'is_significant_hit',
-        'interaction_stoich',
         'abundance_stoich',
-    ]
+        'interaction_stoich',
+        'is_significant_hit',
+    ]]
 
-    payload = {}
-    for column in columns:
-        val = getattr(hit, column)
-        # check for infs, which flask.jsonify serializes to 'Infinity',
-        # but which cannot be parsed by d3.json in the frontend
-        if val is not None:
-            if np.isinf(val) or np.isnan(val):
-                val = None
-        payload[column] = val
-
-    # retrieve the gene_name from the hit's protein group
-    payload['gene_name'] = hit.protein_group.gene_names[0] if hit.protein_group else None
+    payload = {
+        'metadata': pulldown.as_dict(),
+        'hits': json.loads(hits.to_json(orient='records')),
+    }
     return payload

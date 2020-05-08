@@ -3,7 +3,7 @@ import React, { Component } from 'react';
 import chroma from 'chroma-js';
 
 import ButtonGroup from './buttonGroup.jsx';
-import MassSpecScatterPlot from './volcanoPlot.jsx';
+import MassSpecScatterPlot from './massSpecScatterPlot.jsx';
 
 import 'tachyons';
 import './Profile.css';
@@ -27,7 +27,7 @@ import './Profile.css';
 
 
 
-export default class VolcanoPlotContainer extends Component {
+export default class MassSpecPlotContainer extends Component {
 
     constructor (props) {
         super(props);

@@ -5,7 +5,7 @@ import CellLineTable from './cellLineTable.jsx';
 import ExpressionPlot from '../common/expressionPlot.jsx';
 import FacsPlotContainer from './facsPlotContainer.jsx';
 import ViewerContainer from './viewerContainer.jsx';
-import VolcanoPlotContainer from './volcanoPlotContainer.jsx';
+import MassSpecPlotContainer from './massSpecPlotContainer.jsx';
 import TargetAnnotator from './targetAnnotator.jsx';
 import { SectionHeader } from './common.jsx';
 import settings from '../common/settings.js';
@@ -93,10 +93,10 @@ export default class Overview extends Component {
                             changeRoi={(roiId, fovId) => this.setState({roiId, fovId})}
                         />
                     </div>
-
+                
 
                     {/* Right column - annotations or volcano plot */}
-                    <div className="pl3 pb3" style={{width: '800px'}}>
+                    <div className="pl3 pb3" style={{width: '600px'}}>
                         {this.props.showTargetAnnotator ? (
                             <div>
                                 <SectionHeader title='Annotations'/>    
@@ -108,7 +108,7 @@ export default class Overview extends Component {
                         ) : (
                             <div>
                                 <SectionHeader title='Interactions'/>
-                                <VolcanoPlotContainer
+                                <MassSpecPlotContainer
                                     cellLineId={this.props.cellLineId}
                                     changeTarget={this.props.onSearchChange}
                                 />

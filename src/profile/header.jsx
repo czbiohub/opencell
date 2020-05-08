@@ -71,7 +71,7 @@ class Header extends Component {
                                 this.props.onSearchChange(event.currentTarget.value);
                             }
                         }}/>
-                    <div className='f7 header-search-label'>Search by target name</div>
+                    <div className='f6 header-search-label'>Search by target name</div>
                 </div>
 
             </div>

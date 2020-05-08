@@ -3,7 +3,12 @@ html {
 	margin-left: 0%;
 	background-color: #fff;
 	color: rgba(0, 0, 0, .7);
-	font-family: 'avenir';
+}
+
+.body {
+    font-family: "avenir";
+	color: #333;
+	line-height: 1.15;
 }
 
 a {
@@ -35,6 +40,8 @@ label.bp3-label {
 }
 
 .bp3-button-custom {
+	/* font-family should match that of .simple-button in profile.css */
+	font-family: Helvetica;  
 	border-radius: 5px;
 	background-image: none !important;
 	box-shadow: none !important;

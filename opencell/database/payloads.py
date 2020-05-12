@@ -134,7 +134,7 @@ def pulldown_payload(pulldown, engine):
     # (note that postgres uses one-based indexing)
     hits = pd.read_sql(
         '''
-        select pg.gene_names[1] as gene_name, hit.* from mass_spec_hit hit
+        select pg.gene_names, hit.* from mass_spec_hit hit
         inner join mass_spec_protein_group pg on pg.id = hit.protein_group_id
         where hit.pulldown_id = %d
         ''' % pulldown.id,
@@ -142,7 +142,7 @@ def pulldown_payload(pulldown, engine):
     )
 
     hits = hits[[
-        'gene_name',
+        'gene_names',
         'pval',
         'enrichment',
         'abundance_stoich',

@@ -71,7 +71,7 @@ export default class MassSpecScatterPlot extends Component {
         this.calcDotColor = d => {
 
             // special color if the hit is the target (i.e., the bait) itself
-            if (d.gene_name===this.props.targetName) return chroma(this.sigModeDotColors.bait).alpha(.7);
+            if (d.gene_names.includes(this.props.targetName)) return chroma(this.sigModeDotColors.bait).alpha(.7);
             
             // if not sig, always the same color
             if (!this.hitIsSignificant(d)) return chroma(this.sigModeDotColors.notSigHit).alpha(.7);
@@ -170,6 +170,10 @@ export default class MassSpecScatterPlot extends Component {
             hits = hits.filter(d => {
                 return (d.pval > 1) || (d.pval < 1 && d3.randomUniform(0, 1)() > .5);
             });
+
+            // construct a label by concatenating the gene_names
+            hits.forEach(hit => hit.label = hit.gene_names.sort().join(', '));
+
             this.hits = hits;
             this.pulldownMetadata = data.metadata;
             this.setState({loaded: true});
@@ -307,7 +311,7 @@ export default class MassSpecScatterPlot extends Component {
         this.tip = tip()
             .offset([-15, 0])
             .attr("class", "d3-tip")
-            .html(d => `<strong>${d.gene_name}</strong>`);
+            .html(d => `<strong>${d.label}</strong>`);
         svg.call(this.tip);
 
         this.zoom = d3.zoom().on('zoom', this.onZoom);
@@ -377,7 +381,7 @@ export default class MassSpecScatterPlot extends Component {
         } else {
             hits = this.hits;
         }
-        const dots = this.g.selectAll('.scatter-dot').data(hits, d => d.gene_name);
+        const dots = this.g.selectAll('.scatter-dot').data(hits, d => d.label);
 
         dots.exit().remove();    
         dots.enter().append('circle')
@@ -403,7 +407,7 @@ export default class MassSpecScatterPlot extends Component {
                   .classed("scatter-dot-hover", false);
                 tip.hide(d, this);
              })
-            .on('click', d => this.props.changeTarget(d.gene_name));
+            .on('click', d => this.props.changeTarget(d.gene_names[0]));
 
         // bind data - filter for only significant hits
         const captions = this.g.selectAll('.scatter-caption')
@@ -413,7 +417,7 @@ export default class MassSpecScatterPlot extends Component {
         captions.enter().append('text')
                 .attr('class', 'scatter-caption')
                 .attr('text-anchor', 'middle')
-                .text(d => d.gene_name)
+                .text(d => d.label)
                 .merge(captions)
                 .attr('x', d => xScale(this.xAxisAccessor(d)))
                 .attr('y', d => yScale(this.yAxisAccessor(d)) - 10)

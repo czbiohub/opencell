@@ -50,7 +50,6 @@ def cell_line_payload(cell_line, include):
     counts = {
         'num_fovs': len(cell_line.fovs),
         'num_fovs_annotated': len([fov for fov in cell_line.fovs if fov.annotation]),
-        'num_pulldowns': len(cell_line.pulldowns),
     }
 
     # all of the manual annotation categories

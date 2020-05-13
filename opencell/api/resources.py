@@ -79,13 +79,23 @@ class CellLines(Resource):
 
         lines = (
             flask.current_app.Session.query(models.CellLine)
+            .options(
+                db.orm.joinedload(models.CellLine.crispr_design, innerjoin=True),
+                db.orm.joinedload(models.CellLine.facs_dataset),
+                db.orm.joinedload(models.CellLine.sequencing_dataset),
+                db.orm.joinedload(models.CellLine.annotation),
+                (
+                    db.orm.joinedload(models.CellLine.fovs)
+                    .joinedload(models.MicroscopyFOV.annotation, innerjoin=True)
+                ),
+            )
             .filter(models.CellLine.id.in_(ids))
             .all()
         )
 
         # limit the number of lines in dev mode (to speed things up)
         if flask.current_app.config['ENV'] == 'dev':
-            lines = lines[::10]
+            lines = lines[::1]
 
         payload = [payloads.cell_line_payload(line, include) for line in lines]
         return flask.jsonify(payload)

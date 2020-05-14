@@ -28,6 +28,79 @@ a:visited {
 }
 
 
+div {
+    border: 0px solid #f66;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+button:focus {
+    outline: none;
+}
+
+.loading-overlay {
+    /* these properties force the div to overlay its parent,
+    if the parent position is set to 'relative' */
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    width: 100%;
+    height: 100%;
+
+    /* these properties vertically center text content */
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    flex-direction: column;
+
+    background-color: white;
+    opacity: .7;
+}
+
+/* override tachyon's blue */
+.blue {
+    color: #01a1dd;
+}
+
+.flex-0-0-auto {
+    flex: 0 0 auto;
+}
+
+
+/* --------------------- custom div-based buttons --------------------- */
+.simple-button {
+    font-family: Helvetica;
+    display: inline-block;
+	width: auto;
+    cursor: pointer;
+    padding: 4px 8px 4px 8px;
+    margin-right: 10px;
+    line-height: 1.42;
+    border-radius: 5px;
+    background-color: rgba(209, 212, 214, 0.3) !important;
+    /* border-bottom: 1px solid #333; */
+
+}
+
+.simple-button:hover {
+    background-color :rgba(209, 212, 214, 0.7) !important;
+}
+
+.simple-button-active, .simple-button-active:hover {
+    font-weight: bold;
+    background-color: #d1d4d64d;
+}
+
+.simple-button-group-label {
+    font-size: 14px;
+    color: #777;
+    display: block;
+    padding-right: 5px;
+    padding-bottom: 3px;
+}
+
+
 /* --------------------- blueprint overrides --------------------- */
 /* inline radiogroup labels */
 label.bp3-label {
@@ -53,3 +126,33 @@ label.bp3-label {
 	background-color: rgba(209, 212, 214, 0.7) !important;
 }
 
+
+
+/* --------------------- react-table overrides --------------------- */
+/* eliminate shadow under the header and footer */
+.ReactTable .rt-thead.-header {
+	box-shadow: none !important;
+	border-bottom: 1px solid #eee;
+}
+
+.ReactTable .-pagination {
+	box-shadow: none !important;
+}
+
+.ReactTable {
+	font-size: 14px;
+}
+
+.ReactTable .rt-thead {
+	font-size: 16px;
+	font-weight: bolder;
+}
+
+  /* turn off horizontal borders between table rows */
+.ReactTable .rt-tbody .rt-tr-group {
+	cursor: pointer;
+}
+
+.ReactTable .rt-tbody .rt-tr-group:hover {
+	background-color: #eee;
+}

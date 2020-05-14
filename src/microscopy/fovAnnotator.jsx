@@ -17,6 +17,7 @@ import {fovMetadataDefinitions} from '../profile/metadataDefinitions.js';
 
 import '../common/common.css';
 import '../profile/Profile.css';
+import './fovAnnotator.css';
 
 
 async function putData(url, data) {

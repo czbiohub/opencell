@@ -32,6 +32,27 @@ class DevConfig(Config):
     ]
 
 
+class TestConfig(Config):
+
+    ENV = 'test'
+    DEBUG = True
+
+    # settings for flask-caching (timeout time in seconds)
+    CACHE_TYPE = 'simple'
+    CACHE_DEFAULT_TIMEOUT = 300
+
+    DB_CREDENTIALS_FILEPATH = os.path.join(Config.PROJECT_ROOT, 'db-credentials-test.json')
+
+    # the mountpoint of the ML_group ESS partition (assumes a mac)
+    OPENCELL_MICROSCOPY_DIRPATH = os.path.join(
+        os.sep, 'Users', 'keith.cheveralls', 'opencell-test', 'output', 'opencell-microscopy'
+    )
+
+    CORS_ORIGINS = [
+        'http://localhost:8080',
+    ]
+
+
 class ProdConfig(Config):
 
     # TODO: determine how to retrieve database credentials

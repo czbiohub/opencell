@@ -29,24 +29,7 @@ def create_session_registry(url):
     engine = create_engine(url)
     session_factory = sessionmaker(bind=engine)
     Session = scoped_session(session_factory)
-
-    cell_line_metadata_view = sa.Table(
-        'cell_line_metadata',
-        models.Base.metadata,
-        autoload=True,
-        autoload_with=engine)
-
-    fov_rank_view = sa.Table(
-        'fov_rank',
-        models.Base.metadata,
-        autoload=True,
-        autoload_with=engine)
-
-    views = {
-        'cell_line_metadata': cell_line_metadata_view,
-        'fov_rank': fov_rank_view
-    }
-    return Session, views
+    return Session
 
 
 def create_app(args):
@@ -54,9 +37,12 @@ def create_app(args):
     app = Flask(__name__)
 
     if args.mode == 'dev':
-        app.config.from_object(settings.DevConfig)
+        config = settings.DevConfig
     elif args.mode == 'prod':
-        app.config.from_object(settings.ProdConfig)
+        config = settings.ProdConfig
+    elif args.mode == 'test':
+        config = settings.TestConfig
+    app.config.from_object(config)
 
     if app.config.get('CORS_ORIGINS'):
         CORS(app, origins=app.config['CORS_ORIGINS'])
@@ -94,7 +80,7 @@ def create_app(args):
 
     # create an instance of sqlalchemy's scoped_session registry
     url = utils.url_from_credentials(app.config['DB_CREDENTIALS_FILEPATH'])
-    app.Session, app.views = create_session_registry(url)
+    app.Session = create_session_registry(url)
 
     # required to close the session instance when a request is completed
     @app.teardown_appcontext

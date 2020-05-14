@@ -677,10 +677,10 @@ class MicroscopyFOVROI(Base):
     # one ROI to many thumbnails
     thumbnails = db.orm.relationship('MicroscopyThumbnail', back_populates='roi')
 
-    # kind of ROI: either 'corner', 'top-scoring', 'single-nucleus', 'single-cell'
+    # kind of ROI: either 'corner' or 'annotated'
     kind = db.Column(db.String)
 
-    # all ROI-specific metadata, including the ROI oordinates (position and shape),
+    # all ROI-specific metadata, including the ROI coordinates (position and shape),
     # the z-coordinate of the center of the cell layer,  and the min/max values
     # used to downsample the intensities from uint16 to uint8
     props = db.Column(postgresql.JSONB)

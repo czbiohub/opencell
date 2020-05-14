@@ -32,7 +32,7 @@ export default class Overview extends Component {
         if (prevProps.cellLineId===this.props.cellLineId) return;
 
         // retrieve the FOV metadata
-        const url = `${settings.apiUrl}/lines/${this.props.cellLineId}/fovs?include=rois`
+        const url = `${settings.apiUrl}/lines/${this.props.cellLineId}/fovs?fields=rois`
         d3.json(url).then(fovs => {
 
             // only FOVs with manual annotations should be displayed

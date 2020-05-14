@@ -9,8 +9,7 @@ import facsGrades from '../demo/data/facs_grades.json';
 const cellLineMetadataDefinitions = [
     {   
         id: 'protein_name',
-        accessor: row => {
-            const maxLength = 20;
+        accessor: (row, maxLength = 20) => {
             const targetName = row.metadata?.target_name;
             if (!targetName) return null;
             let name = (

@@ -1,0 +1,31 @@
+
+.thumbnail-grid-container {
+    display: grid;
+    grid-auto-flow: row;
+    grid-template-rows: auto;
+    grid-template-columns: repeat(auto-fit, 200px);
+}
+
+.thumbnail-container {
+    margin: 10px;
+    /* width: 150px; */
+    height: auto;
+    background-color: #eee;
+}
+
+.thumbnail-container img {
+    width: 100%;
+}
+
+.thumbnail-container:hover {
+    opacity: 70%;
+}
+
+.thumbnail-container-active,
+.thumbnail-container-active:hover {
+    border: 1px solid #111;
+}
+
+.thumbnail-caption {
+    text-align: center;
+}

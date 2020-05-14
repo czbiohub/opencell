@@ -12,7 +12,7 @@ from opencell.database import models, utils
 from opencell.imaging.processors import FOVProcessor
 
 
-def cell_line_payload(cell_line, include):
+def cell_line_payload(cell_line, optional_fields):
     '''
     The JSON payload returned by the /lines endpoint of the API
     Note that, awkwardly, the RNAseq data is a column in the crispr_design table
@@ -65,10 +65,10 @@ def cell_line_payload(cell_line, include):
     }
 
     # the 'best'/representative FOV for the cell line
-    if 'best-fov' in include:
+    if 'best-fov' in optional_fields:
         fov = cell_line.get_best_fov()
         if fov:
-            payload['best_fov'] = fov_payload(fov, include=['thumbnails'])
+            payload['best_fov'] = fov_payload(fov, optional_fields=['thumbnails'])
 
     return payload
 
@@ -79,10 +79,10 @@ def facs_payload(facs_dataset):
     return {'histograms': facs_dataset.simplify_histograms()}
 
 
-def fov_payload(fov, include):
+def fov_payload(fov, optional_fields):
     '''
     The JSON payload for an FOV (and its ROIs)
-    include : an optional list of ['rois', 'thumbnails']
+    optional_fields : an optional list of ['rois', 'thumbnails']
     '''
 
     # basic metadata
@@ -113,10 +113,10 @@ def fov_payload(fov, include):
         'annotation': fov.annotation.as_dict() if fov.annotation else None
     }
 
-    if 'rois' in include:
+    if 'rois' in optional_fields:
         payload['rois'] = [roi.as_dict() for roi in fov.rois]
 
-    if 'thumbnails' in include:
+    if 'thumbnails' in optional_fields:
         thumbnail = fov.get_thumbnail('rgb')
         payload['thumbnails'] = thumbnail.as_dict() if thumbnail else None
 

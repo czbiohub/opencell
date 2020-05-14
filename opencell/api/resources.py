@@ -50,11 +50,18 @@ class CellLines(Resource):
         args = flask.request.args
         plate_id = args.get('plate')
         target_name = args.get('target')
-        include = flask.request.args.get('include')
-        include = include.split(',') if include else []
+        included_ids = args.get('ids')
+        optional_fields = args.get('fields')
+
+        optional_fields = optional_fields.split(',') if optional_fields else []
+        included_ids = [int(_id) for _id in included_ids.split(',')] if included_ids else []
+
+        query = (
+            flask.current_app.Session.query(models.CrisprDesign)
+            .options(db.orm.joinedload(models.CrisprDesign.cell_lines))
+        )
 
         # filter crispr designs by plate_id
-        query = flask.current_app.Session.query(models.CrisprDesign)
         if plate_id:
             query = query.filter(models.CrisprDesign.plate_design_id == plate_id)
 
@@ -77,6 +84,10 @@ class CellLines(Resource):
         ids = []
         [ids.extend([line.id for line in design.cell_lines]) for design in query.all()]
 
+        # retain only the cell_line_ids that were included in the URL (if any)
+        if len(included_ids):
+            ids = list(set(ids).intersection(included_ids))
+
         lines = (
             flask.current_app.Session.query(models.CellLine)
             .options(
@@ -97,7 +108,7 @@ class CellLines(Resource):
         if flask.current_app.config['ENV'] == 'dev':
             lines = lines[::1]
 
-        payload = [payloads.cell_line_payload(line, include) for line in lines]
+        payload = [payloads.cell_line_payload(line, optional_fields) for line in lines]
         return flask.jsonify(payload)
 
 
@@ -136,10 +147,10 @@ class CellLine(CellLineResource):
 
     def get(self, cell_line_id):
         line = self.get_cell_line(cell_line_id)
-        include, error = self.parse_listlike_arg('include', allowed_values=['best-fov'])
+        optional_fields, error = self.parse_listlike_arg('fields', allowed_values=['best-fov'])
         if error:
             return error
-        payload = payloads.cell_line_payload(line, include)
+        payload = payloads.cell_line_payload(line, optional_fields)
         return flask.jsonify(payload)
 
 
@@ -163,13 +174,13 @@ class CellLineFOVs(CellLineResource):
         if not line.fovs:
             return flask.abort(404, 'There are no FOVs associated with the cell line')
 
-        include, error = self.parse_listlike_arg(
-            name='include', allowed_values=['rois', 'thumbnails']
+        optional_fields, error = self.parse_listlike_arg(
+            name='fields', allowed_values=['rois', 'thumbnails']
         )
         if error:
             return error
 
-        payload = [payloads.fov_payload(fov, include) for fov in line.fovs]
+        payload = [payloads.fov_payload(fov, optional_fields) for fov in line.fovs]
 
         # sort by FOV score (unscored FOVs last)
         payload = sorted(payload, key=lambda row: row['metadata'].get('score') or -2)[::-1]

@@ -64,12 +64,15 @@ def cell_line_payload(cell_line, optional_fields):
         'annotation': annotation,
     }
 
-    # the 'best'/representative FOV for the cell line
+    # get the thumbnail of the annotated ROI from the 'best' FOV
     if 'best-fov' in optional_fields:
         fov = cell_line.get_best_fov()
-        if fov:
-            payload['best_fov'] = fov_payload(fov, optional_fields=['thumbnails'])
-
+        if fov and fov.rois:
+            # hack: we assume there is only one ROI (the annotated ROI)
+            thumbnail = fov.rois[0].get_thumbnail('rgb')
+            payload['best_fov'] = {
+                'thumbnails': thumbnail.as_dict() if thumbnail else None
+            }
     return payload
 
 

@@ -662,7 +662,6 @@ class MicroscopyFOVROI(Base):
 
     Also, usually, the intensities have been normalized and downsampled to uint8,
     using the min/max intensities and (optionally) a gamma
-
     '''
 
     __tablename__ = 'microscopy_fov_roi'
@@ -684,6 +683,19 @@ class MicroscopyFOVROI(Base):
     # the z-coordinate of the center of the cell layer,  and the min/max values
     # used to downsample the intensities from uint16 to uint8
     props = db.Column(postgresql.JSONB)
+
+    def get_thumbnail(self, channel):
+        '''
+        Retrieve the thumbnail of the ROI
+        (this is an almost direct copy of MicroscopyFOV.get_thumbnail)
+        '''
+        return (
+            db.orm.object_session(self)
+            .query(MicroscopyThumbnail)
+            .filter(MicroscopyThumbnail.roi_id == self.id)
+            .filter(MicroscopyThumbnail.channel == channel)
+            .one_or_none()
+        )
 
 
 class MicroscopyThumbnail(Base):

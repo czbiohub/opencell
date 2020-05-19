@@ -14,7 +14,8 @@ const config = {
     plugins: [
         // note that the `to` path is relative to the output path defined above
         new CopyPlugin([{from: 'static/logos', to: 'profile/logos'}]),
-        new CopyPlugin([{from: 'static/threejs-textures', to: 'profile/threejs-textures'}])
+        new CopyPlugin([{from: 'static/threejs-textures', to: 'profile/threejs-textures'}]),
+        new CopyPlugin([{from: 'static/threejs-textures', to: 'gallery/threejs-textures'}]),
     ]
 };
 

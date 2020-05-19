@@ -203,7 +203,7 @@ class Gallery extends Component {
         }
 
         // limit to the first n lines to avoid slow loading times
-        maxNum = 999;
+        const maxNum = 999;
         const ids = lines.map(line => line.id).slice(0, maxNum);
 
         if (!ids.length) {

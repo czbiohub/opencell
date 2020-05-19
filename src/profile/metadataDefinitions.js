@@ -107,6 +107,11 @@ const cellLineMetadataDefinitions = [
         Header: 'Salvageable re-sort',
         units: '',
     },{
+        id: 'num_fovs',
+        accessor: row => row.counts.num_fovs,
+        Header: 'Num FOVs',
+        units: '',
+    },{
         id: 'num_annoted_fovs',
         accessor: row => row.counts.num_fovs_annotated,
         Header: 'Num annotated FOVs',

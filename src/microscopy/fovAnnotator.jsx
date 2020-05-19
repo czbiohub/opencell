@@ -247,7 +247,7 @@ export default class FovAnnotator extends Component {
         });
 
         return (
-            <div className="">
+            <div className="w-70">
                 <div className="flex">
 
                     {/* left panel: FOV metadata */}

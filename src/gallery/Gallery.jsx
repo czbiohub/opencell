@@ -196,12 +196,16 @@ class Gallery extends Component {
             };
         });
 
+        // filter for lines that have all of the selected categories
+        // TODO: add button to toggle between 'all' and 'any'
         for (let category of [...this.state.localizationCategories, ...this.state.qcCategories]) {
             lines = lines.filter(line => line.categories.includes(category.name));
         }
 
-        // limit to the first 100 ids
-        const ids = lines.map(line => line.id).slice(0, 100);
+        // limit to the first n lines to avoid slow loading times
+        maxNum = 999;
+        const ids = lines.map(line => line.id).slice(0, maxNum);
+
         if (!ids.length) {
             this.setState({selectedCellLines: [], loaded: true});
         } else {

@@ -1,4 +1,21 @@
 
+.lightbox-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+
+    /* these properties vertically center text content */
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    flex-direction: column;
+
+    background-color: rgba(16, 22, 26, 0.7);
+    opacity: 1;
+}
+
 .thumbnail-grid-container {
     display: grid;
     grid-auto-flow: row;

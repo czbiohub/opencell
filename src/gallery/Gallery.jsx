@@ -99,14 +99,14 @@ function Lightbox (props) {
     
     return (
         <div 
-            className='loading-overlay' 
+            className='lightbox-container' 
             onClick={event => {
-                if (event.target.className==='loading-overlay') props.hideLightbox();
+                if (event.target.className==='lightbox-container') props.hideLightbox();
             }}>
             <div 
-                className='pa3 ba b--black-70' 
+                className='pa3 br3 ba b--black-70' 
                 style={{margin: 'auto', width: '650px', backgroundColor: 'white'}}>
-                <div className='f3'>{`FOVs for target ${props.cellLineId}`}</div>
+                <div className='f3'>{`FOVs for ${props.targetName}`}</div>
                 <ViewerContainer
                     cellLineId={props.cellLineId}
                     fovs={props.fovs}
@@ -123,15 +123,11 @@ function Lightbox (props) {
 
 
 function Thumbnail (props) {
-
     const metadata = props.cellLine.metadata;
-    const imgClassName = classNames('thumbnail');
-    const divClassName = classNames('thumbnail-container');
-
     return (
-        <div className={divClassName}>
+        <div className='thumbnail-container'>
             <img 
-                className={imgClassName} 
+                className='thumbnail'
                 onClick={() => props.onThumbnailImageClick(metadata)}
                 src={`data:image/jpg;base64,${props.cellLine.best_fov?.thumbnails?.data}`}
             />
@@ -167,7 +163,8 @@ class Gallery extends Component {
             roiId: undefined,
             fovId: undefined,
             cellLineId: undefined,
-    
+            targetName: undefined,
+
             pageNum: 0,
             pageSize: 18,
             showLightbox: false,
@@ -187,7 +184,7 @@ class Gallery extends Component {
     }
 
     loadData () {
-        // when the user clicks the 'submit' button after changing the selected categories or families
+        // when the selected categories or families are changed
 
         this.setState({loaded: false});
 
@@ -246,7 +243,11 @@ class Gallery extends Component {
                 <Thumbnail 
                     cellLine={line} 
                     onThumbnailImageClick={metadata => {
-                        this.setState({cellLineId: metadata.cell_line_id, showLightbox: true})
+                        this.setState({
+                            cellLineId: metadata.cell_line_id, 
+                            targetName: metadata.target_name,
+                            showLightbox: true,
+                        });
                     }}
                     onThumbnailCaptionClick={metadata => {
                         window.open(`http://opencell.czbiohub.org/profile?target=${metadata.target_name}`);
@@ -293,7 +294,7 @@ class Gallery extends Component {
     
                 {this.state.loaded ? null : <div className='loading-overlay'/>}
                 {this.state.showLightbox ? (
-                    <Lightbox 
+                    <Lightbox
                         hideLightbox={() => this.setState({showLightbox: false})}
                         changeRoi={(roiId, fovId) => this.setState({roiId, fovId})}
                         {...this.state}

@@ -72,6 +72,7 @@ export default class Overview extends Component {
                             rois={this.state.rois}
                             fovId={this.state.fovId}
                             roiId={this.state.roiId}
+                            showMetadata={true}
                             isLowGfp={this.props.cellLine.annotation?.categories?.includes('low_gfp')}
                             changeRoi={(roiId, fovId) => this.setState({roiId, fovId})}
                         />

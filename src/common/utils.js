@@ -1,5 +1,29 @@
 
+import * as d3 from 'd3';
 import settings from './settings.js';
+
+
+export function loadFovs (cellLineId, onLoad) {
+
+    // retrieve the FOV metadata
+    const url = `${settings.apiUrl}/lines/${cellLineId}/fovs?fields=rois`
+    d3.json(url).then(fovs => {
+
+        // only FOVs with manual annotations should be displayed
+        const viewableFovs = fovs.filter(fov => fov.annotation);
+
+        // concat all ROIs (because fov.rois is a list)
+        let rois = [].concat(...viewableFovs.map(fov => fov.rois));
+        
+        const fovState = {
+            rois,
+            fovs: viewableFovs,
+            roiId: rois[0]?.id,
+            fovId: rois[0]?.fov_id, 
+        };
+        onLoad(fovState);
+    });
+}
 
 
 export function loadImage(url, onLoad) {

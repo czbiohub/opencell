@@ -11,6 +11,7 @@ import 'tachyons';
 import 'react-table/react-table.css';
 import "@blueprintjs/core/lib/css/blueprint.css";
 
+import ViewerContainer from '../profile/viewerContainer.jsx';
 import MultiSelectContainer from './multiSelectContainer.jsx';
 import settings from '../common/settings.js';
 import * as utils from '../common/utils.js';
@@ -91,14 +92,35 @@ const families = [
 ];
 
 
-function hasIntersection(arrayA, arrayB) {
-    for (let value of arrayA) {
-        if (arrayB.includes(value)) return true;
-    }
-    return false;
+const targetNameDef = cellLineMetadataDefinitions.filter(def => def.id === 'protein_name')[0];
+
+
+function Lightbox (props) {
+    
+    return (
+        <div 
+            className='loading-overlay' 
+            onClick={event => {
+                if (event.target.className==='loading-overlay') props.hideLightbox();
+            }}>
+            <div 
+                className='pa3 ba b--black-70' 
+                style={{margin: 'auto', width: '650px', backgroundColor: 'white'}}>
+                <div className='f3'>{`FOVs for target ${props.cellLineId}`}</div>
+                <ViewerContainer
+                    cellLineId={props.cellLineId}
+                    fovs={props.fovs}
+                    rois={props.rois}
+                    fovId={props.fovId}
+                    roiId={props.roiId}
+                    isLowGfp={false}
+                    changeRoi={props.changeRoi}
+                />
+            </div>
+        </div>
+    );
 }
 
-const targetNameDef = cellLineMetadataDefinitions.filter(def => def.id === 'protein_name')[0];
 
 function Thumbnail (props) {
 
@@ -107,13 +129,19 @@ function Thumbnail (props) {
     const divClassName = classNames('thumbnail-container');
 
     return (
-        <div className={divClassName} onClick={() => props.handleThumbnailClick(metadata)}>
+        <div className={divClassName}>
             <img 
                 className={imgClassName} 
+                onClick={() => props.onThumbnailImageClick(metadata)}
                 src={`data:image/jpg;base64,${props.cellLine.best_fov?.thumbnails?.data}`}
             />
             <div className='thumbnail-caption'>
-                <span className='f4'>{`${metadata.target_name}`}</span><br/>
+                <span 
+                    className='f4 thumbnail-caption-link'
+                    onClick={() => props.onThumbnailCaptionClick(metadata)}>
+                    {`${metadata.target_name}`}
+                </span>
+                <br/>
                 <span className='f6'>{`${targetNameDef.accessor({metadata}, 99)}`}</span>
             </div>
         </div>
@@ -125,18 +153,27 @@ class Gallery extends Component {
 
     constructor (props) {
         super(props);
-
         this.urlParams = new URLSearchParams(window.location.search);
 
-        this.cellLines = [];
         this.state = {
             loaded: false,
             qcCategories: qcCategories.filter(item => item.name === 'publication_ready'),
             localizationCategories: localizationCategories.filter(item => item.name === 'nucleolus'),
             families: [],
             selectedCellLines: [],
+
+            fovs: [],
+            rois: [],
+            roiId: undefined,
+            fovId: undefined,
+            cellLineId: undefined,
+    
+            pageNum: 0,
+            pageSize: 18,
+            showLightbox: false,
         };
 
+        this.cellLines = [];
         this.loadData = this.loadData.bind(this);
     }
 
@@ -148,7 +185,6 @@ class Gallery extends Component {
             this.loadData();
         });
     }
-
 
     loadData () {
         // when the user clicks the 'submit' button after changing the selected categories or families
@@ -183,16 +219,18 @@ class Gallery extends Component {
         }
     }
 
-
     componentDidMount () {
         this.loadMetadata();
     }
-
 
     componentDidUpdate (prevProps, prevState) {
         if (this.state.reload && !prevState.reload) {
             this.setState({reload: false});
             this.loadData();
+        }
+
+        if (prevState.cellLineId!==this.state.cellLineId) {
+            utils.loadFovs(this.state.cellLineId, fovState => this.setState({...fovState}));    
         }
     }
 
@@ -207,7 +245,10 @@ class Gallery extends Component {
             return (
                 <Thumbnail 
                     cellLine={line} 
-                    handleThumbnailClick={metadata => {
+                    onThumbnailImageClick={metadata => {
+                        this.setState({cellLineId: metadata.cell_line_id, showLightbox: true})
+                    }}
+                    onThumbnailCaptionClick={metadata => {
                         window.open(`http://opencell.czbiohub.org/profile?target=${metadata.target_name}`);
                     }}
                 />
@@ -250,7 +291,16 @@ class Gallery extends Component {
 
                 </div>
     
-                {this.state.loaded ? (null) : (<div className='loading-overlay'/>)}
+                {this.state.loaded ? null : <div className='loading-overlay'/>}
+                {this.state.showLightbox ? (
+                    <Lightbox 
+                        hideLightbox={() => this.setState({showLightbox: false})}
+                        changeRoi={(roiId, fovId) => this.setState({roiId, fovId})}
+                        {...this.state}
+                    />
+                ) : (
+                    null
+                )}
             </div>
 
         );

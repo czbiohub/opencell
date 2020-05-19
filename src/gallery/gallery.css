@@ -17,7 +17,7 @@
     width: 100%;
 }
 
-.thumbnail-container:hover {
+.thumbnail-container img:hover {
     opacity: 70%;
 }
 
@@ -28,4 +28,12 @@
 
 .thumbnail-caption {
     text-align: center;
+}
+
+.thumbnail-caption-link {
+    cursor: pointer;
+}
+
+.thumbnail-caption-link:hover {
+    text-decoration: underline;
 }

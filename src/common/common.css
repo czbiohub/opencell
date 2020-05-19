@@ -54,8 +54,8 @@ button:focus {
     align-content: center;
     flex-direction: column;
 
-    background-color: white;
-    opacity: .7;
+    background-color: rgba(255, 255, 255, 0.7);
+    opacity: 1;
 }
 
 /* override tachyon's blue */

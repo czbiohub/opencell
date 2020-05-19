@@ -9,9 +9,11 @@ import MassSpecPlotContainer from './massSpecPlotContainer.jsx';
 import TargetAnnotator from './targetAnnotator.jsx';
 import { SectionHeader } from './common.jsx';
 import settings from '../common/settings.js';
+import { loadFovs } from '../common/utils.js';
 
 // this is where the content for the 'About this protein' comes from
 import uniprotMetadata from '../demo/data/uniprot_metadata.json';
+
 
 
 export default class Overview extends Component {
@@ -28,26 +30,8 @@ export default class Overview extends Component {
 
 
     componentDidUpdate (prevProps) {
-
         if (prevProps.cellLineId===this.props.cellLineId) return;
-
-        // retrieve the FOV metadata
-        const url = `${settings.apiUrl}/lines/${this.props.cellLineId}/fovs?fields=rois`
-        d3.json(url).then(fovs => {
-
-            // only FOVs with manual annotations should be displayed
-            const viewableFovs = fovs.filter(fov => fov.annotation);
-
-            // concat all ROIs (because fov.rois is a list)
-            let rois = [].concat(...viewableFovs.map(fov => fov.rois));
-    
-            this.setState({
-                rois,
-                fovs: viewableFovs,
-                roiId: rois[0]?.id,
-                fovId: rois[0]?.fov_id,
-            });
-        });
+        loadFovs(this.props.cellLineId, fovState => this.setState({...fovState}));
     }
 
 

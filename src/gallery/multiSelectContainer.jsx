@@ -90,7 +90,6 @@ export default class MultiSelectContainer extends Component {
                     rightElement: clearButton,
                     onRemove: (tag, index) => {
                         this.deselectItem(index);
-                        d3.event.stopPropagation();
                     }
                 }}
             />

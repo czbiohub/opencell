@@ -115,11 +115,17 @@
     pointer-events: none;
 }
 
-.volcano-fdr-line {
+.volcano-fdr-path {
     fill: none;
     stroke: #333;
     stroke-width: 1px;
     stroke-dasharray: 4;
+}
+
+.core-complex-path {
+    fill: #00000020;
+    stroke: none;
+    stroke-width: 1px;
 }
 
 .protein-function-container {

@@ -65,6 +65,23 @@ export default class MassSpecScatterPlot extends Component {
             return {x: enrichment, y: this.fdrParams.c / (enrichment - this.fdrParams.x0)};
         });
 
+        // define a circular region of the interaction scatterplot
+        // that corresponds to 'core complex' interactors
+        const dx = 0.01;
+        const radius = 1;
+        const offset = -0.3;
+    
+        // top and bottom halves of a circular region
+        const topArc = d3.range(-radius + offset, radius + offset + dx, dx).map(x => {
+            return {x, y: Math.sqrt(radius**2 - (x - offset)**2)}
+        });
+
+        const bottomArc = topArc.map(({x, y}) => ({x, y: -y}));
+        bottomArc.reverse();
+
+        // the full circular region
+        this.coreComplexRegionData = [...topArc, ...bottomArc];
+
         // transform when zoomed/panned
         this.zoomTransform = undefined;
 
@@ -210,27 +227,23 @@ export default class MassSpecScatterPlot extends Component {
             this.maxY = hits => d3.max(hits, this.yAxisAccessor) + 1;
 
             this.xAxisLabel = 'Relative enrichment';
-            this.yAxisLabel = '-log10 p-value';
-
-            this.showAllHits = true;
-            this.showFDRCurves = true;
+            this.yAxisLabel = 'p-value (-log10)';
         }
 
         if (this.props.mode==='Stoichiometry') {
             const log10 = value => value ? Math.log10(value) : undefined;
             this.xAxisAccessor = hit => log10(this.interactionStoichAccessor(hit));
             this.yAxisAccessor = hit => log10(this.abundanceStoichAccessor(hit));
+            
+            // use hard-coded min/max values
+            const pad = 0.25;
+            this.minX = hits => -5 - pad;
+            this.maxX = hits => 1 + pad;
+            this.minY = hits => -3 - pad;
+            this.maxY = hits => 3 + pad;
 
-            this.minX = hits => d3.min(hits, this.xAxisAccessor) - 1;
-            this.maxX = hits => d3.max(hits, this.xAxisAccessor) + 1;
-            this.minY = hits => d3.min(hits, this.yAxisAccessor) - 1;
-            this.maxY = hits => d3.max(hits, this.yAxisAccessor) + 1;
-
-            this.xAxisLabel = 'Interaction stoichiometry';
-            this.yAxisLabel = 'Abundance stoichiometry';
-
-            this.showAllHits = false;
-            this.showFDRCurves = false;
+            this.xAxisLabel = 'Interaction stoichiometry (log10)';
+            this.yAxisLabel = 'Abundance stoichiometry (log10)';
         }
     }
 
@@ -321,12 +334,18 @@ export default class MassSpecScatterPlot extends Component {
         this.g = g;
         this.loadingDiv = loadingDiv;
 
+        // define the lines for FDR curves and the core complex circle
         this.fdrLineLeft = g.append("path")
-                            .attr('class', 'volcano-fdr-line')
+                            .attr("class", "volcano-fdr-path")
                             .datum(this.fdrDataLeft);
+
         this.fdrLineRight = g.append("path")
-                             .attr('class', 'volcano-fdr-line')
+                             .attr("class", "volcano-fdr-path")
                              .datum(this.fdrDataRight);
+
+        this.coreComplexRegion = g.append("path")
+            .attr("class", "core-complex-path")
+            .datum(this.coreComplexRegionData);
     }
 
 
@@ -339,21 +358,24 @@ export default class MassSpecScatterPlot extends Component {
             this.loadingDiv.style('visibility', 'visible').text('Loading...');
             return;
         }
-
         if (!this.hits.length) {
             this.g.selectAll('.scatter-dot').remove();
             this.loadingDiv.style('visibility', 'visible').text('No data');
             return;
         }
-
         this.loadingDiv.style('visibility', 'hidden');
 
-        const tip = this.tip;
-        const plotProps = this.plotProps;
-
+        // the hits to plot (note that we show only significant hits in stoichiometry mode)
+        let hits = [];
+        if (this.props.mode==='Stoichiometry') {
+            hits = this.hits.filter(d => d.is_significant_hit);
+        } else {
+            hits = this.hits;
+        }
+    
         // dynamically determine the domain of the plot
-        this.xScale.domain([this.minX(this.hits), this.maxX(this.hits)]);
-        this.yScale.domain([this.minY(this.hits), this.maxY(this.hits)]);
+        this.xScale.domain([this.minX(hits), this.maxX(hits)]);
+        this.yScale.domain([this.minY(hits), this.maxY(hits)]);
 
         let xScale = this.xScale;
         let yScale = this.yScale;
@@ -365,24 +387,19 @@ export default class MassSpecScatterPlot extends Component {
         }
     
         // update the line generator
-        if (this.showFDRCurves) {
-            const line = d3.line().x(d => xScale(d.x)).y(d => yScale(d.y));
+        const line = d3.line().x(d => xScale(d.x)).y(d => yScale(d.y));
+        if (this.props.mode==='Volcano') {
             this.fdrLineLeft.style('visibility', 'visible').attr('d', line);
             this.fdrLineRight.style('visibility', 'visible').attr('d', line);
-        } else {
+            this.coreComplexRegion.style('visibility', 'hidden');
+        } else if (this.props.mode==='Stoichiometry') {
             this.fdrLineLeft.style('visibility', 'hidden');
             this.fdrLineRight.style('visibility', 'hidden');
+            this.coreComplexRegion.style('visibility', 'visible').attr('d', line);
         }
 
         // update the scatterplot dots
-        let hits = [];
-        if (this.props.mode==='Stoichiometry') {
-            hits = this.hits.filter(d => d.is_significant_hit);
-        } else {
-            hits = this.hits;
-        }
         const dots = this.g.selectAll('.scatter-dot').data(hits, d => d.label);
-
         dots.exit().remove();    
         dots.enter().append('circle')
             .attr('class', 'scatter-dot')
@@ -398,14 +415,14 @@ export default class MassSpecScatterPlot extends Component {
                   .attr("r", _this.plotProps.dotRadius + 2)
                   .attr("stroke", '#111')
                   .classed("scatter-dot-hover", true);
-                tip.show(d, this); 
+                _this.tip.show(d, this); 
              })
              .on("mouseout", function (d) {
                 d3.select(this)
                   .attr("r", _this.calcDotRadius)
                   .attr("stroke", _this.calcDotStroke)
                   .classed("scatter-dot-hover", false);
-                tip.hide(d, this);
+                _this.tip.hide(d, this);
              })
             .on('click', d => this.props.changeTarget(d.gene_names[0]));
 
@@ -449,11 +466,13 @@ export default class MassSpecScatterPlot extends Component {
         const xScaleZoom = this.zoomTransform.rescaleX(this.xScale);
         const yScaleZoom = this.zoomTransform.rescaleY(this.yScale);
 
-        // update the FDR lines
-        if (this.showFDRCurves) {
-            const line = d3.line().x(d => xScaleZoom(d.x)).y(d => yScaleZoom(d.y));
-            this.fdrLineLeft.attr('d', line);
-            this.fdrLineRight.attr('d', line);
+        // update the FDR or core-complex lines
+        const line = d3.line().x(d => xScaleZoom(d.x)).y(d => yScaleZoom(d.y));
+        if (this.props.mode==='Volcano') {
+            this.fdrLineLeft.attr("d", line);
+            this.fdrLineRight.attr("d", line);
+        } else if (this.props.mode==='Stoichiometry') {
+            this.coreComplexRegion.attr("d", line);
         }
 
         this.g.selectAll(".scatter-dot")

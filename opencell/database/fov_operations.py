@@ -82,9 +82,34 @@ class MicroscopyFOVOperations:
         for channel, encoded_im in result['encoded_ims'].items():
             row = models.MicroscopyThumbnail(
                 fov_id=self.fov_id,
-                size=result.get('size'),
+                size=result['size'],
                 channel=channel,
-                data=encoded_im)
+                data=encoded_im
+            )
+            rows.append(row)
+        utils.add_and_commit(session, rows, errors='raise')
+
+
+    def insert_roi_thumbnails(self, session, result):
+        '''
+        Insert ROI thumbnails for an ROI from the FOV
+        result : dict returned by FOVProcessor.generate_roi_thumbnails
+        '''
+
+        # if there's no result, we assume the FOV did not an ROI
+        if result is None:
+            return
+
+        result = utils.to_jsonable(result)
+
+        rows = []
+        for channel, encoded_im in result['encoded_ims'].items():
+            row = models.MicroscopyThumbnail(
+                roi_id=result['roi_id'],
+                size=result['size'],
+                channel=channel,
+                data=encoded_im
+            )
             rows.append(row)
         utils.add_and_commit(session, rows, errors='raise')
 

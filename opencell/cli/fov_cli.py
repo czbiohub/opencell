@@ -81,6 +81,7 @@ def parse_args():
         'generate_clean_tiffs',
         'crop_corner_rois',
         'crop_annotated_rois',
+        'generate_annotated_roi_thumbnails',
         'process_all_fovs',
     ]
 
@@ -132,11 +133,13 @@ def construct_plate_microscopy_metadata(plate_microscopy_manager):
 def inspect_plate_microscopy_metadata(plate_microscopy_manager):
     '''
     '''
-    print(f'''
+    print(
+        f'''
         All metadata rows:          {plate_microscopy_manager.md.shape[0]}
         metadata.is_raw.sum():      {plate_microscopy_manager.md.is_raw.sum()}
         Parsed raw metadata rows:   {plate_microscopy_manager.md_raw.shape[0]}
-    ''')
+        '''
+    )
 
 
 def insert_plate_microscopy_fovs(session, cache_dir=None, errors='warn'):
@@ -167,7 +170,7 @@ def insert_plate_microscopy_fovs(session, cache_dir=None, errors='warn'):
         try:
             line_ops = operations.PolyclonalLineOperations.from_plate_well(session, plate_id, well_id)
         except Exception:
-            print('No polyclonal line for (%s, %s)' % group)
+            print('Cannot insert FOVs for (%s, %s) because no cell line exists' % group)
             continue
         line_ops.insert_microscopy_fovs(session, group_metadata, errors=errors)
 
@@ -202,7 +205,7 @@ def insert_raw_pipeline_microscopy_fovs(session, root_dir, pml_id, errors='warn'
         try:
             line_ops = operations.PolyclonalLineOperations.from_plate_well(session, plate_id, well_id)
         except ValueError:
-            print('No polyclonal line for (%s, %s)' % group)
+            print('Cannot insert FOVs for (%s, %s) because no cell line exists' % group)
             continue
         line_ops.insert_microscopy_fovs(session, group_metadata, errors=errors)
 
@@ -266,6 +269,7 @@ def do_fov_tasks(Session, args, processor_method_name, processor_method_kwargs, 
         'generate_clean_tiff': 'insert_clean_tiff_metadata',
         'crop_corner_rois': 'insert_corner_rois',
         'crop_annotated_roi': 'insert_annotated_roi',
+        'generate_annotated_roi_thumbnails': 'insert_roi_thumbnails',
     }
 
     # the name of the FOVOperations method that inserts the results of the processor method
@@ -288,7 +292,8 @@ def do_fov_tasks(Session, args, processor_method_name, processor_method_kwargs, 
     for fov_processor in fov_processors:
         fov_processor.set_src_roots(
             plate_microscopy_dir=args.plate_microscopy_dir,
-            raw_pipeline_microscopy_dir=args.raw_pipeline_microscopy_dir)
+            raw_pipeline_microscopy_dir=args.raw_pipeline_microscopy_dir
+        )
 
     # create the dask tasks
     tasks = []
@@ -450,7 +455,6 @@ def main():
         do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
 
 
-    # generate thumbnails with a given size and quality
     if args.generate_fov_thumbnails:
         method_name = 'generate_fov_thumbnails'
         method_kwargs = {
@@ -498,7 +502,25 @@ def main():
         fovs = (
             Session.query(models.MicroscopyFOV)
             .filter(models.MicroscopyFOV.annotation.has())
-        ).all()
+            .all()
+        )
+        do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
+
+
+    if args.generate_annotated_roi_thumbnails:
+        method_name = 'generate_annotated_roi_thumbnails'
+        method_kwargs = {
+            'dst_root': args.dst_root,
+            'scale': int(args.thumbnail_scale),
+            'quality': int(args.thumbnail_quality),
+        }
+
+        # only process annotated FOVs
+        fovs = (
+            Session.query(models.MicroscopyFOV)
+            .filter(models.MicroscopyFOV.annotation.has())
+            .all()
+        )
         do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
 
 

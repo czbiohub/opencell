@@ -20,25 +20,16 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     # path to credentials JSON
-    parser.add_argument(
-        '--credentials',
-        dest='credentials',
-        required=True)
+    parser.add_argument('--credentials', dest='credentials', required=True)
 
     # the path to the directory of snapshot/cached opencell metadata
-    parser.add_argument(
-        '--data-dir',
-        dest='data_dir')
+    parser.add_argument('--data-dir', dest='data_dir')
 
     # the path to the directory of cached FACS results
-    parser.add_argument(
-        '--facs-results-dir',
-        dest='facs_results_dir')
+    parser.add_argument('--facs-results-dir', dest='facs_results_dir')
 
     # the filepath to a snapshot of the 'pipeline-microscopy-master-key' google sheet
-    parser.add_argument(
-        '--microscopy-master-key',
-        dest='microscopy_master_key')
+    parser.add_argument('--microscopy-master-key', dest='microscopy_master_key')
 
     # CLI args whose presence in the command sets them to True
     action_arg_dests = [
@@ -187,7 +178,7 @@ def insert_microscopy_datasets(session, metadata, root_directory, update=False, 
         dataset.date = row.date
         dataset.root_directory = root_directory
         dataset.raw_metadata = json.loads(row.to_json())
-        ops.add_and_commit(session, dataset, errors=errors)
+        utils.add_and_commit(session, dataset, errors=errors)
 
 
 def main():

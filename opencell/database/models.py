@@ -90,13 +90,15 @@ class CellLine(Base):
     # optional human-readable notes
     notes = db.Column(db.String, nullable=True)
 
-    # parent_id is only null for progenitor cell lines
+    # note that these foreign key ids are only null for progenitor cell lines
     parent_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'), nullable=True)
+    crispr_design_id = db.Column(db.Integer, db.ForeignKey('crispr_design.id'), nullable=True)
+    electroporation_id = db.Column(db.Integer, db.ForeignKey('electroporation.id'), nullable=True)
+
     parent = db.orm.relationship('CellLine', remote_side=[id])
     children = db.orm.relationship('CellLine')
 
     # the electroporation that generated the cell line (if any)
-    electroporation_id = db.Column(db.Integer, db.ForeignKey('electroporation.id'), nullable=True)
     electroporation = db.orm.relationship(
         'Electroporation',
         back_populates='cell_lines',
@@ -105,13 +107,24 @@ class CellLine(Base):
     )
 
     # the crispr design used to generate the cell line (if any)
-    crispr_design_id = db.Column(db.Integer, db.ForeignKey('crispr_design.id'), nullable=True)
     crispr_design = db.orm.relationship(
-        'CrisprDesign', back_populates='cell_lines', uselist=False)
+        'CrisprDesign', back_populates='cell_lines', uselist=False
+    )
 
     # one cell line to one manual annotation
     annotation = db.orm.relationship(
-        'CellLineAnnotation', back_populates='cell_line', uselist=False)
+        'CellLineAnnotation', back_populates='cell_line', uselist=False
+    )
+
+    # one cell line to one FACS dataset
+    facs_dataset = db.orm.relationship(
+        'FACSDataset', back_populates='cell_line', uselist=False
+    )
+
+    # one cell line to one sequencing dataset
+    sequencing_dataset = db.orm.relationship(
+        'SequencingDataset', back_populates='cell_line', uselist=False
+    )
 
     # one cell_line to many FOVs
     fovs = db.orm.relationship('MicroscopyFOV', back_populates='cell_line')
@@ -136,7 +149,7 @@ class CellLine(Base):
             )
 
 
-    def get_top_scoring_fovs(self, ntop):
+    def get_top_scoring_fovs(self, ntop=None):
         '''
         Get the n highest-scoring FOVs
         '''
@@ -151,9 +164,22 @@ class CellLine(Base):
         scores = [score for score in scores if score is not None]
         inds = inds[mask[inds]]
 
-        # the two highest-scoring FOVs
+        # the n-highest-scoring FOVs
+        ntop = len(inds) if ntop is None else ntop
         top_fovs = [self.fovs[ind] for ind in inds[:ntop]]
         return top_fovs
+
+
+    def get_best_fov(self):
+        '''
+        Get the 'best' FOV
+        For now, this is the first FOV that is manually annotated
+        (using get_top_scoring_fovs is too slow)
+        '''
+        for fov in self.fovs:
+            if fov.annotation:
+                return fov
+        return None
 
 
 class PlateDesign(Base):
@@ -395,16 +421,14 @@ class FACSDataset(Base):
 
     cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'), primary_key=True)
 
-    # one dataset to one cell_line
-    cell_line = db.orm.relationship(
-        'CellLine', backref=db.orm.backref('facs_dataset', uselist=False)
-    )
-
     # histograms
     histograms = db.Column(postgresql.JSONB)
 
     # extracted properties (area, median intensity, etc)
     scalars = db.Column(postgresql.JSONB)
+
+    # one dataset to one cell_line
+    cell_line = db.orm.relationship('CellLine', back_populates='facs_dataset', uselist=False)
 
 
     def simplify_histograms(self):
@@ -445,13 +469,11 @@ class SequencingDataset(Base):
 
     cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'), primary_key=True)
 
-    # one dataset to one cell_line
-    cell_line = db.orm.relationship(
-        'CellLine', backref=db.orm.backref('sequencing_dataset', uselist=False)
-    )
-
     # extracted properties (percent HDR among all alleles and modified alleles)
     scalars = db.Column(postgresql.JSONB)
+
+    # one dataset to one cell_line
+    cell_line = db.orm.relationship('CellLine', back_populates='sequencing_dataset', uselist=False)
 
 
 class MicroscopyDataset(Base):
@@ -651,7 +673,6 @@ class MicroscopyFOVROI(Base):
 
     Also, usually, the intensities have been normalized and downsampled to uint8,
     using the min/max intensities and (optionally) a gamma
-
     '''
 
     __tablename__ = 'microscopy_fov_roi'
@@ -666,13 +687,26 @@ class MicroscopyFOVROI(Base):
     # one ROI to many thumbnails
     thumbnails = db.orm.relationship('MicroscopyThumbnail', back_populates='roi')
 
-    # kind of ROI: either 'corner', 'top-scoring', 'single-nucleus', 'single-cell'
+    # kind of ROI: either 'corner' or 'annotated'
     kind = db.Column(db.String)
 
-    # all ROI-specific metadata, including the ROI oordinates (position and shape),
+    # all ROI-specific metadata, including the ROI coordinates (position and shape),
     # the z-coordinate of the center of the cell layer,  and the min/max values
     # used to downsample the intensities from uint16 to uint8
     props = db.Column(postgresql.JSONB)
+
+    def get_thumbnail(self, channel):
+        '''
+        Retrieve the thumbnail of the ROI
+        (this is an almost direct copy of MicroscopyFOV.get_thumbnail)
+        '''
+        return (
+            db.orm.object_session(self)
+            .query(MicroscopyThumbnail)
+            .filter(MicroscopyThumbnail.roi_id == self.id)
+            .filter(MicroscopyThumbnail.channel == channel)
+            .one_or_none()
+        )
 
 
 class MicroscopyThumbnail(Base):

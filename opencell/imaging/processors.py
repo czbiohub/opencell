@@ -295,6 +295,24 @@ class FOVProcessor:
         return result
 
 
+    @staticmethod
+    def generate_thumbnail(im, scale, quality):
+        '''
+        '''
+        # use downscale_local_mean to reduce noise
+        im = skimage.transform.downscale_local_mean(im, factors=(scale, scale, 1))
+
+        # crop the last row and column to eliminate edge effects
+        im = im[:-1, :-1, :]
+
+        # cast to uint8 again (downscale_local_mean outputs float64)
+        im = utils.autoscale(im)
+
+        # base64 encode
+        encoded_im = utils.b64encode_image(im, format='jpg', quality=quality)
+        return encoded_im
+
+
     def generate_fov_thumbnails(self, dst_root, scale, quality):
         '''
         Generate thumbnail images of the z-projections as base64-encoded JPGs
@@ -309,16 +327,49 @@ class FOVProcessor:
 
         encoded_ims = {}
         for channel, im in ims.items():
-            # use downscale_local_mean to reduce noise
-            im = skimage.transform.downscale_local_mean(im, factors=(scale, scale, 1))
-            # crop the last row and column to eliminate edge effects
-            im = im[:-1, :-1, :]
-            # cast to uint8 again (downscale_local_mean outputs float64)
-            im = utils.autoscale(im)
-            # base64 encode
-            encoded_ims[channel] = utils.b64encode_image(im, format='jpg', quality=quality)
+            encoded_ims[channel] = self.generate_thumbnail(im, scale, quality)
 
         result = {
+            'size': im.shape[0],
+            'quality': quality,
+            'encoded_ims': encoded_ims,
+        }
+        return result
+
+
+    def generate_annotated_roi_thumbnails(self, dst_root, scale, quality):
+        '''
+        Generate thumbnail images of the annotated ROI for the FOV (if any)
+        '''
+
+        # check that the FOV is annotated
+        if not self.fov.annotation:
+            return None
+
+        # hack: check that an annotated ROI exists, and get the roi_id,
+        # by using the fact that the only ROIs that exist are annotated ROIs
+        # (some annotated FOVs may not have an ROI, if they could not be cropped in z)
+        if not self.fov.rois:
+            return None
+        roi_id = self.fov.rois[0].id
+
+        roi_size = 600
+        top, left = self.fov.annotation.roi_position_top, self.fov.annotation.roi_position_left
+
+        filepath_405 = self.dst_filepath(dst_root, kind='proj', channel='405', ext='tif')
+        filepath_488 = self.dst_filepath(dst_root, kind='proj', channel='488', ext='tif')
+
+        ims = {}
+        ims['405'] = tifffile.imread(filepath_405)[top:(top + roi_size), left:(left + roi_size), None]
+        ims['488'] = tifffile.imread(filepath_488)[top:(top + roi_size), left:(left + roi_size), None]
+        ims['rgb'] = self.make_rgb(ims['405'], ims['488'])
+
+        encoded_ims = {}
+        for channel, im in ims.items():
+            encoded_ims[channel] = self.generate_thumbnail(im, scale, quality)
+
+        result = {
+            'roi_id': roi_id,
             'size': im.shape[0],
             'quality': quality,
             'encoded_ims': encoded_ims,

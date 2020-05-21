@@ -29,60 +29,58 @@ def create_session_registry(url):
     engine = create_engine(url)
     session_factory = sessionmaker(bind=engine)
     Session = scoped_session(session_factory)
-
-    cell_line_metadata_view = sa.Table(
-        'cell_line_metadata',
-        models.Base.metadata,
-        autoload=True,
-        autoload_with=engine)
-
-    fov_rank_view = sa.Table(
-        'fov_rank',
-        models.Base.metadata,
-        autoload=True,
-        autoload_with=engine)
-
-    views = {
-        'cell_line_metadata': cell_line_metadata_view,
-        'fov_rank': fov_rank_view
-    }
-
-    return Session, views
+    return Session
 
 
 def create_app(args):
 
     app = Flask(__name__)
-    app.config.from_object(settings.DevConfig)
-    CORS(app, origins=app.config['CORS_ORIGINS'])
+
+    if args.mode == 'dev':
+        config = settings.DevConfig
+    elif args.mode == 'prod':
+        config = settings.ProdConfig
+    elif args.mode == 'test':
+        config = settings.TestConfig
+    app.config.from_object(config)
+
+    if app.config.get('CORS_ORIGINS'):
+        CORS(app, origins=app.config['CORS_ORIGINS'])
 
     cache.init_app(app)
-
     api = Api()
-    api.add_resource(resources.Plates, '/plates')
+
+    # plate designs
     api.add_resource(resources.Plate, '/plates/<string:plate_id>/')
 
-    api.add_resource(resources.PolyclonalLines, '/lines')
-    api.add_resource(resources.PolyclonalLine, '/lines/<int:cell_line_id>')
-    api.add_resource(resources.CellLineAnnotation, '/annotations/<int:cell_line_id>')
+    # cell line metadata
+    api.add_resource(resources.CellLines, '/lines')
+    api.add_resource(resources.CellLine, '/lines/<int:cell_line_id>')
 
-    api.add_resource(resources.MicroscopyFOV, '/fovs/<string:channel>/<string:kind>/<int:fov_id>')
-    api.add_resource(resources.MicroscopyFOVROI, '/rois/<string:channel>/<string:kind>/<int:roi_id>')
-    api.add_resource(resources.MicroscopyFOVAnnotation, '/fov_annotations/<int:fov_id>')
+    # cell-line-dependent datasets
+    api.add_resource(resources.FACSDataset, '/lines/<int:cell_line_id>/facs')
+    api.add_resource(resources.CellLineFOVs, '/lines/<int:cell_line_id>/fovs')
+    api.add_resource(resources.CellLinePulldown, '/lines/<int:cell_line_id>/pulldown')
+    api.add_resource(resources.CellLineAnnotation, '/lines/<int:cell_line_id>/annotation')
+
+    # FOV and ROI image data (z-stacks and z-projections)
+    api.add_resource(resources.MicroscopyFOV, '/fovs/<int:fov_id>/<string:kind>/<string:channel>')
+    api.add_resource(resources.MicroscopyFOVROI, '/rois/<int:roi_id>/<string:kind>/<string:channel>')
+
+    # FOV annotations (always one annotation per FOV)
+    api.add_resource(resources.MicroscopyFOVAnnotation, '/fovs/<int:fov_id>/annotation')
 
     api.init_app(app)
 
-    if args.credentials:
-        credentials = args.credentials
-    else:
-        credentials = app.config['DB_CREDENTIALS_FILEPATH']
+    if args.credentials_filepath:
+        app.config['DB_CREDENTIALS_FILEPATH'] = args.credentials_filepath
 
-    if args.opencell_microscopy_root:
-        app.config['opencell_microscopy_root'] = args.opencell_microscopy_root
+    if args.opencell_microscopy_dirpath:
+        app.config['OPENCELL_MICROSCOPY_DIRPATH'] = args.opencell_microscopy_dirpath
 
     # create an instance of sqlalchemy's scoped_session registry
-    url = utils.url_from_credentials(credentials)
-    app.Session, app.views = create_session_registry(url)
+    url = utils.url_from_credentials(app.config['DB_CREDENTIALS_FILEPATH'])
+    app.Session = create_session_registry(url)
 
     # required to close the session instance when a request is completed
     @app.teardown_appcontext
@@ -93,11 +91,10 @@ def create_app(args):
 
 
 def parse_args():
-
     parser = argparse.ArgumentParser()
-    parser.add_argument('--credentials', dest='credentials')
-    parser.add_argument('--opencell-microscopy-root', dest='opencell_microscopy_root')
-
+    parser.add_argument('--mode', dest='mode', required=True)
+    parser.add_argument('--credentials', dest='credentials_filepath')
+    parser.add_argument('--opencell-microscopy', dest='opencell_microscopy_dirpath')
     return parser.parse_args()
 
 

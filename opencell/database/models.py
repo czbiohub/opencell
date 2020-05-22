@@ -248,7 +248,7 @@ class CrisprDesign(Base):
     # gene/protein name
     target_name = db.Column(db.String, nullable=False)
 
-    # optional gene family
+    # gene family (optional)
     target_family = db.Column(db.String)
 
     # terminus at which the template was inserted
@@ -267,7 +267,7 @@ class CrisprDesign(Base):
     # 'enst_note' column
     transcript_notes = db.Column(db.String)
 
-    # transcript expression level from an RNAseq experiment for HEK293
+    # transcript expression level from RNAseq data for HEK293
     # HACK: this data really belongs in a separate table of transcript metadata
     hek_tpm = db.Column(db.Float)
 
@@ -281,11 +281,23 @@ class CrisprDesign(Base):
 
     # the plate_design on which this crispr_design appears
     plate_design_id = db.Column(
-        db.String, db.ForeignKey('plate_design.design_id'), nullable=False)
+        db.String, db.ForeignKey('plate_design.design_id'), nullable=False
+    )
+
+    # the uniprot_id of the protein tagged by the design
+    uniprot_id = db.Column(
+        db.String, db.ForeignKey('raw_uniprot_metadata.uniprot_id')
+    )
+
+    # the raw (unprocessed/unparsed) uniprot metadata
+    raw_uniprot_metadata = db.orm.relationship(
+        'RawUniprotMetadata', back_populates='crispr_designs', uselist=False
+    )
 
     # many crispr_designs to one plate_design (96 wells per plate)
     plate_design = db.orm.relationship(
-        'PlateDesign', back_populates='crispr_designs', uselist=False)
+        'PlateDesign', back_populates='crispr_designs', uselist=False
+    )
 
     # one crispr_design to many cell lines
     cell_lines = db.orm.relationship('CellLine', back_populates='crispr_design')
@@ -295,10 +307,11 @@ class CrisprDesign(Base):
         db.UniqueConstraint(plate_design_id, well_id),
     )
 
-
     def __repr__(self):
-        return "<CrisprDesign(target_name='%s')>" % self.target_name
-
+        return (
+            "<CrisprDesign(plate_id='%s', well_id=%s', target_name='%s')>" %
+            (self.plate_design_id, self.well_id, self.target_name)
+        )
 
     @db.orm.validates('well_id')
     def format_well_id(self, key, value):
@@ -306,7 +319,6 @@ class CrisprDesign(Base):
         Zero-pad well_ids ('A1' -> 'A01')
         '''
         return utils.format_well_id(value)
-
 
     @db.orm.validates('target_terminus')
     def format_target_terminus(self, key, value):
@@ -330,7 +342,6 @@ class CrisprDesign(Base):
             value = TerminusTypeEnum.N_TERMINUS
         return value
 
-
     @db.orm.validates('transcript_id')
     def validate_transcript_id(self, key, value):
         # check that transcript_id is a valid ensembl ID
@@ -338,13 +349,11 @@ class CrisprDesign(Base):
             raise ValueError('Invalid transcript_id %s' % value)
         return value
 
-
     @db.orm.validates('protospacer_sequence')
     def validate_protospacer_sequence(self, key, value):
         if not utils.is_sequence(value):
             raise ValueError('Invalid protospacer sequence %s' % value)
         return value
-
 
     @db.orm.validates('template_sequence')
     def validate_template_sequence(self, key, value):
@@ -352,6 +361,24 @@ class CrisprDesign(Base):
             raise ValueError('Invalid template sequence %s' % value)
         return value
 
+
+class RawUniprotMetadata(Base):
+    '''
+    Raw Uniprot metadata returned by uniprot_utils.query_uniprotkb
+    (For details about the columns, refer to this method)
+    '''
+
+    __tablename__ = 'raw_uniprot_metadata'
+
+    uniprot_id = db.Column(db.String, primary_key=True)
+    protein_names = db.Column(db.String)
+    protein_families = db.Column(db.String)
+    gene_names = db.Column(db.String)
+    annotation = db.Column(db.String)
+    date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
+
+    # one uniprot_id to many crispr designs
+    crispr_designs = db.orm.relationship('CrisprDesign', back_populates='raw_uniprot_metadata')
 
 
 class Electroporation(Base):

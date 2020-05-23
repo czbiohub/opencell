@@ -7,7 +7,7 @@ import pandas as pd
 import sqlalchemy as db
 
 from opencell import constants
-from opencell.database import models, utils
+from opencell.database import models, utils, uniprot_utils
 
 
 def get_or_create_progenitor_cell_line(session, name, notes=None, create=False):
@@ -160,6 +160,50 @@ def create_polyclonal_lines(
     utils.add_and_commit(session, electroporation, errors=errors)
 
 
+def insert_uniprot_metadata(session, crispr_design_id, retrieved_metadata=None, errors='warn'):
+    '''
+    Retrieve and insert the raw uniprot metadata for a crispr design
+
+    Parameters
+    ----------
+    crispr_design : an instance of models.CrisprDesign
+        The design for which to retrieve and insert uniprot metadata
+    retrieved_metadata : pd.Series, optional
+        The raw uniprot metadata corresponding to the crispr design
+        (intended for edge cases in which the correct metadata must be manually retrieved,
+        rather than retrieved by uniprot_utils.get_uniprot_metadata)
+    '''
+
+    crispr_design = (
+        session.query(models.CrisprDesign)
+        .filter(models.CrisprDesign.id == crispr_design_id)
+        .one()
+    )
+
+    # retrieve the raw metadata for the crispr design from the UniprotKB API
+    if retrieved_metadata is None:
+        retrieved_metadata = uniprot_utils.get_uniprot_metadata(
+            gene_name=crispr_design.target_name,
+            enst_id=crispr_design.transcript_id
+        )
+        if retrieved_metadata is None:
+            return
+
+    # check whether the retrieved metadata already exists
+    extant_metadata = (
+        session.query(models.RawUniprotMetadata)
+        .filter(models.RawUniprotMetadata.uniprot_id == retrieved_metadata.uniprot_id)
+        .one_or_none()
+    )
+    if extant_metadata is None:
+        uniprot_metadata = models.RawUniprotMetadata(**retrieved_metadata)
+        utils.add_and_commit(session, uniprot_metadata, errors=errors)
+
+    # update the crispr design's uniprot_id
+    crispr_design.uniprot_id = retrieved_metadata.uniprot_id
+    utils.add_and_commit(session, crispr_design, errors=errors)
+
+
 class PolyclonalLineOperations:
     '''
     '''
@@ -225,9 +269,9 @@ class PolyclonalLineOperations:
         [lines.extend(design.cell_lines) for design in designs]
 
         if len(lines) > 1:
-            print('Warning: %s cell lines found for target_name %s' % (len(lines), target_name))
+            print('Warning: returning the first of %s cell lines found for target_name %s' % (len(lines), target_name))
         if not lines:
-            raise ValueError('No cells lines found for target %s' % target_name)
+            raise ValueError("No cells lines found for target name '%s'" % target_name)
 
         return cls(lines[0])
 

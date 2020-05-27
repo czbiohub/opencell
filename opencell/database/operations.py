@@ -180,6 +180,9 @@ def insert_uniprot_metadata(session, crispr_design_id, retrieved_metadata=None, 
         .one()
     )
 
+    if crispr_design.uniprot_id is not None:
+        return
+
     # retrieve the raw metadata for the crispr design from the UniprotKB API
     if retrieved_metadata is None:
         retrieved_metadata = uniprot_utils.get_uniprot_metadata(
@@ -269,7 +272,10 @@ class PolyclonalLineOperations:
         [lines.extend(design.cell_lines) for design in designs]
 
         if len(lines) > 1:
-            print('Warning: returning the first of %s cell lines found for target_name %s' % (len(lines), target_name))
+            print(
+                'Warning: returning the first of %s cell lines found for target_name %s' %
+                (len(lines), target_name)
+            )
         if not lines:
             raise ValueError("No cells lines found for target name '%s'" % target_name)
 

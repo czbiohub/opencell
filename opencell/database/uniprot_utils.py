@@ -11,6 +11,43 @@ import sqlalchemy as db
 from opencell.database import models, utils
 
 
+def prettify_uniprot_protein_name(protein_names):
+    '''
+    Clean up a raw list of Uniprot protein 'names' (which are more like descriptions than names)
+    These names are a bit messy; generally, the 'primary' name appears first,
+    followed by synonymous names in parentheses.
+
+    Example:
+    'Atlastin-2 (EC 3.6.5.-) (ADP-ribosylation factor-like protein 6-interacting protein 2)
+    (ARL-6-interacting protein 2) (Aip-2)"
+
+    This is formatted to 'Atlastin-2'
+    '''
+
+    protein_name = protein_names.split('(')[0].split(',')[0].strip()
+    return protein_name
+
+
+def prettify_uniprot_annotation(annotation):
+    '''
+    Clean up a 'raw' Uniprot functional annotation
+    '''
+
+    if pd.isna(annotation):
+        return None
+
+    # sometimes there are two annotations concatenated
+    annotation = annotation.replace('; FUNCTION: ', ' ')
+    annotation = annotation.replace('FUNCTION: ', '')
+
+    # remove all paranthetical pubmed citations
+    annotation = re.sub(r' \(((PubMed:[0-9]+)(, )?)+\)', '', annotation)
+
+    # remove the trailing pubmed citations (always in brackets at the end)
+    annotation = re.sub(r' {.*}.', '', annotation)
+    return annotation
+
+
 def get_uniprot_metadata(gene_name, enst_id=None):
     '''
     Retrieve the top Uniprot search result given a gene_name and maybe an ENST ID

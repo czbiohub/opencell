@@ -11,10 +11,6 @@ import { SectionHeader } from './common.jsx';
 import settings from '../common/settings.js';
 import { loadFovs } from '../common/utils.js';
 
-// this is where the content for the 'About this protein' comes from
-import uniprotMetadata from '../demo/data/uniprot_metadata.json';
-
-
 
 export default class Overview extends Component {
 
@@ -47,7 +43,7 @@ export default class Overview extends Component {
                         <div className='pb4'>
                             <SectionHeader title='About this protein'/>
                             <div className='pt2 protein-function-container'>
-                                <p>{uniprotMetadata[this.props.targetName]?.uniprot_function}</p>
+                                <p>{this.props.cellLine.uniprot_metadata?.annotation}</p>
                             </div>
                         </div>
 

@@ -162,3 +162,15 @@ right join (
 	having count(*) > 1
 ) pd using (cell_line_id)
 order by n desc
+
+
+-- unroll the target annotation categories
+select * from (
+	select cell_line_id, plate_design_id as plate_id, well_id, target_name,
+	unnest(array(select json_array_elements_text(categories::json))) as category
+	from cell_line_annotation ant
+	left join cell_line on cell_line.id = cell_line_id
+	left join crispr_design cd on cd.id = crispr_design_id
+) ant
+where category = 'low_gfp'
+order by plate_id, well_id

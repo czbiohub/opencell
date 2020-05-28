@@ -13,24 +13,45 @@ from opencell.database import models, utils
 
 def prettify_uniprot_protein_name(protein_names):
     '''
-    Clean up a raw list of Uniprot protein 'names' (which are more like descriptions than names)
-    These names are a bit messy; generally, the 'primary' name appears first,
-    followed by synonymous names in parentheses.
+    Clean up a raw Uniprot protein name
+    (this is a string in the uniprot_metadata.protein_names column)
 
-    Example:
-    'Atlastin-2 (EC 3.6.5.-) (ADP-ribosylation factor-like protein 6-interacting protein 2)
-    (ARL-6-interacting protein 2) (Aip-2)"
+    These names are messy; generally, the 'primary' name that we want to retain appears first,
+    followed by one or more synonymous names in parentheses,
+    followed sometimes by a comment-like string wrapped in brackets.
 
-    This is formatted to 'Atlastin-2'
+    Examples
+    --------
+    ATL2
+    'Atlastin-2 (EC 3.6.5.-) (ADP-ribosylation factor-like protein 6-interacting protein 2)'
+
+    HNRNPH1
+    'Heterogeneous nuclear ribonucleoprotein H (hnRNP H)
+    [Cleaved into: Heterogeneous nuclear ribonucleoprotein H, N-terminally processed]'
+
+    BUD23
+    'Probable 18S rRNA (guanine-N(7))-methyltransferase (EC 2.1.1.-)'
     '''
 
-    protein_name = protein_names.split('(')[0].split(',')[0].strip()
-    return protein_name
+    # note that this regex fails for the BUD23 edge case
+    # (in which a pair of parentheses appears in the primary name)
+    result = re.match('^(.*?)(?: \(.*?\))*(?: \[.*?\])?$', protein_names)
+    if not result:
+        return None
+    return result.groups()[0]
 
 
 def prettify_uniprot_annotation(annotation):
     '''
-    Clean up a 'raw' Uniprot functional annotation
+    Clean up a raw Uniprot functional annotation
+
+    Examples
+    --------
+    'FUNCTION: GTPase tethering membranes through formation of trans-homooligomers
+    and mediating homotypic fusion of endoplasmic reticulum membranes.
+    Functions in endoplasmic reticulum tubular network biogenesis
+    (PubMed:18270207, PubMed:19665976, PubMed:27619977).
+    {ECO:0000269|PubMed:18270207, ECO:0000269|PubMed:19665976, ECO:0000269|PubMed:27619977}.'
     '''
 
     if pd.isna(annotation):

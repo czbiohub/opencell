@@ -35,7 +35,7 @@ def prettify_uniprot_protein_name(protein_names):
 
     # note that this regex fails for the BUD23 edge case
     # (in which a pair of parentheses appears in the primary name)
-    result = re.match('^(.*?)(?: \(.*?\))*(?: \[.*?\])?$', protein_names)
+    result = re.match(r'^(.*?)(?: \(.*?\))*(?: \[.*?\])?$', protein_names)
     if not result:
         return None
     return result.groups()[0]

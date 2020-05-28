@@ -151,7 +151,7 @@ class PlateMicroscopyManager:
             # 'mnG96wp{num}' or 'mNG96wp{num}_Thawed',
             # where num is an integer greater than 0
             rel_path = path.replace(self.root_dir, '')
-            if not re.match('^mNG96wp[1-9]([0-9])?(_Thawed|/)', rel_path):
+            if not re.match(r'^mNG96wp[1-9]([0-9])?(_Thawed|/)', rel_path):
                 continue
 
             # create a column for each subdirectory, starting with the plate-level directory
@@ -184,7 +184,7 @@ class PlateMicroscopyManager:
         # flag all of the raw files
         # these are all TIFF files in experiment dirs of the form '^ML[0-9]{4}_[0-9]{8}$'
         # (for example: 'ML0045_20181022')
-        md['is_raw'] = md.exp_dir.apply(lambda s: re.match('^ML[0-9]{4}_[0-9]{8}$', s) is not None)
+        md['is_raw'] = md.exp_dir.apply(lambda s: re.match(r'^ML[0-9]{4}_[0-9]{8}$', s) is not None)
 
         self.md = md
 
@@ -195,7 +195,7 @@ class PlateMicroscopyManager:
         Parse the plate number from a src plate_dir
         Example: 'mNG96wp19' -> '19'
         '''
-        plate_num = int(re.findall('^mNG96wp([0-9]{1,2})', src_plate_dir.split(os.sep)[0])[0])
+        plate_num = int(re.findall(r'^mNG96wp([0-9]{1,2})', src_plate_dir.split(os.sep)[0])[0])
 
         # hackish way to determine the imaging round number from the plate_dir
         if 'Thawed2' in src_plate_dir:
@@ -235,7 +235,7 @@ class PlateMicroscopyManager:
             md_raw.at[ind, 'target_name'] = target_name
 
             # pad the well_id ('A1' -> 'A01')
-            well_row, well_col = re.match('([A-H])([0-9]{1,2})', well_id).groups()
+            well_row, well_col = re.match(r'([A-H])([0-9]{1,2})', well_id).groups()
             md_raw.at[ind, 'well_id'] = '%s%02d' % (well_row, int(well_col))
 
         print('Warning: dropping %s rows of unparseable raw metadata' % len(dropped_inds))

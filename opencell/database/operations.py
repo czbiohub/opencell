@@ -166,11 +166,11 @@ def insert_uniprot_metadata(session, crispr_design_id, retrieved_metadata=None, 
 
     Parameters
     ----------
-    crispr_design : an instance of models.CrisprDesign
-        The design for which to retrieve and insert uniprot metadata
+    crispr_design_id : int, required
+        the id of the crispr design for which to insert uniprot metadata
     retrieved_metadata : pd.Series, optional
         The raw uniprot metadata corresponding to the crispr design
-        (intended for edge cases in which the correct metadata must be manually retrieved,
+        (intended for edge cases in which the correct metadata must be manually specified,
         rather than retrieved by uniprot_utils.get_uniprot_metadata)
     '''
 
@@ -189,17 +189,18 @@ def insert_uniprot_metadata(session, crispr_design_id, retrieved_metadata=None, 
             gene_name=crispr_design.target_name,
             enst_id=crispr_design.transcript_id
         )
-        if retrieved_metadata is None:
-            return
+    if retrieved_metadata is None:
+        print('Warning: no Uniprot metadata found for target %s' % crispr_design.target_name)
+        return
 
     # check whether the retrieved metadata already exists
     extant_metadata = (
-        session.query(models.RawUniprotMetadata)
-        .filter(models.RawUniprotMetadata.uniprot_id == retrieved_metadata.uniprot_id)
+        session.query(models.UniprotMetadata)
+        .filter(models.UniprotMetadata.uniprot_id == retrieved_metadata.uniprot_id)
         .one_or_none()
     )
     if extant_metadata is None:
-        uniprot_metadata = models.RawUniprotMetadata(**retrieved_metadata)
+        uniprot_metadata = models.UniprotMetadata(**retrieved_metadata)
         utils.add_and_commit(session, uniprot_metadata, errors=errors)
 
     # update the crispr design's uniprot_id

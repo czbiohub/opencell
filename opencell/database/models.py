@@ -291,7 +291,7 @@ class CrisprDesign(Base):
 
     # the raw (unprocessed/unparsed) uniprot metadata
     uniprot_metadata = db.orm.relationship(
-        'RawUniprotMetadata', back_populates='crispr_designs', uselist=False
+        'UniprotMetadata', back_populates='crispr_designs', uselist=False
     )
 
     # many crispr_designs to one plate_design (96 wells per plate)

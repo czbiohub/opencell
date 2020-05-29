@@ -16,7 +16,7 @@ def prettify_uniprot_protein_name(protein_names):
     Clean up a raw Uniprot protein name
     (this is a string in the uniprot_metadata.protein_names column)
 
-    These names are messy; generally, the 'primary' name that we want to retain appears first,
+    These names are messy: the 'primary' name that we want to retain appears first,
     followed by one or more synonymous names in parentheses,
     followed sometimes by a comment-like string wrapped in brackets.
 
@@ -33,8 +33,8 @@ def prettify_uniprot_protein_name(protein_names):
     'Probable 18S rRNA (guanine-N(7))-methyltransferase (EC 2.1.1.-)'
     '''
 
-    # note that this regex fails for the BUD23 edge case
-    # (in which a pair of parentheses appears in the primary name)
+    # note that this regex fails for the rare edge case in which parentheses appear
+    # in the primary name itself (for example, BUD23)
     result = re.match(r'^(.*?)(?: \(.*?\))*(?: \[.*?\])?$', protein_names)
     if not result:
         return None

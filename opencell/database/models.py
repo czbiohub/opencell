@@ -879,11 +879,11 @@ class MassSpecProteinGroup(Base):
     # id is a hash of unique set of peptide Uniprot ids that compose the protein group
     id = db.Column(db.String, primary_key=True)
 
-    # a list of all protein names mapped to the protein group
+    # a list of all uniprot gene names mapped to the protein group
     gene_names = db.Column(postgresql.ARRAY(db.String))
 
     # a list of all peptide Uniprot ids
-    protein_names = db.Column(postgresql.ARRAY(db.String))
+    uniprot_ids = db.Column(postgresql.ARRAY(db.String))
 
     # timestamp column
     date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())

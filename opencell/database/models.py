@@ -286,11 +286,11 @@ class CrisprDesign(Base):
 
     # the uniprot_id of the protein tagged by the design
     uniprot_id = db.Column(
-        db.String, db.ForeignKey('raw_uniprot_metadata.uniprot_id')
+        db.String, db.ForeignKey('uniprot_metadata.uniprot_id')
     )
 
     # the raw (unprocessed/unparsed) uniprot metadata
-    raw_uniprot_metadata = db.orm.relationship(
+    uniprot_metadata = db.orm.relationship(
         'RawUniprotMetadata', back_populates='crispr_designs', uselist=False
     )
 
@@ -362,13 +362,13 @@ class CrisprDesign(Base):
         return value
 
 
-class RawUniprotMetadata(Base):
+class UniprotMetadata(Base):
     '''
     Raw Uniprot metadata returned by uniprot_utils.query_uniprotkb
     (For details about the columns, refer to this method)
     '''
 
-    __tablename__ = 'raw_uniprot_metadata'
+    __tablename__ = 'uniprot_metadata'
 
     uniprot_id = db.Column(db.String, primary_key=True)
     protein_names = db.Column(db.String)
@@ -378,7 +378,7 @@ class RawUniprotMetadata(Base):
     date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
 
     # one uniprot_id to many crispr designs
-    crispr_designs = db.orm.relationship('CrisprDesign', back_populates='raw_uniprot_metadata')
+    crispr_designs = db.orm.relationship('CrisprDesign', back_populates='uniprot_metadata')
 
 
 class Electroporation(Base):

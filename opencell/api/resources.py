@@ -59,7 +59,7 @@ class CellLines(Resource):
         query = (
             flask.current_app.Session.query(models.CrisprDesign)
             .options(db.orm.joinedload(models.CrisprDesign.cell_lines))
-            .options(db.orm.joinedload(models.CrisprDesign.raw_uniprot_metadata))
+            .options(db.orm.joinedload(models.CrisprDesign.uniprot_metadata))
         )
 
         # filter crispr designs by plate_id

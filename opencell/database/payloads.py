@@ -31,17 +31,17 @@ def cell_line_payload(cell_line, optional_fields):
         'hek_tpm': design.hek_tpm,
     }
 
-    if not design.raw_uniprot_metadata:
+    if not design.uniprot_metadata:
         print(design.target_name)
 
     uniprot_metadata = {
-        'uniprot_id': design.raw_uniprot_metadata.uniprot_id,
-        'gene_names': design.raw_uniprot_metadata.gene_names.split(' '),
+        'uniprot_id': design.uniprot_metadata.uniprot_id,
+        'gene_names': design.uniprot_metadata.gene_names.split(' '),
         'protein_name': uniprot_utils.prettify_uniprot_protein_name(
-            design.raw_uniprot_metadata.protein_names
+            design.uniprot_metadata.protein_names
         ),
         'annotation': uniprot_utils.prettify_uniprot_annotation(
-            design.raw_uniprot_metadata.annotation
+            design.uniprot_metadata.annotation
         ),
     }
 

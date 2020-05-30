@@ -92,14 +92,15 @@ def get_uniprot_metadata(gene_name, enst_id=None):
     return metadata
 
 
-def query_uniprotkb(query, limit=1):
+def query_uniprotkb(query, only_reviewed=True, limit=1):
     '''
-    Search UniprotKB for a given query and return some useful metadata
+    Search (the human) UniprotKB and return some useful metadata
 
     Parameters
     ----------
-    query : one of many identifiers, including a protein or gene name,
+    query : one of many identifiers, including a protein name, a gene name,
         a uniprot_id, or an ENST ID.
+    only_reviewed : whether to query only reviewed uniprot entries
     limit : how many results (sorted by 'relevance') to return
 
     Returns
@@ -165,14 +166,17 @@ def query_uniprotkb(query, limit=1):
         'sort': 'score',
         'format': 'tab',
         'limit': str(limit),
-        'query': f'reviewed:yes+AND+organism:9606+AND+${query}',
+        'query': f'organism:9606+AND+{query}',
         'columns': ','.join([column_def['query_name'] for column_def in column_defs]),
     }
 
+    if only_reviewed:
+        params['query'] += '+AND+reviewed:yes'
+
     try:
         response = requests.get(url, params)
-    except ConnectionError:
-        print('Connection error while querying for %s' % query)
+    except Exception:
+        print('Error while querying for %s' % query)
         return None
 
     if not response.text:

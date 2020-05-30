@@ -1,11 +1,13 @@
 
 import os
 import sys
+import dask
 import json
 import argparse
 import pandas as pd
 import sqlalchemy as db
 
+import dask.diagnostics
 import sqlalchemy.orm
 import sqlalchemy.ext.declarative
 
@@ -39,6 +41,7 @@ def parse_args():
         'insert_facs',
         'insert_plate_microscopy_datasets',
         'insert_raw_pipeline_microscopy_datasets',
+        'insert_mass_spec_uniprot_metadata',
     ]
 
     for dest in action_arg_dests:
@@ -153,10 +156,14 @@ def insert_facs(session, facs_results_dir, errors='warn'):
         histograms = facs_histograms.get((row.plate_id, row.well_id))
 
         scalars = dict(row.drop(['plate_id', 'well_id']))
-        line_ops.insert_facs_dataset(session, histograms=histograms, scalars=scalars, errors=errors)
+        line_ops.insert_facs_dataset(
+            session, histograms=histograms, scalars=scalars, errors=errors
+        )
 
 
-def insert_microscopy_datasets(session, metadata, root_directory, update=False, errors='warn'):
+def insert_microscopy_datasets(
+    session, metadata, root_directory, update=False, errors='warn'
+):
     '''
     '''
     for _, row in metadata.iterrows():
@@ -181,6 +188,42 @@ def insert_microscopy_datasets(session, metadata, root_directory, update=False, 
         utils.add_and_commit(session, dataset, errors=errors)
 
 
+def insert_mass_spec_uniprot_metadata(Session):
+    '''
+    Insert uniprot metadata for all uniprot_ids that appear in at least one
+    mass spec protein group and for which metadata does not already exist
+    '''
+    engine = Session.get_bind()
+
+    # all uniprot_ids from all mass spec protein groups
+    all_uniprot_ids = (
+        pd.read_sql(
+            'select unnest(uniprot_ids) as uniprot_id from mass_spec_protein_group',
+            engine
+        )
+        .uniprot_id
+        .tolist()
+    )
+
+    # unique ids, ignoring isoforms (which are indicated by trailing dashed numbers)
+    all_uniprot_ids = set([uniprot_id.split('-')[0] for uniprot_id in all_uniprot_ids])
+
+    # existing uniprot_ids
+    existing_uniprot_ids = [
+        row.uniprot_id for row in Session.query(models.UniprotMetadata).all()
+    ]
+
+    new_uniprot_ids = all_uniprot_ids.difference(existing_uniprot_ids)
+
+    @dask.delayed
+    def create_task(Session, uniprot_id):
+        ops.insert_uniprot_metadata_from_id(Session(), uniprot_id)
+
+    tasks = [create_task(Session, uniprot_id) for uniprot_id in new_uniprot_ids]
+    with dask.diagnostics.ProgressBar():
+        dask.compute(*tasks)
+
+
 def main():
     '''
 
@@ -189,11 +232,10 @@ def main():
 
     '''
     args = parse_args()
-
     url = utils.url_from_credentials(args.credentials)
     engine = db.create_engine(url)
-    Session = db.orm.sessionmaker(bind=engine)
-    session = Session()
+    session_factory = db.orm.sessionmaker(bind=engine)
+    Session = db.orm.scoped_session(session_factory)
 
     if args.drop_all:
         maybe_drop_and_create(engine, drop=True)
@@ -201,11 +243,13 @@ def main():
         maybe_drop_and_create(engine, drop=False)
 
     if args.populate:
-        populate(session, args.data_dir, errors='warn')
+        populate(Session, args.data_dir, errors='warn')
 
     if args.insert_facs:
-        insert_facs(session, args.facs_results_dir, errors='warn')
+        insert_facs(Session, args.facs_results_dir, errors='warn')
 
+    if args.insert_mass_spec_uniprot_metadata:
+        insert_mass_spec_uniprot_metadata(Session)
 
     # insert the 'legacy' pipeline microscopy datasets found in the 'PlateMicroscopy' directory
     # (these are datasets up to PML0179)
@@ -215,12 +259,12 @@ def main():
             '2019-12-05_Pipeline-microscopy-master-key_PlateMicroscopy-MLs-raw.csv')
         metadata = file_utils.load_legacy_microscopy_master_key(filepath)
         insert_microscopy_datasets(
-            session,
+            Session,
             metadata,
             root_directory='plate_microscopy',
             update=False,
-            errors='warn')
-
+            errors='warn'
+        )
 
     # insert pipeline microscopy datasets found in the 'raw-pipeline-microscopy' directory
     # (these datasets start at PML0196 and were acquired using the dragonfly-automation scripts)
@@ -229,11 +273,12 @@ def main():
         metadata.rename(columns={'id': 'pml_id'}, inplace=True)
         metadata.dropna(how='any', subset=['pml_id'], axis=0, inplace=True)
         insert_microscopy_datasets(
-            session,
+            Session,
             metadata,
             root_directory='raw_pipeline_microscopy',
             update=args.update,
-            errors='warn')
+            errors='warn'
+        )
 
 
 if __name__ == '__main__':

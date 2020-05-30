@@ -160,7 +160,24 @@ def create_polyclonal_lines(
     utils.add_and_commit(session, electroporation, errors=errors)
 
 
-def insert_uniprot_metadata(session, crispr_design_id, retrieved_metadata=None, errors='warn'):
+def insert_uniprot_metadata_from_id(session, uniprot_id, errors='warn'):
+    '''
+    Retrieve and insert Uniprot metadata for a given uniprot_id
+    '''
+    retrieved_metadata = uniprot_utils.query_uniprotkb(
+        query=uniprot_id, only_reviewed=False, limit=1
+    )
+    if retrieved_metadata is None or retrieved_metadata.iloc[0].uniprot_id != uniprot_id:
+        print('Warning: no metadata found for uniprot_id %s' % uniprot_id)
+        return
+
+    uniprot_metadata = models.UniprotMetadata(**retrieved_metadata.iloc[0])
+    utils.add_and_commit(session, uniprot_metadata, errors=errors)
+
+
+def insert_uniprot_metadata_for_crispr_design(
+    session, crispr_design_id, retrieved_metadata=None, errors='warn'
+):
     '''
     Retrieve and insert the raw uniprot metadata for a crispr design
 

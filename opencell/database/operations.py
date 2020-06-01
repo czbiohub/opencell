@@ -167,6 +167,9 @@ def insert_uniprot_metadata_from_id(session, uniprot_id, errors='warn'):
     retrieved_metadata = uniprot_utils.query_uniprotkb(
         query=uniprot_id, only_reviewed=False, limit=1
     )
+
+    # this is subtle: sometimes, a result is retrieved,
+    # but its uniprot_id does not match the query uniprot_id
     if retrieved_metadata is None or retrieved_metadata.iloc[0].uniprot_id != uniprot_id:
         print('Warning: no metadata found for uniprot_id %s' % uniprot_id)
         return

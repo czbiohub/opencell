@@ -41,7 +41,8 @@ def parse_args():
         'insert_facs',
         'insert_plate_microscopy_datasets',
         'insert_raw_pipeline_microscopy_datasets',
-        'insert_mass_spec_uniprot_metadata',
+        'insert_uniprot_metadata_for_crispr_designs',
+        'insert_uniprot_metadata_for_mass_spec',
     ]
 
     for dest in action_arg_dests:
@@ -104,10 +105,12 @@ def populate(session, data_dir, errors='warn'):
     # create the electroporations and polyclonal lines
     print('Inserting electroporations and polyclonal lines for plates 1-19')
     electroporation_history = file_utils.load_electroporation_history(
-        os.path.join(data_dir, '2019-06-24_electroporations.csv'))
+        os.path.join(data_dir, '2019-06-24_electroporations.csv')
+    )
 
     progenitor_line = ops.get_or_create_progenitor_cell_line(
-        session, constants.PARENTAL_LINE_NAME)
+        session, constants.PARENTAL_LINE_NAME
+    )
 
     for _, row in electroporation_history.iterrows():
         print('Inserting electroporation and cell lines for %s' % row.plate_id)
@@ -188,7 +191,22 @@ def insert_microscopy_datasets(
         utils.add_and_commit(session, dataset, errors=errors)
 
 
-def insert_mass_spec_uniprot_metadata(Session):
+def insert_uniprot_metadata_for_crispr_designs(Session):
+    '''
+    Retrieve and insert uniprot metadata for all crispr designs
+    '''
+    @dask.delayed
+    def create_task(Session, design_id):
+        ops.insert_uniprot_metadata_for_crispr_design(Session(), design_id)
+
+    designs = Session.query(models.CrisprDesign).all()
+    tasks = [create_task(Session, design.id) for design in designs]
+
+    with dask.diagnostics.ProgressBar():
+        dask.compute(*tasks)
+
+
+def insert_uniprot_metadata_for_mass_spec(Session):
     '''
     Insert uniprot metadata for all uniprot_ids that appear in at least one
     mass spec protein group and for which metadata does not already exist
@@ -208,12 +226,9 @@ def insert_mass_spec_uniprot_metadata(Session):
     # unique ids, ignoring isoforms (which are indicated by trailing dashed numbers)
     all_uniprot_ids = set([uniprot_id.split('-')[0] for uniprot_id in all_uniprot_ids])
 
-    # existing uniprot_ids
-    existing_uniprot_ids = [
+    new_uniprot_ids = all_uniprot_ids.difference([
         row.uniprot_id for row in Session.query(models.UniprotMetadata).all()
-    ]
-
-    new_uniprot_ids = all_uniprot_ids.difference(existing_uniprot_ids)
+    ])
 
     @dask.delayed
     def create_task(Session, uniprot_id):
@@ -248,15 +263,19 @@ def main():
     if args.insert_facs:
         insert_facs(Session, args.facs_results_dir, errors='warn')
 
-    if args.insert_mass_spec_uniprot_metadata:
-        insert_mass_spec_uniprot_metadata(Session)
+    if args.insert_uniprot_metadata_for_crispr_designs:
+        insert_uniprot_metadata_for_crispr_designs(Session)
+
+    if args.insert_uniprot_metadata_for_mass_spec:
+        insert_uniprot_metadata_for_mass_spec(Session)
 
     # insert the 'legacy' pipeline microscopy datasets found in the 'PlateMicroscopy' directory
     # (these are datasets up to PML0179)
     if args.insert_plate_microscopy_datasets:
         filepath = os.path.join(
             args.data_dir,
-            '2019-12-05_Pipeline-microscopy-master-key_PlateMicroscopy-MLs-raw.csv')
+            '2019-12-05_Pipeline-microscopy-master-key_PlateMicroscopy-MLs-raw.csv'
+        )
         metadata = file_utils.load_legacy_microscopy_master_key(filepath)
         insert_microscopy_datasets(
             Session,

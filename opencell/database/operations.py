@@ -244,9 +244,6 @@ def insert_ensg_id(session, uniprot_id):
         print('Warning: no uniprot metadata found for uniprot_id %s' % uniprot_id)
         return
 
-    if uniprot_metadata.ensg_id is not None:
-        return
-
     try:
         df = uniprot_utils.uniprot_id_mapper([uniprot_id], input_type='ACC', output_type='ENSEMBL_ID')
     except Exception:

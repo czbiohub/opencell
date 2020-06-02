@@ -250,8 +250,14 @@ def insert_ensg_ids(Session):
 
     tasks = [
         create_task(Session, row.uniprot_id)
-        for row in Session.query(models.UniprotMetadata).all()
+        for row in (
+            Session.query(models.UniprotMetadata)
+            .filter(models.UniprotMetadata.ensg_id.is_(None))
+            .all()
+        )
     ]
+
+    print('Inserting ENSG IDs for %s new uniprot_ids' % len(tasks))
     with dask.diagnostics.ProgressBar():
         dask.compute(*tasks)
 

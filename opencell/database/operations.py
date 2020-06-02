@@ -228,6 +228,39 @@ def insert_uniprot_metadata_for_crispr_design(
     utils.add_and_commit(session, crispr_design, errors=errors)
 
 
+def insert_ensg_id(session, uniprot_id):
+    '''
+    Retrieve and insert the ENSG ID in the uniprot_metadata table for a given uniprot_id
+    (using the Uniprot mapper API to look up the ENSG ID)
+    '''
+
+    uniprot_metadata = (
+        session.query(models.UniprotMetadata)
+        .filter(models.UniprotMetadata.uniprot_id == uniprot_id)
+        .one_or_none()
+    )
+
+    if uniprot_metadata is None:
+        print('Warning: no uniprot metadata found for uniprot_id %s' % uniprot_id)
+        return
+
+    if uniprot_metadata.ensg_id is not None:
+        return
+
+    try:
+        df = uniprot_utils.uniprot_id_mapper([uniprot_id], input_type='ACC', output_type='ENSEMBL_ID')
+    except Exception:
+        print('Warning: error calling Uniprot mapper API for uniprot_id %s' % uniprot_id)
+        return
+
+    if df.shape[0] == 0:
+        print('Warning: no ENSG ID found for uniprot_id %s' % uniprot_id)
+        return
+
+    uniprot_metadata.ensg_id = df.iloc[0]['ENSEMBL_ID']
+    utils.add_and_commit(session, uniprot_metadata, errors='warn')
+
+
 class PolyclonalLineOperations:
     '''
     '''

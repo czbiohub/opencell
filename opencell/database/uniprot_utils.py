@@ -242,7 +242,7 @@ def uniprot_id_mapper(input_ids, input_type, output_type):
 
     # the number of times to try making each request
     # (the API seems to be unreliable and occasionally times out)
-    max_num_tries = 3
+    max_num_tries = 9
 
     # the number of ids to query in each API request
     batch_size = 100
@@ -257,7 +257,10 @@ def uniprot_id_mapper(input_ids, input_type, output_type):
         num_tries = 0
         while num_tries <= max_num_tries:
             num_tries += 1
-            response = requests.get(api_url, params=params)
+            try:
+                response = requests.get(api_url, params=params)
+            except Exception:
+                continue
             if response.status_code == 200:
                 df = pd.read_csv(io.StringIO(response.text), sep='\t')
                 break

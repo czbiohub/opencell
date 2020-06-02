@@ -42,7 +42,8 @@ def parse_args():
         'insert_plate_microscopy_datasets',
         'insert_raw_pipeline_microscopy_datasets',
         'insert_uniprot_metadata_for_crispr_designs',
-        'insert_uniprot_metadata_for_mass_spec',
+        'insert_uniprot_metadata_for_protein_groups',
+        'insert_ensg_ids',
     ]
 
     for dest in action_arg_dests:
@@ -206,7 +207,7 @@ def insert_uniprot_metadata_for_crispr_designs(Session):
         dask.compute(*tasks)
 
 
-def insert_uniprot_metadata_for_mass_spec(Session):
+def insert_uniprot_metadata_for_protein_groups(Session):
     '''
     Insert uniprot metadata for all uniprot_ids that appear in at least one
     mass spec protein group and for which metadata does not already exist
@@ -239,6 +240,22 @@ def insert_uniprot_metadata_for_mass_spec(Session):
         dask.compute(*tasks)
 
 
+def insert_ensg_ids(Session):
+    '''
+    Populate the ENSG ID column of the uniprot_metadata table
+    '''
+    @dask.delayed
+    def create_task(Session, uniprot_id):
+        ops.insert_ensg_id(Session(), uniprot_id)
+
+    tasks = [
+        create_task(Session, row.uniprot_id)
+        for row in Session.query(models.UniprotMetadata).all()
+    ]
+    with dask.diagnostics.ProgressBar():
+        dask.compute(*tasks)
+
+
 def main():
     '''
 
@@ -266,8 +283,11 @@ def main():
     if args.insert_uniprot_metadata_for_crispr_designs:
         insert_uniprot_metadata_for_crispr_designs(Session)
 
-    if args.insert_uniprot_metadata_for_mass_spec:
-        insert_uniprot_metadata_for_mass_spec(Session)
+    if args.insert_uniprot_metadata_for_protein_groups:
+        insert_uniprot_metadata_for_protein_groups(Session)
+
+    if args.insert_ensg_ids:
+        insert_ensg_ids(Session)
 
     # insert the 'legacy' pipeline microscopy datasets found in the 'PlateMicroscopy' directory
     # (these are datasets up to PML0179)

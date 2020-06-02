@@ -364,17 +364,23 @@ class CrisprDesign(Base):
 
 class UniprotMetadata(Base):
     '''
-    Raw Uniprot metadata returned by uniprot_utils.query_uniprotkb
-    (For details about the columns, refer to this method)
+    Cached Uniprot metadata retrieved by querying UniprotKB and the Uniprot mapper API
+    (see methods in uniprot_utils for details)
     '''
 
     __tablename__ = 'uniprot_metadata'
-
     uniprot_id = db.Column(db.String, primary_key=True)
+
+    # these columns correspond to columns retrieved by UniprotKB queries
     protein_names = db.Column(db.String)
     protein_families = db.Column(db.String)
     gene_names = db.Column(db.String)
     annotation = db.Column(db.String)
+
+    # the ENSG ID is not included in the UniprotKB query results;
+    # it must be populated separately using the Uniprot mapper API
+    ensg_id = db.Column(db.String)
+
     date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
 
     # one uniprot_id to many crispr designs

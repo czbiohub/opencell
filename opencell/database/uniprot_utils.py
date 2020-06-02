@@ -107,8 +107,8 @@ def query_uniprotkb(query, only_reviewed=True, limit=1):
     -------
     A dataframe of metadata (for column descriptions, see below)
 
-    Aside
-    -----
+    Asides
+    ------
     These are additional query columns containing various specific gene name synonyms;
     as far as I can tell, these all also appear in the 'genes' column:
     'genes(PREFERRED)'
@@ -116,6 +116,10 @@ def query_uniprotkb(query, only_reviewed=True, limit=1):
     'genes(OLN)'
     'genes(ORF)'
 
+    Also, it's not clear how to include the ENSG ID in the query results;
+    there is a column for Ensembl IDs called 'database(Ensembl)'
+    that returns both ENST and ENSG IDs via the web UI,
+    but that only returns the ENST ID via the API call used here.
     '''
 
     url = 'https://www.uniprot.org/uniprot'

@@ -24,17 +24,19 @@ from opencell.imaging.processors import FOVProcessor
 from opencell.database.fov_operations import MicroscopyFOVOperations
 from opencell.imaging.managers import PlateMicroscopyManager
 
+DRAGONFLY_REPOS = [
+    '/gpfsML/ML_group/KC/projects/dragonfly-automation',
+    '/Users/keith.cheveralls/projects/dragonfly-automation',
+]
+for DRAGONFLY_REPO in DRAGONFLY_REPOS:
+    if os.path.isdir(DRAGONFLY_REPO):
+        break
+sys.path.append(DRAGONFLY_REPO)
+
 try:
-    DRAGONFLY_REPO = '/Users/keith.cheveralls/projects/dragonfly-automation'
-    sys.path.append(DRAGONFLY_REPO)
     from dragonfly_automation.fov_models import PipelineFOVScorer
 except ImportError:
-    DRAGONFLY_REPO = '/gpfsML/ML_group/KC/projects/dragonfly-automation'
-    sys.path.append(DRAGONFLY_REPO)
-    try:
-        from dragonfly_automation.fov_models import PipelineFOVScorer
-    except ImportError:
-        PipelineFOVScorer = None
+    print('Warning: dragonfly_automation package not found')
 
 
 def timestamp():
@@ -196,14 +198,17 @@ def insert_raw_pipeline_microscopy_fovs(session, root_dir, pml_id, errors='warn'
 
     # the filepath to the raw TIFF file
     metadata['raw_filepath'] = [
-        os.path.join(row.src_dirpath, row.src_filename) for ind, row in metadata.iterrows()]
+        os.path.join(row.src_dirpath, row.src_filename) for ind, row in metadata.iterrows()
+    ]
 
     metadata = metadata.groupby(['plate_id', 'pipeline_well_id'])
     for group in metadata.groups:
         plate_id, well_id = group
         group_metadata = metadata.get_group(group)
         try:
-            line_ops = operations.PolyclonalLineOperations.from_plate_well(session, plate_id, well_id)
+            line_ops = operations.PolyclonalLineOperations.from_plate_well(
+                session, plate_id, well_id
+            )
         except ValueError:
             print('Cannot insert FOVs for (%s, %s) because no cell line exists' % group)
             continue
@@ -372,8 +377,10 @@ def main():
         dataset = (
             Session.query(models.MicroscopyDataset)
             .filter(models.MicroscopyDataset.pml_id == args.pml_id)
-            .one()
+            .one_or_none()
         )
+        if dataset is None:
+            raise ValueError('No dataset found for %s' % args.pml_id)
         fovs = dataset.fovs
 
     # construct the PlateMicroscopy metadata

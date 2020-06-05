@@ -64,8 +64,12 @@ def create_app(args):
     api.add_resource(resources.CellLineAnnotation, '/lines/<int:cell_line_id>/annotation')
 
     # FOV and ROI image data (z-stacks and z-projections)
-    api.add_resource(resources.MicroscopyFOV, '/fovs/<int:fov_id>/<string:kind>/<string:channel>')
-    api.add_resource(resources.MicroscopyFOVROI, '/rois/<int:roi_id>/<string:kind>/<string:channel>')
+    api.add_resource(
+        resources.MicroscopyFOV, '/fovs/<int:fov_id>/<string:kind>/<string:channel>'
+    )
+    api.add_resource(
+        resources.MicroscopyFOVROI, '/rois/<int:roi_id>/<string:kind>/<string:channel>'
+    )
 
     # FOV annotations (always one annotation per FOV)
     api.add_resource(resources.MicroscopyFOVAnnotation, '/fovs/<int:fov_id>/annotation')

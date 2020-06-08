@@ -170,7 +170,9 @@ def insert_plate_microscopy_fovs(session, cache_dir=None, errors='warn'):
         group_metadata = metadata.get_group(group)
 
         try:
-            line_ops = operations.PolyclonalLineOperations.from_plate_well(session, plate_id, well_id)
+            line_ops = operations.PolyclonalLineOperations.from_plate_well(
+                session, plate_id, well_id
+            )
         except Exception:
             print('Cannot insert FOVs for (%s, %s) because no cell line exists' % group)
             continue
@@ -257,7 +259,7 @@ def do_fov_tasks(Session, args, processor_method_name, processor_method_kwargs, 
     ----------
     Session :
     args : the parsed command-line arguments
-        (from which we obtain the paths to the 'plat_microscopy' and 'raw_pipeline_microscopy' dirs)
+        (needed for the paths to the 'plate_microscopy' and 'raw_pipeline_microscopy' dirs)
     processor_method_name : the name of the FOVProcessor method to call
     processor_method_kwargs : the kwargs for the method (no args are allowed)
     fovs : optional list of FOVs to be processed (if None, all FOVs are processed)

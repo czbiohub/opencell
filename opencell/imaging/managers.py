@@ -116,7 +116,9 @@ class PlateMicroscopyManager:
         raw_pattern = rf'^({well_id})_({site_num})_({target_name})({appendix})?.ome.tif$'
 
         # in Jin filenames, the second well_id is not relevant
-        raw_jin_pattern = rf'^({well_id})_({site_num})_Jin_(?:{well_id})_({target_name})({appendix})?.ome.tif$'  # noqa: E501
+        raw_jin_pattern = (
+            rf'^({well_id})_({site_num})_Jin_(?:{well_id})_({target_name})({appendix})?.ome.tif$'  # noqa: E501
+        )
 
         filename_was_parsed = False
         for pattern in [raw_pattern, raw_jin_pattern]:
@@ -179,12 +181,16 @@ class PlateMicroscopyManager:
 
         # rename the subdirectory columns
         # (we know that there are always at most three of these columns)
-        md = md.rename(columns={'level_0': 'plate_dir', 'level_1': 'exp_dir', 'level_2': 'exp_subdir'})
+        md = md.rename(
+            columns={'level_0': 'plate_dir', 'level_1': 'exp_dir', 'level_2': 'exp_subdir'}
+        )
 
         # flag all of the raw files
         # these are all TIFF files in experiment dirs of the form '^ML[0-9]{4}_[0-9]{8}$'
         # (for example: 'ML0045_20181022')
-        md['is_raw'] = md.exp_dir.apply(lambda s: re.match(r'^ML[0-9]{4}_[0-9]{8}$', s) is not None)
+        md['is_raw'] = md.exp_dir.apply(
+            lambda s: re.match(r'^ML[0-9]{4}_[0-9]{8}$', s) is not None
+        )
 
         self.md = md
 
@@ -268,7 +274,8 @@ class PlateMicroscopyManager:
                 row.plate_dir,
                 row.exp_dir,
                 row.exp_subdir if not pd.isna(row.exp_subdir) else '',
-                row.filename)
+                row.filename
+            )
 
         # construct an fov_id that should be globally unique
         for ind, row in md_raw.iterrows():
@@ -297,8 +304,11 @@ class PlateMicroscopyManager:
         for ind, row in md.iterrows():
             if not np.mod(ind, 10000):
                 print(ind)
-            s = os.stat(os.path.join(
-                self.root_dir, row.plate_dir, row.exp_dir, row.exp_subdir, row.filename))
+            s = os.stat(
+                os.path.join(
+                    self.root_dir, row.plate_dir, row.exp_dir, row.exp_subdir, row.filename
+                )
+            )
             md.at[ind, 'filesize'] = s.st_size
             md.at[ind, 'ctime'] = s.st_ctime
         self.md = md

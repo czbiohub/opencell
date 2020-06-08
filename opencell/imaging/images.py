@@ -91,7 +91,7 @@ class MicroManagerTIFF:
             'laser_status_405': mm_tag['AndorILE-A-Laser 405-Power Enable'],
             'laser_power_405': mm_tag['AndorILE-A-Laser 405-Power Setpoint'],
             'laser_status_488': mm_tag['AndorILE-A-Laser 488-Power Enable'],
-            'laser_power_488': mm_tag['AndorILE-A-Laser 488-Power Setpoint']
+            'laser_power_488': mm_tag['AndorILE-A-Laser 488-Power Setpoint'],
         }
         return md
 
@@ -111,7 +111,7 @@ class MicroManagerTIFF:
             'laser_status_405': mm_tag.get('Andor ILE-A-Laser 405-Power Enable')['PropVal'],
             'laser_power_405': mm_tag.get('Andor ILE-A-Laser 405-Power Setpoint')['PropVal'],
             'laser_status_488': mm_tag.get('Andor ILE-A-Laser 488-Power Enable')['PropVal'],
-            'laser_power_488': mm_tag.get('Andor ILE-A-Laser 488-Power Setpoint')['PropVal']
+            'laser_power_488': mm_tag.get('Andor ILE-A-Laser 488-Power Setpoint')['PropVal'],
         }
         return md
 
@@ -231,8 +231,9 @@ class RawPipelineTIFF(MicroManagerTIFF):
         num_dropped_rows = self.mm_metadata.shape[0] - md.shape[0]
         if num_dropped_rows != num_error_rows:
             self.event_logger(
-                '%s rows with NAs were dropped but %s rows had errors' %
-                (num_dropped_rows, num_error_rows))
+                '%s rows with NAs were dropped but %s rows had errors'
+                % (num_dropped_rows, num_error_rows)
+            )
 
         # check that we can coerce the parsed columns as expected
         int_columns = ['slice_ind', 'channel_ind']
@@ -277,7 +278,8 @@ class RawPipelineTIFF(MicroManagerTIFF):
                 self.has_valid_channel_inds = True
             else:
                 self.event_logger(
-                    'Channels have unequal number of slices: %s and %s' % (num_405, num_488))
+                    'Channels have unequal number of slices: %s and %s' % (num_405, num_488)
+                )
 
         # in each channel, check that slice_ind increments by 1.0
         # and that exposure time and laser power are consistent
@@ -290,17 +292,21 @@ class RawPipelineTIFF(MicroManagerTIFF):
                 self.has_valid_slice_inds = True
             elif len(steps) == 1:
                 self.event_logger(
-                    'Unexpected slice_ind increment %s for channel_ind %s' % (steps[0], channel_ind))
+                    'Unexpected slice_ind increment %s for channel_ind %s'
+                    % (steps[0], channel_ind)
+                )
             elif len(steps) > 1:
                 self.event_logger(
-                    'The slice_inds are not contiguous for channel_ind %s' % channel_ind)
+                    'The slice_inds are not contiguous for channel_ind %s' % channel_ind
+                )
 
             for column in float_columns:
                 steps = np.unique(np.diff(md_channel[column]))
                 if len(steps) > 1 or steps[0] != 0:
                     self.event_logger(
-                        'Inconsistent values found in column %s for channel_ind %s' %
-                        (column, channel_ind))
+                        'Inconsistent values found in column %s for channel_ind %s'
+                        % (column, channel_ind)
+                    )
 
         self.validated_mm_metadata = md
 
@@ -358,7 +364,8 @@ class RawPipelineTIFF(MicroManagerTIFF):
             for channel_name in (self.laser_405, self.laser_488):
                 channel_md = md.loc[md.channel_ind == self.channel_inds[channel_name]]
                 self.global_metadata.update(
-                    self.tag_and_coerce_metadata(channel_md.iloc[0], tag=channel_name))
+                    self.tag_and_coerce_metadata(channel_md.iloc[0], tag=channel_name)
+                )
                 self.stacks[channel_name] = self.concat_pages(channel_md.page_ind.values)
 
         elif self.safe_to_split_in_half:
@@ -401,26 +408,20 @@ class RawPipelineTIFF(MicroManagerTIFF):
 
         except Exception:
             self.event_logger(
-                'An error occured while %s-projecting the %s channel' % (axis, channel_name))
+                'An error occured while %s-projecting the %s channel' % (axis, channel_name)
+            )
 
 
     def calculate_z_profiles(self, channel):
         '''
         Calculate various statistics of the intensities for each z-slice
         '''
-
         stack = self.stacks[channel]
-
-        min_profile = np.array([zslice.min() for zslice in stack]).astype(int)
-        max_profile = np.array([zslice.max() for zslice in stack]).astype(int)
-        mean_profile = np.array([zslice.mean() for zslice in stack]).astype(int)
-        p9999_profile = np.array([np.percentile(zslice, 99.99) for zslice in stack]).astype(int)
-
         return {
-            'min': min_profile,
-            'max': max_profile,
-            'mean': mean_profile,
-            'p9999': p9999_profile,
+            'min': np.array([zslice.min() for zslice in stack]).astype(int),
+            'max': np.array([zslice.max() for zslice in stack]).astype(int),
+            'mean': np.array([zslice.mean() for zslice in stack]).astype(int),
+            'p9999': np.array([np.percentile(zslice, 99.99) for zslice in stack]).astype(int),
         }
 
 

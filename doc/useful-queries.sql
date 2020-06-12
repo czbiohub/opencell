@@ -174,3 +174,7 @@ select * from (
 ) ant
 where category = 'low_gfp'
 order by plate_id, well_id
+
+
+-- explode the protein_group table by gene_names list
+select *, unnest(gene_names) as gene_name from mass_spec_protein_group

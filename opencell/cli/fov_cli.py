@@ -35,7 +35,7 @@ sys.path.append(DRAGONFLY_REPO)
 
 try:
     from dragonfly_automation.fov_models import PipelineFOVScorer
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     print('Warning: dragonfly_automation package not found')
 
 

@@ -316,7 +316,7 @@ def main():
     if args.insert_raw_pipeline_microscopy_datasets:
         metadata = pd.read_csv(args.microscopy_master_key)
         metadata.rename(columns={'id': 'pml_id'}, inplace=True)
-        metadata.dropna(how='any', subset=['pml_id'], axis=0, inplace=True)
+        metadata.dropna(how='any', subset=['pml_id', 'date'], axis=0, inplace=True)
         insert_microscopy_datasets(
             Session,
             metadata,

@@ -227,8 +227,11 @@ def uniprot_id_mapper(input_ids, input_type, output_type):
 
     Example
     -------
-    To map ENST ID to uniprot ID:
-    map_uniprot_ids(enst_ids, input_type='ENSEMBL_TRS_ID', output_type='ACC')
+    To map ENST IDs to uniprot IDs:
+    uniprot_id_mapper(enst_ids, input_type='ENSEMBL_TRS_ID', output_type='ACC')
+
+    To map Uniprot IDs to ENSG IDs:
+    uniprot_id_mapper(uniprot_ids, input_type='ACC', output_type='ENSEMBL_ID')
 
     '''
     api_url = 'https://www.uniprot.org/uploadlists'
@@ -273,3 +276,58 @@ def uniprot_id_mapper(input_ids, input_type, output_type):
     ids = pd.concat(dfs, axis=0)
     ids.rename(columns={'From': input_type, 'To': output_type}, inplace=True)
     return ids
+
+
+def mygene_uniprot_id_to_ensg_id(uniprot_id):
+    '''
+    Use the mygene API to map a uniprot_id to an ensg_id
+    '''
+    params = {
+        'q': uniprot_id,
+        'species': 'human',
+        'ensemblonly': 'true',
+        'fields': 'ensembl.gene,uniprot',
+    }
+
+    try:
+        response = requests.get('http://mygene.info/v3/query', params)
+    except Exception:
+        print("Warning: mygene API error for uniprot_id '%s'" % uniprot_id)
+        return None
+
+    payload = response.json()
+    hits = payload.get('hits')
+    if hits is None or not len(hits):
+        print("Warning: no mygene hits for uniprot_id '%s'" % uniprot_id)
+        return None
+    hit = hits[0]
+
+    # check that the uniprot_id of the hit matches the query uniprot_id
+    # (note that, rarely, a hit can either include multiple uniprot_ids
+    # or have no 'uniprot' field at all)
+    hit_uniprot = hit.get('uniprot')
+    if hit_uniprot is not None:
+        hit_uniprot_ids = hit_uniprot['Swiss-Prot']
+        if isinstance(hit_uniprot_ids, str):
+            hit_uniprot_ids = [hit_uniprot_ids]
+        if uniprot_id not in hit_uniprot_ids:
+            print(
+                "Warning: the top mygene hit for uniprot_id '%s' has a different uniprot_id"
+                % uniprot_id
+            )
+            return None
+    else:
+        print(
+            "Warning: no uniprot_ids in the top mygene hit for uniprot_id '%s'"
+            % uniprot_id
+        )
+
+    hit_ensembl = hit['ensembl']
+    if isinstance(hit_ensembl, list):
+        hit_ensembl = hit_ensembl[0]
+        print(
+            "Warning: multiple ensembl entries in the top mygene hit for uniprot_id '%s'"
+            % uniprot_id
+        )
+    ensg_id = hit_ensembl.get('gene')
+    return ensg_id

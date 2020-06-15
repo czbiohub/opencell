@@ -244,20 +244,28 @@ def insert_ensg_ids(Session):
     '''
     Populate the ENSG ID column of the uniprot_metadata table
     '''
-    @dask.delayed
-    def create_task(Session, uniprot_id):
-        ops.insert_ensg_id(Session(), uniprot_id)
 
-    tasks = [
-        create_task(Session, row.uniprot_id)
+    uniprot_ids = [
+        row.uniprot_id
         for row in (
             Session.query(models.UniprotMetadata)
             .filter(models.UniprotMetadata.ensg_id.is_(None))
             .all()
         )
     ]
+    print('Inserting ENSG IDs for %s new uniprot_ids' % len(uniprot_ids))
 
-    print('Inserting ENSG IDs for %s new uniprot_ids' % len(tasks))
+    parallelize = False
+    if not parallelize:
+        for uniprot_id in uniprot_ids:
+            ops.insert_ensg_id(Session, uniprot_id)
+        return
+
+    @dask.delayed
+    def create_task(Session, uniprot_id):
+        ops.insert_ensg_id(Session(), uniprot_id)
+
+    tasks = [create_task(Session, uniprot_id) for uniprot_id in uniprot_ids]
     with dask.diagnostics.ProgressBar():
         dask.compute(*tasks)
 

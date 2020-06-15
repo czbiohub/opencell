@@ -245,16 +245,15 @@ def insert_ensg_id(session, uniprot_id):
         return
 
     try:
-        df = uniprot_utils.uniprot_id_mapper([uniprot_id], input_type='ACC', output_type='ENSEMBL_ID')
+        ensg_id = uniprot_utils.mygene_uniprot_id_to_ensg_id(uniprot_id)
     except Exception:
-        print('Warning: error calling Uniprot mapper API for uniprot_id %s' % uniprot_id)
-        return
+        print('Uncaught error in mygene_uniprot_id_to_ensg_id with uniprot_id %s' % uniprot_id)
 
-    if df.shape[0] == 0:
+    if ensg_id is None:
         print('Warning: no ENSG ID found for uniprot_id %s' % uniprot_id)
         return
 
-    uniprot_metadata.ensg_id = df.iloc[0]['ENSEMBL_ID']
+    uniprot_metadata.ensg_id = ensg_id
     utils.add_and_commit(session, uniprot_metadata, errors='warn')
 
 

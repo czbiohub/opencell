@@ -181,10 +181,10 @@ def mult_volcano(v_df, baits):
     fig.show()
 
 
-def volcano_plot_two_fdrs(v_df, bait, fcd1, fcd2):
+def volcano_plot_two_fdrs(v_df, fdr_df, bait):
     """plot the volcano plot of a given bait"""
     v_df = v_df.copy()
-
+    v_df = v_df.set_index(('gene_names', 'gene_names'))
     # Specify the bait column
     bait_vals = v_df[bait]
     hits = bait_vals[bait_vals['hits']]
@@ -194,6 +194,9 @@ def volcano_plot_two_fdrs(v_df, bait, fcd1, fcd2):
     print("Number of Minor Hits: " + str(minor_hits.shape[0]))
 
     no_hits = bait_vals[(~bait_vals['hits']) | (~bait_vals['minor_hits'])]
+
+    fcd1 = fdr_df.loc[bait]['fdr1']
+    fcd2 = fdr_df.loc[bait]['fdr5']
 
     xmax = hits['enrichment'].max() + 3
     if hits.shape[0] > 0:
@@ -279,3 +282,87 @@ def two_fdrs(pval_df, fdr1, fdr2):
 
     pval_df.sort_index(axis=1, inplace=True)
     return pval_df
+
+
+def comparison_volcano_temp(bait, v_df, v2_df, fdr_df, fcd1, fcd2):
+    """plot volcano plots from two analyses for qualitative comparisons"""
+
+    # initiate dfs
+    v_df = v_df.copy()
+    v_df = v_df.set_index(('gene_names', 'gene_names'))
+    v2_df = v2_df.copy()
+    v2_df = v2_df.set_index(('gene_names', 'gene_names'))
+    v_dfs = [v_df, v2_df]
+
+
+    # start a subplot
+    fig = make_subplots(rows=1, cols=2)
+    for i in [1, 2]:
+        bait_vals = v_dfs[i-1][bait]
+
+        hits = bait_vals[bait_vals['hits']]
+        print("Number of Significant Hits: " + str(hits.shape[0]))
+
+        minor_hits = bait_vals[bait_vals['minor_hits']]
+        print("Number of Minor Hits: " + str(minor_hits.shape[0]))
+
+        no_hits = bait_vals[(~bait_vals['hits']) | (~bait_vals['minor_hits'])]
+
+
+        # calculations for x axis min, max parameters
+        xmax = hits['enrichment'].max() + 3
+        if hits.shape[0] > 0:
+            ymax = hits['pvals'].max() + 4
+        else:
+            ymax = 30
+
+        # FCD plot calculation
+        if i == 2:
+            fcd1 = fdr_df.loc[bait]['fdr1']
+            fcd2 = fdr_df.loc[bait]['fdr5']
+
+
+        x1 = np.array(list(np.linspace(-12, -1 * fcd1[1] - 0.001, 200))
+            + list(np.linspace(fcd1[1] + 0.001, 12, 200)))
+        y1 = fcd1[0] / (abs(x1) - fcd1[1])
+        x2 = np.array(list(np.linspace(-12, -1 * fcd2[1] - 0.001, 200))
+            + list(np.linspace(fcd2[1] + 0.001, 12, 200)))
+        y2 = fcd2[0] / (abs(x2) - fcd2[1])
+
+        # add significant hits
+        fig.add_trace(go.Scatter(x=hits['enrichment'], y=hits['pvals'],
+            mode='markers+text', text=hits.index.tolist(), textposition='bottom right',
+            opacity=0.6, marker=dict(size=10, line=dict(width=2))), row=1, col=i)
+
+        # add minor hits
+        fig.add_trace(go.Scatter(x=minor_hits['enrichment'], y=minor_hits['pvals'],
+            mode='markers+text', text=minor_hits.index.tolist(), textposition='bottom right',
+            opacity=0.6, marker=dict(size=10, color='firebrick')), row=1, col=i)
+
+        # add non-significant hits
+        fig.add_trace(go.Scatter(x=no_hits['enrichment'], y=no_hits['pvals'],
+            mode='markers', text=no_hits.index.tolist(), opacity=0.4,
+            marker=dict(size=8)), row=1, col=i)
+
+        fig.add_trace(go.Scatter(x=x1, y=y1, mode='lines',
+            line=dict(color='royalblue', dash='dash')), row=1, col=i)
+        fig.add_trace(go.Scatter(x=x2, y=y2, mode='lines',
+            line=dict(color='firebrick', dash='dash')), row=1, col=i)
+        # axis customization
+        fig.update_xaxes(title_text='Enrichment (log2)', row=1, col=i,
+            range=[-1 * xmax, xmax])
+        fig.update_yaxes(title_text='p-value (-log10)', row=1, col=i,
+            range=[-1, ymax])
+
+    # layout
+    fig.update_layout(
+        # width=1000,
+        # height=600,
+        width=800,
+        height=400,
+        title={'text': bait,
+            'x': 0.5,
+            'y': 0.98},
+            showlegend=False,
+            margin={'l': 30, 'r': 30, 'b': 20, 't': 40})
+    fig.show()

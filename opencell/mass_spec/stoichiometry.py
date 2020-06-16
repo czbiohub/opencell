@@ -32,7 +32,9 @@ def compute_stoich_df(m_imputed, seq_df, rnaseq, pvals, target_re=r'P\d{3}_(.*)'
     new_cols = pys.new_col_names(col_names, med_RE, replacement_RE)
     final_stoi = pys.rename_cols(final_stoi, col_names, new_cols)
 
-    final_stoi = rnaseq_abundance_stoichiometry(final_stoi, rnaseq)
+    final_stoi = abundance_stoichiometry(final_stoi, rnaseq, ms=True)
+    # return final_stoi
+
     final_stoi.set_index('Protein IDs', drop=True, inplace=True)
     tpm_vals = final_stoi[['Gene names', 'tpm_ave']].copy()
 
@@ -41,17 +43,22 @@ def compute_stoich_df(m_imputed, seq_df, rnaseq, pvals, target_re=r'P\d{3}_(.*)'
         'Fasta headers', 'tpm_ave'], inplace=True)
 
 
-    baits = list(final_stoi)
+    baits = list(set(pvals.columns.get_level_values(0).tolist()))
 
     # Append abundance stoichiometries
     abundance_stoi = pd.DataFrame()
     for bait in baits:
+        if bait == 'gene_names':
+            continue
         pvals[(bait, 'interaction_stoi')] = None
         pvals[(bait, 'abundance_stoi')] = None
-        target = re.search(target_re, bait).groups()[0]
+        try:
+            target = re.search(target_re, bait).groups()[0]
+        except Exception:
+            print(bait)
         target_row = tpm_vals[tpm_vals['Gene names'] == target]
-        if target_row.shape[0] == 1:
-            target_tpm = target_row['tpm_ave'].item()
+        if target_row.shape[0] >= 1:
+            target_tpm = target_row['tpm_ave'].iloc[0]
             if target_tpm:
                 if target_tpm > 0:
                     abundance_stoi[bait] = tpm_vals['tpm_ave'] / target_tpm
@@ -208,12 +215,23 @@ def divide_by_bait(divided_df, intensity_re=r'P\d{3}_(.*)'):
     return divided_df
 
 
-def rnaseq_abundance_stoichiometry(stoich_df, rnaseq_df):
+def abundance_stoichiometry(stoich_df, rnaseq_df, ms=True):
     """
     """
     stoich_df = stoich_df.copy()
     rnaseq_df = rnaseq_df.copy()
-    rnaseq_df.drop(columns='major coding ENST', inplace=True)
+    if ms:
+        rnaseq_df = rnaseq_df[
+            [('Info', 'Gene names'), ('Normalized Intensity', 'Normalized Intensity')]]
+        rnaseq_df.columns = rnaseq_df.columns.droplevel('Baits')
+        rnaseq_df.rename(
+            columns={
+                'Gene names': 'gene', 'Normalized Intensity': 'tpm_ave'}, inplace=True)
+
+    else:
+        rnaseq_df.drop(columns='major coding ENST', inplace=True)
+
+    rnaseq_df['gene'] = rnaseq_df['gene'].astype(str)
 
     stoich_gene_set = set(stoich_df['Gene names'].tolist())
     rnaseq_gene_set = set(rnaseq_df['gene'].tolist())
@@ -244,7 +262,8 @@ def rnaseq_abundance_stoichiometry(stoich_df, rnaseq_df):
             'tpm_ave': sum_tpm}), ignore_index=True)
 
     stoich_df.set_index('Gene names', drop=True, inplace=True)
-    rnaseq_stoich.set_index('gene', drop=True, inplace=True)
+    rnaseq_stoich = rnaseq_stoich.groupby('gene').sum()
+    # rnaseq_stoich.set_index('gene', drop=True, inplace=True)
     stoich_df['tpm_ave'] = None
     stoich_df.update(rnaseq_stoich, join='left')
     stoich_df = stoich_df.reset_index().rename(columns={'index': 'Gene names'})

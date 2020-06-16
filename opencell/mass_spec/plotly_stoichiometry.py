@@ -63,49 +63,26 @@ def stoich_plot(v_df, bait, target_re=r'P\d{3}_(.*)'):
     fig.show()
 
 
-def hits_stoich_plot(v_df, pvals_df, bait, labels=True, target_re=r'P\d{3}_(.*)'):
+def hits_stoich_plot(v_df, bait, labels=True, target_re=r'P\d{3}_(.*)'):
     """plot the volcano plot of a given bait"""
     v_df = v_df.copy()
-    pvals_df = pvals_df.copy()
-
-    # Specify the bait column
-    tpm_vals = v_df[['Gene names', 'tpm_ave']]
+    v_df = v_df.set_index(('gene_names', 'gene_names'))
 
     # get only hits
-    pvals_df = pvals_df[bait]
-    hits = list(set(pvals_df[pvals_df['hits']].index.tolist()))
-    minor_hits = list(set(pvals_df[pvals_df
-        ['minor_hits']].index.tolist()))
-
-    hits_df = v_df[v_df['Gene names'].isin(hits)]
-    hit_vals = hits_df[bait]
-
-    minor_hits_df = v_df[v_df['Gene names'].isin(minor_hits)]
-    minor_hit_vals = minor_hits_df[bait]
-
-    # Calculate tpm stoich
-    target = re.search(target_re, bait).groups()[0]
-    target_row = tpm_vals[tpm_vals['Gene names'] == target]
-    if target_row.shape[0] > 0:
-        target_tpm = target_row['tpm_ave'].max()
-    else:
-        raise ValueError(target + " not found in list of preys")
-
-    hit_tpm_vals = tpm_vals[tpm_vals['Gene names'].isin(hits)]
-    hit_tpm_vals = hit_tpm_vals['tpm_ave'] / target_tpm
-
-    minor_tpm_vals = tpm_vals[tpm_vals['Gene names'].isin(minor_hits)]
-    minor_tpm_vals = minor_tpm_vals['tpm_ave'] / target_tpm
-
+    v_df = v_df[bait]
+    v_df = v_df[(v_df['hits']) | (v_df['minor_hits'])]
+    major_hits = v_df[v_df['hits']]
+    minor_hits = v_df[v_df['minor_hits']]
 
     # Figure Generation
     fig = go.Figure()
 
-    fig.add_trace(go.Scatter(x=hit_vals, y=hit_tpm_vals,
-        mode='markers', text=hits_df['Gene names'].tolist(), textposition='bottom right',
+
+    fig.add_trace(go.Scatter(x=major_hits['interaction_stoi'], y=major_hits['abundance_stoi'],
+        mode='markers', text=major_hits.index.to_list(), textposition='bottom right',
         opacity=0.6, marker=dict(size=10, color='LightSkyBlue')))
-    fig.add_trace(go.Scatter(x=minor_hit_vals, y=minor_tpm_vals,
-        mode='markers', text=minor_hits_df['Gene names'].tolist(), textposition='bottom right',
+    fig.add_trace(go.Scatter(x=minor_hits['interaction_stoi'], y=minor_hits['abundance_stoi'],
+        mode='markers', text=minor_hits.index.tolist(), textposition='bottom right',
         opacity=0.6, marker=dict(size=10, color='firebrick')))
     if labels:
         fig.update_traces(mode='markers+text', marker_line_width=1)

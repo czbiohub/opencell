@@ -633,6 +633,42 @@ def multi_impute(filtered_df, distance=1.8, width=0.3):
     return imputed
 
 
+def multi_impute_prey(filtered_df, distance=1.8, width=0.3):
+    """To test for enrichment, preys with that were undetected in some baits
+    need to be assigned some baseline values. This function imputes
+    a value from a normal distribution of the left-tail of a bait's
+    capture distribution for the undetected preys.
+
+    This process is for multiprocessing
+
+    rtype df: pd dataframe"""
+
+    imputed = filtered_df.copy()
+    imputed.drop(columns='Info', inplace=True)
+    imputed = imputed.T
+
+    # Retrieve all col names that are not classified as Info
+    baits = list(imputed)
+    bait_series = [imputed[bait].copy() for bait in baits]
+
+    # Use multiprocessing pool to parallel impute
+    p = Pool()
+    impute_list = p.map(pool_impute_prey, bait_series)
+    p.close()
+    p.join()
+
+    for i, bait in enumerate(baits):
+        imputed[bait] = impute_list[i]
+
+    imputed = imputed.T
+
+    info_cols = [x for x in list(filtered_df) if x[0] == 'Info']
+    for col in info_cols:
+        imputed[col] = filtered_df[col]
+
+    return imputed
+
+
 def pool_impute(bait_group, distance=1.8, width=0.3):
     """target for multiprocessing pool from multi_impute_nans"""
     all_vals = bait_group.stack()
@@ -649,5 +685,28 @@ def pool_impute(bait_group, distance=1.8, width=0.3):
     # loop through each column in the group
     for col in list(bait_df):
         bait_df[col] = bait_df[col].apply(random_imputation_val,
+            args=(imp_mean, imp_stdev))
+    return bait_df
+
+
+def pool_impute_prey(bait_group, distance=0, width=0.3):
+    """target for multiprocessing pool from multi_impute_nans"""
+
+    if bait_group.count() > 100:
+        return bait_group
+
+
+    mean = bait_group.mean()
+    stdev = bait_group.std()
+
+    # get imputation distribution mean and stdev
+    imp_mean = mean - distance * stdev
+    imp_stdev = stdev * width
+
+    # copy a df of the group to impute values
+    bait_df = bait_group.copy()
+
+
+    bait_df = bait_df.apply(random_imputation_val,
             args=(imp_mean, imp_stdev))
     return bait_df

@@ -89,19 +89,14 @@ ADD CONSTRAINT fk_microscopy_fov_result_fov_id_microscopy_fov FOREIGN KEY (fov_i
    ON DELETE CASCADE;
 
 
--- count FOVs per dataset
-select d.pml_id as pml_id, d.date, count(fov.id) from microscopy_dataset d
-left join microscopy_fov fov on d.pml_id = fov.pml_id
-group by d.pml_id, d.date
-order by d.pml_id desc;
 
--- count FOVs (or pulldowns) per cell line
-select * from cell_line_metadata
-left join (
-	select cell_line_id, count(*) as n from microscopy_fov
-	group by cell_line_id
-	order by n desc
-) pd using (cell_line_id);
+-- count FOVs per dataset and plate
+select fov.pml_id, plate_design_id, d.date, count(*) from microscopy_fov fov
+left join microscopy_dataset d on fov.pml_id = d.pml_id
+left join cell_line cl on cl.id = fov.cell_line_id
+left join crispr_design cd on cd.id = cl.crispr_design_id
+group by (fov.pml_id, plate_design_id, d.date)
+order by pml_id
 
 -- delete FOVs and descendents from particular datasets
 delete from microscopy_fov_result

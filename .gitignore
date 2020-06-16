@@ -4,6 +4,7 @@
 
 .vscode/
 ignore/
+output/
 cache/
 plate-microscopy-cache/
 tests/output/

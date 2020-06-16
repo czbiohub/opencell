@@ -111,7 +111,8 @@ class FOVProcessor:
             src_type=fov.dataset.root_directory,
             raw_filepath=fov.raw_filename,
             target_name=crispr_design.target_name,
-            all_roi_rows=all_roi_rows)
+            all_roi_rows=all_roi_rows
+        )
 
         processor.fov = fov
         return processor
@@ -217,7 +218,9 @@ class FOVProcessor:
             os.makedirs(dst_dirpath, exist_ok=True)
 
         # construct the destination filename
-        dst_filename = f'{dst_plate_dir}-{self.well_id}-{self.pml_id}-{self.site_id}_{appendix}.{ext}'  # noqa: E501
+        dst_filename = (
+            f'{dst_plate_dir}-{self.well_id}-{self.pml_id}-{self.site_id}_{appendix}.{ext}'
+        )
         return os.path.join(dst_dirpath, dst_filename)
 
 
@@ -360,8 +363,14 @@ class FOVProcessor:
         filepath_488 = self.dst_filepath(dst_root, kind='proj', channel='488', ext='tif')
 
         ims = {}
-        ims['405'] = tifffile.imread(filepath_405)[top:(top + roi_size), left:(left + roi_size), None]
-        ims['488'] = tifffile.imread(filepath_488)[top:(top + roi_size), left:(left + roi_size), None]
+        ims['405'] = (
+            tifffile.imread(filepath_405)
+            [top:(top + roi_size), left:(left + roi_size), None]
+        )
+        ims['488'] = (
+            tifffile.imread(filepath_488)
+            [top:(top + roi_size), left:(left + roi_size), None]
+        )
         ims['rgb'] = self.make_rgb(ims['405'], ims['488'])
 
         encoded_ims = {}
@@ -438,7 +447,8 @@ class FOVProcessor:
                     multichannel=False,
                     preserve_range=True,
                     anti_aliasing=False,
-                    order=1)
+                    order=1
+                )
                 stacks[channel] = stacks[channel].astype('uint16')
 
         # save the stacks as a hyperstack in CZXY order
@@ -461,7 +471,7 @@ class FOVProcessor:
             (min_coord, min_coord),
             (min_coord, max_coord),
             (max_coord, min_coord),
-            (max_coord, max_coord)
+            (max_coord, max_coord),
         ]
         return self._crop_rois(dst_root, roi_size, roi_top_left_positions)
 
@@ -608,14 +618,16 @@ class FOVProcessor:
                 cropped_stack,
                 original_step_size=roi_props['original_step_size'],
                 target_step_size=roi_props['target_step_size'],
-                required_num_slices=roi_props['required_num_slices'])
+                required_num_slices=roi_props['required_num_slices']
+            )
 
             # the did_resample_stack flag will always be the same for both channels
             roi_props['stacks_resampled'] = did_resample_stack
 
             # downsample the pixel intensities from uint16 to uint8
             cropped_stack, min_intensity, max_intensity = self.stack_to_uint8(
-                cropped_stack, percentile=0.01)
+                cropped_stack, percentile=0.01
+            )
 
             # log the black and white points used to downsample the intensities
             roi_props['min_intensity_%s' % channel] = min_intensity
@@ -714,7 +726,8 @@ class FOVProcessor:
         rows = []
         for row_ind in range(num_rows):
             row = np.concatenate(
-                [stack[:, :, col_ind + row_ind*num_cols] for col_ind in range(num_cols)], axis=1)
+                [stack[:, :, col_ind + row_ind*num_cols] for col_ind in range(num_cols)], axis=1
+            )
             rows.append(row)
         tile = np.concatenate(rows, axis=0)
 

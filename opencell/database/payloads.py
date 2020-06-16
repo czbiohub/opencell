@@ -8,7 +8,7 @@ import pandas as pd
 import sqlalchemy as db
 
 from opencell import constants
-from opencell.database import models, utils
+from opencell.database import models, utils, uniprot_utils
 from opencell.imaging.processors import FOVProcessor
 
 
@@ -29,6 +29,20 @@ def cell_line_payload(cell_line, optional_fields):
         'target_terminus': design.target_terminus.value[0],
         'transcript_id': design.transcript_id,
         'hek_tpm': design.hek_tpm,
+    }
+
+    if not design.uniprot_metadata:
+        print(design.target_name)
+
+    uniprot_metadata = {
+        'uniprot_id': design.uniprot_metadata.uniprot_id,
+        'gene_names': design.uniprot_metadata.gene_names.split(' '),
+        'protein_name': uniprot_utils.prettify_uniprot_protein_name(
+            design.uniprot_metadata.protein_names
+        ),
+        'annotation': uniprot_utils.prettify_uniprot_annotation(
+            design.uniprot_metadata.annotation
+        ),
     }
 
     # the sequencing percentages
@@ -62,6 +76,7 @@ def cell_line_payload(cell_line, optional_fields):
         'scalars': scalars,
         'counts': counts,
         'annotation': annotation,
+        'uniprot_metadata': uniprot_metadata,
     }
 
     # get the thumbnail of the annotated ROI from the 'best' FOV

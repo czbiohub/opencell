@@ -7,7 +7,7 @@ import pandas as pd
 import sqlalchemy as db
 
 from opencell import constants
-from opencell.database import models, utils
+from opencell.database import models, utils, uniprot_utils
 
 
 def get_or_create_progenitor_cell_line(session, name, notes=None, create=False):
@@ -160,6 +160,103 @@ def create_polyclonal_lines(
     utils.add_and_commit(session, electroporation, errors=errors)
 
 
+def insert_uniprot_metadata_from_id(session, uniprot_id, errors='warn'):
+    '''
+    Retrieve and insert Uniprot metadata for a given uniprot_id
+    '''
+    retrieved_metadata = uniprot_utils.query_uniprotkb(
+        query=uniprot_id, only_reviewed=False, limit=1
+    )
+
+    # this is subtle: sometimes, a result is retrieved,
+    # but its uniprot_id does not match the query uniprot_id
+    if retrieved_metadata is None or retrieved_metadata.iloc[0].uniprot_id != uniprot_id:
+        print('Warning: no metadata found for uniprot_id %s' % uniprot_id)
+        return
+
+    uniprot_metadata = models.UniprotMetadata(**retrieved_metadata.iloc[0])
+    utils.add_and_commit(session, uniprot_metadata, errors=errors)
+
+
+def insert_uniprot_metadata_for_crispr_design(
+    session, crispr_design_id, retrieved_metadata=None, errors='warn'
+):
+    '''
+    Retrieve and insert the raw uniprot metadata for a crispr design
+
+    Parameters
+    ----------
+    crispr_design_id : int, required
+        the id of the crispr design for which to insert uniprot metadata
+    retrieved_metadata : pd.Series, optional
+        The raw uniprot metadata corresponding to the crispr design
+        (intended for edge cases in which the correct metadata must be manually specified,
+        rather than retrieved by uniprot_utils.get_uniprot_metadata)
+    '''
+
+    crispr_design = (
+        session.query(models.CrisprDesign)
+        .filter(models.CrisprDesign.id == crispr_design_id)
+        .one()
+    )
+
+    if crispr_design.uniprot_id is not None:
+        return
+
+    # retrieve the raw metadata for the crispr design from the UniprotKB API
+    if retrieved_metadata is None:
+        retrieved_metadata = uniprot_utils.get_uniprot_metadata(
+            gene_name=crispr_design.target_name,
+            enst_id=crispr_design.transcript_id
+        )
+    if retrieved_metadata is None:
+        print('Warning: no Uniprot metadata found for target %s' % crispr_design.target_name)
+        return
+
+    # check whether the retrieved metadata already exists
+    extant_metadata = (
+        session.query(models.UniprotMetadata)
+        .filter(models.UniprotMetadata.uniprot_id == retrieved_metadata.uniprot_id)
+        .one_or_none()
+    )
+    if extant_metadata is None:
+        uniprot_metadata = models.UniprotMetadata(**retrieved_metadata)
+        utils.add_and_commit(session, uniprot_metadata, errors=errors)
+
+    # update the crispr design's uniprot_id
+    crispr_design.uniprot_id = retrieved_metadata.uniprot_id
+    utils.add_and_commit(session, crispr_design, errors=errors)
+
+
+def insert_ensg_id(session, uniprot_id):
+    '''
+    Retrieve and insert the ENSG ID in the uniprot_metadata table for a given uniprot_id
+    (using the Uniprot mapper API to look up the ENSG ID)
+    '''
+
+    uniprot_metadata = (
+        session.query(models.UniprotMetadata)
+        .filter(models.UniprotMetadata.uniprot_id == uniprot_id)
+        .one_or_none()
+    )
+
+    if uniprot_metadata is None:
+        print('Warning: no uniprot metadata found for uniprot_id %s' % uniprot_id)
+        return
+
+    try:
+        ensg_id = uniprot_utils.mygene_uniprot_id_to_ensg_id(uniprot_id)
+    except Exception:
+        print('Uncaught error in mygene_uniprot_id_to_ensg_id with uniprot_id %s' % uniprot_id)
+
+    if ensg_id is None:
+        print('Warning: no ENSG ID found for uniprot_id %s' % uniprot_id)
+        return
+
+    uniprot_metadata.ensg_id = ensg_id
+    utils.add_and_commit(session, uniprot_metadata, errors='warn')
+
+
 class PolyclonalLineOperations:
     '''
     '''
@@ -225,9 +322,12 @@ class PolyclonalLineOperations:
         [lines.extend(design.cell_lines) for design in designs]
 
         if len(lines) > 1:
-            print('Warning: %s cell lines found for target_name %s' % (len(lines), target_name))
+            print(
+                'Warning: returning the first of %s cell lines found for target_name %s' %
+                (len(lines), target_name)
+            )
         if not lines:
-            raise ValueError('No cells lines found for target %s' % target_name)
+            raise ValueError("No cells lines found for target name '%s'" % target_name)
 
         return cls(lines[0])
 

@@ -68,30 +68,27 @@ class MassSpecPulldownOperations:
         plate_id, target_name = target.split('_')
         plate_id = ms_utils.format_ms_plate(plate_id)
 
-        # get only the entries of the specific ms pulldown plate from pulldown_df
-        pulldown_metas = pulldown_df[pulldown_df['pulldown_plate_id'] == plate_id]
-
-        # get the row for right gene name
-        pulldown_meta = pulldown_metas[pulldown_metas['target_name'] == target_name]
+        # get the pulldown for this plate_id and target_name
+        pulldown_meta = pulldown_df.loc[
+            (pulldown_df['pulldown_plate_id'] == plate_id)
+            & (pulldown_df['target_name'] == target_name)
+        ]
 
         # retrieve the design id and well id
         design_id, well_id = pulldown_meta.design_id.item(), pulldown_meta.well_id.item()
 
         # get the cellline_id
         pull_cls = MassSpecPolyclonalOperations.from_plate_well(session, design_id, well_id)
-
         cell_line_id = pull_cls.line.id
 
-        # query for the right pulldown
-        pulldowns = (
+        # get the pulldown_id
+        pulldown = (
             session.query(models.MassSpecPulldown)
             .filter(models.MassSpecPulldown.cell_line_id == cell_line_id)
             .filter(models.MassSpecPulldown.pulldown_plate_id == plate_id)
-            .all()
+            .one()
         )
-
-        # proper pulldown_id
-        pulldown_id = pulldowns[0].id
+        pulldown_id = pulldown.id
 
         # remove existing hits under same pulldown
         self.remove_target_hits(session, pulldown_id, errors=errors)
@@ -111,7 +108,7 @@ class MassSpecPulldownOperations:
             if errors == 'raise':
                 raise
             if errors == 'warn':
-                print('Error in bulk_save: %s' % exception)
+                print('Error in bulk_insert_hits: %s' % exception)
 
 
     @staticmethod

@@ -305,6 +305,13 @@ class CrisprDesign(Base):
     # one crispr_design to many cell lines
     cell_lines = db.orm.relationship('CellLine', back_populates='crispr_design')
 
+    # one crispr design to many mass spec protein groups
+    protein_groups = db.orm.relationship(
+        'MassSpecProteinGroup',
+        secondary='protein_group_crispr_design_association',
+        back_populates='crispr_designs'
+    )
+
     # the well_id must be unique in each plate design
     __table_args__ = (
         db.UniqueConstraint(plate_design_id, well_id),
@@ -625,9 +632,7 @@ class MicroscopyFOV(Base):
     # because we image by plate, each well_id is imaged once per plate
     # this fact can be expressed by the following constraint
     # (assuming that each cell line appears in only one well on each imaging plate)
-    __table_args__ = (
-        db.UniqueConstraint(pml_id, cell_line_id, site_num),
-    )
+    __table_args__ = (db.UniqueConstraint(pml_id, cell_line_id, site_num),)
 
     @db.orm.validates('pml_id')
     def validate_pml_id(self, key, value):
@@ -864,7 +869,8 @@ class MassSpecPulldown(Base):
     id = db.Column(db.Integer, primary_key=True)
     cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'))
     pulldown_plate_id = db.Column(
-        db.String, db.ForeignKey('mass_spec_pulldown_plate.id'), nullable=False)
+        db.String, db.ForeignKey('mass_spec_pulldown_plate.id'), nullable=False
+    )
 
     # timestamp column
     date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
@@ -877,7 +883,8 @@ class MassSpecPulldown(Base):
 
     # one pulldown to one pulldown_plate
     pulldown_plate = db.orm.relationship(
-        'MassSpecPulldownPlate', back_populates='pulldowns', uselist=False)
+        'MassSpecPulldownPlate', back_populates='pulldowns', uselist=False
+    )
 
     def get_target_name(self):
         '''Convenience method to get target_name for each pulldown'''
@@ -903,7 +910,7 @@ class MassSpecProteinGroup(Base):
     # a list of all uniprot gene names mapped to the protein group
     gene_names = db.Column(postgresql.ARRAY(db.String))
 
-    # a list of all peptide Uniprot ids
+    # a list of all peptide Uniprot ids (including isoforms)
     uniprot_ids = db.Column(postgresql.ARRAY(db.String))
 
     # timestamp column
@@ -911,6 +918,45 @@ class MassSpecProteinGroup(Base):
 
     # one protein_group to many hits
     hits = db.orm.relationship('MassSpecHit', back_populates='protein_group')
+
+    # one protein group to (possibly) more than one crispr design
+    crispr_designs = db.orm.relationship(
+        'CrisprDesign',
+        secondary='protein_group_crispr_design_association',
+        back_populates='protein_groups'
+    )
+
+    # one protein group to multiple uniprot metadata rows
+    uniprot_metadata = db.orm.relationship(
+        'UniprotMetadata',
+        secondary='protein_group_uniprot_metadata_association'
+    )
+
+
+class ProteinGroupUniprotMetadataAssociation(Base):
+    '''
+    The protein_group - uniprot_id associations
+    (does not include isoforms - that is, includes only uniprot_ids without dashes)
+    '''
+    __tablename__ = 'protein_group_uniprot_metadata_association'
+    uniprot_id = db.Column(
+        db.String, db.ForeignKey('uniprot_metadata.uniprot_id'), primary_key=True
+    )
+    protein_group_id = db.Column(
+        db.String, db.ForeignKey('mass_spec_protein_group.id'), primary_key=True
+    )
+
+
+class ProteinGroupCrisprDesignAssociation(Base):
+    '''
+    '''
+    __tablename__ = 'protein_group_crispr_design_association'
+    crispr_design_id = db.Column(
+        db.Integer, db.ForeignKey('crispr_design.id'), primary_key=True
+    )
+    protein_group_id = db.Column(
+        db.String, db.ForeignKey('mass_spec_protein_group.id'), primary_key=True
+    )
 
 
 class MassSpecHit(Base):
@@ -924,12 +970,10 @@ class MassSpecHit(Base):
     id = db.Column(db.Integer, primary_key=True)
 
     # hashed string of sorted Uniprot peptide IDs that compose the protein group
-    protein_group_id = db.Column(
-        db.String, db.ForeignKey('mass_spec_protein_group.id'))
+    protein_group_id = db.Column(db.String, db.ForeignKey('mass_spec_protein_group.id'))
 
     # foreign key of each pulldown target from pulldown table
-    pulldown_id = db.Column(
-        db.Integer, db.ForeignKey('mass_spec_pulldown.id'), nullable=False)
+    pulldown_id = db.Column(db.Integer, db.ForeignKey('mass_spec_pulldown.id'), nullable=False)
 
     # p-value of the hit's MS intensity
     pval = db.Column(db.Float, nullable=False)

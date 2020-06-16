@@ -44,6 +44,7 @@ def parse_args():
         'insert_uniprot_metadata_for_crispr_designs',
         'insert_uniprot_metadata_for_protein_groups',
         'insert_ensg_ids',
+        'populate_protein_group_associations',
     ]
 
     for dest in action_arg_dests:
@@ -270,6 +271,120 @@ def insert_ensg_ids(Session):
         dask.compute(*tasks)
 
 
+def populate_protein_group_uniprot_metadata_associations(Session):
+    '''
+    Populate the association table between the mass_spec_protein_group table
+    and the uniprot_metadata table, using uniprot_ids.
+
+    The 'raw' uniprot_ids are found in the uniprot_ids column of the protein_group table;
+    here, these are parsed to eliminate isoform-specific ids and also ids
+    for which no cached uniprot metadata exists (these are rare).
+
+    Note that, when new mass spec protein groups are inserted, it is important
+    to first update the cached uniprot_metadata using `insert_uniprot_metadata_for_protein_groups`,
+    and only then use this method to rebuild the association table.
+    '''
+
+    engine = Session.get_bind()
+    print('Truncating the protein_group_uniprot_metadata_association table')
+    engine.execute('truncate protein_group_uniprot_metadata_association')
+
+    # uniprot_ids for which cached metadata exists
+    existing_uniprot_ids = [
+        row.uniprot_id for row in Session.query(models.UniprotMetadata).all()
+    ]
+    print('Found %s existing uniprot_ids' % len(existing_uniprot_ids))
+
+    # all (protein_group_id, uniprot_id) pairs
+    group_ids = pd.read_sql(
+        '''
+        select id as protein_group_id, unnest(uniprot_ids) as uniprot_id
+        from mass_spec_protein_group;
+        ''',
+        engine
+    )
+
+    # drop isoform-specific uniprot_ids
+    group_ids['uniprot_id'] = group_ids.uniprot_id.apply(lambda s: s.split('-')[0])
+    group_ids = group_ids.groupby(['protein_group_id', 'uniprot_id']).first().reset_index()
+    print('Found %s (protein_group, uniprot_id) pairs' % group_ids.shape[0])
+
+    # drop rows whose uniprot_ids do not appear in the uniprot_metadata table
+    # (these should be rare and should only correspond to uniprot_ids
+    # for which no metadata was inserted by operations.insert_uniprot_metadata_from_id)
+    group_ids = group_ids.loc[group_ids.uniprot_id.isin(existing_uniprot_ids)]
+    print(
+        'Found %s (protein_group, uniprot_id) pairs for which uniprot metadata exists'
+        % group_ids.shape[0]
+    )
+
+    rows = [
+        dict(protein_group_id=row.protein_group_id, uniprot_id=row.uniprot_id)
+        for ind, row in group_ids.iterrows()
+    ]
+
+    print(
+        'Inserting %s rows into the protein_group_uniprot_metadata_association table'
+        % len(rows)
+    )
+    Session.bulk_insert_mappings(models.ProteinGroupUniprotMetadataAssociation, rows)
+    Session.commit()
+
+
+def populate_protein_group_crispr_design_associations(Session):
+    '''
+    Populate the association table between mass_spec_protein_group table
+    and the crispr_design table using the ENSG IDs cached in the uniprot_metadata table
+
+    Background
+    ----------
+    Each crispr_design is always associated with one uniprot_id and therefore one ensg_id,
+    while each protein_group consists of many uniprot_ids, which may be associated
+    with more than one unique ensg_id (though often only one).
+
+    Also, there is more than one crispr_design associated with some ensg_ids.
+
+    Note that, when new protein_groups are inserted, it is necessary
+    to first update the cached ensg_ids using `insert_ensg_ids`,
+    and only then call this method to rebuild the associations.
+    '''
+
+    engine = Session.get_bind()
+    print('Truncating the protein_group_crispr_design_association table')
+    engine.execute('truncate protein_group_crispr_design_association')
+
+    # all crispr designs for which uniprot_metadata exists
+    crispr_designs = pd.read_sql(
+        '''select * from crispr_design inner join uniprot_metadata using (uniprot_id)''',
+        engine
+    )
+    print('Found %s crispr designs' % crispr_designs.shape[0])
+
+    # all mass spec protein groups
+    groups = (
+        Session.query(models.MassSpecProteinGroup)
+        .options(
+            db.orm.joinedload(models.MassSpecProteinGroup.uniprot_metadata)
+        )
+        .all()
+    )
+    print('Found %s protein groups' % len(groups))
+
+    # find the crispr_designs whose ENSG IDs are included in each group
+    assocs = []
+    for group in groups:
+        ensg_ids = [d.ensg_id for d in group.uniprot_metadata]
+        crispr_design_ids = crispr_designs.loc[crispr_designs.ensg_id.isin(ensg_ids)].id.tolist()
+        assocs.extend([
+            dict(crispr_design_id=crispr_design_id, protein_group_id=group.id)
+            for crispr_design_id in crispr_design_ids
+        ])
+
+    print('Inserting %s (protein_group, crispr_design) associations' % len(assocs))
+    Session.bulk_insert_mappings(models.ProteinGroupCrisprDesignAssociation, assocs)
+    Session.commit()
+
+
 def main():
     '''
 
@@ -293,15 +408,6 @@ def main():
 
     if args.insert_facs:
         insert_facs(Session, args.facs_results_dir, errors='warn')
-
-    if args.insert_uniprot_metadata_for_crispr_designs:
-        insert_uniprot_metadata_for_crispr_designs(Session)
-
-    if args.insert_uniprot_metadata_for_protein_groups:
-        insert_uniprot_metadata_for_protein_groups(Session)
-
-    if args.insert_ensg_ids:
-        insert_ensg_ids(Session)
 
     # insert the 'legacy' pipeline microscopy datasets found in the 'PlateMicroscopy' directory
     # (these are datasets up to PML0179)
@@ -332,6 +438,20 @@ def main():
             update=args.update,
             errors='warn'
         )
+
+    if args.insert_uniprot_metadata_for_crispr_designs:
+        insert_uniprot_metadata_for_crispr_designs(Session)
+
+    if args.insert_uniprot_metadata_for_protein_groups:
+        insert_uniprot_metadata_for_protein_groups(Session)
+
+    if args.insert_ensg_ids:
+        insert_ensg_ids(Session)
+
+    if args.populate_protein_group_associations:
+        populate_protein_group_uniprot_metadata_associations(Session)
+        populate_protein_group_crispr_design_associations(Session)
+
 
 
 if __name__ == '__main__':

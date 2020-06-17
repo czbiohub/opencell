@@ -216,7 +216,10 @@ class CellLinePulldown(CellLineResource):
             .options(
                 db.orm.joinedload(models.MassSpecPulldown.hits)
                 .joinedload(models.MassSpecHit.protein_group)
-                .joinedload(models.MassSpecProteinGroup.crispr_designs)
+                .joinedload(models.MassSpecProteinGroup.crispr_designs),
+                db.orm.joinedload(models.MassSpecPulldown.hits)
+                .joinedload(models.MassSpecHit.protein_group)
+                .joinedload(models.MassSpecProteinGroup.uniprot_metadata),
             )
             .filter(models.MassSpecPulldown.id == pulldown_id)
             .one()

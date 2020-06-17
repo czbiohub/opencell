@@ -148,7 +148,7 @@ def pulldown_payload(pulldown):
     '''
 
     hit_columns = [
-        'pval', 'enrichment', 'is_significant_hit', 'interaction_stoich', 'abundance_stoich'
+        'id', 'pval', 'enrichment', 'is_significant_hit', 'interaction_stoich', 'abundance_stoich'
     ]
 
     hit_payloads = []
@@ -156,16 +156,26 @@ def pulldown_payload(pulldown):
         hit_payload = {column: getattr(hit, column) for column in hit_columns}
 
         if hit.is_significant_hit:
-            # for now, take the gene name from the MS data itself,
-            # which is simpler than looking up the 'true' primary gene name from the uniprot_metadata
-            # (because this requires figuring out how to choose which uniprot_metadata row to use)
-            hit_payload['protein_name'] = hit.protein_group.gene_names[0]
 
-            # target names of the crisp designs that are mapped to this hit's protein group
-            hit_payload['target_names'] = [d.target_name for d in hit.protein_group.crispr_designs]
+            # gene names from the reference uniprot metadata
+            names = []
+            if not hit.protein_group.uniprot_metadata:
+                names = ['Unknown']
+            for metadata in hit.protein_group.uniprot_metadata:
+                if metadata.gene_names != 'NaN':
+                    name = metadata.gene_names.split(' ')[0]
+                else:
+                    name = metadata.uniprot_id
+                names.append(name)
+            hit_payload['uniprot_gene_names'] = names
+
+            # target names of the crispr designs that are mapped to this hit's protein group
+            hit_payload['opencell_target_names'] = [
+                design.target_name for design in hit.protein_group.crispr_designs
+            ]
 
             # whether this hit corresponds to the target itself
-            design_ids = [d.id for d in hit.protein_group.crispr_designs]
+            design_ids = [design.id for design in hit.protein_group.crispr_designs]
             hit_payload['is_bait'] = pulldown.cell_line.crispr_design.id in design_ids
 
         hit_payloads.append(hit_payload)

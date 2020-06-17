@@ -12,7 +12,7 @@ import sqlalchemy.orm
 import sqlalchemy.ext.declarative
 
 from opencell import constants, file_utils
-from opencell.database import models, utils
+from opencell.database import models, utils, uniprot_utils
 from opencell.database import operations as ops
 
 
@@ -289,14 +289,11 @@ def populate_protein_group_uniprot_metadata_associations(Session):
     print('Truncating the protein_group_uniprot_metadata_association table')
     engine.execute('truncate protein_group_uniprot_metadata_association')
 
-    # uniprot_ids for which cached metadata exists
-    existing_uniprot_ids = [
-        row.uniprot_id for row in Session.query(models.UniprotMetadata).all()
-    ]
-    print('Found %s existing uniprot_ids' % len(existing_uniprot_ids))
+    uniprot_metadata = uniprot_utils.export_uniprot_metadata(engine)
+    print('Found metadata for %s uniprot_ids' % uniprot_metadata.shape[0])
 
     # all (protein_group_id, uniprot_id) pairs
-    group_ids = pd.read_sql(
+    group_uniprot_ids = pd.read_sql(
         '''
         select id as protein_group_id, unnest(uniprot_ids) as uniprot_id
         from mass_spec_protein_group;
@@ -305,22 +302,24 @@ def populate_protein_group_uniprot_metadata_associations(Session):
     )
 
     # drop isoform-specific uniprot_ids
-    group_ids['uniprot_id'] = group_ids.uniprot_id.apply(lambda s: s.split('-')[0])
-    group_ids = group_ids.groupby(['protein_group_id', 'uniprot_id']).first().reset_index()
-    print('Found %s (protein_group, uniprot_id) pairs' % group_ids.shape[0])
+    group_uniprot_ids['uniprot_id'] = group_uniprot_ids.uniprot_id.apply(lambda s: s.split('-')[0])
 
-    # drop rows whose uniprot_ids do not appear in the uniprot_metadata table
-    # (these should be rare and should only correspond to uniprot_ids
-    # for which no metadata was inserted by operations.insert_uniprot_metadata_from_id)
-    group_ids = group_ids.loc[group_ids.uniprot_id.isin(existing_uniprot_ids)]
-    print(
-        'Found %s (protein_group, uniprot_id) pairs for which uniprot metadata exists'
-        % group_ids.shape[0]
+    # merge uniprot metadata on uniprot_id to get the (group_id, ensg_id) associations
+    group_ensg_ids = pd.merge(uniprot_metadata, group_uniprot_ids, on='uniprot_id', how='inner')
+    group_ensg_ids = group_ensg_ids.groupby(['protein_group_id', 'ensg_id']).first().reset_index()
+    print('Found %s (protein_group_id, ensg_id) pairs' % group_ensg_ids.shape[0])
+
+    # merge reference uniprot_ids on ensg_id to get the final (group_id, uniprot_id) associations
+    group_consensus_ids = pd.merge(
+        group_ensg_ids[['protein_group_id', 'ensg_id']],
+        uniprot_metadata.loc[uniprot_metadata.is_reference],
+        on='ensg_id',
+        how='inner'
     )
 
     rows = [
         dict(protein_group_id=row.protein_group_id, uniprot_id=row.uniprot_id)
-        for ind, row in group_ids.iterrows()
+        for ind, row in group_consensus_ids.iterrows()
     ]
 
     print(
@@ -370,7 +369,7 @@ def populate_protein_group_crispr_design_associations(Session):
     )
     print('Found %s protein groups' % len(groups))
 
-    # find the crispr_designs whose ENSG IDs are included in each group
+    # find the crispr_designs whose ENSG IDs appear in each group's ENSG IDs
     assocs = []
     for group in groups:
         ensg_ids = [d.ensg_id for d in group.uniprot_metadata]

@@ -11,6 +11,50 @@ import sqlalchemy as db
 from opencell.database import models, utils
 
 
+def export_uniprot_metadata(engine):
+    '''
+    Export all of the metadata from the uniprot_metadata table,
+    and select a 'reference' uniprot_id for each ensg_id
+    to determine the uniprot metadata (annotation and protein name)
+    to associate with each ensg_id
+    '''
+    metadata = pd.read_sql('select * from uniprot_metadata', engine)
+
+    # there is a bug somewhere that doesn't properly coerce missing values to nulls
+    # when uniprot metadata is retrieved/inserted
+    metadata.replace(to_replace='NaN', value=np.nan, inplace=True)
+
+    # there are a few uniprot_ids without ensg_ids
+    print(
+        'Warning in export_uniprot_metadata: dropping %s uniprot_ids without ensg_ids'
+        % metadata.ensg_id.isna().sum()
+    )
+    metadata.dropna(axis=0, subset=['ensg_id'], inplace=True)
+
+    # annotation length and number of gene names are used
+    # to define a 'reference' uniprot_id for each ensg_id
+    metadata['annotation_length'] = metadata.annotation.apply(
+        lambda s: len(s) if not pd.isna(s) else 0
+    )
+    metadata['num_gene_names'] = metadata.gene_names.apply(
+        lambda s: len(s.split(' ')) if not pd.isna(s) else 0
+    )
+
+    metadata['is_reference'] = False
+    for ensg_id in metadata.ensg_id.unique():
+
+        # the uniprot_ids for this ensg_id
+        md = metadata.loc[metadata.ensg_id == ensg_id].copy()
+
+        # define the 'reference' id as the id with the longest annotation
+        # or, if no ids have annotations, the greatest number of gene name synonyms
+        sort_by = 'annotation_length' if md.annotation.notna().sum() else 'num_gene_names'
+        md.sort_values(by=sort_by, ascending=False, inplace=True)
+        metadata.at[md.index[0], 'is_reference'] = True
+
+    return metadata
+
+
 def prettify_uniprot_protein_name(protein_names):
     '''
     Clean up a raw Uniprot protein name

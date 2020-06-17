@@ -88,7 +88,7 @@ export default class MassSpecScatterPlot extends Component {
         this.calcDotColor = d => {
 
             // special color if the hit is the target (i.e., the bait) itself
-            if (d.gene_names.includes(this.props.targetName)) return chroma(this.sigModeDotColors.bait).alpha(.7);
+            if (d.is_bait) return chroma(this.sigModeDotColors.bait).alpha(.7);
             
             // if not sig, always the same color
             if (!this.hitIsSignificant(d)) return chroma(this.sigModeDotColors.notSigHit).alpha(.7);
@@ -108,8 +108,10 @@ export default class MassSpecScatterPlot extends Component {
 
         this.calcDotStroke = d => {
             if (!this.hitIsSignificant(d)) return 'none';
+
             // stroke in black we have data for it
-            // if (this.genesWithData.includes(msMetadata[d.gene_id].gene_name)) return '#333';
+            if (d.opencell_target_names?.length) return '#333';
+
             return chroma(this.calcDotColor(d)).darken(1);
         }
     
@@ -188,14 +190,16 @@ export default class MassSpecScatterPlot extends Component {
                 return (d.pval > 1) || (d.pval < 1 && d3.randomUniform(0, 1)() > .5);
             });
 
-            // construct a label by concatenating the gene_names
-            hits.forEach(hit => hit.label = hit.gene_names.sort().join(', '));
+            // construct a label from the gene names 
+            // (there is one gene name for each ensg_id)
+            hits.forEach(hit => hit.label = hit.uniprot_gene_names?.sort().join(', '));
 
             this.hits = hits;
             this.pulldownMetadata = data.metadata;
             this.setState({loaded: true});
         },
         error => {
+            console.log(error);
             this.hits = [];
             this.pullDownMetadata = null;
             this.setState({loaded: true});
@@ -204,7 +208,9 @@ export default class MassSpecScatterPlot extends Component {
 
 
     hitIsSignificant (d) {
-
+        
+        return d.is_significant_hit;
+    
         // negatively-enriched hits are (by definition) not significant
         if (this.enrichmentAccessor(d) < this.fdrParams.x0) return false;
 
@@ -388,11 +394,13 @@ export default class MassSpecScatterPlot extends Component {
     
         // update the line generator
         const line = d3.line().x(d => xScale(d.x)).y(d => yScale(d.y));
+    
         if (this.props.mode==='Volcano') {
             this.fdrLineLeft.style('visibility', 'visible').attr('d', line);
             this.fdrLineRight.style('visibility', 'visible').attr('d', line);
             this.coreComplexRegion.style('visibility', 'hidden');
-        } else if (this.props.mode==='Stoichiometry') {
+        } 
+        if (this.props.mode==='Stoichiometry') {
             this.fdrLineLeft.style('visibility', 'hidden');
             this.fdrLineRight.style('visibility', 'hidden');
             this.coreComplexRegion.style('visibility', 'visible').attr('d', line);
@@ -413,18 +421,16 @@ export default class MassSpecScatterPlot extends Component {
                 // enlarge and outline the dots on hover
                 d3.select(this)
                   .attr("r", _this.plotProps.dotRadius + 2)
-                  .attr("stroke", '#111')
                   .classed("scatter-dot-hover", true);
                 _this.tip.show(d, this); 
              })
              .on("mouseout", function (d) {
                 d3.select(this)
                   .attr("r", _this.calcDotRadius)
-                  .attr("stroke", _this.calcDotStroke)
                   .classed("scatter-dot-hover", false);
                 _this.tip.hide(d, this);
              })
-            .on('click', d => this.props.changeTarget(d.gene_names[0]));
+            .on('click', d => this.props.changeTarget(d.opencell_target_names[0]));
 
         // bind data - filter for only significant hits
         const captions = this.g.selectAll('.scatter-caption')

@@ -141,34 +141,40 @@ def fov_payload(fov, optional_fields):
     return payload
 
 
-def pulldown_payload(pulldown, engine):
+def pulldown_payload(pulldown):
     '''
     The JSON payload for a mass spec pulldown and all of its hits
     For speed, we use a direct query to retrieve and serialize the hits
     '''
 
-    # TODO: which gene_name to select?
-    # (note that postgres uses one-based indexing)
-    hits = pd.read_sql(
-        '''
-        select pg.gene_names, hit.* from mass_spec_hit hit
-        inner join mass_spec_protein_group pg on pg.id = hit.protein_group_id
-        where hit.pulldown_id = %d
-        ''' % pulldown.id,
-        engine
-    )
+    hit_columns = [
+        'pval', 'enrichment', 'is_significant_hit', 'interaction_stoich', 'abundance_stoich'
+    ]
 
-    hits = hits[[
-        'gene_names',
-        'pval',
-        'enrichment',
-        'abundance_stoich',
-        'interaction_stoich',
-        'is_significant_hit',
-    ]]
+    hit_payloads = []
+    for hit in pulldown.hits:
+        hit_payload = {column: getattr(hit, column) for column in hit_columns}
+
+        if hit.is_significant_hit:
+            # for now, take the gene name from the MS data itself,
+            # which is simpler than looking up the 'true' primary gene name from the uniprot_metadata
+            # (because this requires figuring out how to choose which uniprot_metadata row to use)
+            hit_payload['protein_name'] = hit.protein_group.gene_names[0]
+
+            # target names of the crisp designs that are mapped to this hit's protein group
+            hit_payload['target_names'] = [d.target_name for d in hit.protein_group.crispr_designs]
+
+            # whether this hit corresponds to the target itself
+            design_ids = [d.id for d in hit.protein_group.crispr_designs]
+            hit_payload['is_bait'] = pulldown.cell_line.crispr_design.id in design_ids
+
+        hit_payloads.append(hit_payload)
+
+    # hackish way to coerce NaNs and Infs to None
+    hit_payloads = json.loads(pd.DataFrame(data=hit_payloads).to_json(orient='records'))
 
     payload = {
         'metadata': pulldown.as_dict(),
-        'hits': json.loads(hits.to_json(orient='records')),
+        'hits': hit_payloads,
     }
     return payload

@@ -198,22 +198,36 @@ class CellLinePulldown(CellLineResource):
     def get(self, cell_line_id):
         line = self.get_cell_line(cell_line_id)
         if not line.pulldowns:
-            return flask.abort(404, 'There are no pulldowns associated with the cell line')
+            return flask.abort(
+                404, 'There are no pulldowns associated with cell line %d' % cell_line_id
+            )
 
         # TODO: logic to determine which pulldown is the 'good' one
         # for now, we take the first pulldown with hits
-        payload = None
-        for pulldown in line.pulldowns:
-            if pulldown.hits:
-                payload = payloads.pulldown_payload(
-                    pulldown, engine=flask.current_app.Session.get_bind()
-                )
-                break
+        pulldown_id = line.pulldowns[0].id
+        if len(line.pulldowns) > 1:
+            for pulldown in line.pulldowns:
+                if pulldown.hits:
+                    pulldown_id = pulldown.id
+                    break
 
-        if not payload:
-            return flask.abort(
-                404, 'There are %d pulldowns but none have hits' % len(line.pulldowns)
+        pulldown = (
+            flask.current_app.Session.query(models.MassSpecPulldown)
+            .options(
+                db.orm.joinedload(models.MassSpecPulldown.hits)
+                .joinedload(models.MassSpecHit.protein_group)
+                .joinedload(models.MassSpecProteinGroup.crispr_designs)
             )
+            .filter(models.MassSpecPulldown.id == pulldown_id)
+            .one()
+        )
+
+        if not pulldown.hits:
+            return flask.abort(
+                404, 'No pulldown with hits found for cell line %s' % cell_line_id
+            )
+
+        payload = payloads.pulldown_payload(pulldown)
         return flask.jsonify(payload)
 
 

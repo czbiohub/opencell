@@ -13,7 +13,7 @@ function SectionHeader (props) {
 
 function MetadataItem(props) {
     return (
-        <div className={props.className}>
+        <div className={classNames(props.className, {'overflow-hidden': props.hideOverflow})}>
             <strong className={`f${props.scale}`}>{props.value || 'NA'}</strong>
             <abbr className={`f${props.scale + 1}`} title='units description'>{props.units}</abbr>
             <div className={`f${props.scale + 2} header-metadata-item-label`}>{props.label}</div>
@@ -30,7 +30,7 @@ function MetadataContainer (props) {
         'header-metadata-item',
         {
             'flex-0-0': props.orientation==='row',
-            'pt2': props.orientation==='column'
+            'pt2': props.orientation==='column',
         }
     );
 
@@ -43,6 +43,7 @@ function MetadataContainer (props) {
                 value={def.accessor(props.data)}
                 label={def.Header}
                 units={def.units}
+                hideOverflow={def.id==='protein_name'}
             />
         );
     });

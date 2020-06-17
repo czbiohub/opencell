@@ -92,7 +92,7 @@ const families = [
 ];
 
 
-const targetNameDef = cellLineMetadataDefinitions.filter(def => def.id === 'protein_name')[0];
+const proteinNameDef = cellLineMetadataDefinitions.filter(def => def.id === 'protein_name')[0];
 
 
 function Lightbox (props) {
@@ -138,7 +138,7 @@ function Thumbnail (props) {
                     {`${metadata.target_name}`}
                 </span>
                 <br/>
-                <span className='f6'>{`${targetNameDef.accessor({metadata}, 99)}`}</span>
+                <span className='f6'>{`${proteinNameDef.accessor(props.cellLine)}`}</span>
             </div>
         </div>
     );

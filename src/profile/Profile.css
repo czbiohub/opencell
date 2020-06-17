@@ -21,6 +21,9 @@
 .header-metadata-item {
     margin-right: 25px;
     max-width: 200px;
+}
+
+.overflow-hidden {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

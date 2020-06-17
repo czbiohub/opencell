@@ -16,14 +16,13 @@ def find_mismatching_target_names(plates_df, hits_df):
     # get target names from plates_df
     plate_genes = set(plates_df['target_name'].values.tolist())
 
-    return hits_genes - plate_genes
+    return (hits_genes - plate_genes)
 
 
 def format_ms_plate(plate_id):
     """
-    Format Ms Plates to 'CZBMPI_%04d' % plate_number
+    Format MS Plate IDs to 'CZBMPI_%04d' % plate_number
     Also allow for 'CZBMPI%04d.d format
-
     """
     plate_id = str(plate_id)
 
@@ -71,25 +70,22 @@ def reformat_pulldown_table(pulldown_df):
     return abridged
 
 
-def hash_protein_group_id(protein_id):
+def create_protein_group_id(uniprot_ids):
     """
-    protein group ids are made of a list of uniprot IDs in a strong form, joined by
-    a semicolon. this convenience function converts sorts the uniprot IDs by alphabet
-    and then hashes it using hashlib
-    The purpose of this method is to generate a unique ID from a unique set of uniprot
-    IDs, which can then be used as a primary key for the MassSpecProteinGroup table
+    In the mass spec datasets, protein groups are ID'd by a string
+    of semicolon-separated uniprot IDs.
+    This function sorts these IDs alphabetically, then hashes them using hashlib.
+    The purpose of this is to generate a unique ID from a unique set of uniprot IDs,
+    which can then be used as a primary key for the MassSpecProteinGroup table.
     """
 
-    # split the string into  a list
-    protein_list = protein_id.split(';')
+    # split the string into a list
+    uniprot_ids = sorted(uniprot_ids.split(';'))
 
-    # sort the list of strings, and then convert back to string
-    protein_list.sort()
+    # serialize the sorted list
+    serialized_uniprot_ids = str(uniprot_ids)
 
-    # encode into utf-8 bytes
-    protein_bytes = bytes(str(protein_list), 'utf-8')
+    # hash the serialized list
+    hashed_uniprot_ids = hashlib.sha256(serialized_uniprot_ids.encode('utf-8')).hexdigest()
 
-    # hash the string in SHA-256
-    hashed_protein_id = hashlib.sha256(protein_bytes).hexdigest()
-
-    return hashed_protein_id, protein_list
+    return hashed_uniprot_ids, uniprot_ids

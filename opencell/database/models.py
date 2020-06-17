@@ -90,13 +90,15 @@ class CellLine(Base):
     # optional human-readable notes
     notes = db.Column(db.String, nullable=True)
 
-    # parent_id is only null for progenitor cell lines
+    # note that these foreign key ids are only null for progenitor cell lines
     parent_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'), nullable=True)
+    crispr_design_id = db.Column(db.Integer, db.ForeignKey('crispr_design.id'), nullable=True)
+    electroporation_id = db.Column(db.Integer, db.ForeignKey('electroporation.id'), nullable=True)
+
     parent = db.orm.relationship('CellLine', remote_side=[id])
     children = db.orm.relationship('CellLine')
 
     # the electroporation that generated the cell line (if any)
-    electroporation_id = db.Column(db.Integer, db.ForeignKey('electroporation.id'), nullable=True)
     electroporation = db.orm.relationship(
         'Electroporation',
         back_populates='cell_lines',
@@ -105,13 +107,24 @@ class CellLine(Base):
     )
 
     # the crispr design used to generate the cell line (if any)
-    crispr_design_id = db.Column(db.Integer, db.ForeignKey('crispr_design.id'), nullable=True)
     crispr_design = db.orm.relationship(
-        'CrisprDesign', back_populates='cell_lines', uselist=False)
+        'CrisprDesign', back_populates='cell_lines', uselist=False
+    )
 
     # one cell line to one manual annotation
     annotation = db.orm.relationship(
-        'CellLineAnnotation', back_populates='cell_line', uselist=False)
+        'CellLineAnnotation', back_populates='cell_line', uselist=False
+    )
+
+    # one cell line to one FACS dataset
+    facs_dataset = db.orm.relationship(
+        'FACSDataset', back_populates='cell_line', uselist=False
+    )
+
+    # one cell line to one sequencing dataset
+    sequencing_dataset = db.orm.relationship(
+        'SequencingDataset', back_populates='cell_line', uselist=False
+    )
 
     # one cell_line to many FOVs
     fovs = db.orm.relationship('MicroscopyFOV', back_populates='cell_line')
@@ -127,16 +140,18 @@ class CellLine(Base):
     )
 
     def __repr__(self):
-        return "<CellLine(id=%s, parent_id=%s, type='%s', target='%s')>" % \
-            (
+        return (
+            "<CellLine(id=%s, parent_id=%s, type='%s', target='%s')>"
+            % (
                 self.id,
                 self.parent_id,
                 self.line_type.value,
                 self.crispr_design.target_name if self.crispr_design else None
             )
+        )
 
 
-    def get_top_scoring_fovs(self, ntop):
+    def get_top_scoring_fovs(self, ntop=None):
         '''
         Get the n highest-scoring FOVs
         '''
@@ -151,9 +166,22 @@ class CellLine(Base):
         scores = [score for score in scores if score is not None]
         inds = inds[mask[inds]]
 
-        # the two highest-scoring FOVs
+        # the n-highest-scoring FOVs
+        ntop = len(inds) if ntop is None else ntop
         top_fovs = [self.fovs[ind] for ind in inds[:ntop]]
         return top_fovs
+
+
+    def get_best_fov(self):
+        '''
+        Get the 'best' FOV
+        For now, this is the first FOV that is manually annotated
+        (using get_top_scoring_fovs is too slow)
+        '''
+        for fov in self.fovs:
+            if fov.annotation:
+                return fov
+        return None
 
 
 class PlateDesign(Base):
@@ -172,7 +200,8 @@ class PlateDesign(Base):
     crispr_designs = db.orm.relationship(
         'CrisprDesign',
         back_populates='plate_design',
-        cascade='all, delete, delete-orphan')
+        cascade='all, delete, delete-orphan'
+    )
 
     def __repr__(self):
         return "<PlateDesign(design_id='%s')>" % self.design_id
@@ -222,7 +251,7 @@ class CrisprDesign(Base):
     # gene/protein name
     target_name = db.Column(db.String, nullable=False)
 
-    # optional gene family
+    # gene family (optional)
     target_family = db.Column(db.String)
 
     # terminus at which the template was inserted
@@ -241,7 +270,7 @@ class CrisprDesign(Base):
     # 'enst_note' column
     transcript_notes = db.Column(db.String)
 
-    # transcript expression level from an RNAseq experiment for HEK293
+    # transcript expression level from RNAseq data for HEK293
     # HACK: this data really belongs in a separate table of transcript metadata
     hek_tpm = db.Column(db.Float)
 
@@ -255,24 +284,44 @@ class CrisprDesign(Base):
 
     # the plate_design on which this crispr_design appears
     plate_design_id = db.Column(
-        db.String, db.ForeignKey('plate_design.design_id'), nullable=False)
+        db.String, db.ForeignKey('plate_design.design_id'), nullable=False
+    )
+
+    # the uniprot_id of the protein tagged by the design
+    uniprot_id = db.Column(
+        db.String, db.ForeignKey('uniprot_metadata.uniprot_id')
+    )
+
+    # the raw (unprocessed/unparsed) uniprot metadata
+    uniprot_metadata = db.orm.relationship(
+        'UniprotMetadata', back_populates='crispr_designs', uselist=False
+    )
 
     # many crispr_designs to one plate_design (96 wells per plate)
     plate_design = db.orm.relationship(
-        'PlateDesign', back_populates='crispr_designs', uselist=False)
+        'PlateDesign', back_populates='crispr_designs', uselist=False
+    )
 
     # one crispr_design to many cell lines
     cell_lines = db.orm.relationship('CellLine', back_populates='crispr_design')
+
+    # one crispr design to many mass spec protein groups
+    protein_groups = db.orm.relationship(
+        'MassSpecProteinGroup',
+        secondary='protein_group_crispr_design_association',
+        back_populates='crispr_designs'
+    )
 
     # the well_id must be unique in each plate design
     __table_args__ = (
         db.UniqueConstraint(plate_design_id, well_id),
     )
 
-
     def __repr__(self):
-        return "<CrisprDesign(target_name='%s')>" % self.target_name
-
+        return (
+            "<CrisprDesign(plate_id='%s', well_id=%s', target_name='%s')>" %
+            (self.plate_design_id, self.well_id, self.target_name)
+        )
 
     @db.orm.validates('well_id')
     def format_well_id(self, key, value):
@@ -280,7 +329,6 @@ class CrisprDesign(Base):
         Zero-pad well_ids ('A1' -> 'A01')
         '''
         return utils.format_well_id(value)
-
 
     @db.orm.validates('target_terminus')
     def format_target_terminus(self, key, value):
@@ -304,7 +352,6 @@ class CrisprDesign(Base):
             value = TerminusTypeEnum.N_TERMINUS
         return value
 
-
     @db.orm.validates('transcript_id')
     def validate_transcript_id(self, key, value):
         # check that transcript_id is a valid ensembl ID
@@ -312,13 +359,11 @@ class CrisprDesign(Base):
             raise ValueError('Invalid transcript_id %s' % value)
         return value
 
-
     @db.orm.validates('protospacer_sequence')
     def validate_protospacer_sequence(self, key, value):
         if not utils.is_sequence(value):
             raise ValueError('Invalid protospacer sequence %s' % value)
         return value
-
 
     @db.orm.validates('template_sequence')
     def validate_template_sequence(self, key, value):
@@ -326,6 +371,30 @@ class CrisprDesign(Base):
             raise ValueError('Invalid template sequence %s' % value)
         return value
 
+
+class UniprotMetadata(Base):
+    '''
+    Cached Uniprot metadata retrieved by querying UniprotKB and the Uniprot mapper API
+    (see methods in uniprot_utils for details)
+    '''
+
+    __tablename__ = 'uniprot_metadata'
+    uniprot_id = db.Column(db.String, primary_key=True)
+
+    # these columns correspond to columns retrieved by UniprotKB queries
+    protein_names = db.Column(db.String)
+    protein_families = db.Column(db.String)
+    gene_names = db.Column(db.String)
+    annotation = db.Column(db.String)
+
+    # the ENSG ID is not included in the UniprotKB query results;
+    # it must be populated separately using the Uniprot mapper API
+    ensg_id = db.Column(db.String)
+
+    date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
+
+    # one uniprot_id to many crispr designs
+    crispr_designs = db.orm.relationship('CrisprDesign', back_populates='uniprot_metadata')
 
 
 class Electroporation(Base):
@@ -346,15 +415,18 @@ class Electroporation(Base):
 
     # the id of the progenitor cell line (the line that was used in the electroporation)
     progenitor_cell_line_id = db.Column(
-        db.Integer, db.ForeignKey('cell_line.id'), nullable=False)
+        db.Integer, db.ForeignKey('cell_line.id'), nullable=False
+    )
 
     # one electroporation to one progenitor cell line
     progenitor_cell_line = db.orm.relationship(
-        'CellLine', foreign_keys=[progenitor_cell_line_id], uselist=False)
+        'CellLine', foreign_keys=[progenitor_cell_line_id], uselist=False
+    )
 
     # the design_id of the plate that was electroporated
     plate_design_id = db.Column(
-        db.String, db.ForeignKey('plate_design.design_id'), nullable=False)
+        db.String, db.ForeignKey('plate_design.design_id'), nullable=False
+    )
 
     # many electroporations to one plate design
     plate_design = db.orm.relationship('PlateDesign', uselist=False)
@@ -362,7 +434,8 @@ class Electroporation(Base):
     # one electroporation to many cell lines
     # (these are the polyclonal lines generated by the electroporation)
     cell_lines = db.orm.relationship(
-        'CellLine', back_populates='electroporation', foreign_keys='CellLine.electroporation_id')
+        'CellLine', back_populates='electroporation', foreign_keys='CellLine.electroporation_id'
+    )
 
     # because of experimental constraints, we can assume that the same plate
     # should never be electroporated more than once on the same day
@@ -395,16 +468,14 @@ class FACSDataset(Base):
 
     cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'), primary_key=True)
 
-    # one dataset to one cell_line
-    cell_line = db.orm.relationship(
-        'CellLine', backref=db.orm.backref('facs_dataset', uselist=False)
-    )
-
     # histograms
     histograms = db.Column(postgresql.JSONB)
 
     # extracted properties (area, median intensity, etc)
     scalars = db.Column(postgresql.JSONB)
+
+    # one dataset to one cell_line
+    cell_line = db.orm.relationship('CellLine', back_populates='facs_dataset', uselist=False)
 
 
     def simplify_histograms(self):
@@ -445,13 +516,13 @@ class SequencingDataset(Base):
 
     cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'), primary_key=True)
 
-    # one dataset to one cell_line
-    cell_line = db.orm.relationship(
-        'CellLine', backref=db.orm.backref('sequencing_dataset', uselist=False)
-    )
-
     # extracted properties (percent HDR among all alleles and modified alleles)
     scalars = db.Column(postgresql.JSONB)
+
+    # one dataset to one cell_line
+    cell_line = db.orm.relationship(
+        'CellLine', back_populates='sequencing_dataset', uselist=False
+    )
 
 
 class MicroscopyDataset(Base):
@@ -527,22 +598,26 @@ class MicroscopyFOV(Base):
 
     # one FOV to many FOV results
     results = db.orm.relationship(
-        'MicroscopyFOVResult', back_populates='fov', cascade='all, delete-orphan')
+        'MicroscopyFOVResult', back_populates='fov', cascade='all, delete-orphan'
+    )
 
     # one FOV to many ROIs
     rois = db.orm.relationship(
-        'MicroscopyFOVROI', back_populates='fov', cascade='all, delete-orphan')
+        'MicroscopyFOVROI', back_populates='fov', cascade='all, delete-orphan'
+    )
 
     # one FOV to many thumbnails
     thumbnails = db.orm.relationship(
-        'MicroscopyThumbnail', back_populates='fov', cascade='all, delete-orphan')
+        'MicroscopyThumbnail', back_populates='fov', cascade='all, delete-orphan'
+    )
 
     # one FOV to one FOV annotation
     annotation = db.orm.relationship(
         'MicroscopyFOVAnnotation',
         back_populates='fov',
         uselist=False,
-        cascade='all, delete-orphan')
+        cascade='all, delete-orphan'
+    )
 
     # round_id is either 'R01' (initial post-sort imaging)
     # or 'R02' (thawed-plate imaging)
@@ -557,9 +632,7 @@ class MicroscopyFOV(Base):
     # because we image by plate, each well_id is imaged once per plate
     # this fact can be expressed by the following constraint
     # (assuming that each cell line appears in only one well on each imaging plate)
-    __table_args__ = (
-        db.UniqueConstraint(pml_id, cell_line_id, site_num),
-    )
+    __table_args__ = (db.UniqueConstraint(pml_id, cell_line_id, site_num),)
 
     @db.orm.validates('pml_id')
     def validate_pml_id(self, key, value):
@@ -651,7 +724,6 @@ class MicroscopyFOVROI(Base):
 
     Also, usually, the intensities have been normalized and downsampled to uint8,
     using the min/max intensities and (optionally) a gamma
-
     '''
 
     __tablename__ = 'microscopy_fov_roi'
@@ -666,13 +738,26 @@ class MicroscopyFOVROI(Base):
     # one ROI to many thumbnails
     thumbnails = db.orm.relationship('MicroscopyThumbnail', back_populates='roi')
 
-    # kind of ROI: either 'corner', 'top-scoring', 'single-nucleus', 'single-cell'
+    # kind of ROI: either 'corner' or 'annotated'
     kind = db.Column(db.String)
 
-    # all ROI-specific metadata, including the ROI oordinates (position and shape),
+    # all ROI-specific metadata, including the ROI coordinates (position and shape),
     # the z-coordinate of the center of the cell layer,  and the min/max values
     # used to downsample the intensities from uint16 to uint8
     props = db.Column(postgresql.JSONB)
+
+    def get_thumbnail(self, channel):
+        '''
+        Retrieve the thumbnail of the ROI
+        (this is an almost direct copy of MicroscopyFOV.get_thumbnail)
+        '''
+        return (
+            db.orm.object_session(self)
+            .query(MicroscopyThumbnail)
+            .filter(MicroscopyThumbnail.roi_id == self.id)
+            .filter(MicroscopyThumbnail.channel == channel)
+            .one_or_none()
+        )
 
 
 class MicroscopyThumbnail(Base):
@@ -784,7 +869,8 @@ class MassSpecPulldown(Base):
     id = db.Column(db.Integer, primary_key=True)
     cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'))
     pulldown_plate_id = db.Column(
-        db.String, db.ForeignKey('mass_spec_pulldown_plate.id'), nullable=False)
+        db.String, db.ForeignKey('mass_spec_pulldown_plate.id'), nullable=False
+    )
 
     # timestamp column
     date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
@@ -797,15 +883,18 @@ class MassSpecPulldown(Base):
 
     # one pulldown to one pulldown_plate
     pulldown_plate = db.orm.relationship(
-        'MassSpecPulldownPlate', back_populates='pulldowns', uselist=False)
+        'MassSpecPulldownPlate', back_populates='pulldowns', uselist=False
+    )
 
     def get_target_name(self):
         '''Convenience method to get target_name for each pulldown'''
         return self.cell_line.crispr_design.target_name
 
     def __repr__(self):
-        return "<Bait(id=%s, pulldown_plate=%s, target=%s)>" % \
-            (self.id, self.pulldown_plate_id, self.get_target_name())
+        return (
+            "<Bait(id=%s, pulldown_plate=%s, target=%s)>"
+            % (self.id, self.pulldown_plate_id, self.get_target_name())
+        )
 
 
 class MassSpecProteinGroup(Base):
@@ -818,17 +907,56 @@ class MassSpecProteinGroup(Base):
     # id is a hash of unique set of peptide Uniprot ids that compose the protein group
     id = db.Column(db.String, primary_key=True)
 
-    # a list of all protein names mapped to the protein group
+    # a list of all uniprot gene names mapped to the protein group
     gene_names = db.Column(postgresql.ARRAY(db.String))
 
-    # a list of all peptide Uniprot ids
-    protein_names = db.Column(postgresql.ARRAY(db.String))
+    # a list of all peptide Uniprot ids (including isoforms)
+    uniprot_ids = db.Column(postgresql.ARRAY(db.String))
 
     # timestamp column
     date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
 
     # one protein_group to many hits
     hits = db.orm.relationship('MassSpecHit', back_populates='protein_group')
+
+    # one protein group to (possibly) more than one crispr design
+    crispr_designs = db.orm.relationship(
+        'CrisprDesign',
+        secondary='protein_group_crispr_design_association',
+        back_populates='protein_groups'
+    )
+
+    # one protein group to multiple uniprot metadata rows
+    uniprot_metadata = db.orm.relationship(
+        'UniprotMetadata',
+        secondary='protein_group_uniprot_metadata_association'
+    )
+
+
+class ProteinGroupUniprotMetadataAssociation(Base):
+    '''
+    The protein_group - uniprot_id associations
+    (does not include isoforms - that is, includes only uniprot_ids without dashes)
+    '''
+    __tablename__ = 'protein_group_uniprot_metadata_association'
+    uniprot_id = db.Column(
+        db.String, db.ForeignKey('uniprot_metadata.uniprot_id'), primary_key=True
+    )
+    protein_group_id = db.Column(
+        db.String, db.ForeignKey('mass_spec_protein_group.id'), primary_key=True
+    )
+
+
+class ProteinGroupCrisprDesignAssociation(Base):
+    '''
+    '''
+    __tablename__ = 'protein_group_crispr_design_association'
+    crispr_design_id = db.Column(
+        db.Integer, db.ForeignKey('crispr_design.id'), primary_key=True
+    )
+    protein_group_id = db.Column(
+        db.String, db.ForeignKey('mass_spec_protein_group.id'), primary_key=True
+    )
 
 
 class MassSpecHit(Base):
@@ -842,12 +970,10 @@ class MassSpecHit(Base):
     id = db.Column(db.Integer, primary_key=True)
 
     # hashed string of sorted Uniprot peptide IDs that compose the protein group
-    protein_group_id = db.Column(
-        db.String, db.ForeignKey('mass_spec_protein_group.id'))
+    protein_group_id = db.Column(db.String, db.ForeignKey('mass_spec_protein_group.id'))
 
     # foreign key of each pulldown target from pulldown table
-    pulldown_id = db.Column(
-        db.Integer, db.ForeignKey('mass_spec_pulldown.id'), nullable=False)
+    pulldown_id = db.Column(db.Integer, db.ForeignKey('mass_spec_pulldown.id'), nullable=False)
 
     # p-value of the hit's MS intensity
     pval = db.Column(db.Float, nullable=False)
@@ -878,7 +1004,8 @@ class MassSpecHit(Base):
 
     # one hit to one protein_group
     protein_group = db.orm.relationship(
-        'MassSpecProteinGroup', back_populates='hits', uselist=False)
+        'MassSpecProteinGroup', back_populates='hits', uselist=False
+    )
 
     # A hit needs to have a unique set of target (pulldown) and the prey (protein_group)
     __table_args__ = (db.UniqueConstraint(pulldown_id, protein_group_id),)

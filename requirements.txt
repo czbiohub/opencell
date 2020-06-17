@@ -8,6 +8,7 @@ scikit-image
 scikit-learn
 psycopg2
 sqlalchemy
+requests
 dask
 dask[delayed]
 Flask

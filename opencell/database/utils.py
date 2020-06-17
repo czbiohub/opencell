@@ -56,7 +56,7 @@ def format_well_id(well_id):
     '''
     Zero-pad well_ids like 'A1' to 'A01'
     '''
-    if re.match('^[A-H][1-9]$', well_id):
+    if re.match(r'^[A-H][1-9]$', well_id):
         row, column = well_id
         well_id = '%s0%s' % (row, column)
     return well_id
@@ -76,12 +76,12 @@ def format_plate_design_id(design_id):
 
     design_id = str(design_id)
 
-    result = re.match('^P[0-9]{4}$', design_id)
+    result = re.match(r'^P[0-9]{4}$', design_id)
     if result is None:
         plate_number = None
 
         # the design_id either begins with 'plate' or is the plate_number itself
-        result = re.match('^p?(?:late)? ?([0-9]+)$', design_id.lower())
+        result = re.match(r'^p?(?:late)? ?([0-9]+)$', design_id.lower())
         if result:
             plate_number = result.groups()[0]
         else:

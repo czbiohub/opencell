@@ -2,19 +2,19 @@ import os
 import re
 import enum
 import json
+import flask
 import numpy as np
 import pandas as pd
 import sqlalchemy as db
 
 from opencell import constants
-from opencell.database import models, utils
+from opencell.database import models, utils, uniprot_utils
 from opencell.imaging.processors import FOVProcessor
 
 
-def construct_payload(cell_line, kind=None):
+def cell_line_payload(cell_line, optional_fields):
     '''
-    Construct the JSON payload returned by the lines/ endpoint of the API
-
+    The JSON payload returned by the /lines endpoint of the API
     Note that, awkwardly, the RNAseq data is a column in the crispr_design table
     '''
     design = cell_line.crispr_design
@@ -30,28 +30,23 @@ def construct_payload(cell_line, kind=None):
         'transcript_id': design.transcript_id,
         'hek_tpm': design.hek_tpm,
     }
-    payload = {'metadata': metadata}
 
-    if kind in ['all', 'scalars']:
-        payload['scalars'] = construct_scalars_payload(cell_line)
-        payload['annotations'] = cell_line.annotation.categories if cell_line.annotation else None
+    if not design.uniprot_metadata:
+        print(design.target_name)
 
-    if kind in ['all', 'facs'] and cell_line.facs_dataset:
-        payload['facs_histograms'] = cell_line.facs_dataset.simplify_histograms()
-
-    if kind in ['all', 'rois', 'thumbnails']:
-        payload['fovs'] = construct_fov_payload(cell_line, kind=kind)
-
-    return payload
-
-
-def construct_scalars_payload(cell_line):
-    '''
-    Aggregate various scalar properties/features/results
-    '''
-    scalars = {}
+    uniprot_metadata = {
+        'uniprot_id': design.uniprot_metadata.uniprot_id,
+        'gene_names': design.uniprot_metadata.gene_names.split(' '),
+        'protein_name': uniprot_utils.prettify_uniprot_protein_name(
+            design.uniprot_metadata.protein_names
+        ),
+        'annotation': uniprot_utils.prettify_uniprot_annotation(
+            design.uniprot_metadata.annotation
+        ),
+    }
 
     # the sequencing percentages
+    scalars = {}
     if cell_line.sequencing_dataset:
         scalars.update({
             'hdr_all': cell_line.sequencing_dataset.scalars.get('hdr_all'),
@@ -64,52 +59,116 @@ def construct_scalars_payload(cell_line):
             'facs_area': cell_line.facs_dataset.scalars.get('area'),
             'facs_intensity': cell_line.facs_dataset.scalars.get('rel_median_log')
         })
-    return scalars
+
+    # summary stats for FOVs and pulldowns
+    counts = {
+        'num_fovs': len(cell_line.fovs),
+        'num_fovs_annotated': len([fov for fov in cell_line.fovs if fov.annotation]),
+    }
+
+    # all of the manual annotation categories
+    annotation = {
+        'categories': cell_line.annotation.categories if cell_line.annotation else None
+    }
+
+    payload = {
+        'metadata': metadata,
+        'scalars': scalars,
+        'counts': counts,
+        'annotation': annotation,
+        'uniprot_metadata': uniprot_metadata,
+    }
+
+    # get the thumbnail of the annotated ROI from the 'best' FOV
+    if 'best-fov' in optional_fields:
+        fov = cell_line.get_best_fov()
+        if fov and fov.rois:
+            # hack: we assume there is only one ROI (the annotated ROI)
+            thumbnail = fov.rois[0].get_thumbnail('rgb')
+            payload['best_fov'] = {
+                'thumbnails': thumbnail.as_dict() if thumbnail else None
+            }
+    return payload
 
 
-def construct_fov_payload(cell_line, kind=None):
+def facs_payload(facs_dataset):
     '''
-    JSON payload describing the FOVs and ROIs
     '''
-    payload = []
-    for fov in cell_line.fovs:
-        fov_payload = {}
+    return {'histograms': facs_dataset.simplify_histograms()}
 
-        # basic metadata
-        fov_metadata = {
-            'id': fov.id,
-            'score': fov.get_score(),
-            'pml_id': fov.dataset.pml_id,
-            'src_filename': fov.raw_filename,
-            'z_step_size': FOVProcessor.z_step_size(fov.dataset.pml_id),
-        }
 
-        fov_payload['annotation'] = fov.annotation.as_dict() if fov.annotation else None
+def fov_payload(fov, optional_fields):
+    '''
+    The JSON payload for an FOV (and its ROIs)
+    optional_fields : an optional list of ['rois', 'thumbnails']
+    '''
 
-        # append the 488 exposure settings
-        metadata = fov.get_result('raw-tiff-metadata')
-        if metadata:
-            fov_metadata['laser_power_488'] = metadata.data.get('laser_power_488_488')
-            fov_metadata['exposure_time_488'] = metadata.data.get('exposure_time_488')
-            fov_metadata['max_intensity_488'] = metadata.data.get('max_intensity_488')
+    # basic metadata
+    metadata = {
+        'id': fov.id,
+        'score': fov.get_score(),
+        'pml_id': fov.dataset.pml_id,
+        'src_filename': fov.raw_filename,
+        'z_step_size': FOVProcessor.z_step_size(fov.dataset.pml_id),
+    }
 
-        # the position of the cell layer center (relative to the bottom of the stack)
-        metadata = fov.get_result('clean-tiff-metadata')
-        if metadata and metadata.data.get('cell_layer_center') is not None:
-            fov_metadata['cell_layer_center'] = (
-                metadata.data.get('cell_layer_center') * fov_metadata['z_step_size']
-            )
+    # the 488 exposure settings
+    tiff_metadata = fov.get_result('raw-tiff-metadata')
+    if tiff_metadata:
+        metadata['laser_power_488'] = tiff_metadata.data.get('laser_power_488_488')
+        metadata['exposure_time_488'] = tiff_metadata.data.get('exposure_time_488')
+        metadata['max_intensity_488'] = tiff_metadata.data.get('max_intensity_488')
 
-        if kind in ['all', 'rois']:
-            fov_payload['rois'] = [roi.as_dict() for roi in fov.rois]
+    # the position of the cell layer center, relative to the bottom of the stack
+    tiff_metadata = fov.get_result('clean-tiff-metadata')
+    if tiff_metadata and tiff_metadata.data.get('cell_layer_center') is not None:
+        metadata['cell_layer_center'] = (
+            tiff_metadata.data.get('cell_layer_center')*metadata['z_step_size']
+        )
 
-        if kind in ['all', 'thumbnails']:
-            thumbnail = fov.get_thumbnail('rgb')
-            fov_payload['thumbnails'] = thumbnail.as_dict() if thumbnail else None
+    payload = {
+        'metadata': metadata,
+        'annotation': fov.annotation.as_dict() if fov.annotation else None
+    }
 
-        fov_payload['metadata'] = fov_metadata
-        payload.append(fov_payload)
+    if 'rois' in optional_fields:
+        payload['rois'] = [roi.as_dict() for roi in fov.rois]
 
-    # sort FOVs by score (unscored FOVs last)
-    payload = sorted(payload, key=lambda row: row['metadata'].get('score') or -2)[::-1]
+    if 'thumbnails' in optional_fields:
+        thumbnail = fov.get_thumbnail('rgb')
+        payload['thumbnails'] = thumbnail.as_dict() if thumbnail else None
+
+    return payload
+
+
+def pulldown_payload(pulldown, engine):
+    '''
+    The JSON payload for a mass spec pulldown and all of its hits
+    For speed, we use a direct query to retrieve and serialize the hits
+    '''
+
+    # TODO: which gene_name to select?
+    # (note that postgres uses one-based indexing)
+    hits = pd.read_sql(
+        '''
+        select pg.gene_names, hit.* from mass_spec_hit hit
+        inner join mass_spec_protein_group pg on pg.id = hit.protein_group_id
+        where hit.pulldown_id = %d
+        ''' % pulldown.id,
+        engine
+    )
+
+    hits = hits[[
+        'gene_names',
+        'pval',
+        'enrichment',
+        'abundance_stoich',
+        'interaction_stoich',
+        'is_significant_hit',
+    ]]
+
+    payload = {
+        'metadata': pulldown.as_dict(),
+        'hits': json.loads(hits.to_json(orient='records')),
+    }
     return payload

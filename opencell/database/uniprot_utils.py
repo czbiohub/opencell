@@ -69,29 +69,6 @@ def prettify_uniprot_annotation(annotation):
     return annotation
 
 
-def get_uniprot_metadata(gene_name, enst_id=None):
-    '''
-    Retrieve the top Uniprot search result given a gene_name and maybe an ENST ID
-    '''
-
-    # first try querying with the ENST ID, if one was provided
-    metadata = None
-    if enst_id is not None:
-        metadata = query_uniprotkb(query=enst_id, limit=1)
-
-    # if there was no ENST ID, or no metadata was found,
-    # fall back to querying with the gene name (which we assume is not none)
-    if enst_id is None or metadata is None:
-        print("Warning: querying UniprotKB by gene name and not by ENST ID for '%s'" % gene_name)
-        metadata = query_uniprotkb(query=gene_name, limit=1)
-        if metadata is None:
-            print("Warning: no UniprotKB results for '%s'" % gene_name)
-            return None
-
-    metadata = metadata.iloc[0]
-    return metadata
-
-
 def query_uniprotkb(query, only_reviewed=True, limit=1):
     '''
     Search (the human) UniprotKB and return some useful metadata

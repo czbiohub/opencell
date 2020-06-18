@@ -10,8 +10,23 @@ import sys
 from Bio import SeqIO
 from collections import defaultdict
 
+from opencell.database import models
+from opencell.database import utils
+from opencell.database import ms_utils
+from opencell.database import ms_operations as ms_ops
+from opencell.imaging import processors
+from opencell import constants
+import sqlalchemy
+# from eralchemy import render_er
+from sqlalchemy import inspect
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, String, Numeric
+from sqlalchemy.orm import sessionmaker
 
-def compute_stoich_df(m_imputed, seq_df, rnaseq, pvals, target_re=r'P\d{3}_(.*)'):
+
+
+def compute_stoich_df(m_imputed, seq_df, rnaseq, pvals, pull_uni, target_re=r'P\d{3}_(.*)'):
     """
     wrapper function to generate interaction stoich data
     and abundance stoich data in a dataframe
@@ -23,7 +38,7 @@ def compute_stoich_df(m_imputed, seq_df, rnaseq, pvals, target_re=r'P\d{3}_(.*)'
     stoi_df = multi_theoretical_peptides(m_imputed, seq_df)
     stoi_df = pys.median_replicates(stoi_df)
     divided = divide_by_theoretical_peptides(stoi_df, 'median ')
-    final_stoi = divide_by_bait(divided)
+    final_stoi = divide_by_bait(divided, pull_uni)
 
     # remove median headings
     col_names = list(final_stoi)
@@ -174,40 +189,63 @@ def divide_by_theoretical_peptides(median_stoi_df, intensity_re='median '):
     return absolute_intensity
 
 
-def divide_by_bait(divided_df, intensity_re=r'P\d{3}_(.*)'):
+def divide_by_bait(divided_df, pull_uni, intensity_re=r'P(\d{3})_(.*)'):
     """
     divide by the normalized bait intensity to get final stoichiometry
     """
+    pull_uni = pull_uni.copy()
 
     divided_df = divided_df.copy()
     cols = list(divided_df)
     for col in cols:
+        gene_names = []
+
         search = re.search(intensity_re, col)
         target = ''
         if search:
-            target = search.groups()[0]
+            plate = search.groups()[0]
+            plate = ms_utils.format_ms_plate(plate)
+
+            target = search.groups()[1]
+            re_target = re.sub(r'-.*$', '', target, flags=re.IGNORECASE)
         else:
             continue
-        if target:
-            # pdb.set_trace()
-            target_row = divided_df[divided_df['Gene names'] == target]
 
+        if target:
+            uni_row = pull_uni[
+                (pull_uni['pulldown_plate_id'] == plate) & (pull_uni['target_name'] == re_target)]
+
+            if uni_row.shape[0] == 0:
+                uni_row = pull_uni[
+                    (pull_uni['pulldown_plate_id'] == plate) & (
+                        pull_uni['gene_names'].apply(lambda x: re_target in x))]
+            if uni_row.shape[0] > 0:
+                uni_row = uni_row.iloc[0]
+                gene_names = uni_row.gene_names
+
+            target_row = divided_df[divided_df['Gene names'].apply(
+                lambda x: re_target in x)]
             if target_row.shape[0] > 0:
                 target_intensity = target_row[col].max()
                 divided_df[col] = divided_df[col] / target_intensity
-            else:
-                found = False
-                for gene in divided_df['Gene names'].tolist():
-                    if target in gene:
-                        target = gene
-                        found = True
-                if found:
-                    target_row = divided_df[divided_df['Gene names'] == target]
+
+            elif gene_names:
+                matches = []
+                for gene in gene_names:
+                    target_row = divided_df[divided_df['Gene names'].apply(
+                        lambda x: gene in x)]
+                    if target_row.shape[0] > 0:
+                        matches.append(target_row)
+                if matches:
+                    target_row = pd.concat(matches)
                     target_intensity = target_row[col].max()
                     divided_df[col] = divided_df[col] / target_intensity
                 else:
                     print(target + " not found")
                     divided_df.drop(col, axis=1, inplace=True)
+            else:
+                print(target + " not found")
+                divided_df.drop(col, axis=1, inplace=True)
 
 
         else:
@@ -269,3 +307,17 @@ def abundance_stoichiometry(stoich_df, rnaseq_df, ms=True):
     stoich_df = stoich_df.reset_index().rename(columns={'index': 'Gene names'})
 
     return stoich_df
+
+
+def fetch_uniprot_meta(url):
+    url = utils.url_from_credentials('../../../db-credentials-cap.json')
+    engine = sqlalchemy.create_engine(url)
+    engine.connect()
+
+    # fetch table and process right columns
+    uniprot_meta = pd.read_sql(
+        'select * from crispr_design inner join uniprot_metadata using (uniprot_id)', engine)
+    uni = uniprot_meta[['plate_design_id', 'well_id', 'target_name', 'gene_names']]
+    uni['gene_names'] = uni['gene_names'].apply(lambda x: x.split(' '))
+
+    return uni

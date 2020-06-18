@@ -188,7 +188,7 @@ def insert_uniprot_metadata_for_crispr_design(
     ----------
     crispr_design_id : int, required
         the id of the crispr design for which to insert uniprot metadata
-    retrieved_metadata : pd.Series, optional
+    retrieved_metadata : one-row pd.Dataframe, optional
         The raw uniprot metadata corresponding to the crispr design
         (intended for edge cases in which the correct metadata must be manually specified,
         rather than retrieved by uniprot_utils.get_uniprot_metadata)
@@ -203,15 +203,29 @@ def insert_uniprot_metadata_for_crispr_design(
     if crispr_design.uniprot_id is not None:
         return
 
-    # retrieve the raw metadata for the crispr design from the UniprotKB API
+    # retrieve the metadata for the crispr design from the UniprotKB API
     if retrieved_metadata is None:
-        retrieved_metadata = uniprot_utils.get_uniprot_metadata(
-            gene_name=crispr_design.target_name,
-            enst_id=crispr_design.transcript_id
-        )
+
+        # first try querying with the ENST ID, if one was provided
+        if crispr_design.transcript_id is not None:
+            retrieved_metadata = uniprot_utils.query_uniprotkb(
+                query=crispr_design.transcript_id, limit=1
+            )
+
+        # if there is no ENST ID or no metadata was found, query with the target name
+        if crispr_design.transcript_id is None or retrieved_metadata is None:
+            print(
+                "Warning: querying UniprotKB by target name and not by ENST ID for '%s'"
+                % crispr_design.target_name
+            )
+            retrieved_metadata = uniprot_utils.query_uniprotkb(
+                query=crispr_design.target_name, limit=1
+            )
+
     if retrieved_metadata is None:
         print('Warning: no Uniprot metadata found for target %s' % crispr_design.target_name)
         return
+    retrieved_metadata = retrieved_metadata.iloc[0]
 
     # check whether the retrieved metadata already exists
     extant_metadata = (

@@ -872,11 +872,13 @@ class MassSpecPulldown(Base):
         db.String, db.ForeignKey('mass_spec_pulldown_plate.id'), nullable=False
     )
 
-    # a list of 1% fdr set by dynamic fdr calculation for this pulldown
-    fdr_1 = db.Column(postgresql.ARRAY(db.Float))
+    # 1% fdr offset and curvature calculated for this pulldown
+    fdr_1_offset = db.Column(db.Float)
+    fdr_1_curvature = db.Column(db.Float)
 
-    # a list of 5% fdr set by dynamic fdr calculation for this pulldown
-    fdr_5 = db.Column(postgresql.ARRAY(db.Float))
+    # 5% fdr offset and curvature calculated for this pulldown
+    fdr_5_offset = db.Column(db.Float)
+    fdr_5_curvature = db.Column(db.Float)
 
     # timestamp column
     date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
@@ -992,9 +994,6 @@ class MassSpecHit(Base):
 
     # boolean specifying whether the hit is significant based on a lower FDR threshold
     is_minor_hit = db.Column(db.Boolean)
-
-    # boolean specifying whether the hit is composed only of imputed values
-    is_imputed = db.Column(db.Boolean)
 
     # interaction stoichiometry of the prey relative to the target
     interaction_stoich = db.Column(db.Float)

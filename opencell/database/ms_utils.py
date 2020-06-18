@@ -25,7 +25,7 @@ def fdr_mismatching_target_names(plates_df, fdr_df):
     """
 
     # get target names from hits_df
-    fdr_genes = set([x[0].split('_')[1] for x in fdr_df.index.to_list() if 'P0' in x[0]])
+    fdr_genes = set([x.split('_')[1] for x in fdr_df.index.to_list() if 'P0' in x])
 
     # get target names from plates_df
     plate_genes = set(plates_df['target_name'].values.tolist())

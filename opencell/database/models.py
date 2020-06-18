@@ -872,6 +872,12 @@ class MassSpecPulldown(Base):
         db.String, db.ForeignKey('mass_spec_pulldown_plate.id'), nullable=False
     )
 
+    # a list of 1% fdr set by dynamic fdr calculation for this pulldown
+    fdr_1 = db.Column(postgresql.ARRAY(db.Float))
+
+    # a list of 5% fdr set by dynamic fdr calculation for this pulldown
+    fdr_5 = db.Column(postgresql.ARRAY(db.Float))
+
     # timestamp column
     date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
 

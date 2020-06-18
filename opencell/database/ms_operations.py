@@ -39,7 +39,6 @@ def insert_pulldown_plate(session, row, errors='warn'):
 class MassSpecPolyclonalOperations(operations.PolyclonalLineOperations):
     '''
     '''
-
     def insert_pulldown(self, session, row, errors='warn'):
         """ From a pd row, insert a single pulldown data """
 
@@ -59,6 +58,40 @@ class MassSpecPolyclonalOperations(operations.PolyclonalLineOperations):
 class MassSpecPulldownOperations:
     '''
     '''
+    def insert_fdrs(self, session, target, row, pulldown_df):
+        """
+        Insert Dynamic FDR values
+        """
+
+        plate_id, target_name = target.split('_')
+        plate_id = ms_utils.format_ms_plate(plate_id)
+
+        # get the pulldown for this plate_id and target_name
+        pulldown_meta = pulldown_df.loc[
+            (pulldown_df['pulldown_plate_id'] == plate_id)
+            & (pulldown_df['target_name'] == target_name)
+        ]
+
+        # retrieve the design id and well id
+        design_id, well_id = pulldown_meta.design_id.item(), pulldown_meta.well_id.item()
+
+        # get the cellline_id
+        pull_cls = MassSpecPolyclonalOperations.from_plate_well(session, design_id, well_id)
+        cell_line_id = pull_cls.line.id
+
+        # get the pulldown_id
+        pulldown = (
+            session.query(models.MassSpecPulldown)
+            .filter(models.MassSpecPulldown.cell_line_id == cell_line_id)
+            .filter(models.MassSpecPulldown.pulldown_plate_id == plate_id)
+            .one()
+        )
+        pulldown.fdr_1 = row.fdr1
+        pulldown.fdr_5 = row.fdr5
+
+        session.add(pulldown)
+        session.commit()
+
 
     def bulk_insert_hits(self, session, target, target_hits, pulldown_df, errors='warn'):
         """

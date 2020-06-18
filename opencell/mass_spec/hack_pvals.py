@@ -1,11 +1,10 @@
-# pval calculations used for temporary purposes
-
 import urllib.parse
 import urllib.request
 import sys
 import pdb
 import collections
 import multiprocessing
+import itertools
 import scipy
 import random
 import re
@@ -24,7 +23,7 @@ from scipy.stats import percentileofscore
 from sklearn.metrics.pairwise import cosine_similarity
 
 
-def hack_remove_significants(imputed_df, fc_vars1, fc_vars2):
+def hack_remove_significants(imputed_df, thresh, fc_vars2, human_corum):
     """ Calculate enrichment and pvals for each bait, but remove baits that
     show up as significant hits and iterate continuously until
     no more removable baits are found.
@@ -40,10 +39,10 @@ def hack_remove_significants(imputed_df, fc_vars1, fc_vars2):
     total = len(bait_list)
     baitrange = list(np.arange(total))
 
-    fc_var1, fc_var2 = fc_vars1[0], fc_vars1[1]
+
 
     multi_args = zip(bait_list, repeat(imputed_df), baitrange, repeat(total),
-        repeat(fc_var1), repeat(fc_var2))
+        repeat(thresh), repeat(human_corum))
 
     p = Pool()
     print("First round p-val calculations..")
@@ -53,12 +52,13 @@ def hack_remove_significants(imputed_df, fc_vars1, fc_vars2):
     master_neg = pd.concat(neg_dfs, axis=1)
     print("First round finished!")
 
+    return_neg = master_neg.copy()
     master_neg.reset_index(inplace=True, drop=True)
 
     fc_var1, fc_var2 = fc_vars2[0], fc_vars2[1]
 
     multi_args2 = zip(bait_list, repeat(imputed_df), repeat(master_neg),
-        baitrange, repeat(total), repeat(fc_var1), repeat(fc_var2))
+        baitrange, repeat(total), repeat(fc_var1), repeat(fc_var2), repeat(human_corum))
 
     p = Pool()
     outputs = p.starmap(second_round_pval, multi_args2)
@@ -75,7 +75,7 @@ def hack_remove_significants(imputed_df, fc_vars1, fc_vars2):
     master_df = pd.concat([master_df, gene_names], axis=1, join='inner')
 
 
-    return master_df
+    return master_df, return_neg
 
 
 def find_root(bait):
@@ -91,7 +91,7 @@ def find_root(bait):
 
 
 
-def first_round_pval(bait, df, num, total, fc_var1, fc_var2):
+def first_round_pval(bait, df, num, total, thresh, human_corum):
     """ A first round of pval calculations to remove any significant hits
     from negative controls """
 
@@ -114,11 +114,24 @@ def first_round_pval(bait, df, num, total, fc_var1, fc_var2):
     bait_name = bait.split('_')[1]
     root = find_root(bait_name)
 
+    # identify all the genes that are in a corum set
+    corums = corum_genes(bait_name, human_corum)
+
     same_group = []
     for gene in n_bait_list:
         gene_root = find_root(gene[1])
-        if gene_root == root:
+        if gene_root == root or gene in corums:
             same_group.append(gene[0])
+
+        # Exception hack for POLR and MEDs
+        if root == 'MED':
+            if gene_root == 'POLR':
+                same_group.append(gene[0])
+        if root == 'POLR':
+            if gene_root == 'MED':
+                same_group.append(gene[0])
+
+
 
     # Convert all values in same groups as np.nans
     for gene in same_group:
@@ -126,14 +139,14 @@ def first_round_pval(bait, df, num, total, fc_var1, fc_var2):
             neg_control[gene] > 100, np.nan)
 
 
-    # calculate the neg con median and stds
-    con_median = neg_control.median(axis=1)
-    con_std = neg_control.std(axis=1)
+    # # calculate the neg con median and stds
+    # con_median = neg_control.median(axis=1)
+    # con_std = neg_control.std(axis=1)
 
-    # calculate enrichment
-    enrich_series = (temporary[bait].median(axis=1) - con_median) / con_std
-    enrich_series.index = gene_list
-    enrich_series.name = 'enrichment'
+    # # calculate enrichment
+    # enrich_series = (temporary[bait].median(axis=1) - con_median) / con_std
+    # enrich_series.index = gene_list
+    # enrich_series.name = 'enrichment'
 
     # calculate the p-values
 
@@ -153,11 +166,14 @@ def first_round_pval(bait, df, num, total, fc_var1, fc_var2):
     pval_series = pd.Series(bait_series, index=gene_list, name='pvals')
     pval_series = pval_series.apply(get_pvals_bagging, args=[neg_control.T])
 
+    pvals, enrichment = pval_series.apply(lambda x: x[0]), pval_series.apply(lambda x: x[1])
+    pvals.name = 'pvals'
+    enrichment.name = 'enrichment'
+
     # Find positive hits from enrichment and pval calculations
-    pe_df = pd.concat([enrich_series, pval_series], axis=1)
-    pe_df['thresh'] = pe_df['enrichment'].apply(calc_thresh,
-        args=[fc_var1, fc_var2])
-    pe_df['hits'] = np.where((pe_df['pvals'] > pe_df['thresh']), True, False)
+    pe_df = pd.concat([pvals, enrichment], axis=1)
+    pe_df = pe_df[pe_df['enrichment'] > 0]
+    pe_df['hits'] = np.where((pe_df['pvals'] > thresh), True, False)
 
     # Get genes names of all the hits
     hits = set(pe_df[pe_df['hits']].index.tolist())
@@ -176,7 +192,7 @@ def first_round_pval(bait, df, num, total, fc_var1, fc_var2):
     return neg_series
 
 
-def second_round_pval(bait, df, neg_control, num, total, fc_var1, fc_var2):
+def second_round_pval(bait, df, neg_control, num, total, fc_var1, fc_var2, human_corum):
     """ A first round of pval calculations to remove any significant hits
     from negative controls """
 
@@ -198,11 +214,22 @@ def second_round_pval(bait, df, neg_control, num, total, fc_var1, fc_var2):
     bait_name = bait.split('_')[1]
     root = find_root(bait_name)
 
+    # identify all the genes that are in a corum set
+    corums = corum_genes(bait_name, human_corum)
+
     same_group = []
     for gene in n_bait_list:
         gene_root = find_root(gene[1])
-        if gene_root == root:
+        if gene_root == root or gene in corums:
             same_group.append(gene[0])
+
+        # Exception hack for POLR and MEDs
+        if root == 'MED':
+            if gene_root == 'POLR':
+                same_group.append(gene[0])
+        if root == 'POLR':
+            if gene_root == 'MED':
+                same_group.append(gene[0])
 
     # Convert all values in same groups as np.nans
 
@@ -211,14 +238,14 @@ def second_round_pval(bait, df, neg_control, num, total, fc_var1, fc_var2):
             neg_control[gene] > 100, np.nan)
 
 
-    # calculate the neg con median and stds
-    con_median = neg_control.median(axis=1)
-    con_std = neg_control.std(axis=1)
+    # # calculate the neg con median and stds
+    # con_median = neg_control.median(axis=1)
+    # con_std = neg_control.std(axis=1)
 
-    # calculate enrichment
-    enrich_series = (temporary[bait].median(axis=1) - con_median) / con_std
-    enrich_series.index = gene_list
-    enrich_series.name = 'enrichment'
+    # # calculate enrichment
+    # enrich_series = (temporary[bait].median(axis=1) - con_median) / con_std
+    # enrich_series.index = gene_list
+    # enrich_series.name = 'enrichment'
 
 
     # calculate the p-values
@@ -234,8 +261,12 @@ def second_round_pval(bait, df, neg_control, num, total, fc_var1, fc_var2):
     pval_series = pd.Series(bait_series, index=gene_list, name='pvals')
     pval_series = pval_series.apply(get_pvals_bagging, args=[neg_control.T])
 
+    pvals, enrichment = pval_series.apply(lambda x: x[0]), pval_series.apply(lambda x: x[1])
+    pvals.name = 'pvals'
+    enrichment.name = 'enrichment'
+
     # Find positive hits from enrichment and pval calculations
-    pe_df = pd.concat([enrich_series, pval_series], axis=1)
+    pe_df = pd.concat([pvals, enrichment], axis=1)
     pe_df['thresh'] = pe_df['enrichment'].apply(calc_thresh,
         args=[fc_var1, fc_var2])
     pe_df['hits'] = np.where((pe_df['pvals'] > pe_df['thresh']), True, False)
@@ -283,17 +314,28 @@ def get_pvals_bagging(x, control_df):
 
     # keep bagging from leftover values after nan-drop until
     # original size is met
-    while len(neg_con) < orig_len:
-        neg_con.append(random.choice(con_dropped))
+    neg_con = np.random.choice(neg_con, size=orig_len)
+
+    mean = np.mean(neg_con)
+    std = np.std(neg_con)
+
+
+    sample = x[:-1]
+
+    sample = [mean if np.isnan(x) else x for x in sample]
+
 
     # calculate pvals
-    pval = scipy.stats.ttest_ind(x[:-1], neg_con,
+    pval = scipy.stats.ttest_ind(sample, neg_con,
     nan_policy='omit')[1]
 
     # negative log of the pvals
     pval = -1 * np.log10(pval)
 
-    return pval
+    # calculate enrichment
+    enrichment = (np.median(sample) - np.median(neg_con)) / std
+
+    return [pval, enrichment]
 
 
 def calc_thresh(enrich, fc_var1, fc_var2):
@@ -302,3 +344,62 @@ def calc_thresh(enrich, fc_var1, fc_var2):
         return np.inf
     else:
         return fc_var1 / (abs(enrich) - fc_var2)
+
+
+def calc_thresh_negs(enrich, fc_var1, fc_var2):
+    """simple function to get FCD thresh to recognize hits"""
+    if abs(enrich) < fc_var2:
+        return np.inf
+    else:
+        return fc_var1 / (abs(enrich) - fc_var2)
+
+
+def corum_genes(gene, human_corum):
+    """get a list of all corum interactors"""
+
+    # find all the rows that contains the specific gene
+    bait_df = human_corum[human_corum['subunits'].map(lambda x: gene in x)]
+
+    # get a set of all known interactors
+    interactors = bait_df['subunits'].to_list()
+    interactions = list(itertools.chain.from_iterable(interactors))
+    interactions = list(set(interactions))
+
+    return interactions
+
+
+def penalty_factor(pvals, master_neg, m_imputed):
+    """Apply Marco's penalty factors to enrichments"""
+
+    pvals = pvals.copy()
+    master_neg = master_neg.copy()
+    m_imputed = m_imputed.copy()
+
+    # calculate median of the negative control copy
+    neg_medians = master_neg.median(axis=1)
+
+    # calculate median intensity of the m_imputed baits
+    medians = pys.median_replicates(m_imputed, save_info=True, col_str='')
+    medians.drop(columns=[
+        'Protein names',
+        'Majority protein IDs',
+        'Gene names',
+        'Fasta headers'], inplace=True)
+    medians.set_index('Protein IDs', inplace=True)
+
+    # calculate penalty factor for each target
+
+    penalties = {}
+    for col in list(medians):
+        penalties[col] = medians[col].corr(neg_medians)
+
+    penalty_factor = pd.Series(penalties)
+    pf_median = penalty_factor.median()
+
+    penalty_factor = penalty_factor.apply(lambda x: (x/pf_median)**2)
+
+    # Apply the penalty factor to
+    for col in penalty_factor.index.to_list():
+        pvals[(col, 'enrichment')] = pvals[(col, 'enrichment')] * penalty_factor[col]
+
+    return pvals

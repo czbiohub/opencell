@@ -141,34 +141,50 @@ def fov_payload(fov, optional_fields):
     return payload
 
 
-def pulldown_payload(pulldown, engine):
+def pulldown_payload(pulldown):
     '''
     The JSON payload for a mass spec pulldown and all of its hits
     For speed, we use a direct query to retrieve and serialize the hits
     '''
 
-    # TODO: which gene_name to select?
-    # (note that postgres uses one-based indexing)
-    hits = pd.read_sql(
-        '''
-        select pg.gene_names, hit.* from mass_spec_hit hit
-        inner join mass_spec_protein_group pg on pg.id = hit.protein_group_id
-        where hit.pulldown_id = %d
-        ''' % pulldown.id,
-        engine
-    )
+    hit_columns = [
+        'id', 'pval', 'enrichment', 'is_significant_hit', 'interaction_stoich', 'abundance_stoich'
+    ]
 
-    hits = hits[[
-        'gene_names',
-        'pval',
-        'enrichment',
-        'abundance_stoich',
-        'interaction_stoich',
-        'is_significant_hit',
-    ]]
+    hit_payloads = []
+    for hit in pulldown.hits:
+        hit_payload = {column: getattr(hit, column) for column in hit_columns}
+
+        if hit.is_significant_hit:
+
+            # gene names from the reference uniprot metadata
+            names = []
+            if not hit.protein_group.uniprot_metadata:
+                names = ['Unknown']
+            for metadata in hit.protein_group.uniprot_metadata:
+                if metadata.gene_names != 'NaN':
+                    name = metadata.gene_names.split(' ')[0]
+                else:
+                    name = metadata.uniprot_id
+                names.append(name)
+            hit_payload['uniprot_gene_names'] = names
+
+            # target names of the crispr designs that are mapped to this hit's protein group
+            hit_payload['opencell_target_names'] = [
+                design.target_name for design in hit.protein_group.crispr_designs
+            ]
+
+            # whether this hit corresponds to the target itself
+            design_ids = [design.id for design in hit.protein_group.crispr_designs]
+            hit_payload['is_bait'] = pulldown.cell_line.crispr_design.id in design_ids
+
+        hit_payloads.append(hit_payload)
+
+    # hackish way to coerce NaNs and Infs to None
+    hit_payloads = json.loads(pd.DataFrame(data=hit_payloads).to_json(orient='records'))
 
     payload = {
         'metadata': pulldown.as_dict(),
-        'hits': json.loads(hits.to_json(orient='records')),
+        'hits': hit_payloads,
     }
     return payload

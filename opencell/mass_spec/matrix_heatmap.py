@@ -251,6 +251,21 @@ def color_map(df, zmin, zmax):
     return fig, zmin, zmax, hexmap
 
 
+def duplicate_max(all_hits, metric='pvals'):
+    """
+    remove duplicate target-preys and return only the max value
+
+    """
+    all_hits = all_hits.copy()
+
+    idx = all_hits.groupby(['target', 'prey'])[
+        metric].transform(max) == all_hits[metric]
+    all_hits = all_hits[idx]
+    all_hits = all_hits.drop_duplicates()
+
+    return all_hits
+
+
 def convert_to_sparse_matrix(double_df, metric='distance'):
     """
     Convert double column pval/stoich dataframe to sparse pairwise matrix

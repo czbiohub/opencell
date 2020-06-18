@@ -18,6 +18,19 @@ def find_mismatching_target_names(plates_df, hits_df):
 
     return (hits_genes - plate_genes)
 
+def fdr_mismatching_target_names(plates_df, fdr_df):
+    """
+    Identify and print gene names that are mismatching between the plates
+    dataframe and the hits dataframe so that the names could be manually changed
+    """
+
+    # get target names from hits_df
+    fdr_genes = set([x[0].split('_')[1] for x in fdr_df.index.to_list() if 'P0' in x[0]])
+
+    # get target names from plates_df
+    plate_genes = set(plates_df['target_name'].values.tolist())
+
+    return (fdr_genes - plate_genes)
 
 def format_ms_plate(plate_id):
     """

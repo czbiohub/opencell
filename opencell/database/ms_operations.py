@@ -86,8 +86,11 @@ class MassSpecPulldownOperations:
             .filter(models.MassSpecPulldown.pulldown_plate_id == plate_id)
             .one()
         )
-        pulldown.fdr_1 = row.fdr1
-        pulldown.fdr_5 = row.fdr5
+        pulldown.fdr_1_offset = row.fdr1[0]
+        pulldown.fdr_1_curvature = row.fdr1[1]
+
+        pulldown.fdr_5_offset = row.fdr5[0]
+        pulldown.fdr_5_curvature = row.fdr5[1]
 
         session.add(pulldown)
         session.commit()

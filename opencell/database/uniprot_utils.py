@@ -299,7 +299,34 @@ def uniprot_id_mapper(input_ids, input_type, output_type):
     return ids
 
 
-def mygene_uniprot_id_to_ensg_id(uniprot_id):
+def map_uniprot_to_ensg_using_uniprot(uniprot_id):
+    '''
+    Use the uniprot mapping API to map a uniprot_id to an ensg_id
+    '''
+
+    try:
+        df = uniprot_id_mapper([uniprot_id], input_type='ACC', output_type='ENSEMBL_ID')
+    except Exception:
+        print("Warning: uniprot mapper API error for uniprot_id '%s'" % uniprot_id)
+        return None
+
+    if not df.shape[0]:
+        print("Warning: no hits from the Uniprot mapper API for '%s'" % uniprot_id)
+        return None
+
+    retrieved_uniprot_id = df.iloc[0].ACC
+    if retrieved_uniprot_id != uniprot_id:
+        print(
+            "Warning: the top hit from the Uniprot mapper API for '%s' has a different uniprot_id"
+            % uniprot_id
+        )
+        return None
+
+    ensg_id = df.iloc[0].ENSEMBL_ID
+    return ensg_id
+
+
+def map_uniprot_to_ensg_using_mygene(uniprot_id):
     '''
     Use the mygene API to map a uniprot_id to an ensg_id
     '''

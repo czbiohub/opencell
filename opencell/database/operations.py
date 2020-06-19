@@ -258,10 +258,12 @@ def insert_ensg_id(session, uniprot_id):
         print('Warning: no uniprot metadata found for uniprot_id %s' % uniprot_id)
         return
 
+    # NOTE: I manually switch to map_uniprot_to_ensg_using_uniprot here after trying mygene,
+    # because there are, rarely, ids that are not in mygene but are in Uniprot's mapper API
     try:
-        ensg_id = uniprot_utils.mygene_uniprot_id_to_ensg_id(uniprot_id)
+        ensg_id = uniprot_utils.map_uniprot_to_ensg_using_mygene(uniprot_id)
     except Exception:
-        print('Uncaught error in mygene_uniprot_id_to_ensg_id with uniprot_id %s' % uniprot_id)
+        print('Uncaught error for uniprot_id %s' % uniprot_id)
         return
 
     if ensg_id is None:

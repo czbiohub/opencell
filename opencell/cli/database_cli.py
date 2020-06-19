@@ -256,7 +256,7 @@ def insert_ensg_ids(Session):
     ]
     print('Inserting ENSG IDs for %s new uniprot_ids' % len(uniprot_ids))
 
-    parallelize = False
+    parallelize = True
     if not parallelize:
         for uniprot_id in uniprot_ids:
             ops.insert_ensg_id(Session, uniprot_id)

@@ -328,10 +328,14 @@ def mygene_uniprot_id_to_ensg_id(uniprot_id):
     # or have no 'uniprot' field at all)
     hit_uniprot = hit.get('uniprot')
     if hit_uniprot is not None:
-        hit_uniprot_ids = hit_uniprot['Swiss-Prot']
-        if isinstance(hit_uniprot_ids, str):
-            hit_uniprot_ids = [hit_uniprot_ids]
-        if uniprot_id not in hit_uniprot_ids:
+        swissprot_ids = hit_uniprot.get('Swiss-Prot') or []
+        trembl_ids = hit_uniprot.get('TrEMBL') or []
+        if isinstance(swissprot_ids, str):
+            swissprot_ids = [swissprot_ids]
+        if isinstance(trembl_ids, str):
+            trembl_ids = [trembl_ids]
+
+        if uniprot_id not in (swissprot_ids + trembl_ids):
             print(
                 "Warning: the top mygene hit for uniprot_id '%s' has a different uniprot_id"
                 % uniprot_id
@@ -342,6 +346,7 @@ def mygene_uniprot_id_to_ensg_id(uniprot_id):
             "Warning: no uniprot_ids in the top mygene hit for uniprot_id '%s'"
             % uniprot_id
         )
+        return None
 
     hit_ensembl = hit['ensembl']
     if isinstance(hit_ensembl, list):

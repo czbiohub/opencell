@@ -262,6 +262,7 @@ def insert_ensg_id(session, uniprot_id):
         ensg_id = uniprot_utils.mygene_uniprot_id_to_ensg_id(uniprot_id)
     except Exception:
         print('Uncaught error in mygene_uniprot_id_to_ensg_id with uniprot_id %s' % uniprot_id)
+        return
 
     if ensg_id is None:
         print('Warning: no ENSG ID found for uniprot_id %s' % uniprot_id)

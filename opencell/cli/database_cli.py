@@ -44,7 +44,7 @@ def parse_args():
         'insert_uniprot_metadata_for_crispr_designs',
         'insert_uniprot_metadata_for_protein_groups',
         'insert_ensg_ids',
-        'populate_protein_group_associations',
+        'generate_protein_group_associations',
     ]
 
     for dest in action_arg_dests:
@@ -271,7 +271,7 @@ def insert_ensg_ids(Session):
         dask.compute(*tasks)
 
 
-def populate_protein_group_uniprot_metadata_associations(Session):
+def generate_protein_group_uniprot_metadata_associations(Session):
     '''
     Populate the association table between the mass_spec_protein_group table
     and the uniprot_metadata table, using uniprot_ids.
@@ -330,7 +330,7 @@ def populate_protein_group_uniprot_metadata_associations(Session):
     Session.commit()
 
 
-def populate_protein_group_crispr_design_associations(Session):
+def generate_protein_group_crispr_design_associations(Session):
     '''
     Populate the association table between mass_spec_protein_group table
     and the crispr_design table using the ENSG IDs cached in the uniprot_metadata table
@@ -447,9 +447,9 @@ def main():
     if args.insert_ensg_ids:
         insert_ensg_ids(Session)
 
-    if args.populate_protein_group_associations:
-        populate_protein_group_uniprot_metadata_associations(Session)
-        populate_protein_group_crispr_design_associations(Session)
+    if args.generate_protein_group_associations:
+        generate_protein_group_uniprot_metadata_associations(Session)
+        generate_protein_group_crispr_design_associations(Session)
 
 
 

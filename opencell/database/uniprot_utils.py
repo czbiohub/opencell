@@ -299,7 +299,34 @@ def uniprot_id_mapper(input_ids, input_type, output_type):
     return ids
 
 
-def mygene_uniprot_id_to_ensg_id(uniprot_id):
+def map_uniprot_to_ensg_using_uniprot(uniprot_id):
+    '''
+    Use the uniprot mapping API to map a uniprot_id to an ensg_id
+    '''
+
+    try:
+        df = uniprot_id_mapper([uniprot_id], input_type='ACC', output_type='ENSEMBL_ID')
+    except Exception:
+        print("Warning: uniprot mapper API error for uniprot_id '%s'" % uniprot_id)
+        return None
+
+    if not df.shape[0]:
+        print("Warning: no hits from the Uniprot mapper API for '%s'" % uniprot_id)
+        return None
+
+    retrieved_uniprot_id = df.iloc[0].ACC
+    if retrieved_uniprot_id != uniprot_id:
+        print(
+            "Warning: the top hit from the Uniprot mapper API for '%s' has a different uniprot_id"
+            % uniprot_id
+        )
+        return None
+
+    ensg_id = df.iloc[0].ENSEMBL_ID
+    return ensg_id
+
+
+def map_uniprot_to_ensg_using_mygene(uniprot_id):
     '''
     Use the mygene API to map a uniprot_id to an ensg_id
     '''
@@ -328,10 +355,14 @@ def mygene_uniprot_id_to_ensg_id(uniprot_id):
     # or have no 'uniprot' field at all)
     hit_uniprot = hit.get('uniprot')
     if hit_uniprot is not None:
-        hit_uniprot_ids = hit_uniprot['Swiss-Prot']
-        if isinstance(hit_uniprot_ids, str):
-            hit_uniprot_ids = [hit_uniprot_ids]
-        if uniprot_id not in hit_uniprot_ids:
+        swissprot_ids = hit_uniprot.get('Swiss-Prot') or []
+        trembl_ids = hit_uniprot.get('TrEMBL') or []
+        if isinstance(swissprot_ids, str):
+            swissprot_ids = [swissprot_ids]
+        if isinstance(trembl_ids, str):
+            trembl_ids = [trembl_ids]
+
+        if uniprot_id not in (swissprot_ids + trembl_ids):
             print(
                 "Warning: the top mygene hit for uniprot_id '%s' has a different uniprot_id"
                 % uniprot_id
@@ -342,6 +373,7 @@ def mygene_uniprot_id_to_ensg_id(uniprot_id):
             "Warning: no uniprot_ids in the top mygene hit for uniprot_id '%s'"
             % uniprot_id
         )
+        return None
 
     hit_ensembl = hit['ensembl']
     if isinstance(hit_ensembl, list):

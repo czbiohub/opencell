@@ -26,7 +26,8 @@ from sqlalchemy.orm import sessionmaker
 
 
 
-def compute_stoich_df(m_imputed, seq_df, rnaseq, pvals, pull_uni, target_re=r'P\d{3}_(.*)'):
+def compute_stoich_df(m_imputed, seq_df, rnaseq, pvals, pull_uni,
+        metadata, target_re=r'P(\d{3}_.*)'):
     """
     wrapper function to generate interaction stoich data
     and abundance stoich data in a dataframe
@@ -38,7 +39,10 @@ def compute_stoich_df(m_imputed, seq_df, rnaseq, pvals, pull_uni, target_re=r'P\
     stoi_df = multi_theoretical_peptides(m_imputed, seq_df)
     stoi_df = pys.median_replicates(stoi_df)
     divided = divide_by_theoretical_peptides(stoi_df, 'median ')
-    final_stoi = divide_by_bait(divided, pull_uni)
+
+    pg_mapping = protein_group_meta(divided, metadata)
+
+    final_stoi, association = divide_by_bait(divided, pull_uni, pg_mapping)
 
     # remove median headings
     col_names = list(final_stoi)
@@ -48,10 +52,10 @@ def compute_stoich_df(m_imputed, seq_df, rnaseq, pvals, pull_uni, target_re=r'P\
     final_stoi = pys.rename_cols(final_stoi, col_names, new_cols)
 
     final_stoi = abundance_stoichiometry(final_stoi, rnaseq, ms=True)
-    # return final_stoi
 
+    tpm_vals = final_stoi[['Protein IDs', 'tpm_ave']].copy()
     final_stoi.set_index('Protein IDs', drop=True, inplace=True)
-    tpm_vals = final_stoi[['Gene names', 'tpm_ave']].copy()
+
 
     final_stoi.drop(
         columns=['Gene names', 'Protein names', 'Majority protein IDs',
@@ -67,16 +71,22 @@ def compute_stoich_df(m_imputed, seq_df, rnaseq, pvals, pull_uni, target_re=r'P\
             continue
         pvals[(bait, 'interaction_stoi')] = None
         pvals[(bait, 'abundance_stoi')] = None
-        try:
-            target = re.search(target_re, bait).groups()[0]
-        except Exception:
-            print(bait)
-        target_row = tpm_vals[tpm_vals['Gene names'] == target]
-        if target_row.shape[0] >= 1:
-            target_tpm = target_row['tpm_ave'].iloc[0]
-            if target_tpm:
-                if target_tpm > 0:
-                    abundance_stoi[bait] = tpm_vals['tpm_ave'] / target_tpm
+
+        key = re.search(target_re, bait).groups()[0]
+        if key in association.keys():
+            match_pids = association[key]
+
+
+            target_row = tpm_vals[tpm_vals['Protein IDs'].apply(
+                lambda x: x in match_pids)]
+
+            target_tpm = target_row['tpm_ave'].max()
+            if target_tpm and target_tpm > 0:
+                abundance_stoi[bait] = tpm_vals['tpm_ave'] / target_tpm
+            else:
+                print(key + " 0 intensity: abundance stoich: " + str(match_pids))
+        else:
+            print(key + " not found: abundance stoich")
 
     abundance_stoi.columns = pd.MultiIndex.from_product(
         [abundance_stoi.columns, ['abundance_stoi']])
@@ -189,22 +199,24 @@ def divide_by_theoretical_peptides(median_stoi_df, intensity_re='median '):
     return absolute_intensity
 
 
-def divide_by_bait(divided_df, pull_uni, intensity_re=r'P(\d{3})_(.*)'):
+def divide_by_bait(divided_df, pull_uni, pg_mapping, intensity_re=r'P(\d{3})_(.*)'):
     """
     divide by the normalized bait intensity to get final stoichiometry
     """
     pull_uni = pull_uni.copy()
+    pg_mapping = pg_mapping.copy()
 
     divided_df = divided_df.copy()
     cols = list(divided_df)
+    association = {}
+
     for col in cols:
-        gene_names = []
 
         search = re.search(intensity_re, col)
         target = ''
         if search:
-            plate = search.groups()[0]
-            plate = ms_utils.format_ms_plate(plate)
+            plate_num = search.groups()[0]
+            plate = ms_utils.format_ms_plate(plate_num)
 
             target = search.groups()[1]
             re_target = re.sub(r'-.*$', '', target, flags=re.IGNORECASE)
@@ -219,38 +231,35 @@ def divide_by_bait(divided_df, pull_uni, intensity_re=r'P(\d{3})_(.*)'):
                 uni_row = pull_uni[
                     (pull_uni['pulldown_plate_id'] == plate) & (
                         pull_uni['gene_names'].apply(lambda x: re_target in x))]
+
+
             if uni_row.shape[0] > 0:
                 uni_row = uni_row.iloc[0]
-                gene_names = uni_row.gene_names
+                ensg = uni_row.ensg_id
 
-            target_row = divided_df[divided_df['Gene names'].apply(
-                lambda x: re_target in x)]
-            if target_row.shape[0] > 0:
-                target_intensity = target_row[col].max()
-                divided_df[col] = divided_df[col] / target_intensity
+                # get protein ID of the ensg
+                pg_row = pg_mapping[pg_mapping['ensg_id'] == ensg]
+                p_ids = pg_row.protein_ids.to_list()
+                association_key = plate_num + '_' + target
+                association[association_key] = p_ids
 
-            elif gene_names:
-                matches = []
-                for gene in gene_names:
-                    target_row = divided_df[divided_df['Gene names'].apply(
-                        lambda x: gene in x)]
-                    if target_row.shape[0] > 0:
-                        matches.append(target_row)
-                if matches:
-                    target_row = pd.concat(matches)
+
+                target_row = divided_df[divided_df['Protein IDs'].apply(
+                    lambda x: x in p_ids)]
+
+                if target_row.shape[0] > 0:
                     target_intensity = target_row[col].max()
                     divided_df[col] = divided_df[col] / target_intensity
+
                 else:
-                    print(target + " not found")
+                    print(association_key + ' not found: interaction stoich')
                     divided_df.drop(col, axis=1, inplace=True)
-            else:
-                print(target + " not found")
-                divided_df.drop(col, axis=1, inplace=True)
-
-
         else:
-            divided_df.drop(col, axis=1, inplace=True)
-    return divided_df
+            print(association_key + ' not found in pulldowns')
+
+    return divided_df, association
+
+
 
 
 def abundance_stoichiometry(stoich_df, rnaseq_df, ms=True):
@@ -309,15 +318,38 @@ def abundance_stoichiometry(stoich_df, rnaseq_df, ms=True):
     return stoich_df
 
 
-def fetch_uniprot_meta(url):
-    url = utils.url_from_credentials('../../../db-credentials-cap.json')
+def fetch_pulldown_uniprot(url):
     engine = sqlalchemy.create_engine(url)
     engine.connect()
 
     # fetch table and process right columns
     uniprot_meta = pd.read_sql(
         'select * from crispr_design inner join uniprot_metadata using (uniprot_id)', engine)
-    uni = uniprot_meta[['plate_design_id', 'well_id', 'target_name', 'gene_names']]
-    uni['gene_names'] = uni['gene_names'].apply(lambda x: x.split(' '))
+    uni = uniprot_meta[['plate_design_id', 'well_id', 'ensg_id', 'gene_names']]
 
     return uni
+
+
+def protein_group_meta(pg_df, metadata):
+    pg_df = pg_df.copy()
+    group_uniprot_ids = pg_df[['Protein IDs', 'Gene names']]
+
+    metadata = metadata.copy()
+
+    group_uniprot_ids['uniprot_id'] = group_uniprot_ids['Protein IDs'].apply(
+        lambda x: x.split(';'))
+
+    group_uniprot_ids = group_uniprot_ids.explode(column='uniprot_id')
+
+    # drop isoform-specific uniprot_ids
+    group_uniprot_ids['uniprot_id'] = group_uniprot_ids.uniprot_id.apply(
+        lambda s: s.split('-')[0])
+    group_uniprot_ids.drop_duplicates(inplace=True)
+
+    # group_id - ensg_id associations
+    group_ensg_ids = pd.merge(metadata, group_uniprot_ids, on='uniprot_id', how='inner')
+    group_ensg_ids = group_ensg_ids.groupby(
+        ['Protein IDs', 'ensg_id']).first().reset_index()
+    group_ensg_ids.rename(columns={'Protein IDs': 'protein_ids'}, inplace=True)
+
+    return group_ensg_ids[['protein_ids', 'ensg_id', 'uniprot_id']]

@@ -39,7 +39,7 @@ export default class MassSpecScatterPlot extends Component {
         this.sigModeDotColors = {
             bait: '#01a1dd', // blue
             sigHit: '#ff6666',
-            notSigHit: '#aaa',
+            notSigHit: '#333',
         };
 
         this.pvalueAccessor = d => parseFloat(d.pval);
@@ -57,12 +57,13 @@ export default class MassSpecScatterPlot extends Component {
         // parameters for 5% FDR calculated from 2019-08-02 data
         this.fdrParams = {x0: 1.62, c: 4.25};
 
-        this.fdrDataLeft = d3.range(-20, -this.fdrParams.x0, .1).map(enrichment => {
-            return {x: enrichment, y: this.fdrParams.c / (-enrichment - this.fdrParams.x0)};
+        const fdrXValues = d3.range(this.fdrParams.x0 + .01, 20, .1);
+        this.fdrDataLeft = fdrXValues.map(x => {
+            return {x: -x, y: this.fdrParams.c / (x - this.fdrParams.x0)};
         });
         
-        this.fdrDataRight = d3.range(this.fdrParams.x0 + .1, 20, .1).map(enrichment => {
-            return {x: enrichment, y: this.fdrParams.c / (enrichment - this.fdrParams.x0)};
+        this.fdrDataRight = fdrXValues.map(x => {
+            return {x: x, y: this.fdrParams.c / (x - this.fdrParams.x0)};
         });
 
         // define a circular region of the interaction scatterplot
@@ -91,7 +92,7 @@ export default class MassSpecScatterPlot extends Component {
             if (d.is_bait) return chroma(this.sigModeDotColors.bait).alpha(.7);
             
             // if not sig, always the same color
-            if (!this.hitIsSignificant(d)) return chroma(this.sigModeDotColors.notSigHit).alpha(.7);
+            if (!this.hitIsSignificant(d)) return chroma(this.sigModeDotColors.notSigHit).alpha(.1);
 
             // if we're still here and coloring by significance only
             if (this.props.colorMode==='Significance') {
@@ -183,11 +184,11 @@ export default class MassSpecScatterPlot extends Component {
         d3.json(url).then(data => {
             let hits = data.hits;
 
-            // to speed up the rendering of the plot, we drop all hits with a pvalue less than 0.5,
-            // and randomly drop hits with a pvalue between 0.5 and 1
-            hits = hits.filter(d => d.pval > .5);
+            // to speed up the rendering of the plot, randomly drop most non-significant hits
             hits = hits.filter(d => {
-                return (d.pval > 1) || (d.pval < 1 && d3.randomUniform(0, 1)() > .5);
+                return (
+                    this.hitIsSignificant(d) || d.pval > 1 || d3.randomUniform(0, 1)() > .7
+                );
             });
 
             // construct a label from the gene names 
@@ -208,16 +209,7 @@ export default class MassSpecScatterPlot extends Component {
 
 
     hitIsSignificant (d) {
-        
-        return d.is_significant_hit;
-    
-        // negatively-enriched hits are (by definition) not significant
-        if (this.enrichmentAccessor(d) < this.fdrParams.x0) return false;
-
-        // check if the positive enrichment is above the FDR curve
-        const thresh = this.fdrParams.c / (this.enrichmentAccessor(d) - this.fdrParams.x0);
-        if (this.pvalueAccessor(d) > thresh) return true;
-        return false;
+        return d.is_significant_hit || d.is_minor_hit;
     }
 
 
@@ -342,12 +334,12 @@ export default class MassSpecScatterPlot extends Component {
 
         // define the lines for FDR curves and the core complex circle
         this.fdrLineLeft = g.append("path")
-                            .attr("class", "volcano-fdr-path")
-                            .datum(this.fdrDataLeft);
+            .attr("class", "volcano-fdr-path")
+            .datum(this.fdrDataLeft);
 
         this.fdrLineRight = g.append("path")
-                             .attr("class", "volcano-fdr-path")
-                             .datum(this.fdrDataRight);
+            .attr("class", "volcano-fdr-path")
+            .datum(this.fdrDataRight);
 
         this.coreComplexRegion = g.append("path")
             .attr("class", "core-complex-path")
@@ -374,7 +366,7 @@ export default class MassSpecScatterPlot extends Component {
         // the hits to plot (note that we show only significant hits in stoichiometry mode)
         let hits = [];
         if (this.props.mode==='Stoichiometry') {
-            hits = this.hits.filter(d => d.is_significant_hit);
+            hits = this.hits.filter(d => this.hitIsSignificant(d));
         } else {
             hits = this.hits;
         }
@@ -418,6 +410,7 @@ export default class MassSpecScatterPlot extends Component {
             .attr('cx', d => xScale(this.xAxisAccessor(d)))
             .attr('cy', d => yScale(this.yAxisAccessor(d)))
             .on("mouseover", function (d) {
+                if (!_this.hitIsSignificant(d)) return;
                 // enlarge and outline the dots on hover
                 d3.select(this)
                   .attr("r", _this.plotProps.dotRadius + 2)
@@ -434,17 +427,17 @@ export default class MassSpecScatterPlot extends Component {
 
         // bind data - filter for only significant hits
         const captions = this.g.selectAll('.scatter-caption')
-                               .data(hits.filter(this.hitIsSignificant), d => d.id);
+            .data(hits.filter(this.hitIsSignificant), d => d.id);
 
         captions.exit().remove();
         captions.enter().append('text')
-                .attr('class', 'scatter-caption')
-                .attr('text-anchor', 'middle')
-                .text(d => d.label)
-                .merge(captions)
-                .attr('x', d => xScale(this.xAxisAccessor(d)))
-                .attr('y', d => yScale(this.yAxisAccessor(d)) - 10)
-                .attr('fill-opacity', this.captionOpacity);
+            .attr('class', 'scatter-caption')
+            .attr('text-anchor', 'middle')
+            .text(d => d.label)
+            .merge(captions)
+            .attr('x', d => xScale(this.xAxisAccessor(d)))
+            .attr('y', d => yScale(this.yAxisAccessor(d)) - 10)
+            .attr('fill-opacity', this.captionOpacity);
 
         this.svg.select("#x-axis").call(this.xAxis.scale(xScale));
         this.svg.select("#y-axis").call(this.yAxis.scale(yScale));

@@ -43,7 +43,6 @@ def compute_stoich_df(m_imputed, seq_df, rnaseq, pvals, pull_uni,
     pg_mapping = protein_group_meta(divided, metadata)
 
     final_stoi, association = divide_by_bait(divided, pull_uni, pg_mapping)
-
     # remove median headings
     col_names = list(final_stoi)
     med_RE = ['median ']
@@ -51,15 +50,14 @@ def compute_stoich_df(m_imputed, seq_df, rnaseq, pvals, pull_uni,
     new_cols = pys.new_col_names(col_names, med_RE, replacement_RE)
     final_stoi = pys.rename_cols(final_stoi, col_names, new_cols)
 
-    final_stoi = abundance_stoichiometry(final_stoi, rnaseq, ms=True)
+    tpm_vals = abundance_stoichiometry_ensg(final_stoi, rnaseq, pg_mapping)
+    tpm_vals['protein_ids'] = tpm_vals['Protein IDs']
+    tpm_vals.set_index('Protein IDs', inplace=True)
 
-    tpm_vals = final_stoi[['Protein IDs', 'tpm_ave']].copy()
     final_stoi.set_index('Protein IDs', drop=True, inplace=True)
-
-
     final_stoi.drop(
         columns=['Gene names', 'Protein names', 'Majority protein IDs',
-        'Fasta headers', 'tpm_ave'], inplace=True)
+        'Fasta headers'], inplace=True)
 
 
     baits = list(set(pvals.columns.get_level_values(0).tolist()))
@@ -77,12 +75,14 @@ def compute_stoich_df(m_imputed, seq_df, rnaseq, pvals, pull_uni,
             match_pids = association[key]
 
 
-            target_row = tpm_vals[tpm_vals['Protein IDs'].apply(
+            target_row = tpm_vals[tpm_vals['protein_ids'].apply(
                 lambda x: x in match_pids)]
 
-            target_tpm = target_row['tpm_ave'].max()
+            target_tpm = target_row['Normalized Intensity'].max()
             if target_tpm and target_tpm > 0:
-                abundance_stoi[bait] = tpm_vals['tpm_ave'] / target_tpm
+                abundance_stoi[bait] = tpm_vals['Normalized Intensity'] / target_tpm
+            elif len(match_pids) == 0:
+                print(key + " no association")
             else:
                 print(key + " 0 intensity: abundance stoich: " + str(match_pids))
         else:
@@ -90,12 +90,14 @@ def compute_stoich_df(m_imputed, seq_df, rnaseq, pvals, pull_uni,
 
     abundance_stoi.columns = pd.MultiIndex.from_product(
         [abundance_stoi.columns, ['abundance_stoi']])
+    # return abundance_stoi
     pvals.update(abundance_stoi, join='left')
 
     # Append interaction stoichiometries
     interaction_stoi = final_stoi.copy()
     interaction_stoi.columns = pd.MultiIndex.from_product(
         [interaction_stoi.columns, ['interaction_stoi']])
+
     pvals.update(interaction_stoi, join='left')
 
     pvals.sort_index(inplace=True, axis=1)
@@ -260,6 +262,30 @@ def divide_by_bait(divided_df, pull_uni, pg_mapping, intensity_re=r'P(\d{3})_(.*
     return divided_df, association
 
 
+def abundance_stoichiometry_ensg(stoich_df, rnaseq_df, pg_mapping):
+    """
+    """
+    stoich_df = stoich_df.copy()
+    rnaseq_df = rnaseq_df.copy()
+    pg_mapping = pg_mapping.copy()
+    pg_mapping.rename(columns={'protein_ids': 'Protein IDs'}, inplace=True)
+    pg_mapping = pg_mapping[['Protein IDs', 'ensg_id']]
+
+
+    stoich_df = stoich_df.merge(pg_mapping, on='Protein IDs', how='left')
+
+    stoich_df = stoich_df[['Protein IDs', 'ensg_id']]
+
+    stoich_df.set_index('ensg_id', drop=True, inplace=True)
+    rnaseq_df = rnaseq_df.groupby('ensg_id').sum()
+
+    stoich_df['Normalized Intensity'] = None
+    stoich_df.update(rnaseq_df, join='left')
+    stoich_df = stoich_df.reset_index(drop=True)
+    stoich_df = stoich_df.groupby('Protein IDs').sum()
+    stoich_df.reset_index(inplace=True)
+
+    return stoich_df
 
 
 def abundance_stoichiometry(stoich_df, rnaseq_df, ms=True):
@@ -295,10 +321,10 @@ def abundance_stoichiometry(stoich_df, rnaseq_df, ms=True):
             if gene in rnaseq_gene_set:
                 missing_dict[genes].append(gene)
 
-    # completely_missing = genes_missing - set(missing_dict.keys())
+    completely_missing = genes_missing - set(missing_dict.keys())
 
-    # stoich_drop_idx = stoich_df[stoich_df['Gene names'].isin(completely_missing)].index
-    # stoich_df.drop(stoich_drop_idx, inplace=True)
+    stoich_drop_idx = stoich_df[stoich_df['Gene names'].isin(completely_missing)].index
+    stoich_df.drop(stoich_drop_idx, inplace=True)
 
     rnaseq_stoich = rnaseq_df[rnaseq_df['gene'].isin(genes_intersect)]
 

@@ -407,7 +407,7 @@ export default class MassSpecScatterPlot extends Component {
         }
 
         // update the scatterplot dots
-        const dots = this.g.selectAll('.scatter-dot').data(hits, d => d.label);
+        const dots = this.g.selectAll('.scatter-dot').data(hits, d => d.id);
         dots.exit().remove();    
         dots.enter().append('circle')
             .attr('class', 'scatter-dot')
@@ -434,7 +434,7 @@ export default class MassSpecScatterPlot extends Component {
 
         // bind data - filter for only significant hits
         const captions = this.g.selectAll('.scatter-caption')
-                               .data(hits.filter(this.hitIsSignificant), d => d.gene_id);
+                               .data(hits.filter(this.hitIsSignificant), d => d.id);
 
         captions.exit().remove();
         captions.enter().append('text')

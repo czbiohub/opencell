@@ -58,43 +58,6 @@ class MassSpecPolyclonalOperations(operations.PolyclonalLineOperations):
 class MassSpecPulldownOperations:
     '''
     '''
-    def insert_fdrs(self, session, target, row, pulldown_df):
-        """
-        Insert Dynamic FDR values
-        """
-
-        plate_id, target_name = target.split('_')
-        plate_id = ms_utils.format_ms_plate(plate_id)
-
-        # get the pulldown for this plate_id and target_name
-        pulldown_meta = pulldown_df.loc[
-            (pulldown_df['pulldown_plate_id'] == plate_id)
-            & (pulldown_df['target_name'] == target_name)
-        ]
-
-        # retrieve the design id and well id
-        design_id, well_id = pulldown_meta.design_id.item(), pulldown_meta.well_id.item()
-
-        # get the cellline_id
-        pull_cls = MassSpecPolyclonalOperations.from_plate_well(session, design_id, well_id)
-        cell_line_id = pull_cls.line.id
-
-        # get the pulldown_id
-        pulldown = (
-            session.query(models.MassSpecPulldown)
-            .filter(models.MassSpecPulldown.cell_line_id == cell_line_id)
-            .filter(models.MassSpecPulldown.pulldown_plate_id == plate_id)
-            .one()
-        )
-        pulldown.fdr_1_offset = row.fdr1[1]
-        pulldown.fdr_1_curvature = row.fdr1[0]
-
-        pulldown.fdr_5_offset = row.fdr5[1]
-        pulldown.fdr_5_curvature = row.fdr5[0]
-
-        session.add(pulldown)
-        session.commit()
-
 
     def bulk_insert_hits(self, session, target, target_hits, pulldown_df, errors='warn'):
         """
@@ -176,6 +139,75 @@ class MassSpecPulldownOperations:
             uniprot_ids=uniprot_ids
         )
         utils.add_and_commit(session, protein_group, errors=errors)
+
+
+    @staticmethod
+    def insert_fdrs(self, session, target, row, pulldown_df):
+        """
+        Insert Dynamic FDR values
+        """
+
+        plate_id, target_name = target.split('_')
+        plate_id = ms_utils.format_ms_plate(plate_id)
+
+        # get the pulldown for this plate_id and target_name
+        pulldown_meta = pulldown_df.loc[
+            (pulldown_df['pulldown_plate_id'] == plate_id)
+            & (pulldown_df['target_name'] == target_name)
+        ]
+
+        # retrieve the design id and well id
+        design_id, well_id = pulldown_meta.design_id.item(), pulldown_meta.well_id.item()
+
+        # get the cellline_id
+        pull_cls = MassSpecPolyclonalOperations.from_plate_well(session, design_id, well_id)
+        cell_line_id = pull_cls.line.id
+
+        # get the pulldown_id
+        pulldown = (
+            session.query(models.MassSpecPulldown)
+            .filter(models.MassSpecPulldown.cell_line_id == cell_line_id)
+            .filter(models.MassSpecPulldown.pulldown_plate_id == plate_id)
+            .one()
+        )
+        pulldown.fdr_1_offset = row.fdr1[1]
+        pulldown.fdr_1_curvature = row.fdr1[0]
+
+        pulldown.fdr_5_offset = row.fdr5[1]
+        pulldown.fdr_5_curvature = row.fdr5[0]
+
+        session.add(pulldown)
+        session.commit()
+
+
+    @staticmethod
+    def manual_flag_pulldown(session, pulldown_id, design_id, well_id, errors='warn'):
+        '''
+        some crispr designs have multiple pulldowns, this method
+        allows manual flagging of a pulldown to be shown in opencell.
+
+        '''
+        # get the cellline_id
+        pull_cls = MassSpecPolyclonalOperations.from_plate_well(session, design_id, well_id)
+        cell_line_id = pull_cls.line.id
+
+        # get retrieve all the pulldowns
+        pulldowns = (session.query(models.MassSpecPulldown)
+            .filter(models.MassSpecPulldown.cell_line_id == cell_line_id))
+
+        # mark the given pulldown as True and all others as False
+        for pulldown in pulldowns:
+            if pulldown.pulldown_plate_id == pulldown_id:
+                pulldown.manual_display_flag = True
+            else:
+                pulldown.manual_display_flag = False
+
+            session.add(pulldown)
+            session.commit()
+
+
+
+
 
 
     @staticmethod

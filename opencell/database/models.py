@@ -880,6 +880,11 @@ class MassSpecPulldown(Base):
     fdr_5_offset = db.Column(db.Float)
     fdr_5_curvature = db.Column(db.Float)
 
+    # manual flag for the pulldown to be shown in the OC if there are
+    # multiple pulldowns per crisprdesign. Boolean variable:
+    # pulldown flag with 1 should be displayed, 0 should not be displayed
+    manual_display_flag = db.Column(db.Boolean)
+
     # timestamp column
     date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
 

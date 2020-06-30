@@ -239,16 +239,26 @@ export default class ViewerContainer extends Component {
                 </div>
             </div>
             
-            <SectionHeader title='FOV metadata'/>
-            <MetadataContainer
-                className='pt2'
-                data={fov}
-                definitions={fovMetadataDefinitions}
-                orientation='row'
-                scale={4}
-            />
+            {this.props.showMetadata ? (
+                <div>
+                    <SectionHeader title='FOV metadata'/>
+                    <MetadataContainer
+                        className='pt2'
+                        data={fov}
+                        definitions={fovMetadataDefinitions}
+                        orientation='row'
+                        scale={4}
+                    />
+                </div>
+            ) : (
+                null
+            )}
 
-            {this.state.stacksLoaded ? (null) : (<div className="f2 tc loading-overlay">Loading...</div>)}
+            {this.state.stacksLoaded ? (
+                null
+            ) : (
+                <div className="f2 tc loading-overlay">Loading...</div>
+            )}
 
         </div>
         );

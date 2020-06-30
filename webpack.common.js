@@ -9,7 +9,7 @@ const config = {
         home: './src/home/index.jsx',
         dashboard: './src/dashboard/index.jsx',
         profile: './src/profile/index.jsx',
-        microscopy: './src/microscopy/index.jsx'
+        gallery: './src/gallery/index.jsx'
     },
 
     module: {
@@ -57,10 +57,10 @@ const config = {
             chunks: ['profile']
         }),
         new HtmlWebpackPlugin({
-            title: 'Microscopy',
+            title: 'Gallery',
             template: './static/index.html',
-            filename: './microscopy/index.html',
-            chunks: ['microscopy']
+            filename: './gallery/index.html',
+            chunks: ['gallery']
         })
     ]
 

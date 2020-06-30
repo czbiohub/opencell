@@ -5,13 +5,11 @@ import CellLineTable from './cellLineTable.jsx';
 import ExpressionPlot from '../common/expressionPlot.jsx';
 import FacsPlotContainer from './facsPlotContainer.jsx';
 import ViewerContainer from './viewerContainer.jsx';
-import VolcanoPlotContainer from './volcanoPlotContainer.jsx';
+import MassSpecPlotContainer from './massSpecPlotContainer.jsx';
 import TargetAnnotator from './targetAnnotator.jsx';
 import { SectionHeader } from './common.jsx';
 import settings from '../common/settings.js';
-
-// this is where the content for the 'About this protein' comes from
-import uniprotMetadata from '../demo/data/uniprot_metadata.json';
+import { loadFovs } from '../common/utils.js';
 
 
 export default class Overview extends Component {
@@ -28,26 +26,8 @@ export default class Overview extends Component {
 
 
     componentDidUpdate (prevProps) {
-
         if (prevProps.cellLineId===this.props.cellLineId) return;
-
-        // retrieve the FOV metadata
-        const url = `${settings.apiUrl}/lines/${this.props.cellLineId}/fovs?include=rois`
-        d3.json(url).then(fovs => {
-
-            // only FOVs with manual annotations should be displayed
-            const viewableFovs = fovs.filter(fov => fov.annotation);
-
-            // concat all ROIs (because fov.rois is a list)
-            let rois = [].concat(...viewableFovs.map(fov => fov.rois));
-    
-            this.setState({
-                rois,
-                fovs: viewableFovs,
-                roiId: rois[0]?.id,
-                fovId: rois[0]?.fov_id,
-            });
-        });
+        loadFovs(this.props.cellLineId, fovState => this.setState({...fovState}));
     }
 
 
@@ -63,7 +43,7 @@ export default class Overview extends Component {
                         <div className='pb4'>
                             <SectionHeader title='About this protein'/>
                             <div className='pt2 protein-function-container'>
-                                <p>{uniprotMetadata[this.props.targetName]?.uniprot_function}</p>
+                                <p>{this.props.cellLine.uniprot_metadata?.annotation}</p>
                             </div>
                         </div>
 
@@ -78,7 +58,6 @@ export default class Overview extends Component {
                         <FacsPlotContainer cellLineId={this.props.cellLineId}/>
                     </div>
 
-
                     {/* Center column - sliceViewer and volumeViewer */}
                     {/* note the hard-coded width (because the ROIs are always 600px */}
                     <div className="pl3 pr3" style={{width: '650px'}}>
@@ -89,14 +68,14 @@ export default class Overview extends Component {
                             rois={this.state.rois}
                             fovId={this.state.fovId}
                             roiId={this.state.roiId}
-                            isLowGfp={this.props.cellLine.annotation?.categories.includes('low_gfp')}
+                            showMetadata={true}
+                            isLowGfp={this.props.cellLine.annotation?.categories?.includes('low_gfp')}
                             changeRoi={(roiId, fovId) => this.setState({roiId, fovId})}
                         />
                     </div>
-
-
+                
                     {/* Right column - annotations or volcano plot */}
-                    <div className="pl3 pb3" style={{width: '800px'}}>
+                    <div className="pl3 pb3" style={{width: '600px'}}>
                         {this.props.showTargetAnnotator ? (
                             <div>
                                 <SectionHeader title='Annotations'/>    
@@ -108,7 +87,7 @@ export default class Overview extends Component {
                         ) : (
                             <div>
                                 <SectionHeader title='Interactions'/>
-                                <VolcanoPlotContainer
+                                <MassSpecPlotContainer
                                     cellLineId={this.props.cellLineId}
                                     changeTarget={this.props.onSearchChange}
                                 />

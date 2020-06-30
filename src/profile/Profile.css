@@ -1,51 +1,10 @@
 
-body {
-    font-family: avenir;
-    color: #333
-}
-
-div {
-    border: 0px solid #f66;
-}
-
-input:focus,
-select:focus,
-textarea:focus,
-button:focus {
-    outline: none;
-}
-
-.loading-overlay {
-    /* these properties force the div to overlay its parent,
-    if the parent position is set to 'relative' */
-    position: absolute;
-    top: 0px;
-    left: 0px;
-    width: 100%;
-    height: 100%;
-
-    /* these properties vertically center text content */
-    display: flex;
-    justify-content: center;
-    align-content: center;
-    flex-direction: column;
-
-    background-color: white;
-    opacity: .7;
-}
-
-/* override tachyon's blue */
-.blue {
-    color: #01a1dd;
-}
-
-.flex-0-0-auto {
-    flex: 0 0 auto;
-}
-
-
 .header-container > div {
     flex: 0 0 auto;
+}
+
+.header-container {
+    font-family: "Helvetica Neue";
 }
 
 .header-opencell-title {
@@ -56,10 +15,18 @@ button:focus {
 
 .header-target-name {
     font-size: 66px;
+    font-weight: 400;
 }
 
 .header-metadata-item {
     margin-right: 25px;
+    max-width: 200px;
+}
+
+.overflow-hidden {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .header-metadata-item abbr {
@@ -71,11 +38,13 @@ button:focus {
 
 .header-metadata-item-label {
     color: #aaa;
+    font-family: "Avenir";
 }
 
 .header-search-label {
     color: #aaa;
     padding-top: 5px;
+    font-family: "Avenir";
 }
 
 .header-search-textbox {
@@ -89,38 +58,6 @@ button:focus {
 /* the header for each main panel/section */
 .section-header {
     color: #333;
-}
-
-
-/* --------------------- custom div-based buttons --------------------- */
-.simple-button {
-    display: inline-block;
-	width: auto;
-    cursor: pointer;
-    padding: 4px 8px 4px 8px;
-    margin-right: 10px;
-    line-height: 1.42;
-    border-radius: 5px;
-    background-color: rgba(209, 212, 214, 0.3) !important;
-    /* border-bottom: 1px solid #333; */
-
-}
-
-.simple-button:hover {
-    background-color :rgba(209, 212, 214, 0.7) !important;
-}
-
-.simple-button-active, .simple-button-active:hover {
-    font-weight: bold;
-    background-color: #d1d4d64d;
-}
-
-.simple-button-group-label {
-    font-size: 14px;
-    color: #777;
-    display: block;
-    padding-right: 5px;
-    padding-bottom: 3px;
 }
 
 
@@ -166,7 +103,7 @@ button:focus {
 /* --------------------- Volcano plot --------------------- */
 
 .scatterplot-container .tick line {
-    stroke: #ccc;
+    stroke: #ddd;
     stroke-width: 1px;
     stroke-dasharray: 2;
 }
@@ -180,18 +117,39 @@ button:focus {
     font-size: 12px;
 }
 
+.bait-dot {
+    fill: #01a2ddb2;
+}
+
+.sig-hit-dot {
+    fill: #f9463ab2;
+}
+
+.minor-hit-dot {
+    fill: #ff9b89bf;
+}
+
+.not-sig-hit-dot {
+    fill: #33333334;
+}
+
 .scatter-caption {
     font-size: 12px;
     pointer-events: none;
 }
 
-.volcano-fdr-line {
+.volcano-fdr-path {
     fill: none;
-    stroke: #333;
+    stroke: #444;
     stroke-width: 1px;
-    stroke-dasharray: 4;
+    stroke-dasharray: 6;
 }
 
+.core-complex-path {
+    fill: #00000020;
+    stroke: none;
+    stroke-width: 1px;
+}
 
 .protein-function-container {
     height: 150px;
@@ -233,8 +191,6 @@ in order for the plots to be vertically aligned */
 }
 
 
-
-
 /* --------------------- d3-tip styles --------------------- */
 /* copied from d3-tip examples: https://github.com/caged/d3-tip */
 
@@ -261,79 +217,7 @@ in order for the plots to be vertically aligned */
     content: "\25BC";
     margin: -1px 0 0 0;
     top: 100%;
-    left: 0;
+    left: 45%;
     text-align: center;
 }
 
-
-
-/* eliminate shadow under the header and footer */
-.ReactTable .rt-thead.-header {
-	box-shadow: none !important;
-	border-bottom: 1px solid #eee;
-}
-
-.ReactTable .-pagination {
-	box-shadow: none !important;
-}
-
-.ReactTable {
-	font-size: 14px;
-}
-
-.ReactTable .rt-thead {
-	font-size: 16px;
-	font-weight: bolder;
-}
-
-  /* turn off horizontal borders between table rows */
-.ReactTable .rt-tbody .rt-tr-group {
-	cursor: pointer;
-}
-
-.ReactTable .rt-tbody .rt-tr-group:hover {
-	background-color: #eee;
-}
-
-
-
-/* --------------------- FOV curator --------------------- */
-
-.thumbnail-grid {
-    display: grid;
-    grid-auto-flow: row;
-    grid-template-rows: auto;
-    grid-template-columns: repeat(auto-fit, 100px);
-}
-
-.thumbnail-container:hover {
-    border: 1px solid #aaa;
-}
-
-.thumbnail-container-active,
-.thumbnail-container-active:hover {
-    border: 1px solid #111;
-}
-
-.thumbnail-flagged {
-    opacity: .5;
-}
-
-.thumbnail-annotated {
-    border: 2px solid #db3737;
-}
-
-.thumbnail-caption {
-    text-align: center;
-    font-size: 12px;
-}
-
-.fov-curator-roi {
-    position: absolute;
-    pointer-events: none;
-    border: 2px solid #db3737;
-}
-
-.fov-curator-roi-new {
-    border-style: dashed;
-}

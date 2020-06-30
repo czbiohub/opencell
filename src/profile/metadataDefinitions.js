@@ -1,5 +1,4 @@
-import manualMetadata from '../demo/data/manual_metadata.json';
-import uniprotMetadata from '../demo/data/uniprot_metadata.json';
+
 import facsGrades from '../demo/data/facs_grades.json';
 
 
@@ -9,26 +8,13 @@ import facsGrades from '../demo/data/facs_grades.json';
 const cellLineMetadataDefinitions = [
     {   
         id: 'protein_name',
-        accessor: row => {
-            const maxLength = 20;
-            const targetName = row.metadata?.target_name;
-            if (!targetName) return null;
-            let name = (
-                manualMetadata[targetName]?.protein_name ||
-                manualMetadata[targetName]?.description ||
-                uniprotMetadata[targetName]?.protein_name
-            );
-            name = name || '';
-            name = name.split('(')[0].split(',')[0].trim();
-            name = name.length > maxLength ? `${name.slice(0, maxLength)}...` : name;
-            return name
-        },
+        accessor: row => row.uniprot_metadata?.protein_name,
         Header: 'Protein name',
         units: null,
     },{
         id: 'target_family',
         accessor: row => {
-            let value = row.metadata?.target_family || 'null';
+            let value = row.metadata?.target_family || 'NA';
             return value ? value.charAt(0).toUpperCase() + value.slice(1) : null;
         },
         Header: 'Family',
@@ -40,7 +26,7 @@ const cellLineMetadataDefinitions = [
         units: null,
     },{
         id: 'uniprot_id',
-        accessor: row => row.metadata ? uniprotMetadata[row.metadata.target_name]?.uniprot_id : null,
+        accessor: row => row.uniprot_metadata?.uniprot_id,
         Header: 'Uniprot ID'
     },{
         id: 'plate_id',
@@ -106,6 +92,11 @@ const cellLineMetadataDefinitions = [
         id: 're_sort',
         accessor: row => String(row.annotation.categories?.includes('salvageable_re_sort')),
         Header: 'Salvageable re-sort',
+        units: '',
+    },{
+        id: 'num_fovs',
+        accessor: row => row.counts.num_fovs,
+        Header: 'Num FOVs',
         units: '',
     },{
         id: 'num_annoted_fovs',

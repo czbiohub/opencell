@@ -20,6 +20,7 @@ import * as utils from '../common/utils.js';
 import '../common/common.css';
 import './Profile.css';
 
+const initialTarget = 'POLR2F';
 
 class App extends Component {
 
@@ -91,7 +92,7 @@ class App extends Component {
             this.setState({linesLoaded: true});
         });
         // initial target to display
-        this.onSearchChange(this.urlParams.get('target') || 'LMNB1');
+        this.onSearchChange(this.urlParams.get('target') || initialTarget);
     }
 
 

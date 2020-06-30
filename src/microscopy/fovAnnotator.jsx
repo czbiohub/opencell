@@ -17,6 +17,7 @@ import {fovMetadataDefinitions} from '../profile/metadataDefinitions.js';
 
 import '../common/common.css';
 import '../profile/Profile.css';
+import './fovAnnotator.css';
 
 
 async function putData(url, data) {
@@ -145,7 +146,7 @@ export default class FovAnnotator extends Component {
     fetchData () {
         if (!this.props.cellLineId) return;
         this.setState({loaded: false, roiVisible: false});
-        const url = `${settings.apiUrl}/lines/${this.props.cellLineId}/fovs?include=thumbnails`;
+        const url = `${settings.apiUrl}/lines/${this.props.cellLineId}/fovs?fields=thumbnails`;
         d3.json(url).then(fovs => {
             this.fovs = fovs;
             this.setState({loaded: true, fovId: this.state.fovId || fovs[0]?.metadata.id});
@@ -246,7 +247,7 @@ export default class FovAnnotator extends Component {
         });
 
         return (
-            <div className="">
+            <div className="w-70">
                 <div className="flex">
 
                     {/* left panel: FOV metadata */}

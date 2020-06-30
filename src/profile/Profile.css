@@ -103,7 +103,7 @@
 /* --------------------- Volcano plot --------------------- */
 
 .scatterplot-container .tick line {
-    stroke: #ccc;
+    stroke: #ddd;
     stroke-width: 1px;
     stroke-dasharray: 2;
 }
@@ -117,6 +117,22 @@
     font-size: 12px;
 }
 
+.bait-dot {
+    fill: #01a2ddb2;
+}
+
+.sig-hit-dot {
+    fill: #f9463ab2;
+}
+
+.minor-hit-dot {
+    fill: #ff9b89bf;
+}
+
+.not-sig-hit-dot {
+    fill: #33333334;
+}
+
 .scatter-caption {
     font-size: 12px;
     pointer-events: none;
@@ -124,9 +140,9 @@
 
 .volcano-fdr-path {
     fill: none;
-    stroke: #333;
+    stroke: #444;
     stroke-width: 1px;
-    stroke-dasharray: 4;
+    stroke-dasharray: 6;
 }
 
 .core-complex-path {

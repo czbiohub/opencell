@@ -36,12 +36,6 @@ export default class MassSpecScatterPlot extends Component {
             yAxisLabelOffset: 15,
         };
 
-        this.sigModeDotColors = {
-            bait: '#01a1dd', // blue
-            sigHit: '#ff6666',
-            notSigHit: '#333',
-        };
-
         this.pvalueAccessor = d => parseFloat(d.pval);
         this.enrichmentAccessor = d => parseFloat(d.enrichment);
         this.abundanceStoichAccessor = d => parseFloat(d.abundance_stoich);
@@ -52,19 +46,8 @@ export default class MassSpecScatterPlot extends Component {
         this.hitIsSignificant = this.hitIsSignificant.bind(this);
         this.captionOpacity = this.captionOpacity.bind(this);
         this.constructData = this.constructData.bind(this);
+        this.constructFDRCurve = this.constructFDRCurve.bind(this);
         this.updateScatterPlot = this.updateScatterPlot.bind(this);
-
-        // parameters for 5% FDR calculated from 2019-08-02 data
-        this.fdrParams = {x0: 1.62, c: 4.25};
-
-        const fdrXValues = d3.range(this.fdrParams.x0 + .01, 20, .1);
-        this.fdrDataLeft = fdrXValues.map(x => {
-            return {x: -x, y: this.fdrParams.c / (x - this.fdrParams.x0)};
-        });
-        
-        this.fdrDataRight = fdrXValues.map(x => {
-            return {x: x, y: this.fdrParams.c / (x - this.fdrParams.x0)};
-        });
 
         // define a circular region of the interaction scatterplot
         // that corresponds to 'core complex' interactors
@@ -86,27 +69,31 @@ export default class MassSpecScatterPlot extends Component {
         // transform when zoomed/panned
         this.zoomTransform = undefined;
 
+
         this.calcDotColor = d => {
 
-            // special color if the hit is the target (i.e., the bait) itself
-            if (d.is_bait) return chroma(this.sigModeDotColors.bait).alpha(.7);
-            
-            // if not sig, always the same color
-            if (!this.hitIsSignificant(d)) return chroma(this.sigModeDotColors.notSigHit).alpha(.1);
+            const baitColor = chroma('#01a1dd').alpha(0.7);  // blue
+            const sigHitColor = chroma('#ff463a').alpha(0.6);  // dark red
+            const minorHitColor = chroma('#ff9b89').alpha(0.6);  // light red
+            const notSigHitColor = chroma('#333').alpha(0.2);
 
-            // if we're still here and coloring by significance only
-            if (this.props.colorMode==='Significance') {
-                return chroma(this.sigModeDotColors.sigHit).alpha(.6);
-            }
-            
-            // if we're still here and coloring by annotation (what the UI calls 'function')
-            if (this.props.colorMode==='Function') {
-                let ant = 'Other'; 
-                const color = this.functionModeDotColors.filter(d => d.annotation===ant)[0].color;
-                return chroma(color).alpha(.6);
-            }
+            // special color if the hit is the target (i.e., the bait) itself
+            if (d.is_bait) return baitColor
+
+            if (!this.hitIsSignificant(d)) return notSigHitColor;
+
+            return d.is_minor_hit ? minorHitColor : sigHitColor;
         }
 
+
+        this.calcDotClass = d => {
+            // use this to experiment with the dot colors by editing the css classes in devtools
+            if (d.is_bait) return 'bait-dot';
+            if (!this.hitIsSignificant(d)) return 'not-sig-hit-dot';
+            return d.is_minor_hit ? 'minor-hit-dot' : 'sig-hit-dot';
+        }
+
+    
         this.calcDotStroke = d => {
             if (!this.hitIsSignificant(d)) return 'none';
 
@@ -118,19 +105,18 @@ export default class MassSpecScatterPlot extends Component {
     
         this.calcDotRadius = d => {
         
+            const minRadius = 2;
+
             // constant dot size in stoichoimetry mode
             if (this.props.mode==='Stoichiometry') return this.plotProps.dotRadius;
 
-            // make dot size depend on pvalue and enrichment in volcano mode;
-            const minRadius = 2;
+            // any hit with negative enrichment is necessarily not significant
+            // if (!this.hitIsSignificant(d)) return minRadius;
+
+            // make dot size depend on pvalue and enrichment in volcano mode,
+            // using distance from the origin as a proxy for significance/prominence
             const width = 15;
             const minDist = 2;
-
-            // any hit with negative enrichment is necessarily not significant
-            if (this.enrichmentAccessor(d) < this.fdrParams.x0) return minRadius;
-
-            // distance from the origin in the log(pvalue) vs enrichment space
-            // as a measure of overall 'significance'
             let dist = (this.pvalueAccessor(d)**2 + this.enrichmentAccessor(d)**2)**.5;
             const weight = (1 - Math.exp(-((dist - minDist)**2 / width)));
 
@@ -182,6 +168,7 @@ export default class MassSpecScatterPlot extends Component {
         this.setState({loaded: false});
         const url = `${settings.apiUrl}/lines/${this.props.cellLineId}/pulldown`;
         d3.json(url).then(data => {
+
             let hits = data.hits;
 
             // to speed up the rendering of the plot, randomly drop most non-significant hits
@@ -197,6 +184,14 @@ export default class MassSpecScatterPlot extends Component {
 
             this.hits = hits;
             this.pulldownMetadata = data.metadata;
+            
+            // construct data points for the FDR curves
+            this.onePercentFDRData = this.constructFDRCurve({
+                x0: data.metadata.fdr_1_offset, c: data.metadata.fdr_1_curvature
+            });
+            this.fivePercentFDRData = this.constructFDRCurve({
+                x0: data.metadata.fdr_5_offset, c: data.metadata.fdr_5_curvature
+            });
             this.setState({loaded: true});
         },
         error => {
@@ -208,7 +203,19 @@ export default class MassSpecScatterPlot extends Component {
     }
 
 
+    constructFDRCurve (fdrParams) {
+        // 
+        // for reference: parameters for 5% FDR calculated from 2019-08-02 data were
+        // fdrParams = {x0: 1.62, c: 4.25};
+
+        const xVals = d3.range(fdrParams.x0 + .01, 20, .1);
+        const dataLeft = xVals.map(x => ({x: -x, y: fdrParams.c / (x - fdrParams.x0)}));
+        const dataRight = xVals.map(x => ({x: x, y: fdrParams.c / (x - fdrParams.x0)}));
+        return {left: dataLeft, right: dataRight};
+    }
+
     hitIsSignificant (d) {
+        // whether the hit is 'significant' and should be colored, labeled, interactive, etc
         return d.is_significant_hit || d.is_minor_hit;
     }
 
@@ -222,7 +229,7 @@ export default class MassSpecScatterPlot extends Component {
             this.minX = hits => -d3.max(hits, this.xAxisAccessor) - 1;
             this.maxX = hits => d3.max(hits, this.xAxisAccessor) + 1;
             this.minY = hits => 0;
-            this.maxY = hits => d3.max(hits, this.yAxisAccessor) + 1;
+            this.maxY = hits => d3.max(hits, this.yAxisAccessor) + 10;
 
             this.xAxisLabel = 'Relative enrichment';
             this.yAxisLabel = 'p-value (-log10)';
@@ -255,15 +262,15 @@ export default class MassSpecScatterPlot extends Component {
         pp.height = pp.width * pp.aspectRatio;
         
         const svg = d3.select(this.node)
-                      .append('svg')
-                      .attr('width', pp.width)
-                      .attr('height', pp.height);
+            .append('svg')
+            .attr('width', pp.width)
+            .attr('height', pp.height);
 
         // semi-opaque loading status div (visible when data is loading or there is no data)
         const loadingDiv = d3.select(this.node)
-                             .append('div')
-                             .attr('class', 'f2 tc loading-overlay')
-                             .style('visibility', 'hidden');
+            .append('div')
+            .attr('class', 'f2 tc loading-overlay')
+            .style('visibility', 'hidden');
                 
         this.xScale = d3.scaleLinear().range([pp.padLeft, pp.width - pp.padRight]);
         this.yScale = d3.scaleLinear().range([pp.height - pp.padBottom, pp.padTop]);
@@ -333,13 +340,12 @@ export default class MassSpecScatterPlot extends Component {
         this.loadingDiv = loadingDiv;
 
         // define the lines for FDR curves and the core complex circle
-        this.fdrLineLeft = g.append("path")
-            .attr("class", "volcano-fdr-path")
-            .datum(this.fdrDataLeft);
-
-        this.fdrLineRight = g.append("path")
-            .attr("class", "volcano-fdr-path")
-            .datum(this.fdrDataRight);
+        this.fdrLines = {
+            oneLeft: g.append("path").attr("class", "volcano-fdr-path"),
+            oneRight: g.append("path").attr("class", "volcano-fdr-path"),
+            fiveLeft: g.append("path").attr("class", "volcano-fdr-path"),
+            fiveRight: g.append("path").attr("class", "volcano-fdr-path"),
+        }
 
         this.coreComplexRegion = g.append("path")
             .attr("class", "core-complex-path")
@@ -362,6 +368,12 @@ export default class MassSpecScatterPlot extends Component {
             return;
         }
         this.loadingDiv.style('visibility', 'hidden');
+
+        // update the FDR curve data
+        this.fdrLines.oneLeft.datum(this.onePercentFDRData.left);
+        this.fdrLines.oneRight.datum(this.onePercentFDRData.right);
+        this.fdrLines.fiveLeft.datum(this.fivePercentFDRData.left);
+        this.fdrLines.fiveRight.datum(this.fivePercentFDRData.right);
 
         // the hits to plot (note that we show only significant hits in stoichiometry mode)
         let hits = [];
@@ -388,13 +400,15 @@ export default class MassSpecScatterPlot extends Component {
         const line = d3.line().x(d => xScale(d.x)).y(d => yScale(d.y));
     
         if (this.props.mode==='Volcano') {
-            this.fdrLineLeft.style('visibility', 'visible').attr('d', line);
-            this.fdrLineRight.style('visibility', 'visible').attr('d', line);
+            for (const fdrLine of Object.values(this.fdrLines)) {
+                fdrLine.style('visibility', 'visible').attr('d', line);
+            }
             this.coreComplexRegion.style('visibility', 'hidden');
         } 
         if (this.props.mode==='Stoichiometry') {
-            this.fdrLineLeft.style('visibility', 'hidden');
-            this.fdrLineRight.style('visibility', 'hidden');
+            for (const fdrLine of Object.values(this.fdrLines)) {
+                fdrLine.style('visibility', 'hidden');
+            }
             this.coreComplexRegion.style('visibility', 'visible').attr('d', line);
         }
 
@@ -402,7 +416,7 @@ export default class MassSpecScatterPlot extends Component {
         const dots = this.g.selectAll('.scatter-dot').data(hits, d => d.id);
         dots.exit().remove();    
         dots.enter().append('circle')
-            .attr('class', 'scatter-dot')
+            .attr('class', 'scatter-dot') //d => 'scatter-dot ' + this.calcDotClass(d))
             .merge(dots)
             .attr('r', this.calcDotRadius)
             .attr('fill', this.calcDotColor)
@@ -461,6 +475,9 @@ export default class MassSpecScatterPlot extends Component {
 
 
     onZoom () {
+
+        if ((!this.state.loaded) || (!this.hits.length)) return;
+
         this.zoomTransform = d3.event.transform;
         const xScaleZoom = this.zoomTransform.rescaleX(this.xScale);
         const yScaleZoom = this.zoomTransform.rescaleY(this.yScale);
@@ -468,8 +485,9 @@ export default class MassSpecScatterPlot extends Component {
         // update the FDR or core-complex lines
         const line = d3.line().x(d => xScaleZoom(d.x)).y(d => yScaleZoom(d.y));
         if (this.props.mode==='Volcano') {
-            this.fdrLineLeft.attr("d", line);
-            this.fdrLineRight.attr("d", line);
+            for (const fdrLine of Object.values(this.fdrLines)) {
+                fdrLine.attr("d", line);
+            }
         } else if (this.props.mode==='Stoichiometry') {
             this.coreComplexRegion.attr("d", line);
         }

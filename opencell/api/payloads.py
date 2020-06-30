@@ -148,14 +148,20 @@ def pulldown_payload(pulldown):
     '''
 
     hit_columns = [
-        'id', 'pval', 'enrichment', 'is_significant_hit', 'interaction_stoich', 'abundance_stoich'
+        'id',
+        'pval',
+        'enrichment',
+        'is_significant_hit',
+        'is_minor_hit',
+        'interaction_stoich',
+        'abundance_stoich'
     ]
 
     hit_payloads = []
     for hit in pulldown.hits:
         hit_payload = {column: getattr(hit, column) for column in hit_columns}
 
-        if hit.is_significant_hit:
+        if hit.is_significant_hit or hit.is_minor_hit:
 
             # gene names from the reference uniprot metadata
             names = []

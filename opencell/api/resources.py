@@ -9,8 +9,9 @@ import sqlalchemy as db
 from flask_restful import Resource, reqparse
 
 from opencell.imaging import utils
+from opencell.api import payloads
 from opencell.api.cache import cache
-from opencell.database import models, operations, payloads
+from opencell.database import models, operations
 from opencell.database import utils as db_utils
 from opencell.imaging.processors import FOVProcessor
 

@@ -48,6 +48,7 @@ export default class MassSpecScatterPlot extends Component {
         this.constructData = this.constructData.bind(this);
         this.constructFDRCurve = this.constructFDRCurve.bind(this);
         this.updateScatterPlot = this.updateScatterPlot.bind(this);
+        this.drawLegend = this.drawLegend.bind(this);
 
         // define a circular region of the interaction scatterplot
         // that corresponds to 'core complex' interactors
@@ -73,8 +74,8 @@ export default class MassSpecScatterPlot extends Component {
         this.calcDotColor = d => {
 
             const baitColor = chroma('#01a1dd').alpha(0.7);  // blue
-            const sigHitColor = chroma('#ff463a').alpha(0.6);  // dark red
-            const minorHitColor = chroma('#ff9b89').alpha(0.6);  // light red
+            const sigHitColor = chroma('#ff463a').alpha(0.5);  // dark red
+            const minorHitColor = chroma('#ff9b89').alpha(0.5);  // light red
             const notSigHitColor = chroma('#333').alpha(0.2);
 
             // special color if the hit is the target (i.e., the bait) itself
@@ -98,9 +99,9 @@ export default class MassSpecScatterPlot extends Component {
             if (!this.hitIsSignificant(d)) return 'none';
 
             // stroke in black we have data for it
-            if (d.opencell_target_names?.length) return '#333';
+            if (d.opencell_target_names?.length) return chroma('#333').alpha(.9);
 
-            return chroma(this.calcDotColor(d)).darken(1);
+            return chroma(this.calcDotColor(d)).darken(2);
         }
     
         this.calcDotRadius = d => {
@@ -174,7 +175,7 @@ export default class MassSpecScatterPlot extends Component {
             // to speed up the rendering of the plot, randomly drop most non-significant hits
             hits = hits.filter(d => {
                 return (
-                    this.hitIsSignificant(d) || d.pval > 1 || d3.randomUniform(0, 1)() > .7
+                    this.hitIsSignificant(d) || d.pval > 3 || d3.randomUniform(0, 1)() > .7
                 );
             });
 
@@ -326,6 +327,9 @@ export default class MassSpecScatterPlot extends Component {
             .attr("width", pp.width - pp.padLeft - pp.padRight)
             .attr("height", pp.height - pp.padTop - pp.padBottom);
 
+        // container for the legend (added last so its on top)
+        const legendContainer = svg.append("g");
+
         this.tip = tip()
             .offset([-15, 0])
             .attr("class", "d3-tip")
@@ -338,6 +342,7 @@ export default class MassSpecScatterPlot extends Component {
         this.svg = svg;
         this.g = g;
         this.loadingDiv = loadingDiv;
+        this.legendContainer = legendContainer;
 
         // define the lines for FDR curves and the core complex circle
         this.fdrLines = {
@@ -353,9 +358,103 @@ export default class MassSpecScatterPlot extends Component {
     }
 
 
+    drawLegend () {
+
+        const legend = this.legendContainer;
+        legend.selectAll("rect").remove();
+        legend.selectAll("circle").remove();
+        legend.selectAll("line").remove();
+        legend.selectAll("text").remove();
+
+        let lineNum, d;
+        const dotSize = 5,
+            padLeft = 40,
+            padTop = 20,
+            textOffset = 15,
+            lineHeight = 20,
+            fontSize = "13px";
+
+        const numLines = this.props.mode==="Stoichiometry" ? 3 : 5;
+        legend.append("rect")
+            .attr("x", 0)
+            .attr("y", 0)
+            .attr("width", 200)
+            .attr("height", padTop + lineHeight * numLines)
+            .attr("fill", chroma("white").alpha(0.7));
+
+        const appendText = (lineNum, text) => {
+            legend.append("text")
+            .attr("x", padLeft + textOffset)
+            .attr("y", padTop + lineNum * lineHeight)
+            .text(text)
+            .style("font-size", fontSize)
+            .attr("alignment-baseline", "middle");
+        }
+
+        // bait hit (define dummy opencell_target_names array so that the dot stroke is black)
+        lineNum = 0;
+        d = {is_bait: true, opencell_target_names: [null]}
+        legend.append("circle")
+            .attr("cx", padLeft)
+            .attr("cy", padTop + lineNum * lineHeight)
+            .attr("r", dotSize)
+            .attr("fill", this.calcDotColor(d))
+            .attr("stroke", "#333");
+        appendText(lineNum, "Bait");
+
+        // significant hits
+        lineNum = 1;
+        d = {is_bait: false, is_significant_hit: true, is_minor_hit: false};
+        legend.append("circle")
+            .attr("cx", padLeft)
+            .attr("cy", padTop + lineNum * lineHeight)
+            .attr("r", dotSize)
+            .attr("fill", this.calcDotColor(d))
+            .attr("stroke", this.calcDotStroke(d));
+        appendText(lineNum, "Significant hit");
+
+        // minor hits
+        lineNum = 2;
+        d = {is_bait: false, is_significant_hit: false, is_minor_hit: true};
+        legend.append("circle")
+            .attr("cx", padLeft)
+            .attr("cy", padTop + lineNum * lineHeight)
+            .attr("r", dotSize)
+            .attr("fill", this.calcDotColor(d))
+            .attr("stroke", this.calcDotStroke(d));
+        appendText(lineNum, "Minor hit");
+
+        // no need for non-sig hits or FDR curves in stoich mode
+        if (this.props.mode==="Stoichiometry") return;
+
+        // not-significant hits
+        lineNum = 3;
+        d = {is_bait: false, is_significant_hit: false, is_minor_hit: false};
+        legend.append("circle")
+            .attr("cx", padLeft)
+            .attr("cy", padTop + lineNum * lineHeight)
+            .attr("r", dotSize)
+            .attr("fill", this.calcDotColor(d))
+            .attr("stroke", this.calcDotStroke(d));
+        appendText(lineNum, "Non-significant hit");
+
+        // FDR curves
+        lineNum = 4;
+        legend.append("line")
+            .attr("x1", padLeft - 10)
+            .attr("x2", padLeft + 10)
+            .attr("y1", padTop + lineNum * lineHeight)
+            .attr("y2", padTop + lineNum * lineHeight)
+            .attr("class", "volcano-fdr-path");
+        appendText(lineNum, "1% and 5% FDR curves");
+
+    }
+
+
     updateScatterPlot () {
 
         this.updatePlotSettings();
+        this.drawLegend();
         const _this = this;
 
         if (!this.state.loaded) {

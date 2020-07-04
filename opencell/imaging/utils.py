@@ -10,11 +10,6 @@ from skimage import feature
 from skimage import morphology
 
 
-# for backwards compatibility
-def autogain(*args, **kwargs):
-    return autoscale(*args, **kwargs)
-
-
 def load(filepath):
     im = tifffile.TiffFile(filepath)
     im = im.asarray()
@@ -23,7 +18,8 @@ def load(filepath):
 
 def load_and_downscale_2x(filepath):
     '''
-    *** assumes that the dimensions are (z, x, y) ***
+    Load a 3D TIFF stack and downsample it by a factor of two in x and y
+    (assumes that the order of dimensions is (z, x, y))
     '''
     im = load(filepath)
     im = skimage.transform.downscale_local_mean(im, (1, 2, 2))
@@ -39,19 +35,16 @@ def b64encode_image(image, format, **kwargs):
 
 def autoscale(im, percentile=None, p=None, dtype='uint8', gamma=None):
     '''
-
     '''
 
-    MAX = {'uint8': 255, 'uint16': 65535}
-
-    im = im.copy().astype(float)
+    max_values = {'float': 1.0, 'uint8': 255, 'uint16': 65535}
 
     if p is not None:
         percentile = p
-
     if percentile is None:
         percentile = 0
 
+    im = im.copy().astype(float)
     minn, maxx = np.percentile(im, (percentile, 100 - percentile))
     if minn == maxx:
         return (im * 0).astype(dtype)
@@ -60,12 +53,16 @@ def autoscale(im, percentile=None, p=None, dtype='uint8', gamma=None):
     im[im < 0] = 0
     im = im/(maxx - minn)
     im[im > 1] = 1
-
-    if gamma:
+    if gamma is not None:
         im = im**gamma
 
-    im = (im * MAX[dtype]).astype(dtype)
+    im = (im * max_values[dtype]).astype(dtype)
     return im
+
+
+# alias for autoscale, for backwards compatibility
+def autogain(*args, **kwargs):
+    return autoscale(*args, **kwargs)
 
 
 def remove_edge_regions(mask, conn=1):

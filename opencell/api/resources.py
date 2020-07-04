@@ -203,14 +203,21 @@ class CellLinePulldown(CellLineResource):
                 404, 'There are no pulldowns associated with cell line %d' % cell_line_id
             )
 
-        # TODO: logic to determine which pulldown is the 'good' one
-        # for now, we take the first pulldown with hits
-        pulldown_id = line.pulldowns[0].id
-        if len(line.pulldowns) > 1:
-            for pulldown in line.pulldowns:
-                if pulldown.hits:
-                    pulldown_id = pulldown.id
-                    break
+        # the manually-flagged 'good' pulldowns
+        # (there should be only one of these, but we don't enforce this)
+        candidate_pulldown_ids = [
+            pulldown.id for pulldown in line.pulldowns if pulldown.manual_display_flag
+        ]
+
+        # if none were flagged, find the pulldowns with hits
+        if not candidate_pulldown_ids:
+            candidate_pulldown_ids = [
+                pulldown.id for pulldown in line.pulldowns if pulldown.hits
+            ]
+
+        # pick either the first flagged pulldown, the first pulldown with hits,
+        # or the first pulldown
+        pulldown_id = candidate_pulldown_ids[0] if candidate_pulldown_ids else line.pulldowns[0].id
 
         pulldown = (
             flask.current_app.Session.query(models.MassSpecPulldown)
@@ -228,7 +235,7 @@ class CellLinePulldown(CellLineResource):
 
         if not pulldown.hits:
             return flask.abort(
-                404, 'No pulldown with hits found for cell line %s' % cell_line_id
+                404, 'The pulldown for cell line %s does not have any hits' % cell_line_id
             )
 
         payload = payloads.pulldown_payload(pulldown)

@@ -65,13 +65,37 @@ def autogain(*args, **kwargs):
     return autoscale(*args, **kwargs)
 
 
+def remove_small_regions(mask, min_area, conn=1):
+    '''
+    Remove regions that are too small or too large from the mask
+    '''
+    mask_label = skimage.measure.label(mask, connectivity=conn)
+    props = skimage.measure.regionprops(mask_label)
+    for prop in props:
+        if prop.area < min_area:
+            mask[mask_label == prop.label] = False
+    return mask > 0
+
+
+def remove_large_regions(mask, max_area, conn=1):
+    '''
+    Remove regions whose area is greater than max_area from the mask
+    '''
+    mask_label = skimage.measure.label(mask, connectivity=conn)
+    props = skimage.measure.regionprops(mask_label)
+    for prop in props:
+        if prop.area > max_area:
+            mask[mask_label == prop.label] = False
+    return mask > 0
+
+
 def remove_edge_regions(mask, conn=1):
     '''
-    Remove regions in the mask that 'touch' one or more edges of the image
+    Remove regions in the mask that touch one or more edges of the image
     '''
     mask_label = skimage.measure.label(mask, connectivity=conn)
     props = skimage.measure.regionprops(mask_label)
     for prop in props:
         if min(prop.bbox) == 0 or prop.bbox[2] == mask.shape[0] or prop.bbox[3] == mask.shape[1]:
             mask[mask_label == prop.label] = False
-    return mask
+    return mask > 0

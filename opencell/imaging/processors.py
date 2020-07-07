@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 
 from opencell import constants
-from opencell.imaging import images, utils
+from opencell.imaging import images, utils, nucleus_segmentation
 
 
 class FOVProcessor:
@@ -185,7 +185,7 @@ class FOVProcessor:
         if dst_root is None:
             dst_root = ''
 
-        kinds = ['proj', 'crop', 'clean']
+        kinds = ['proj', 'crop', 'clean', 'segmentation']
         if kind not in kinds:
             raise ValueError('%s is not a valid destination kind' % kind)
         appendix = kind.upper()
@@ -337,6 +337,20 @@ class FOVProcessor:
             'quality': quality,
             'encoded_ims': encoded_ims,
         }
+        return result
+
+
+    def generate_nucleus_segmentation(self, dst_root):
+        '''
+        Generate nucleus segmentation mask from the z-projection of the 405 channel
+        '''
+        filepath = self.dst_filepath(dst_root, kind='proj', channel='405', ext='tif')
+        im = tifffile.imread(filepath)
+        mask = nucleus_segmentation.generate_final_mask(im)
+
+        result = None
+        dst_filepath = self.dst_filepath(dst_root, kind='segmentation', ext='tif')
+        tifffile.imsave(dst_filepath, (255*mask).astype('uint8'), dtype='uint8')
         return result
 
 

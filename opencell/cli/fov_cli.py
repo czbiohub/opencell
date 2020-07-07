@@ -84,6 +84,7 @@ def parse_args():
         'crop_corner_rois',
         'crop_annotated_rois',
         'generate_annotated_roi_thumbnails',
+        'generate_nucleus_segmentations',
         'process_all_fovs',
     ]
 
@@ -250,7 +251,6 @@ def do_fov_task(
     return error_log
 
 
-
 def do_fov_tasks(Session, args, processor_method_name, processor_method_kwargs, fovs=None):
     '''
     Call a method of FOVProcessor on all, or a subset of, the raw FOVs
@@ -277,6 +277,7 @@ def do_fov_tasks(Session, args, processor_method_name, processor_method_kwargs, 
         'crop_corner_rois': 'insert_corner_rois',
         'crop_annotated_roi': 'insert_annotated_roi',
         'generate_annotated_roi_thumbnails': 'insert_roi_thumbnails',
+        'generate_nucleus_segmentation': 'insert_nothing'
     }
 
     # the name of the FOVOperations method that inserts the results of the processor method
@@ -457,7 +458,8 @@ def main():
         method_name = 'calculate_fov_features'
         method_kwargs = {
             'dst_root': args.dst_root,
-            'fov_scorer': fov_scorer}
+            'fov_scorer': fov_scorer
+        }
 
         if not args.process_all_fovs:
             fovs = get_unprocessed_fovs(engine, Session, result_kind='fov-features')
@@ -530,6 +532,15 @@ def main():
             .filter(models.MicroscopyFOV.annotation.has())
             .all()
         )
+        do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
+
+
+    if args.generate_nucleus_segmentations:
+        method_name = 'generate_nucleus_segmentation'
+        method_kwargs = {'dst_root': args.dst_root}
+
+        # only process annotated FOVs
+        fovs = Session.query(models.MicroscopyFOV).all()
         do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
 
 

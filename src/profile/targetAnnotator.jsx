@@ -19,7 +19,7 @@ const localizationLabels = [
     'Nucleus-cytoplasm variation', 'Membrane', 'Cytoplasmic', 'Cytoskeleton', 
     'ER', 'Golgi', 'Mitochondria', 'Centrosome', 'Vesicles',
     'Big aggregates', 'Small aggregates', 'Diffuse', 'Textured',
-    'Cell contact', 'Cilia',
+    'Cell contact', 'Cilia', 'Focal adhesions',
 ];
 
 const qcLabels = [

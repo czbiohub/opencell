@@ -2,7 +2,7 @@ import * as d3 from 'd3';
 import React, { Component } from 'react';
 
 import classNames from 'classnames';
-import { Button, Radio, RadioGroup, MenuItem } from "@blueprintjs/core";
+import { Button, Radio, RadioGroup, MenuItem, Checkbox } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
 
 import 'tachyons';
@@ -51,8 +51,13 @@ function Thumbnail (props) {
     const imgClassName = classNames(
         'thumbnail', 
         {
-            'thumbnail-annotated': !!props.fov.annotation,
-            'thumbnail-flagged': (metadata.cell_layer_center < 4 || metadata.max_intensity_488===65535),
+            'thumbnail-annotated': !!props.fov.annotation?.roi_position_left,
+            'thumbnail-flagged': (
+                !metadata.score ||
+                metadata.cell_layer_center < 4 || 
+                metadata.max_intensity_488===65535 ||
+                props.fov.annotation?.categories.includes('discarded')
+            ),
         }
     );
 
@@ -65,7 +70,10 @@ function Thumbnail (props) {
 
     return (
         <div className={divClassName} onClick={() => props.changeFov(metadata.id)}>
-            <img className={imgClassName} src={`data:image/jpg;base64,${props.fov.thumbnails?.data}`}/>
+            <img 
+                className={imgClassName} 
+                src={`data:image/jpg;base64,${props.fov.thumbnails?.data}`}
+            />
             <div className='thumbnail-caption'>
                 <span>{`${metadata.pml_id}`}</span>
                 <br></br>
@@ -82,7 +90,13 @@ function RoiOutline (props) {
     return (
         <div 
             className={`fov-curator-roi ${props.className}`}
-            style={{top: props.top, left: props.left, width: props.size, height: props.size, visibility}}
+            style={{
+                top: props.top, 
+                left: props.left, 
+                width: props.size, 
+                height: props.size, 
+                visibility
+            }}
         />
     );
 };
@@ -95,12 +109,19 @@ export default class FovAnnotator extends Component {
 
         this.fovs = [];
         this.state = {
+
             fovId: undefined,
+
+            // the coordinates of the new user-selected ROI
             pixelRoiTop: undefined,
             pixelRoiLeft: undefined,
-            loaded: false,
-            roiVisible: false,
+
+            // FOV annotation categories
             categories: [],
+
+            loaded: false,
+            newRoiVisible: false,
+            existingRoiVisible: true,
             submissionStatus: '',
             deletionStatus: '',
         };
@@ -109,32 +130,17 @@ export default class FovAnnotator extends Component {
         this.changeFov = this.changeFov.bind(this);
         this.onFOVClick = this.onFOVClick.bind(this);
         this.updateFovScale = this.updateFovScale.bind(this);
-    
+        this.toggleDiscardedCategory = this.toggleDiscardedCategory.bind(this);
+
         // the hard-coded size of the ROI in real/raw pixels
         this.roiSize = 600;
-    
     }
 
-    updateFovScale() {
-        const img = this.FOVImgRef.current;
-        this.setState({fovScale: img.clientWidth / img.naturalWidth});
-    }
-
-    changeFov (fovId) {
-        this.setState({
-            fovId, 
-            pixelRoiTop: undefined,
-            pixelRoiLeft: undefined,
-            roiVisible: false, 
-            submissionStatus: '',
-            deletionStatus: '',
-            loaded: false,
-        });
-    }
 
     componentDidMount () {
         this.fetchData();
     }
+
 
     componentDidUpdate(prevProps) {
         if (this.props.cellLineId!==prevProps.cellLineId) {
@@ -143,13 +149,51 @@ export default class FovAnnotator extends Component {
         }
     }
 
+    updateFovScale() {
+        const img = this.FOVImgRef.current;
+        this.setState({fovScale: img.clientWidth / img.naturalWidth});
+    }
+
+
+    changeFov (fovId) {
+        const fov = this.fovs.filter(fov => fov.metadata.id === fovId)[0];
+        this.setState({
+            fovId, 
+            pixelRoiTop: undefined,
+            pixelRoiLeft: undefined,
+            newRoiVisible: false, 
+            existingRoiVisible: true,
+            submissionStatus: '',
+            deletionStatus: '',
+            loaded: false,
+            categories: fov?.annotation?.categories || [],
+        });
+    }
+
+
+    toggleDiscardedCategory () {
+        let categories = [];
+        const category = 'discarded';
+        if (this.state.categories.includes(category)) {
+            categories = categories.filter(value => value !== category);
+        } else {
+            categories.push(category);
+        }
+        this.setState({categories});
+    }
+
+
     fetchData () {
         if (!this.props.cellLineId) return;
         this.setState({loaded: false, roiVisible: false});
         const url = `${settings.apiUrl}/lines/${this.props.cellLineId}/fovs?fields=thumbnails`;
         d3.json(url).then(fovs => {
             this.fovs = fovs;
-            this.setState({loaded: true, fovId: this.state.fovId || fovs[0]?.metadata.id});
+            this.setState({
+                loaded: true, 
+                submissionStatus: 'none',
+            });
+            if (!this.state.fovId) this.changeFov(fovs[0]?.metadata.id);
         });
     }
 
@@ -167,8 +211,14 @@ export default class FovAnnotator extends Component {
         const clientRoiSize = this.roiSize * this.state.fovScale;
 
         // the top left corner of the ROI in the client
-        const clientRoiLeft = d3.min([d3.max([0, clientX - clientRoiSize/2]), img.clientWidth - clientRoiSize]);
-        const clientRoiTop = d3.min([d3.max([0, clientY - clientRoiSize/2]), img.clientHeight - clientRoiSize]);
+        const clientRoiLeft = d3.min([
+            d3.max([0, clientX - clientRoiSize/2]), 
+            img.clientWidth - clientRoiSize
+        ]);
+        const clientRoiTop = d3.min([
+            d3.max([0, clientY - clientRoiSize/2]), 
+            img.clientHeight - clientRoiSize
+        ]);
 
         // the top-left corner in raw pixels
         const pixelRoiLeft = parseInt(clientRoiLeft / this.state.fovScale);
@@ -177,7 +227,7 @@ export default class FovAnnotator extends Component {
         this.setState({
             pixelRoiTop,
             pixelRoiLeft,
-            roiVisible: true,
+            newRoiVisible: true,
             submissionStatus: '',
             deletionStatus: '',
         })
@@ -185,21 +235,30 @@ export default class FovAnnotator extends Component {
 
 
     onSubmit () {
-        // submit an FOV annotation
-        this.setState({deletionStatus: ''});
-        if (isNaN(this.state.pixelRoiLeft) || isNaN(this.state.pixelRoiTop)) {
-            this.setState({submissionStatus: 'danger'});
-            return;
-        }
+        // save the changes to an FOV annotation
 
+        this.setState({deletionStatus: ''});
+
+        const fov = this.fovs.filter(fov => fov.metadata.id === this.state.fovId)[0];
         const data = {
             categories: this.state.categories,
-            roi_position_top: this.state.pixelRoiTop, 
-            roi_position_left: this.state.pixelRoiLeft,
+            roi_position_top: fov.annotation.roi_position_top,
+            roi_position_left: fov.annotation.roi_position_left,
             client_metadata: {
                 last_modified: (new Date()).toString(),
             }
         };
+
+        // if the existing ROI is hidden, the 'clear existing ROI' button was clicked
+        if (!this.state.existingRoiVisible) {
+            data.roi_position_top = null;
+            data.roi_position_left = null;
+
+        // if pixelRoiTop is defined, the user clicked to select a new ROI
+        } else if (!!this.state.pixelRoiTop) {
+            data.roi_position_top = this.state.pixelRoiTop;
+            data.roi_position_left = this.state.pixelRoiLeft;
+        }
 
         putData(`${settings.apiUrl}/fovs/${this.state.fovId}/annotation`, data)
             .then(response => {
@@ -210,6 +269,7 @@ export default class FovAnnotator extends Component {
             })
             .catch(error => this.setState({submissionStatus: 'danger'}));
     }
+
 
     onClear () {
         // clear an existing FOV annotation
@@ -238,12 +298,14 @@ export default class FovAnnotator extends Component {
         const fov = this.fovs.filter(fov => fov.metadata.id === this.state.fovId)[0];
         
         const thumbnails = this.fovs.map(fov => {
-            return <Thumbnail 
-                key={fov.metadata.id} 
-                fov={fov} 
-                fovId={this.state.fovId} 
-                changeFov={this.changeFov}
-            />;
+            return (
+                <Thumbnail 
+                    key={fov.metadata.id} 
+                    fov={fov} 
+                    fovId={this.state.fovId} 
+                    changeFov={this.changeFov}
+                />
+            )
         });
 
         return (
@@ -291,18 +353,20 @@ export default class FovAnnotator extends Component {
                                 left={this.state.pixelRoiLeft*this.state.fovScale}
                                 size={clientRoiSize}
                                 className='fov-curator-roi-new'
-                                visible={this.state.roiVisible}
+                                visible={this.state.newRoiVisible}
                             />
 
                             {/* outline of existing user-selected ROI */}
-                            {fov?.annotation ? (
-                                <RoiOutline
-                                    top={fov.annotation.roi_position_top*this.state.fovScale}
-                                    left={fov.annotation.roi_position_left*this.state.fovScale}
-                                    size={clientRoiSize}
-                                    visible={true}
-                                />
-                            ) : (null)}
+                            {
+                                fov?.annotation?.roi_position_left ? (
+                                    <RoiOutline
+                                        top={fov.annotation.roi_position_top*this.state.fovScale}
+                                        left={fov.annotation.roi_position_left*this.state.fovScale}
+                                        size={clientRoiSize}
+                                        visible={this.state.existingRoiVisible}
+                                    />
+                                ) : (null)
+                            }
 
                             {this.state.loaded ? (null) : (<div className='loading-overlay'/>)}
 
@@ -310,19 +374,35 @@ export default class FovAnnotator extends Component {
                     </div>
 
                     {/* FOV annotation submission and clear buttons */}
-                    <div className="w-30 pl3 flex" style={{flexDirection: 'column'}}>
-                        <SectionHeader title='ROI controls'/>
+                    <div className="w-20 pl4 flex" style={{flexDirection: 'column'}}>
                         <Button
-                            text={'Update'}
+                            text={'Remove existing ROI'}
+                            className={'ma2 bp3-button'}
+                            onClick={() => {
+                                this.setState({existingRoiVisible: false});
+                            }}
+                            intent={'none'}
+                        />
+                        <Button
+                            text={'Save changes'}
                             className={'ma2 bp3-button'}
                             onClick={event => this.onSubmit()}
                             intent={this.state.submissionStatus || 'none'}
                         />
+                        {/* hide the delete annotation button, because the difference
+                            between clearing the ROI and deleting the entire annotation is not meaningful
                         <Button
-                            text={'Clear existing'}
+                            text={'Delete annotation'}
                             className={'ma2 bp3-button'}
                             onClick={event => this.onClear()}
                             intent={this.state.deletionStatus || 'none'}
+                        /> 
+                        */}
+                        <Checkbox
+                            className='pt3'
+                            label='Flag this FOV as discarded'
+                            checked={this.state.categories.includes('discarded')}
+                            onChange={this.toggleDiscardedCategory}
                         />
                     </div>
 

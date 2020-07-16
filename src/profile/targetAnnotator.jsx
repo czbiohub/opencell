@@ -14,7 +14,7 @@ import './Profile.css';
 /// human-readable category labels
 // (the categories themselves are lower_camel_case versions of these labels)
 const localizationLabels = [
-    'Nuclear', 'Nuclear membrane', 'Nuclear punctae', 'Chromatin',
+    'Nucleoplasm', 'Nuclear membrane', 'Nuclear punctae', 'Chromatin',
     'Nucleolus', 'Nucleolus-GC', 'Nucleolus-FC/DFC', 'Nucleolar ring',
     'Nucleus-cytoplasm variation', 'Membrane', 'Cytoplasmic', 'Cytoskeleton', 
     'ER', 'Golgi', 'Mitochondria', 'Centrosome', 'Vesicles',

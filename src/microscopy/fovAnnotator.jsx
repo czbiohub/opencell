@@ -118,10 +118,15 @@ export default class FovAnnotator extends Component {
 
             // FOV annotation categories
             categories: [],
-
+            
+            // whether the FOV metadata and/or image (z-projection) has loaded
             loaded: false,
+
+            // whether to show or hide the new and existing ROI outlines
             newRoiVisible: false,
             existingRoiVisible: true,
+
+            // whether annotation submission or deletion was successful
             submissionStatus: '',
             deletionStatus: '',
         };
@@ -156,16 +161,20 @@ export default class FovAnnotator extends Component {
 
 
     changeFov (fovId) {
+
+        // loaded is only false if the fovId has changed, which will trigger a new img to load
+        const loaded = this.state.fovId===fovId;
+
         const fov = this.fovs.filter(fov => fov.metadata.id === fovId)[0];
         this.setState({
             fovId, 
+            loaded,
             pixelRoiTop: undefined,
             pixelRoiLeft: undefined,
             newRoiVisible: false, 
             existingRoiVisible: true,
             submissionStatus: '',
             deletionStatus: '',
-            loaded: false,
             categories: fov?.annotation?.categories || [],
         });
     }
@@ -193,7 +202,7 @@ export default class FovAnnotator extends Component {
                 loaded: true, 
                 submissionStatus: 'none',
             });
-            if (!this.state.fovId) this.changeFov(fovs[0]?.metadata.id);
+            this.changeFov(this.state.fovId || fovs[0]?.metadata.id);
         });
     }
 
@@ -240,10 +249,11 @@ export default class FovAnnotator extends Component {
         this.setState({deletionStatus: ''});
 
         const fov = this.fovs.filter(fov => fov.metadata.id === this.state.fovId)[0];
+
         const data = {
             categories: this.state.categories,
-            roi_position_top: fov.annotation.roi_position_top,
-            roi_position_left: fov.annotation.roi_position_left,
+            roi_position_top: fov.annotation?.roi_position_top,
+            roi_position_left: fov.annotation?.roi_position_left,
             client_metadata: {
                 last_modified: (new Date()).toString(),
             }
@@ -375,6 +385,12 @@ export default class FovAnnotator extends Component {
 
                     {/* FOV annotation submission and clear buttons */}
                     <div className="w-20 pl4 flex" style={{flexDirection: 'column'}}>
+                        <Checkbox
+                            className='pt3'
+                            label='Flag this FOV as discarded'
+                            checked={this.state.categories.includes('discarded')}
+                            onChange={this.toggleDiscardedCategory}
+                        />
                         <Button
                             text={'Remove existing ROI'}
                             className={'ma2 bp3-button'}
@@ -384,26 +400,17 @@ export default class FovAnnotator extends Component {
                             intent={'none'}
                         />
                         <Button
-                            text={'Save changes'}
+                            text={'Submit changes'}
                             className={'ma2 bp3-button'}
                             onClick={event => this.onSubmit()}
                             intent={this.state.submissionStatus || 'none'}
-                        />
-                        {/* hide the delete annotation button, because the difference
-                            between clearing the ROI and deleting the entire annotation is not meaningful
+                        />                       
                         <Button
-                            text={'Delete annotation'}
-                            className={'ma2 bp3-button'}
+                            text={'Delete ROI and flags'}
+                            className={'ma2 pt3 bp3-button'}
                             onClick={event => this.onClear()}
                             intent={this.state.deletionStatus || 'none'}
                         /> 
-                        */}
-                        <Checkbox
-                            className='pt3'
-                            label='Flag this FOV as discarded'
-                            checked={this.state.categories.includes('discarded')}
-                            onChange={this.toggleDiscardedCategory}
-                        />
                     </div>
 
                 </div>

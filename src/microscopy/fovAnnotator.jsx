@@ -123,8 +123,8 @@ export default class FovAnnotator extends Component {
             loaded: false,
 
             // whether to show or hide the new and existing ROI outlines
-            newRoiVisible: false,
-            existingRoiVisible: true,
+            showNewRoi: false,
+            showExistingRoi: true,
 
             // whether annotation submission or deletion was successful
             submissionStatus: '',
@@ -171,8 +171,8 @@ export default class FovAnnotator extends Component {
             loaded,
             pixelRoiTop: undefined,
             pixelRoiLeft: undefined,
-            newRoiVisible: false, 
-            existingRoiVisible: true,
+            showNewRoi: false, 
+            showExistingRoi: true,
             submissionStatus: '',
             deletionStatus: '',
             categories: fov?.annotation?.categories || [],
@@ -236,7 +236,7 @@ export default class FovAnnotator extends Component {
         this.setState({
             pixelRoiTop,
             pixelRoiLeft,
-            newRoiVisible: true,
+            showNewRoi: true,
             submissionStatus: '',
             deletionStatus: '',
         })
@@ -260,12 +260,12 @@ export default class FovAnnotator extends Component {
         };
 
         // if the existing ROI is hidden, the 'clear existing ROI' button was clicked
-        if (!this.state.existingRoiVisible) {
+        if (!this.state.showExistingRoi) {
             data.roi_position_top = null;
             data.roi_position_left = null;
-
-        // if pixelRoiTop is defined, the user clicked to select a new ROI
-        } else if (!!this.state.pixelRoiTop) {
+        }
+        // if the new ROI is visible, the user must have clicked to select a new ROI
+        if (this.state.showNewRoi) {
             data.roi_position_top = this.state.pixelRoiTop;
             data.roi_position_left = this.state.pixelRoiLeft;
         }
@@ -363,7 +363,7 @@ export default class FovAnnotator extends Component {
                                 left={this.state.pixelRoiLeft*this.state.fovScale}
                                 size={clientRoiSize}
                                 className='fov-curator-roi-new'
-                                visible={this.state.newRoiVisible}
+                                visible={this.state.showNewRoi}
                             />
 
                             {/* outline of existing user-selected ROI */}
@@ -373,7 +373,7 @@ export default class FovAnnotator extends Component {
                                         top={fov.annotation.roi_position_top*this.state.fovScale}
                                         left={fov.annotation.roi_position_left*this.state.fovScale}
                                         size={clientRoiSize}
-                                        visible={this.state.existingRoiVisible}
+                                        visible={this.state.showExistingRoi}
                                     />
                                 ) : (null)
                             }
@@ -395,7 +395,7 @@ export default class FovAnnotator extends Component {
                             text={'Remove existing ROI'}
                             className={'ma2 bp3-button'}
                             onClick={() => {
-                                this.setState({existingRoiVisible: false});
+                                this.setState({showExistingRoi: false});
                             }}
                             intent={'none'}
                         />
@@ -406,8 +406,9 @@ export default class FovAnnotator extends Component {
                             intent={this.state.submissionStatus || 'none'}
                         />                       
                         <Button
-                            text={'Delete ROI and flags'}
-                            className={'ma2 pt3 bp3-button'}
+                            text={'Delete entire annotation'}
+                            className={'ma2 bp3-button'}
+                            style={{marginTop: 'auto'}}
                             onClick={event => this.onClear()}
                             intent={this.state.deletionStatus || 'none'}
                         /> 

@@ -51,7 +51,9 @@ function Thumbnail (props) {
     const imgClassName = classNames(
         'thumbnail', 
         {
-            'thumbnail-annotated': !!props.fov.annotation?.roi_position_left,
+            'thumbnail-annotated': (
+                props.fov.annotation && props.fov.annotation.roi_position_left!==null
+            ),
             'thumbnail-flagged': (
                 !metadata.score ||
                 metadata.cell_layer_center < 4 || 
@@ -304,8 +306,10 @@ export default class FovAnnotator extends Component {
 
         if (!this.fovs.length) return (<div className="f3 tc pa5">No ROIs found</div>);
 
-        const clientRoiSize = this.state.fovScale * this.roiSize;
         const fov = this.fovs.filter(fov => fov.metadata.id === this.state.fovId)[0];
+        if (!fov) return (<div className="f3 tc pa5">No ROIs found</div>);
+    
+        const clientRoiSize = this.state.fovScale * this.roiSize;
         
         const thumbnails = this.fovs.map(fov => {
             return (
@@ -368,7 +372,7 @@ export default class FovAnnotator extends Component {
 
                             {/* outline of existing user-selected ROI */}
                             {
-                                fov?.annotation?.roi_position_left ? (
+                                (fov.annotation && fov.annotation.roi_position_left!==null) ? (
                                     <RoiOutline
                                         top={fov.annotation.roi_position_top*this.state.fovScale}
                                         left={fov.annotation.roi_position_left*this.state.fovScale}
@@ -385,11 +389,13 @@ export default class FovAnnotator extends Component {
 
                     {/* FOV annotation submission and clear buttons */}
                     <div className="w-20 pl4 flex" style={{flexDirection: 'column'}}>
-                        <Checkbox
-                            className='pt3'
-                            label='Flag this FOV as discarded'
-                            checked={this.state.categories.includes('discarded')}
-                            onChange={this.toggleDiscardedCategory}
+                        <Button
+                            text={'Remove new ROI'}
+                            className={'ma2 bp3-button'}
+                            onClick={() => {
+                                this.setState({showNewRoi: false});
+                            }}
+                            intent={'none'}
                         />
                         <Button
                             text={'Remove existing ROI'}
@@ -399,9 +405,15 @@ export default class FovAnnotator extends Component {
                             }}
                             intent={'none'}
                         />
+                        <Checkbox
+                            className='pt2 ml2'
+                            label='Flag this FOV as discarded'
+                            checked={this.state.categories.includes('discarded')}
+                            onChange={this.toggleDiscardedCategory}
+                        />
                         <Button
                             text={'Submit changes'}
-                            className={'ma2 bp3-button'}
+                            className={'ma2 mt3 bp3-button'}
                             onClick={event => this.onSubmit()}
                             intent={this.state.submissionStatus || 'none'}
                         />                       

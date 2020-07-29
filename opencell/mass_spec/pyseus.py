@@ -710,3 +710,33 @@ def pool_impute_prey(bait_group, distance=0, width=0.3):
     bait_df = bait_df.apply(random_imputation_val,
             args=(imp_mean, imp_stdev))
     return bait_df
+
+
+def median_normalization(imputed, axis=1):
+    """
+    normalize columns/rows with median subtraction
+    """
+
+    normalized = imputed.copy()
+    normalized.drop(columns='Info', inplace=True)
+
+    if axis == 0:
+        normalized = normalized.T
+
+    # take median of all the rows/cols
+    medians = normalized.median(axis=0)
+
+    cols = list(normalized)
+
+    # take the median subtraction
+    for col in cols:
+        normalized[col] = normalized[col] - medians[col]
+
+    if axis == 0:
+        normalized = normalized.T
+
+    info_cols = [x for x in list(imputed) if x[0] == 'Info']
+    for col in info_cols:
+        normalized[col] = imputed[col]
+
+    return normalized

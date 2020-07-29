@@ -9,11 +9,12 @@ import seaborn as sns
 import plotly.figure_factory as ff
 from scipy.cluster.hierarchy import linkage, leaves_list
 from sklearn.cluster import KMeans
+import plotly.express as px
 import time
 
 
 
-def dendro_heatmap(matrix_df, hexmap, zmin, zmax, verbose=True):
+def dendro_heatmap(matrix_df, zmin, zmax, verbose=True):
     """ From the dendro_leaves data, generate a properly oriented
     heatmap
 
@@ -32,13 +33,100 @@ def dendro_heatmap(matrix_df, hexmap, zmin, zmax, verbose=True):
     # Generate the heatmap
     heatmap = [
         go.Heatmap(x=columns, y=rows, z=plot_df.values.tolist(),
-        colorscale=hexmap, zmin=zmin, zmax=zmax)]
+        colorscale='Viridis', zmin=zmin, zmax=zmax)]
 
     if verbose:
         end_time = np.round(time.time() - start_time, 2)
         print("Finished heatmap in " + str(end_time) + " seconds.")
 
     return heatmap
+
+
+def bait_leaves(matrix_df, method='average', distance='euclidean'):
+    """Calculate the prey linkage and return the list of
+    prey plotting sequence to use for heatmap. Use prey_kmeans for better performance
+    rtype: prey_leaves list"""
+
+    # Create a matrix_df, taking median of all replicates
+    matrix_df = matrix_df.copy()
+
+
+    # Transpose to get linkages of baits
+    matrix_df = matrix_df.T
+
+    bait_linkage = linkage(matrix_df, method=method, optimal_ordering=True)
+
+    # Retreieve the order of baits in the new linkage
+    bait_leaves = leaves_list(bait_linkage)
+    bait_leaves = [list(matrix_df.index)[x] for x in bait_leaves]
+
+
+    return bait_leaves
+
+
+def prey_leaves(matrix_df, method='average', distance='euclidean'):
+    """Calculate the prey linkage and return the list of
+    prey plotting sequence to use for heatmap. Use prey_kmeans for better performance.
+
+    rtype: prey_leaves list"""
+
+    matrix_df = matrix_df.copy()
+
+
+    prey_linkage = linkage(matrix_df, method=method, optimal_ordering=True)
+
+    # Retrieve the order of preys in the new linkage
+    prey_leaves = leaves_list(prey_linkage)
+    prey_leaves = [list(matrix_df.index)[x] for x in prey_leaves]
+
+    return prey_leaves
+
+
+def cluster_heatmap(matrix_df, clusters, method='ward', metric='euclidean', off_diagonal=False):
+
+    matrix_df = matrix_df.copy()
+
+    # get all off diagonal targets if true
+    if off_diagonal:
+        row_df = matrix_df.loc[matrix_df.index.isin(clusters, level='cluster')]
+        cols = (row_df.sum() > 0).index.tolist()
+
+        col_df = matrix_df.loc[:, matrix_df.columns.isin(clusters, level='cluster')]
+        rows = col_df[col_df.sum(axis=1) > 0].index.tolist()
+
+        cluster_df = matrix_df.T[rows].T[cols]
+
+    else:
+        cluster_df = matrix_df.loc[
+            matrix_df.index.isin(clusters, level='cluster'),
+            matrix_df.columns.isin(clusters, level='cluster'),
+        ]
+    cluster_df.columns = cluster_df.columns.droplevel(level='cluster')
+    cluster_df.index = cluster_df.index.droplevel(level='cluster')
+
+    # drop all zero cols or rows
+    cluster_df = cluster_df[(cluster_df.T != 0).any()]
+    cluster_df = cluster_df.loc[:, (cluster_df != 0).any(axis=0)]
+
+    p_leaves = prey_leaves(cluster_df, method=method, distance=metric)
+    b_leaves = bait_leaves(cluster_df, method=method, distance=metric)
+
+
+    # Correctly order the plot df according to dendro leaves
+    cluster_df = cluster_df.T[p_leaves].T
+
+    # Reorder columns based on bait_leaves
+    cluster_df = cluster_df[b_leaves]
+
+
+    # Generate the heatmap
+    heatmap = [
+        go.Heatmap(x=list(cluster_df), y=list(cluster_df.index), z=cluster_df.values.tolist(),
+        colorscale='blues')]
+
+    return heatmap
+
+
 
 
 def cluster_map(matrix_df, clusters, width=800, height=800, method='ward', metric='euclidean',

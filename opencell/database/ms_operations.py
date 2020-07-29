@@ -181,7 +181,7 @@ class MassSpecPulldownOperations:
 
 
     @staticmethod
-    def manual_flag_pulldown(session, pulldown_id, design_id, well_id, errors='warn'):
+    def manual_flag_pulldown(session, pulldown_plate_id, design_id, well_id, errors='warn'):
         '''
         some crispr designs have multiple pulldowns, this method
         allows manual flagging of a pulldown to be shown in opencell.
@@ -197,7 +197,7 @@ class MassSpecPulldownOperations:
 
         # mark the given pulldown as True and all others as False
         for pulldown in pulldowns:
-            if pulldown.pulldown_plate_id == pulldown_id:
+            if pulldown.pulldown_plate_id == pulldown_plate_id:
                 pulldown.manual_display_flag = True
             else:
                 pulldown.manual_display_flag = False

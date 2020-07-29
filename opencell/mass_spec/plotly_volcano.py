@@ -181,7 +181,7 @@ def mult_volcano(v_df, baits):
     fig.show()
 
 
-def volcano_plot_two_fdrs(v_df, fdr_df, bait):
+def volcano_plot_two_fdrs(v_df, fdr_df, bait, width=800, height=800):
     """plot the volcano plot of a given bait"""
     v_df = v_df.copy()
     v_df = v_df.set_index(('gene_names', 'gene_names'))
@@ -232,16 +232,18 @@ def volcano_plot_two_fdrs(v_df, fdr_df, bait):
         line=dict(color='firebrick', dash='dash')))
 
     fig.update_layout(
+        {'width': width, 'height': height},
         title={'text': bait,
             'x': 0.5,
-            'y': 0.95},
+            'y': 0.9},
             xaxis_title='Enrichment (log2)',
             yaxis_title='P value (-log10)',
-            showlegend=False,
-            margin={'l': 30, 'r': 30, 'b': 20, 't': 40})
+            showlegend=False)
+
     fig.update_xaxes(range=[-1 * xmax, xmax])
     fig.update_yaxes(range=[-1, ymax])
     fig.show()
+    return fig
 
 
 def calc_thresh(enrich, fc_var1, fc_var2):
@@ -284,21 +286,46 @@ def two_fdrs(pval_df, fdr1, fdr2):
     return pval_df
 
 
-def comparison_volcano_temp(bait, v_df, v2_df, fdr_df, fcd1, fcd2):
+def all_hits_two_fdrs(pval_df, fdr1, fdr2):
+    """ compute 1% fdr and 5 % FDR on all_hits table """
+    pval_df = pval_df.copy()
+
+    pval = pval_df['pvals']
+    enrichment = pval_df['enrichment']
+    first_thresh = enrichment.apply(calc_thresh,
+            args=[fdr1[0], fdr1[1]])
+
+    # 5% thresh
+    second_thresh = enrichment.apply(calc_thresh,
+        args=[fdr2[0], fdr2[1]])
+
+    pval_df['hits'] = np.where(
+        (pval > first_thresh), True, False)
+
+    pval_df['minor_hits'] = np.where(
+        ((pval < first_thresh) & (pval > second_thresh)), True, False)
+    # pval_df = pval_df[(pval_df['hits']) | (pval_df['minor_hits'])]
+    pval_df.reset_index(inplace=True, drop=True)
+    return pval_df
+
+
+def comparison_volcano_temp(v_df, v2_df, bait, plate, fcd1, fcd2):
     """plot volcano plots from two analyses for qualitative comparisons"""
 
     # initiate dfs
     v_df = v_df.copy()
-    v_df = v_df.set_index(('gene_names', 'gene_names'))
+    v_df = v_df.set_index('prey')
     v2_df = v2_df.copy()
-    v2_df = v2_df.set_index(('gene_names', 'gene_names'))
+    v2_df = v2_df.set_index('prey')
     v_dfs = [v_df, v2_df]
 
 
     # start a subplot
     fig = make_subplots(rows=1, cols=2)
     for i in [1, 2]:
-        bait_vals = v_dfs[i-1][bait]
+        sel_df = v_dfs[i-1]
+        bait_vals = sel_df[(sel_df['target'] == bait) & (sel_df['plate'] == plate)]
+
 
         hits = bait_vals[bait_vals['hits']]
         print("Number of Significant Hits: " + str(hits.shape[0]))
@@ -318,8 +345,8 @@ def comparison_volcano_temp(bait, v_df, v2_df, fdr_df, fcd1, fcd2):
 
         # FCD plot calculation
         if i == 2:
-            fcd1 = fdr_df.loc[bait]['fdr1']
-            fcd2 = fdr_df.loc[bait]['fdr5']
+            fcd1 = bait_vals.iloc[0]['fdr1']
+            fcd2 = bait_vals.iloc[0]['fdr5']
 
 
         x1 = np.array(list(np.linspace(-12, -1 * fcd1[1] - 0.001, 200))

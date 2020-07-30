@@ -33,6 +33,10 @@ def parse_args():
     # the filepath to a snapshot of the 'pipeline-microscopy-master-key' google sheet
     parser.add_argument('--microscopy-master-key', dest='microscopy_master_key')
 
+    # optional sql command to execute
+    # (if provided, other options/commands are ignored)
+    parser.add_argument('--execute-sql', dest='sql_command', required=False)
+
     # CLI args whose presence in the command sets them to True
     action_arg_dests = [
         'update',
@@ -385,24 +389,23 @@ def generate_protein_group_crispr_design_associations(Session):
 
 
 def main():
-    '''
 
-    Returns
-    -------
-
-    '''
     args = parse_args()
     url = utils.url_from_credentials(args.credentials)
     engine = db.create_engine(url)
     session_factory = db.orm.sessionmaker(bind=engine)
     Session = db.orm.scoped_session(session_factory)
 
-    if args.drop_all:
-        maybe_drop_and_create(engine, drop=True)
-    else:
-        maybe_drop_and_create(engine, drop=False)
+    if args.sql_command:
+        print(args.sql_command)
+        with engine.connect().execution_options(autocommit=True) as conn:
+            result = conn.execute(db.text(args.sql_command))
 
     if args.populate:
+        if args.drop_all:
+            maybe_drop_and_create(engine, drop=True)
+        else:
+            maybe_drop_and_create(engine, drop=False)
         populate(Session, args.data_dir, errors='warn')
 
     if args.insert_facs:

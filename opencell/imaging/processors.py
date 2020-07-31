@@ -544,14 +544,14 @@ class FOVProcessor:
         # the desired step size of the final stack in microns
         # (this is chosen to correspond to the xy pixel size,
         # so that the voxels of the resampled stack will be isotropic)
-        target_step_size = 0.2
+        target_step_size = 0.4
 
         # the step size of the raw data
         original_step_size = self.z_step_size(self.pml_id)
 
         # the number of slices the resampled stack must have
-        # (should be equal to (rel_top - rel_buttom) / target_step_size)
-        required_num_slices = 55
+        # this should be equal to, or rounded down from, (rel_top - rel_buttom) / target_step_size
+        required_num_slices = 27
 
         # crop (and maybe pad) around the cell layer in z
         aligned_stacks, alignment_result = tiff.align_cell_layer(

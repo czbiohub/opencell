@@ -12,8 +12,9 @@ import sqlalchemy.orm
 import sqlalchemy.ext.declarative
 
 from opencell import constants, file_utils
-from opencell.database import models, utils, uniprot_utils
+from opencell.api import settings
 from opencell.database import operations as ops
+from opencell.database import models, utils, uniprot_utils
 
 
 def parse_args():
@@ -21,8 +22,12 @@ def parse_args():
     '''
     parser = argparse.ArgumentParser()
 
-    # path to credentials JSON
-    parser.add_argument('--credentials', dest='credentials', required=True)
+    # deployment mode - one of 'dev', 'test', 'staging', 'prod'
+    parser.add_argument('--mode', dest='mode', required=True)
+
+    # path to JSON file with database credentials
+    # (if provided, overrides the filepath defined in opencell.api.settings)
+    parser.add_argument('--credentials', dest='credentials', required=False)
 
     # the path to the directory of snapshot/cached opencell metadata
     parser.add_argument('--data-dir', dest='data_dir')
@@ -391,15 +396,17 @@ def generate_protein_group_crispr_design_associations(Session):
 def main():
 
     args = parse_args()
-    url = utils.url_from_credentials(args.credentials)
+    config = settings.get_config(args.mode)
+
+    url = utils.url_from_credentials(args.credentials or config.DB_CREDENTIALS_FILEPATH)
     engine = db.create_engine(url)
     session_factory = db.orm.sessionmaker(bind=engine)
     Session = db.orm.scoped_session(session_factory)
 
     if args.sql_command:
-        print(args.sql_command)
+        print("Executing '%s'" % args.sql_command)
         with engine.connect().execution_options(autocommit=True) as conn:
-            result = conn.execute(db.text(args.sql_command))
+            conn.execute(db.text(args.sql_command))
 
     if args.populate:
         if args.drop_all:

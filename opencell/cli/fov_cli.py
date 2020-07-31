@@ -17,6 +17,7 @@ import pandas as pd
 import sqlalchemy as sa
 import dask.diagnostics
 
+from opencell.api import settings
 from opencell.database import models
 from opencell.database import operations
 from opencell.database import utils as db_utils
@@ -48,23 +49,15 @@ def parse_args():
     '''
     parser = argparse.ArgumentParser()
 
-    # the location of the 'opencell-microscopy' directory
-    parser.add_argument('--dst-root', dest='dst_root')
+    # deployment mode - one of 'dev', 'test', 'staging', 'prod'
+    parser.add_argument('--mode', dest='mode', required=True)
 
-    # the location of the PlateMicroscopy directory
-    parser.add_argument('--plate-microscopy-dir', dest='plate_microscopy_dir')
-
-    # the location of the raw-pipeline-microscopy directory
-    parser.add_argument('--raw-pipeline-microscopy-dir', dest='raw_pipeline_microscopy_dir')
+    # path to JSON file with database credentials
+    # (if provided, overrides the filepath defined in opencell.api.settings)
+    parser.add_argument('--credentials', dest='credentials', required=False)
 
     # the pml_id whose FOVs are to be inserted or processed
     parser.add_argument('--pml-id', dest='pml_id')
-
-    # the location of the directory in which to cache the PlateMicroscopy metadata
-    parser.add_argument('--cache-dir', dest='cache_dir', required=False)
-
-    # path to JSON file with database credentials
-    parser.add_argument('--credentials', dest='credentials', required=False)
 
     # FOV thumbnail scale and quality
     parser.add_argument('--thumbnail-scale', dest='thumbnail_scale', required=False)
@@ -251,7 +244,7 @@ def do_fov_task(
     return error_log
 
 
-def do_fov_tasks(Session, args, processor_method_name, processor_method_kwargs, fovs=None):
+def do_fov_tasks(Session, config, processor_method_name, processor_method_kwargs, fovs=None):
     '''
     Call a method of FOVProcessor on all, or a subset of, the raw FOVs
 
@@ -299,8 +292,8 @@ def do_fov_tasks(Session, args, processor_method_name, processor_method_kwargs, 
     # set the src_roots
     for fov_processor in fov_processors:
         fov_processor.set_src_roots(
-            plate_microscopy_dir=args.plate_microscopy_dir,
-            raw_pipeline_microscopy_dir=args.raw_pipeline_microscopy_dir
+            plate_microscopy_dir=config.PLATE_MICROSCOPY_DIR,
+            raw_pipeline_microscopy_dir=config.RAW_PIPELINE_MICROSCOPY_DIR
         )
 
     # create the dask tasks
@@ -325,13 +318,11 @@ def do_fov_tasks(Session, args, processor_method_name, processor_method_kwargs, 
     errors = pd.DataFrame(data=errors).dropna()
     if 'message' in list(errors.columns):
         print("Errors occurred while running method '%s'" % processor_method_name)
-        if args.dst_root is not None:
-            cache_filepath = os.path.join(args.dst_root, '%s_%s-errors.csv' %
-                (timestamp(), processor_method_name))
-            errors.to_csv(cache_filepath, index=False)
-            print("Error log was saved to %s" % cache_filepath)
-        else:
-            print('Argument `dst_root` was not specified, so no error log was saved')
+        cache_filepath = os.path.join(
+            config.OPENCELL_MICROSCOPY_DIR, '%s_%s-errors.csv' % (timestamp(), processor_method_name)
+        )
+        errors.to_csv(cache_filepath, index=False)
+        print("Error log was saved to %s" % cache_filepath)
     else:
         print("No errors occurred while running method '%s'" % processor_method_name)
 
@@ -361,18 +352,15 @@ def get_unprocessed_fovs(engine, session, result_kind):
 def main():
 
     args = parse_args()
-
-    if args.dst_root:
-        os.makedirs(args.dst_root, exist_ok=True)
+    config = settings.get_config(args.mode)
+    os.makedirs(config.OPENCELL_MICROSCOPY_DIR, exist_ok=True)
 
     # create a scoped_session for opencell database
-    if args.credentials:
-        db_url = db_utils.url_from_credentials(args.credentials)
-        engine = sa.create_engine(db_url)
-        models.Base.metadata.create_all(engine)
-
-        session_factory = sa.orm.sessionmaker(bind=engine)
-        Session = sa.orm.scoped_session(session_factory)
+    db_url = db_utils.url_from_credentials(args.credentials or config.DB_CREDENTIALS_FILEPATH)
+    engine = sa.create_engine(db_url)
+    models.Base.metadata.create_all(engine)
+    session_factory = sa.orm.sessionmaker(bind=engine)
+    Session = sa.orm.scoped_session(session_factory)
 
     # if a pml_id was provided, only process the FOVs from that dataset
     fovs = None
@@ -389,42 +377,50 @@ def main():
     # construct the PlateMicroscopy metadata
     # (this is a dataframe of FOV metadata with one row per FOV)
     if args.construct_plate_microscopy_metadata:
-        manager = PlateMicroscopyManager(args.plate_microscopy_dir, args.cache_dir)
+        manager = PlateMicroscopyManager(
+            config.PLATE_MICROSCOPY_DIR, config.PLATE_MICROSCOPY_CACHE_DIR
+        )
         construct_plate_microscopy_metadata(manager)
 
     # inspect the cached PlateMicroscopy metadata
     if args.inspect_plate_microscopy_metadata:
-        manager = PlateMicroscopyManager(args.plate_microscopy_dir, args.cache_dir)
+        manager = PlateMicroscopyManager(
+            config.PLATE_MICROSCOPY_DIR, config.PLATE_MICROSCOPY_CACHE_DIR
+        )
         inspect_plate_microscopy_metadata(manager)
 
     # insert all FOVs from the 'PlateMicroscopy' directory
     # (should only be called once, when initially populating a new database,
     # because the 'PlateMicroscopy' directory is static)
     if args.insert_plate_microscopy_fovs:
-        insert_plate_microscopy_fovs(Session, cache_dir=args.cache_dir, errors='warn')
+        insert_plate_microscopy_fovs(
+            Session, cache_dir=config.PLATE_MICROSCOPY_CACHE_DIR, errors='warn'
+        )
 
     # insert the FOVs from a dataset in the 'raw-pipeline-microscopy' directory
     # (this is called to update the database with the FOVs from new PML datasets)
     if args.insert_fovs:
         insert_raw_pipeline_microscopy_fovs(
-            Session, args.raw_pipeline_microscopy_dir, pml_id=args.pml_id, errors='warn')
+            Session, config.RAW_PIPELINE_MICROSCOPY_DIR, pml_id=args.pml_id, errors='warn'
+        )
 
     # process all raw tiffs
     if args.process_raw_tiffs:
         method_name = 'process_raw_tiff'
-        method_kwargs = {'dst_root': args.dst_root}
+        method_kwargs = {'dst_root': config.OPENCELL_MICROSCOPY_DIR}
 
         if not args.process_all_fovs:
             fovs = get_unprocessed_fovs(engine, Session, result_kind='raw-tiff-metadata')
         try:
-            do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
+            do_fov_tasks(Session, config, method_name, method_kwargs, fovs=fovs)
         except Exception as error:
             print('FATAL ERROR: an uncaught exception occurred in %s' % method_name)
             print(str(error))
-            with open(
-                os.path.join(args.dst_root, '%s_%s_uncaught_exception.log' % (timestamp(), method_name)),
-                'w'
-            ) as file:
+            log_filepath = os.path.join(
+                config.OPENCELL_MICROSCOPY_DIR,
+                '%s_%s_uncaught_exception.log' % (timestamp(), method_name)
+            )
+            with open(log_filepath, 'w') as file:
                 file.write(str(error))
 
 
@@ -434,16 +430,16 @@ def main():
         method_kwargs = {}
         if not args.process_all_fovs:
             fovs = get_unprocessed_fovs(engine, Session, result_kind='z-profiles')
-        do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
+        do_fov_tasks(Session, config, method_name, method_kwargs, fovs=fovs)
 
 
     # crop around the cell layer in z
     if args.generate_clean_tiffs:
         method_name = 'generate_clean_tiff'
-        method_kwargs = {'dst_root': args.dst_root}
+        method_kwargs = {'dst_root': config.OPENCELL_MICROSCOPY_DIR}
         if not args.process_all_fovs:
             fovs = get_unprocessed_fovs(engine, Session, result_kind='clean-tiff-metadata')
-        do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
+        do_fov_tasks(Session, config, method_name, method_kwargs, fovs=fovs)
 
 
     # calculate FOV features and score
@@ -457,28 +453,28 @@ def main():
 
         method_name = 'calculate_fov_features'
         method_kwargs = {
-            'dst_root': args.dst_root,
+            'dst_root': config.OPENCELL_MICROSCOPY_DIR,
             'fov_scorer': fov_scorer
         }
 
         if not args.process_all_fovs:
             fovs = get_unprocessed_fovs(engine, Session, result_kind='fov-features')
-        do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
+        do_fov_tasks(Session, config, method_name, method_kwargs, fovs=fovs)
 
 
     if args.generate_fov_thumbnails:
         method_name = 'generate_fov_thumbnails'
         method_kwargs = {
-            'dst_root': args.dst_root,
+            'dst_root': config.OPENCELL_MICROSCOPY_DIR,
             'scale': int(args.thumbnail_scale),
             'quality': int(args.thumbnail_quality),
         }
-        do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
+        do_fov_tasks(Session, config, method_name, method_kwargs, fovs=fovs)
 
 
     if args.crop_corner_rois:
         method_name = 'crop_corner_rois'
-        method_kwargs = {'dst_root': args.dst_root}
+        method_kwargs = {'dst_root': config.OPENCELL_MICROSCOPY_DIR}
 
         # only crop ROIs from the two highest-scoring FOVs per line
         query = (
@@ -493,21 +489,22 @@ def main():
             fovs_to_crop.extend(line.get_top_scoring_fovs(ntop=2))
 
         try:
-            do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs_to_crop)
+            do_fov_tasks(Session, config, method_name, method_kwargs, fovs=fovs_to_crop)
         except Exception as error:
             print('FATAL ERROR: an uncaught exception occurred in %s' % method_name)
             print(str(error))
-            with open(
-                os.path.join(args.dst_root, '%s_%s_uncaught_exception.log' % (timestamp(), method_name)),
-                'w'
-            ) as file:
+            log_filepath = os.path.join(
+                config.OPENCELL_MICROSCOPY_DIR,
+                '%s_%s_uncaught_exception.log' % (timestamp(), method_name)
+            )
+            with open(log_filepath, 'w') as file:
                 file.write(str(error))
             raise
 
 
     if args.crop_annotated_rois:
         method_name = 'crop_annotated_roi'
-        method_kwargs = {'dst_root': args.dst_root}
+        method_kwargs = {'dst_root': config.OPENCELL_MICROSCOPY_DIR}
 
         # only process annotated FOVs
         fovs = (
@@ -515,13 +512,13 @@ def main():
             .filter(models.MicroscopyFOV.annotation.has())
             .all()
         )
-        do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
+        do_fov_tasks(Session, config, method_name, method_kwargs, fovs=fovs)
 
 
     if args.generate_annotated_roi_thumbnails:
         method_name = 'generate_annotated_roi_thumbnails'
         method_kwargs = {
-            'dst_root': args.dst_root,
+            'dst_root': config.OPENCELL_MICROSCOPY_DIR,
             'scale': int(args.thumbnail_scale),
             'quality': int(args.thumbnail_quality),
         }
@@ -532,16 +529,16 @@ def main():
             .filter(models.MicroscopyFOV.annotation.has())
             .all()
         )
-        do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
+        do_fov_tasks(Session, config, method_name, method_kwargs, fovs=fovs)
 
 
     if args.generate_nucleus_segmentations:
         method_name = 'generate_nucleus_segmentation'
-        method_kwargs = {'dst_root': args.dst_root}
+        method_kwargs = {'dst_root': config.OPENCELL_MICROSCOPY_DIR}
 
         # only process annotated FOVs
         fovs = Session.query(models.MicroscopyFOV).all()
-        do_fov_tasks(Session, args, method_name, method_kwargs, fovs=fovs)
+        do_fov_tasks(Session, config, method_name, method_kwargs, fovs=fovs)
 
 
 if __name__ == '__main__':

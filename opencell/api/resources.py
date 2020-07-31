@@ -264,7 +264,7 @@ class MicroscopyFOV(Resource):
             flask.abort(404, 'Invalid fov_id')
 
         processor = FOVProcessor.from_database(fov)
-        dst_root = flask.current_app.config.get('OPENCELL_MICROSCOPY_DIRPATH')
+        dst_root = flask.current_app.config.get('OPENCELL_MICROSCOPY_DIR')
         filepath_405 = processor.dst_filepath(dst_root, kind='proj', channel='405', ext='tif')
         filepath_488 = processor.dst_filepath(dst_root, kind='proj', channel='488', ext='tif')
 
@@ -313,7 +313,7 @@ class MicroscopyFOVROI(Resource):
 
         processor = FOVProcessor.from_database(roi.fov)
         filepath = processor.dst_filepath(
-            dst_root=flask.current_app.config.get('OPENCELL_MICROSCOPY_DIRPATH'),
+            dst_root=flask.current_app.config.get('OPENCELL_MICROSCOPY_DIR'),
             roi_id=roi_id,
             channel=channel,
             kind='crop',

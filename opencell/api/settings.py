@@ -3,6 +3,19 @@ import os
 import sys
 
 
+def get_config(mode):
+
+    if mode == 'dev':
+        config = DevConfig
+    elif mode == 'test':
+        config = TestConfig
+    elif mode == 'staging':
+        config = StagingConfig
+    elif mode == 'prod':
+        config = ProdConfig
+    return config
+
+
 class Config(object):
     '''
     Common configuration
@@ -11,6 +24,7 @@ class Config(object):
 
     # project root is two directory levels up
     PROJECT_ROOT = os.path.abspath(os.path.join(APP_DIR, os.pardir, os.pardir))
+
 
 
 class DevConfig(Config):
@@ -24,8 +38,12 @@ class DevConfig(Config):
 
     DB_CREDENTIALS_FILEPATH = os.path.join(Config.PROJECT_ROOT, 'db-credentials-dev.json')
 
+    PLATE_MICROSCOPY_DIR = '/Volumes/ml_group/PlateMicroscopy/'
+    PLATE_MICROSCOPY_CACHE_DIR = '/Volumes/ml_group/opencell-microscopy/cache/'
+    RAW_PIPELINE_MICROSCOPY_DIR = '/Volumes/ml_group/raw-pipeline-microscopy/'
+
     # the mountpoint of the ML_group ESS partition (assumes a mac)
-    OPENCELL_MICROSCOPY_DIRPATH = os.path.join(os.sep, 'Volumes', 'ml_group', 'opencell-microscopy')
+    OPENCELL_MICROSCOPY_DIR = '/Volumes/ml_group/opencell-microscopy/'
 
     CORS_ORIGINS = [
         'http://localhost:8080',
@@ -43,14 +61,26 @@ class TestConfig(Config):
 
     DB_CREDENTIALS_FILEPATH = os.path.join(Config.PROJECT_ROOT, 'db-credentials-test.json')
 
-    # the mountpoint of the ML_group ESS partition (assumes a mac)
-    OPENCELL_MICROSCOPY_DIRPATH = os.path.join(
-        os.sep, 'Users', 'keith.cheveralls', 'opencell-test', 'output', 'opencell-microscopy'
-    )
+    PLATE_MICROSCOPY_DIR = '/Users/keith.cheveralls/opencell-test/PlateMicroscopy/'
+    PLATE_MICROSCOPY_CACHE_DIR = '/Users/keith.cheveralls/opencell-test/opencell-microscopy/cache/'
+    RAW_PIPELINE_MICROSCOPY_DIR = '/Users/keith.cheveralls/opencell-test/raw-pipeline-microscopy/'
+    OPENCELL_MICROSCOPY_DIR = '/Users/keith.cheveralls/opencell-test/opencell-microscopy/'
 
     CORS_ORIGINS = [
         'http://localhost:8080',
     ]
+
+
+class StagingConfig(Config):
+
+    ENV = 'staging'
+    DEBUG = False
+
+    DB_CREDENTIALS_FILEPATH = os.path.join(Config.PROJECT_ROOT, 'db-credentials-docker.json')
+
+    PLATE_MICROSCOPY_DIR = '/gpfsML/ML_group/PlateMicroscopy/'
+    RAW_PIPELINE_MICROSCOPY_DIR = '/gpfsML/ML_group/raw-pipeline-microscopy/'
+    OPENCELL_MICROSCOPY_DIR = '/gpfsML/ML_group/opencell-microscopy-staging/'
 
 
 class ProdConfig(Config):
@@ -63,5 +93,7 @@ class ProdConfig(Config):
 
     DB_CREDENTIALS_FILEPATH = os.path.join(Config.PROJECT_ROOT, 'db-credentials-docker.json')
 
-    # the mount point of the ML_group ESS partition in the docker container
-    OPENCELL_MICROSCOPY_DIRPATH = os.path.join(os.sep, 'gpfsML', 'ML_group', 'opencell-microscopy')
+    PLATE_MICROSCOPY_DIR = '/gpfsML/ML_group/PlateMicroscopy/'
+    PLATE_MICROSCOPY_CACHE_DIR = '/gpfsML/ML_group/opencell-microscopy/cache/'
+    RAW_PIPELINE_MICROSCOPY_DIR = '/gpfsML/ML_group/raw-pipeline-microscopy/'
+    OPENCELL_MICROSCOPY_DIR = '/gpfsML/ML_group/opencell-microscopy/'

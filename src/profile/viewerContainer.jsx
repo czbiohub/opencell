@@ -37,8 +37,8 @@ export default class ViewerContainer extends Component {
     constructor (props) {
         super(props);
 
-        // the number of slices in the z-stacks
-        this.numSlices = settings.zStackShape[2];
+        // the number of slices in the 2x-upsampled z-stacks
+        this.numSlices = settings.numZSlices * 2 - 1;
 
         // default values for the display settings
         this.defaultDisplayState = {
@@ -89,7 +89,7 @@ export default class ViewerContainer extends Component {
 
         const loadStack = (filepath) => {
             return new Promise((resolve, reject) => {
-                utils.loadImage(filepath, volume => resolve(volume));
+                utils.loadStack(filepath, volume => resolve(volume));
             });
         }
 

@@ -26,40 +26,57 @@ export function loadFovs (cellLineId, onLoad) {
 }
 
 
-export function loadImage(url, onLoad) {
+export function loadStack(url, onLoad) {
+    //
+    //
 
-    // hard-coded xy size and number of z-slices
-    // WARNING: these must match the stack to be loaded
-    const imageSize = settings.zStackShape[0];
-    const numSlices = settings.zStackShape[2];
+    const sliceSize = settings.zSliceSize;
+    const numRawSlices = settings.numZSlices;
 
-    const imageWidth = imageSize;
-    const imageHeight = imageSize*numSlices;
+    const canvasWidth = sliceSize;
+    const canvasHeight = sliceSize * numRawSlices;
+    const numPixelsPerSlice = sliceSize * sliceSize;
 
     const volume = {
-        xLength: imageSize,
-        yLength: imageSize,
-        zLength: numSlices,
-        data: new Uint8Array(imageWidth*imageHeight),
+        xLength: sliceSize,
+        yLength: sliceSize,
+        zLength: numRawSlices * 2 - 1,
+        data: new Uint8Array(sliceSize * sliceSize * (numRawSlices * 2 - 1)),
     };
 
     const img = new Image;
+    let thisPixel, nextPixel;
 
     // this is required to avoid the 'tainted canvas' error
     img.setAttribute('crossOrigin', '');
 
     img.onload = function () {
+
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
-        canvas.setAttribute('width', imageWidth);
-        canvas.setAttribute('height', imageHeight);
+        canvas.setAttribute('width', canvasWidth);
+        canvas.setAttribute('height', canvasHeight);
         context.drawImage(img, 0, 0);
-
-        const imageData = context.getImageData(0, 0, imageWidth, imageHeight);
-        for (let ind = 0; ind < volume.data.length; ind++) {
-            volume.data[ind] = imageData.data[ind*4];
-        }
+        const imageData = context.getImageData(0, 0, canvasWidth, canvasHeight);
         
+        // copy each raw z-slice and its average with the next raw z-slice
+        // into the volume.data array
+        for (let z = 0; z < numRawSlices - 1; z++) {
+            for (let ind = 0; ind < numPixelsPerSlice; ind++) {
+                thisPixel = imageData.data[4*(ind + (z + 0)*numPixelsPerSlice)];
+                nextPixel = imageData.data[4*(ind + (z + 1)*numPixelsPerSlice)];
+                volume.data[ind + (2*z + 0)*numPixelsPerSlice] = thisPixel;
+                volume.data[ind + (2*z + 1)*numPixelsPerSlice] = (thisPixel + nextPixel)/2;
+            }
+        }
+
+        // copy the last raw z-slice
+        let z = numRawSlices - 1;
+        for (let ind = 0; ind < numPixelsPerSlice; ind++) {
+            thisPixel = imageData.data[(ind + z*numPixelsPerSlice)*4];
+            volume.data[ind + 2*z*numPixelsPerSlice] = thisPixel;
+        }
+
         onLoad(volume);
     };
 

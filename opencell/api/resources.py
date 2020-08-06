@@ -311,21 +311,27 @@ class MicroscopyFOVROI(Resource):
         if not roi:
             flask.abort(404, 'Invalid roi_id')
 
+        microscopy_dir = flask.current_app.config.get('OPENCELL_MICROSCOPY_DIR')
+        microscopy_url = flask.current_app.config.get('OPENCELL_MICROSCOPY_URL')
+
         processor = FOVProcessor.from_database(roi.fov)
         filepath = processor.dst_filepath(
-            dst_root=flask.current_app.config.get('OPENCELL_MICROSCOPY_DIR'),
+            dst_root=microscopy_dir,
             roi_id=roi_id,
             channel=channel,
             kind='crop',
             ext='jpg'
         )
 
-        file = flask.send_file(
-            open(filepath, 'rb'),
-            as_attachment=True,
-            attachment_filename=filepath.split(os.sep)[-1]
-        )
-        return file
+        if microscopy_url is not None:
+            return flask.redirect(f'{microscopy_url}/{filepath}')
+
+        else:
+            return flask.send_file(
+                open(filepath, 'rb'),
+                as_attachment=True,
+                attachment_filename=filepath.split(os.sep)[-1]
+            )
 
 
 class CellLineAnnotation(CellLineResource):

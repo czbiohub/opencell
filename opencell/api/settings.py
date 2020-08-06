@@ -15,6 +15,8 @@ def get_config(mode):
         config = ProdConfig
     elif mode == 'remote-prod':
         config = RemoteProdConfig
+    elif mode == 'aws':
+        config = AWSConfig
     return config
 
 
@@ -112,3 +114,14 @@ class RemoteProdConfig(Config):
     PLATE_MICROSCOPY_CACHE_DIR = '/Volumes/ml_group/opencell-microscopy/cache/'
     RAW_PIPELINE_MICROSCOPY_DIR = '/Volumes/ml_group/raw-pipeline-microscopy/'
     OPENCELL_MICROSCOPY_DIR = '/Volumes/ml_group/opencell-microscopy/'
+
+
+class AWSConfig(Config):
+
+    ENV = 'prod'
+    DEBUG = False
+
+    DB_CREDENTIALS_FILEPATH = '/home/ubuntu/db-credentials.json'
+
+    OPENCELL_MICROSCOPY_DIR = ''
+    OPENCELL_MICROSCOPY_URL = 'http://opencell.ds.czbiohub.org/data/'

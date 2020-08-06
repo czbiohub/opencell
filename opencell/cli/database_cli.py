@@ -29,10 +29,6 @@ def parse_args():
     # (if provided, overrides the filepath defined in opencell.api.settings)
     parser.add_argument('--credentials', dest='credentials', required=False)
 
-    # the path to the directory of snapshot/cached opencell metadata
-    # (used by populate and insert_plate_microscopy_datasets methods)
-    parser.add_argument('--data-dir', dest='data_dir')
-
     # the filepath to a snapshot of the 'da list' google sheet (used by insert_plate_design)
     parser.add_argument('--library-snapshot-filepath', dest='library_snapshot_filepath')
 
@@ -47,7 +43,6 @@ def parse_args():
 
     # the filepath to a snapshot of the 'pipeline-microscopy-master-key' google sheet
     parser.add_argument('--microscopy-master-key', dest='microscopy_master_key')
-
 
     # optional sql command to execute
     # (if provided, other options/commands are ignored)
@@ -471,7 +466,8 @@ def main():
             maybe_drop_and_create(engine, drop=True)
         else:
             maybe_drop_and_create(engine, drop=False)
-        populate(Session, args.data_dir, errors='warn')
+        data_dir = os.path.join(config.PROJECT_ROOT, 'data')
+        populate(Session, data_dir, errors='warn')
 
     if args.insert_plate_design:
         insert_plate_design(Session, args.plate_id, args.library_snapshot_filepath, errors='warn')
@@ -488,7 +484,8 @@ def main():
     # (these are datasets up to PML0179)
     if args.insert_plate_microscopy_datasets:
         filepath = os.path.join(
-            args.data_dir,
+            config.PROJECT_ROOT,
+            'data',
             '2019-12-05_Pipeline-microscopy-master-key_PlateMicroscopy-MLs-raw.csv'
         )
         metadata = file_utils.load_legacy_microscopy_master_key(filepath)
@@ -526,7 +523,6 @@ def main():
     if args.generate_protein_group_associations:
         generate_protein_group_uniprot_metadata_associations(Session)
         generate_protein_group_crispr_design_associations(Session)
-
 
 
 if __name__ == '__main__':

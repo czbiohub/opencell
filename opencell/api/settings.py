@@ -13,6 +13,8 @@ def get_config(mode):
         config = StagingConfig
     elif mode == 'prod':
         config = ProdConfig
+    elif mode == 'remote-prod':
+        config = RemoteProdConfig
     return config
 
 
@@ -97,3 +99,16 @@ class ProdConfig(Config):
     PLATE_MICROSCOPY_CACHE_DIR = '/gpfsML/ML_group/opencell-microscopy/cache/'
     RAW_PIPELINE_MICROSCOPY_DIR = '/gpfsML/ML_group/raw-pipeline-microscopy/'
     OPENCELL_MICROSCOPY_DIR = '/gpfsML/ML_group/opencell-microscopy/'
+
+
+class RemoteProdConfig(Config):
+
+    ENV = 'prod'
+    DEBUG = False
+
+    DB_CREDENTIALS_FILEPATH = os.path.join(Config.PROJECT_ROOT, 'db-credentials-cap.json')
+
+    PLATE_MICROSCOPY_DIR = '/Volumes/ml_group/PlateMicroscopy/'
+    PLATE_MICROSCOPY_CACHE_DIR = '/Volumes/ml_group/opencell-microscopy/cache/'
+    RAW_PIPELINE_MICROSCOPY_DIR = '/Volumes/ml_group/raw-pipeline-microscopy/'
+    OPENCELL_MICROSCOPY_DIR = '/Volumes/ml_group/opencell-microscopy/'

@@ -30,13 +30,24 @@ def parse_args():
     parser.add_argument('--credentials', dest='credentials', required=False)
 
     # the path to the directory of snapshot/cached opencell metadata
+    # (used by populate and insert_plate_microscopy_datasets methods)
     parser.add_argument('--data-dir', dest='data_dir')
+
+    # the filepath to a snapshot of the 'da list' google sheet (used by insert_plate_design)
+    parser.add_argument('--library-snapshot-filepath', dest='library_snapshot_filepath')
+
+    # plate_id is used by insert_plate_design and insert_electroporation
+    parser.add_argument('--plate-id', dest='plate_id')
+
+    # date is used by insert_electroporation
+    parser.add_argument('--date', dest='date')
 
     # the path to the directory of cached FACS results
     parser.add_argument('--facs-results-dir', dest='facs_results_dir')
 
     # the filepath to a snapshot of the 'pipeline-microscopy-master-key' google sheet
     parser.add_argument('--microscopy-master-key', dest='microscopy_master_key')
+
 
     # optional sql command to execute
     # (if provided, other options/commands are ignored)
@@ -47,6 +58,8 @@ def parse_args():
         'update',
         'drop_all',
         'populate',
+        'insert_plate_design',
+        'insert_electroporation',
         'insert_facs',
         'insert_plate_microscopy_datasets',
         'insert_raw_pipeline_microscopy_datasets',
@@ -77,14 +90,25 @@ def maybe_drop_and_create(engine, drop=False):
 
 def populate(session, data_dir, errors='warn'):
     '''
-    Initialize and populate the opencell database
-    from a set of 'snapshot' CSVs of various google spreadsheets
+    Initialize and populate the opencell database,
+    using a set of 'snapshot' CSVs of various google spreadsheets
 
     This inserts the plate designs, crispr designs, electroporations, and polyclonal lines
-    for Plates 1-19
+    for Plates 1-19.
+
+    Note that this method has no ongoing use in production;
+    it was used during development and to initialize the original opencell database,
+    but is now used only to set up test databases.
+
+    To insert crispr designs for new plates into an existing prod database,
+    the `insert_plate_design` method should be used.
 
     errors : one of 'raise', 'warn', 'ignore'
     '''
+
+    # hard-coded paths to snapshots of google sheets
+    library_snapshot_filepath = os.path.join(data_dir, '2019-06-26_mNG11_HEK_library.csv')
+    electroporation_history_filepath = os.path.join(data_dir, '2019-06-24_electroporations.csv')
 
     # create the progenitor cell line used for Plates 1-19
     # (note the hard-coded progenitor cell line name)
@@ -98,8 +122,7 @@ def populate(session, data_dir, errors='warn'):
 
     # create the plate and crispr designs
     print('Inserting crispr designs for plates 1-19')
-    library_snapshot = file_utils.load_library_snapshot(
-        os.path.join(data_dir, '2019-06-26_mNG11_HEK_library.csv'))
+    library_snapshot = file_utils.load_library_snapshot(library_snapshot_filepath)
 
     plate_ids = sorted(set(library_snapshot.plate_id))
     for plate_id in plate_ids:
@@ -116,7 +139,7 @@ def populate(session, data_dir, errors='warn'):
     # create the electroporations and polyclonal lines
     print('Inserting electroporations and polyclonal lines for plates 1-19')
     electroporation_history = file_utils.load_electroporation_history(
-        os.path.join(data_dir, '2019-06-24_electroporations.csv')
+        electroporation_history_filepath
     )
 
     progenitor_line = ops.get_or_create_progenitor_cell_line(
@@ -133,6 +156,41 @@ def populate(session, data_dir, errors='warn'):
             date=row.date,
             errors=errors
         )
+
+
+def insert_plate_design(session, plate_id, library_snapshot_filepath, errors='warn'):
+    '''
+    Insert a new plate design and its crispr designs
+    This method is intended to update an existing opencell database when a new plate is created
+    '''
+
+    # the 'library snapshot' is the 'da list' google sheet of all crispr designs
+    library_snapshot = file_utils.load_library_snapshot(library_snapshot_filepath)
+
+    print('Inserting crispr designs for plate %s' % plate_id)
+    plate_design = ops.get_or_create_plate_design(session, plate_id, create=True)
+    ops.create_crispr_designs(
+        session, plate_design, library_snapshot, drop_existing=False, errors=errors
+    )
+
+
+def insert_electroporation(session, plate_id, electroporation_date, errors='warn'):
+    '''
+    Create an electroporation
+    '''
+    print('Creating electroporation and polyclonal lines for plate %s' % plate_id)
+
+    progenitor_line = ops.get_or_create_progenitor_cell_line(
+        session, constants.PARENTAL_LINE_NAME
+    )
+    plate_design = ops.get_or_create_plate_design(session, plate_id)
+    ops.create_polyclonal_lines(
+        session,
+        progenitor_line,
+        plate_design,
+        date=electroporation_date,
+        errors=errors
+    )
 
 
 def insert_facs(session, facs_results_dir, errors='warn'):
@@ -165,11 +223,11 @@ def insert_facs(session, facs_results_dir, errors='warn'):
             print('No polyclonal line for (%s, %s)' % (plate_id, well_id))
             continue
 
-        # the histograms (dict of 'x', 'y_sample', 'y_fitted_ref')
-        # note: keyed by unformatted well_id
+        # the histograms (each a dict of 'x', 'y_sample', 'y_fitted_ref')
+        # note row.well_id is an unformatted well_id
         histograms = facs_histograms.get((row.plate_id, row.well_id))
-
         scalars = dict(row.drop(['plate_id', 'well_id']))
+
         line_ops.insert_facs_dataset(
             session, histograms=histograms, scalars=scalars, errors=errors
         )
@@ -414,6 +472,14 @@ def main():
         else:
             maybe_drop_and_create(engine, drop=False)
         populate(Session, args.data_dir, errors='warn')
+
+    if args.insert_plate_design:
+        insert_plate_design(Session, args.plate_id, args.library_snapshot_filepath, errors='warn')
+
+    if args.insert_electroporation:
+        insert_electroporation(
+            Session, plate_id=args.plate_id, electroporation_date=args.date, errors='warn'
+        )
 
     if args.insert_facs:
         insert_facs(Session, args.facs_results_dir, errors='warn')

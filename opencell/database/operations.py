@@ -40,15 +40,14 @@ def get_or_create_progenitor_cell_line(session, name, notes=None, create=False):
         .filter(models.CellLine.name == name)
         .one_or_none()
     )
-    if cell_line is not None:
+    if cell_line is not None and create:
         print("Warning: a cell line with the name '%s' already exists" % name)
-    elif create:
+    elif cell_line is None and create:
         print("Creating progenitor cell line with name '%s'" % name)
         cell_line = models.CellLine(name=name, notes=notes, line_type='PROGENITOR')
         utils.add_and_commit(session, cell_line, errors='raise')
-    else:
-        cell_line = None
-        print("A progenitor cell line with name '%s' does not exist" % name)
+    elif cell_line is None:
+        print("Warning: a progenitor cell line with name '%s' does not exist" % name)
 
     return cell_line
 

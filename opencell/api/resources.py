@@ -312,8 +312,6 @@ class MicroscopyFOVROI(Resource):
             flask.abort(404, 'Invalid roi_id')
 
         microscopy_dir = flask.current_app.config.get('OPENCELL_MICROSCOPY_DIR')
-        microscopy_url = flask.current_app.config.get('OPENCELL_MICROSCOPY_URL')
-
         processor = FOVProcessor.from_database(roi.fov)
         filepath = processor.dst_filepath(
             dst_root=microscopy_dir,
@@ -323,9 +321,8 @@ class MicroscopyFOVROI(Resource):
             ext='jpg'
         )
 
-        if microscopy_url is not None:
-            return flask.redirect(f'{microscopy_url}/{filepath}')
-
+        if microscopy_dir.startswith('http'):
+            return flask.redirect(filepath)
         else:
             return flask.send_file(
                 open(filepath, 'rb'),

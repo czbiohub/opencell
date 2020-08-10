@@ -122,6 +122,4 @@ class AWSConfig(Config):
     DEBUG = False
 
     DB_CREDENTIALS_FILEPATH = '/home/ubuntu/db-credentials.json'
-
-    OPENCELL_MICROSCOPY_DIR = ''
-    OPENCELL_MICROSCOPY_URL = 'http://opencell.ds.czbiohub.org/data/'
+    OPENCELL_MICROSCOPY_DIR = 'http://opencell.ds.czbiohub.org/data/'

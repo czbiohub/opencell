@@ -22,7 +22,10 @@ import './Profile.css';
 
 const initialTarget = 'POLR2F';
 
-class App extends Component {
+
+
+
+export default class Profile extends Component {
 
     constructor (props) {
         super(props);
@@ -36,27 +39,34 @@ class App extends Component {
             cellLineId: null,
             targetName: null,
             linesLoaded: false,
-            showTargetAnnotator: this.urlParams.get('mode')==='target_annotation',
-            showFovAnnotator: this.urlParams.get('mode')==='fov_annotation',
         };
 
-        this.changeTarget = this.changeTarget.bind(this);
         this.onSearchChange = this.onSearchChange.bind(this);
-        this.onCellLineSelect = this.onCellLineSelect.bind(this);
+        this.changeCellLineId = this.changeCellLineId.bind(this);
 
     }
 
 
-    changeTarget (cellLine) {
-        // cellLine is the JSON object returned by the lines/ endpoint
+    changeCellLineId (cellLineId, push = true) {
+        
+        if (!this.state.linesLoaded) return;
 
-        // check that the target has changed
-        if (cellLine.metadata.cell_line_id===this.state.cellLineId) return;
+        cellLineId = parseInt(cellLineId);
+        const cellLine = this.allCellLines.filter(
+            line => line.metadata?.cell_line_id === cellLineId
+        )[0];
+
+        if (!cellLine) {
+            console.log(`No cell line found for cellLineId ${cellLineId}`);
+            return;
+        };
+
+        if (push) this.props.history.push(`${this.props.path}/${cellLineId}`);
 
         this.cellLine = cellLine;
         this.setState({
-            cellLineId: cellLine.metadata.cell_line_id,
-            targetName: cellLine.metadata.target_name,
+            cellLineId,
+            targetName: this.cellLine.metadata.target_name,
         });
     }
 
@@ -68,7 +78,8 @@ class App extends Component {
         d3.json(url).then(lines => {
             for (const line of lines) {
                 if (line) {
-                    this.changeTarget(line);
+                    const newCellLineId = line.metadata.cell_line_id;
+                    this.changeCellLineId(newCellLineId);
                     break;
                 }
             }
@@ -76,44 +87,50 @@ class App extends Component {
     }
 
 
-    onCellLineSelect (cellLineId) {
-        // fired when the user clicks on a row of the datatable
-        const url = `${settings.apiUrl}/lines/${cellLineId}`;
-        d3.json(url).then(line => {
-            if (line) this.changeTarget(line);
-        });
-    }
-    
-
     componentDidMount () {
         let url = `${settings.apiUrl}/lines`;
+        
         d3.json(url).then(lines => {
             this.allCellLines = lines;     
             this.setState({linesLoaded: true});
+
+            // initial target to display
+            this.props.match.params.cellLineId ? (
+                this.changeCellLineId(this.props.match.params.cellLineId, false)
+            ) : (
+                this.onSearchChange(this.urlParams.get('target') || initialTarget)
+            );
         });
-        // initial target to display
-        this.onSearchChange(this.urlParams.get('target') || initialTarget);
+    }
+
+
+    componentWillReceiveProps (nextProps) {
+        // this is hackish: we end up here only if the user clicked the back or forward buttons;
+        // so we know that we do not want to push the new cellLineId to the history,
+        // so we pass false to this.changeCellLineId
+        
+        const nextCellLineId = nextProps.match.params.cellLineId;
+        if (nextCellLineId && this.state.cellLineId!==nextCellLineId) {
+            this.changeCellLineId(nextCellLineId, false);
+        }
     }
 
 
     render () {
-
         return (
             <div>
-                <Navbar/>
-
                 {/* main container */}
                 <div className="pl4 pr4" style={{width: '2000px'}}>
 
                     {/* page header and metadata */}
                     <Header cellLine={this.cellLine} onSearchChange={this.onSearchChange}/>
 
-                    {this.state.showFovAnnotator ? (
+                    {this.props.showFovAnnotator ? (
                         <FovAnnotator 
                             cellLines={this.allCellLines}
                             cellLineId={this.state.cellLineId}
                             onSearchChange={this.onSearchChange}
-                            onCellLineSelect={this.onCellLineSelect}
+                            onCellLineSelect={this.changeCellLineId}
                         />
                     ) : (
                         <Overview
@@ -122,8 +139,8 @@ class App extends Component {
                             cellLineId={this.state.cellLineId}
                             targetName={this.state.targetName}
                             onSearchChange={this.onSearchChange}
-                            onCellLineSelect={this.onCellLineSelect}
-                            showTargetAnnotator={this.state.showTargetAnnotator}
+                            onCellLineSelect={this.changeCellLineId}
+                            showTargetAnnotator={this.props.showTargetAnnotator}
                         />
                     )}
                 </div>
@@ -134,9 +151,6 @@ class App extends Component {
         );
     }
 }
-
-
-export default App;
 
 
 

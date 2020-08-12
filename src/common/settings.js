@@ -1,8 +1,8 @@
 
-// the xy size of the z-stacks
+// the xy size of the z-stack
 const zSliceSize = 600;
 
-// the number of z-slices in the z-stacks
+// the number of z-slices in the z-stack
 const numZSlices = 27;
 
 // API URLs

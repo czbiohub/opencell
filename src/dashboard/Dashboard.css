@@ -70,33 +70,33 @@ span {
 /* --------------------- react-table overrides --------------------- */
 
 /* eliminate shadow under the header and footer */
-.ReactTable .rt-thead.-header {
+.dashboard-table .rt-thead.-header {
 	box-shadow: none;
 	border-bottom: 2px solid #eee;
 }
 
-.ReactTable .-pagination {
+.dashboard-table .-pagination {
 	box-shadow: none;
 }
 
-.ReactTable {
+.dashboard-table {
 	font-size: 12px;
 }
 
-.ReactTable .rt-thead {
+.dashboard-table .rt-thead {
 	font-size: 13px;
 	font-weight: bolder;
 }
 
 /* allow line breaks in long headers/cells */
-.ReactTable .rt-th, .ReactTable .rt-td {
+.dashboard-table .rt-th, .dashboard-table .rt-td {
 	white-space: normal;
 	
 	padding: 0px;
 }
 
 /* table cells */
-.ReactTable .rt-tbody .rt-td {
+.dashboard-table .rt-tbody .rt-td {
 	/* margin: auto; */
 	vertical-align: middle;
 	text-align: left;
@@ -106,12 +106,12 @@ span {
 }
 
 /* turn off horizontal borders between table rows */
-.ReactTable .rt-tbody .rt-tr-group {
+.dashboard-table .rt-tbody .rt-tr-group {
 	border: none;
 	cursor: pointer;
 }
 
-.ReactTable .rt-tbody .rt-tr-group:hover {
+.dashboard-table .rt-tbody .rt-tr-group:hover {
 	opacity: .7;
 }
 

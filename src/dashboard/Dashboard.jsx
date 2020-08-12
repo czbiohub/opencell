@@ -6,7 +6,6 @@ import { columnDefs, columnGroups, filterDefs, defaultSelectedColumnIds} from '.
 import { Button, Radio, RadioGroup, MenuItem } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
 
-import Navbar from '../common/navbar.jsx';
 import DataTable from './dataTable.jsx';
 import PlateTable from './plateTable.jsx';
 import ColumnControls from './columnControls.jsx';
@@ -138,10 +137,6 @@ export default class Dashboard extends Component {
         }
 
         return (
-            // main container
-            <div>
-
-            <Navbar/>
             <div className="fl w-100 pl4 pt3 pr4">
 
                 {/* header */}
@@ -215,7 +210,6 @@ export default class Dashboard extends Component {
                 <div className="fl w-75">{mainPanel}</div>
             </div>  
 
-            </div>
         );
     }
 }

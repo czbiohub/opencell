@@ -30,30 +30,18 @@ function App() {
 				<Route path="/dashboard" component={Dashboard}/>
 
 				<Route 
-					path="/profile/:cellLineId"
-					render={props => (<Profile {...props} path="/profile"/>)}
-				/>
-				<Route 
-					path="/profile"
-					render={props => (<Profile {...props} path="/profile"/>)}
+					path={["/profile/:cellLineId", "/profile"]} 
+					component={Profile}
 				/>
 
 				<Route 
-					path="/fov-annotator/:cellLineId" 
-					render={props => (<Profile {...props} path="/fov-annotator" showFovAnnotator={true}/>)}
-				/>
-				<Route 
-					path="/fov-annotator"
-					render={props => (<Profile {...props} path="/fov-annotator" showFovAnnotator={true}/>)}
+					path={["/fovs/:cellLineId", "/fovs"]}
+					render={props => (<Profile {...props} showFovAnnotator/>)}
 				/>
 
 				<Route 
-					path="/target-annotator/:cellLineId" 
-					render={props => (<Profile {...props} path="/target-annotator" showTargetAnnotator={true}/>)}
-				/>
-				<Route 
-					path="/target-annotator"
-					render={props => (<Profile {...props} path="/target-annotator" showTargetAnnotator={true}/>)}
+					path={["/annotations/:cellLineId", "/annotations"]}
+					render={props => (<Profile {...props} showTargetAnnotator/>)}
 				/>
 
 				<Route path="/gallery" component={Gallery}/>

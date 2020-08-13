@@ -50,6 +50,7 @@ export default class Profile extends Component {
     changeCellLineId (cellLineId, push = true) {
         
         if (!this.state.linesLoaded) return;
+        if (!cellLineId || this.state.cellLineId===cellLineId) return;
 
         cellLineId = parseInt(cellLineId);
         const cellLine = this.allCellLines.filter(
@@ -61,8 +62,12 @@ export default class Profile extends Component {
             return;
         };
 
-        if (push) this.props.history.push(`${this.props.path}/${cellLineId}`);
-
+        const newUrl = `${this.props.match.path.split("/:")[0]}/${cellLineId}${this.props.location.search}`;
+        if (push) {
+            // console.log(`Created new URL: ${newUrl}`);
+            this.props.history.push(newUrl);
+        }
+    
         this.cellLine = cellLine;
         this.setState({
             cellLineId,
@@ -74,8 +79,7 @@ export default class Profile extends Component {
     onSearchChange (value) {
         // fired when the user hits enter in the header's target search text input
         // (`value` is the string in the textbox)
-        const url = `${settings.apiUrl}/lines?target=${value}`;
-        d3.json(url).then(lines => {
+        d3.json(`${settings.apiUrl}/lines?target=${value}`).then(lines => {
             for (const line of lines) {
                 if (line) {
                     const newCellLineId = line.metadata.cell_line_id;
@@ -88,9 +92,8 @@ export default class Profile extends Component {
 
 
     componentDidMount () {
-        let url = `${settings.apiUrl}/lines`;
         
-        d3.json(url).then(lines => {
+        d3.json(`${settings.apiUrl}/lines`).then(lines => {
             this.allCellLines = lines;     
             this.setState({linesLoaded: true});
 
@@ -108,11 +111,7 @@ export default class Profile extends Component {
         // this is hackish: we end up here only if the user clicked the back or forward buttons;
         // so we know that we do not want to push the new cellLineId to the history,
         // so we pass false to this.changeCellLineId
-        
-        const nextCellLineId = nextProps.match.params.cellLineId;
-        if (nextCellLineId && this.state.cellLineId!==nextCellLineId) {
-            this.changeCellLineId(nextCellLineId, false);
-        }
+        this.changeCellLineId(nextProps.match.params.cellLineId, false);
     }
 
 

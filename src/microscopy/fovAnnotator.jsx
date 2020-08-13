@@ -304,13 +304,11 @@ export default class FovAnnotator extends Component {
 
     render () {
 
-        if (!this.fovs.length) return (<div className="f3 tc pa5">No ROIs found</div>);
+        // if (!this.fovs.length) return (<div className="f3 tc pa5">No ROIs found</div>);
 
-        const fov = this.fovs.filter(fov => fov.metadata.id === this.state.fovId)[0];
-        if (!fov) return (<div className="f3 tc pa5">No ROIs found</div>);
-    
         const clientRoiSize = this.state.fovScale * this.roiSize;
-        
+        const fov = this.fovs.filter(fov => fov.metadata.id === this.state.fovId)[0];
+
         const thumbnails = this.fovs.map(fov => {
             return (
                 <Thumbnail 
@@ -372,7 +370,7 @@ export default class FovAnnotator extends Component {
 
                             {/* outline of existing user-selected ROI */}
                             {
-                                (fov.annotation && fov.annotation.roi_position_left!==null) ? (
+                                (fov?.annotation && fov?.annotation.roi_position_left!==null) ? (
                                     <RoiOutline
                                         top={fov.annotation.roi_position_top*this.state.fovScale}
                                         left={fov.annotation.roi_position_left*this.state.fovScale}

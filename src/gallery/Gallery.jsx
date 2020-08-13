@@ -4,9 +4,6 @@ import React, { Component } from 'react';
 import classNames from 'classnames';
 import { Button, Radio, RadioGroup, MenuItem, Menu } from "@blueprintjs/core";
 
-import Navbar from '../common/navbar.jsx';
-import Header from '../profile/header.jsx';
-
 import 'tachyons';
 import 'react-table/react-table.css';
 import "@blueprintjs/core/lib/css/blueprint.css";

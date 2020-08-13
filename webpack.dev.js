@@ -9,13 +9,16 @@ const config = {
     mode: 'development',
 
     output: {
-        path: path.resolve(__dirname, 'dev'),
+        path: path.resolve(__dirname, 'static'),
         filename: '[name].bundle.js',
         publicPath: '/',
     },
 
     devServer: {
-        contentBase: './static',
+        contentBase: path.resolve(__dirname, 'static'),
+
+        // prevent page reloads
+        historyApiFallback: true
     }
 };
 

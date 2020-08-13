@@ -6,10 +6,7 @@ const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const config = {
 
     entry: {
-        home: './src/home/index.jsx',
-        dashboard: './src/dashboard/index.jsx',
-        profile: './src/profile/index.jsx',
-        gallery: './src/gallery/index.jsx'
+        home: './src/index.jsx',
     },
 
     module: {
@@ -34,7 +31,7 @@ const config = {
 
     plugins: [
         new MiniCssExtractPlugin({
-            filename: '[name].bundle.css',
+            filename: '[name]-bundle.css',
             chunks: ['home'],
         }),
 
@@ -43,24 +40,6 @@ const config = {
             template: './static/index.html',
             filename: './index.html',
             chunks: ['home']
-        }),
-        new HtmlWebpackPlugin({
-            title: 'Dashboard',
-            template: './static/index.html',
-            filename: './dashboard/index.html',
-            chunks: ['dashboard']
-        }),
-        new HtmlWebpackPlugin({
-            title: 'Profile',
-            template: './static/index.html',
-            filename: './profile/index.html',
-            chunks: ['profile']
-        }),
-        new HtmlWebpackPlugin({
-            title: 'Gallery',
-            template: './static/index.html',
-            filename: './gallery/index.html',
-            chunks: ['gallery']
         })
     ]
 

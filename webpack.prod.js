@@ -9,6 +9,7 @@ const config = {
     output: {
         path: path.resolve(__dirname, 'dist'),
         filename: '[chunkhash]-bundle.js',
+        publicPath: '/',
     },
 
     plugins: [

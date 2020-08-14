@@ -141,56 +141,58 @@ def fov_payload(fov, optional_fields):
     return payload
 
 
-def pulldown_payload(pulldown):
+def pulldown_payload(pulldown, significant_hits, nonsignificant_hits):
     '''
     The JSON payload for a mass spec pulldown and all of its hits
     For speed, we use a direct query to retrieve and serialize the hits
     '''
 
     hit_columns = [
-        'id',
         'pval',
         'enrichment',
-        'is_significant_hit',
-        'is_minor_hit',
         'interaction_stoich',
         'abundance_stoich'
     ]
 
     hit_payloads = []
-    for hit in pulldown.hits:
+    for hit in significant_hits:
         hit_payload = {column: getattr(hit, column) for column in hit_columns}
 
-        if hit.is_significant_hit or hit.is_minor_hit:
+        # gene names from the reference uniprot metadata
+        names = []
+        if not hit.protein_group.uniprot_metadata:
+            names = ['Unknown']
+        for metadata in hit.protein_group.uniprot_metadata:
+            if metadata.gene_names != 'NaN':
+                name = metadata.gene_names.split(' ')[0]
+            else:
+                name = metadata.uniprot_id
+            names.append(name)
+        hit_payload['uniprot_gene_names'] = names
 
-            # gene names from the reference uniprot metadata
-            names = []
-            if not hit.protein_group.uniprot_metadata:
-                names = ['Unknown']
-            for metadata in hit.protein_group.uniprot_metadata:
-                if metadata.gene_names != 'NaN':
-                    name = metadata.gene_names.split(' ')[0]
-                else:
-                    name = metadata.uniprot_id
-                names.append(name)
-            hit_payload['uniprot_gene_names'] = names
+        # target names of the crispr designs that are mapped to this hit's protein group
+        hit_payload['opencell_target_names'] = [
+            design.target_name for design in hit.protein_group.crispr_designs
+        ]
 
-            # target names of the crispr designs that are mapped to this hit's protein group
-            hit_payload['opencell_target_names'] = [
-                design.target_name for design in hit.protein_group.crispr_designs
-            ]
-
-            # whether this hit corresponds to the target itself
-            design_ids = [design.id for design in hit.protein_group.crispr_designs]
-            hit_payload['is_bait'] = pulldown.cell_line.crispr_design.id in design_ids
+        # whether this hit corresponds to the target itself
+        design_ids = [design.id for design in hit.protein_group.crispr_designs]
+        hit_payload['is_bait'] = pulldown.cell_line.crispr_design.id in design_ids
 
         hit_payloads.append(hit_payload)
 
     # hackish way to coerce NaNs and Infs to None
     hit_payloads = json.loads(pd.DataFrame(data=hit_payloads).to_json(orient='records'))
 
+    # compress the nonsignificant hits by dropping digits
+    nonsignificant_hits = [
+        [float('%0.3f' % pval), float('%0.3f' % enr)]
+        for pval, enr in nonsignificant_hits
+    ]
+
     payload = {
         'metadata': pulldown.as_dict(),
-        'hits': hit_payloads,
+        'significant_hits': hit_payloads,
+        'nonsignificant_hits': nonsignificant_hits
     }
     return payload

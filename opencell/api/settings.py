@@ -50,7 +50,7 @@ class DevConfig(Config):
     OPENCELL_MICROSCOPY_DIR = '/Volumes/ml_group/opencell-microscopy/'
 
     CORS_ORIGINS = [
-        'http://localhost:8080',
+        'http://localhost', 'http://localhost:8080',
     ]
 
 

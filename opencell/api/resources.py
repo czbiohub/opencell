@@ -205,40 +205,52 @@ class CellLinePulldown(CellLineResource):
 
         # the manually-flagged 'good' pulldowns
         # (there should be only one of these, but we don't enforce this)
-        candidate_pulldown_ids = [
-            pulldown.id for pulldown in line.pulldowns if pulldown.manual_display_flag
+        candidate_pulldowns = [
+            pulldown for pulldown in line.pulldowns if pulldown.manual_display_flag
         ]
 
         # if none were flagged, find the pulldowns with hits
-        if not candidate_pulldown_ids:
-            candidate_pulldown_ids = [
-                pulldown.id for pulldown in line.pulldowns if pulldown.hits
+        if not candidate_pulldowns:
+            candidate_pulldowns = [
+                pulldown for pulldown in line.pulldowns if pulldown.hits
             ]
 
         # pick either the first flagged pulldown, the first pulldown with hits,
         # or the first pulldown
-        pulldown_id = candidate_pulldown_ids[0] if candidate_pulldown_ids else line.pulldowns[0].id
-
-        pulldown = (
-            flask.current_app.Session.query(models.MassSpecPulldown)
-            .options(
-                db.orm.joinedload(models.MassSpecPulldown.hits)
-                .joinedload(models.MassSpecHit.protein_group)
-                .joinedload(models.MassSpecProteinGroup.crispr_designs),
-                db.orm.joinedload(models.MassSpecPulldown.hits)
-                .joinedload(models.MassSpecHit.protein_group)
-                .joinedload(models.MassSpecProteinGroup.uniprot_metadata),
-            )
-            .filter(models.MassSpecPulldown.id == pulldown_id)
-            .one()
-        )
+        pulldown = candidate_pulldowns[0] if candidate_pulldowns else line.pulldowns[0]
 
         if not pulldown.hits:
             return flask.abort(
                 404, 'The pulldown for cell line %s does not have any hits' % cell_line_id
             )
 
-        payload = payloads.pulldown_payload(pulldown)
+        # we need the crispr designs and uniprot metadata for the significant hits
+        significant_hits = (
+            flask.current_app.Session.query(models.MassSpecHit)
+            .options(
+                db.orm.joinedload(models.MassSpecHit.protein_group, innerjoin=True)
+                    .joinedload(models.MassSpecProteinGroup.crispr_designs),
+                db.orm.joinedload(models.MassSpecHit.protein_group, innerjoin=True)
+                    .joinedload(models.MassSpecProteinGroup.uniprot_metadata),
+            )
+            .filter(models.MassSpecHit.pulldown_id == pulldown.id)
+            .filter(db.or_(
+                models.MassSpecHit.is_minor_hit == True,  # noqa
+                models.MassSpecHit.is_significant_hit == True  # noqa
+            ))
+            .all()
+        )
+
+        # we only need the pval and enrichment for the non-significant hits
+        nonsignificant_hits = (
+            flask.current_app.Session.query(models.MassSpecHit.pval, models.MassSpecHit.enrichment)
+            .filter(models.MassSpecHit.pulldown_id == pulldown.id)
+            .filter(models.MassSpecHit.is_minor_hit == False)  # noqa
+            .filter(models.MassSpecHit.is_significant_hit == False)  # noqa
+            .all()
+        )
+
+        payload = payloads.pulldown_payload(pulldown, significant_hits, nonsignificant_hits)
         return flask.jsonify(payload)
 
 

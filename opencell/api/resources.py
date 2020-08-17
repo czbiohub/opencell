@@ -172,17 +172,46 @@ class CellLineFOVs(CellLineResource):
     '''
     def get(self, cell_line_id):
 
-        line = self.get_cell_line(cell_line_id)
-        if not line.fovs:
-            return flask.abort(404, 'There are no FOVs associated with the cell line')
-
-        optional_fields, error = self.parse_listlike_arg(
+        included_fields, error = self.parse_listlike_arg(
             name='fields', allowed_values=['rois', 'thumbnails']
         )
         if error:
             return error
 
-        payload = [payloads.fov_payload(fov, optional_fields) for fov in line.fovs]
+        line = self.get_cell_line(cell_line_id)
+        query = (
+            flask.current_app.Session.query(models.MicroscopyFOV)
+            .options(
+                db.orm.joinedload(models.MicroscopyFOV.dataset, innerjoin=True),
+                db.orm.joinedload(models.MicroscopyFOV.results, innerjoin=True),
+                db.orm.joinedload(models.MicroscopyFOV.annotation)
+            )
+            .filter(models.MicroscopyFOV.cell_line_id == line.id)
+            .filter(models.MicroscopyFOV.annotation != None)  # noqa
+        )
+
+        if 'rois' in included_fields:
+            query = query.options(
+                db.orm.joinedload(models.MicroscopyFOV.rois, innerjoin=True)
+            )
+
+        if 'thumbnails' in included_fields:
+            query = query.options(
+                db.orm.joinedload(models.MicroscopyFOV.thumbnails, innerjoin=False)
+            )
+
+        fovs = query.all()
+        if not fovs:
+            return flask.abort(404, 'There are no FOVs associated with the cell line')
+
+        payload = [
+            payloads.fov_payload(
+                fov,
+                include_rois=('rois' in included_fields),
+                include_thumbnails=('thumbnails' in included_fields)
+            )
+            for fov in fovs
+        ]
 
         # sort by FOV score (unscored FOVs last)
         payload = sorted(payload, key=lambda row: row['metadata'].get('score') or -2)[::-1]

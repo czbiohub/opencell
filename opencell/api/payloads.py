@@ -97,7 +97,7 @@ def facs_payload(facs_dataset):
     return {'histograms': facs_dataset.simplify_histograms()}
 
 
-def fov_payload(fov, optional_fields):
+def fov_payload(fov, include_rois=False, include_thumbnails=False):
     '''
     The JSON payload for an FOV (and its ROIs)
     optional_fields : an optional list of ['rois', 'thumbnails']
@@ -131,10 +131,10 @@ def fov_payload(fov, optional_fields):
         'annotation': fov.annotation.as_dict() if fov.annotation else None
     }
 
-    if 'rois' in optional_fields:
+    if include_rois:
         payload['rois'] = [roi.as_dict() for roi in fov.rois]
 
-    if 'thumbnails' in optional_fields:
+    if include_thumbnails:
         thumbnail = fov.get_thumbnail('rgb')
         payload['thumbnails'] = thumbnail.as_dict() if thumbnail else None
 

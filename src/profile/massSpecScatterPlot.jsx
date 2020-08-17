@@ -170,22 +170,25 @@ export default class MassSpecScatterPlot extends Component {
         const url = `${settings.apiUrl}/lines/${this.props.cellLineId}/pulldown`;
         d3.json(url).then(data => {
 
-            let hits = data.hits;
+            let sigHits = data.significant_hits;
+            let nonSigHits = data.nonsignificant_hits;
+
+            // create an array of dicts for nonsig hits to be consistent with sig hits
+            nonSigHits = nonSigHits.map(d => ({pval: d[0], enrichment: d[1]}));
 
             // to speed up the rendering of the plot, randomly drop most non-significant hits
-            hits = hits.filter(d => {
-                return (
-                    this.hitIsSignificant(d) || d.pval > 3 || d3.randomUniform(0, 1)() > .7
-                );
-            });
+            nonSigHits = nonSigHits.filter(d => d.pval > 3 || d3.randomUniform(0, 1)() > .5);
 
             // construct a label from the gene names 
             // (there is one gene name for each ensg_id)
-            hits.forEach(hit => hit.label = hit.uniprot_gene_names?.sort().join(', '));
-
-            this.hits = hits;
-            this.pulldownMetadata = data.metadata;
+            sigHits.forEach(hit => hit.label = hit.uniprot_gene_names?.sort().join(', '));
             
+            // flag the significant hits
+            sigHits.forEach(hit => hit.is_significant_hit = true);
+
+            this.hits = [...sigHits, ...nonSigHits];
+            this.pulldownMetadata = data.metadata;
+
             // construct data points for the FDR curves
             this.onePercentFDRData = this.constructFDRCurve({
                 x0: data.metadata.fdr_1_offset, c: data.metadata.fdr_1_curvature

@@ -626,8 +626,7 @@ class FOVProcessor:
             # move the z dimension from the first to the last axis
             cropped_stack = np.moveaxis(cropped_stack, 0, -1)
 
-            # resample the stack in z so that it has the required z-step size
-            # and number of z-slices
+            # resample the stack in z so it has the required step size and number of z-slices
             cropped_stack, did_resample_stack = self.maybe_resample_stack(
                 cropped_stack,
                 original_step_size=roi_props['original_step_size'],
@@ -642,6 +641,13 @@ class FOVProcessor:
             cropped_stack, min_intensity, max_intensity = self.stack_to_uint8(
                 cropped_stack, percentile=0.01
             )
+
+            # smooth the hoechst staining to reduce the filesize of the tiled jpg
+            if channel == '405':
+                cropped_stack = skimage.filters.gaussian(
+                    cropped_stack, sigma=(1, 1, 1), preserve_range=True
+                )
+                cropped_stack = cropped_stack.astype('uint8')
 
             # log the black and white points used to downsample the intensities
             roi_props['min_intensity_%s' % channel] = min_intensity

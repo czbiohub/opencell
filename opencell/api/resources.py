@@ -172,6 +172,8 @@ class CellLineFOVs(CellLineResource):
     '''
     def get(self, cell_line_id):
 
+        only_annotated = flask.request.args.get('annotatedonly') == 'true'
+
         included_fields, error = self.parse_listlike_arg(
             name='fields', allowed_values=['rois', 'thumbnails']
         )
@@ -187,8 +189,10 @@ class CellLineFOVs(CellLineResource):
                 db.orm.joinedload(models.MicroscopyFOV.annotation)
             )
             .filter(models.MicroscopyFOV.cell_line_id == line.id)
-            .filter(models.MicroscopyFOV.annotation != None)  # noqa
         )
+
+        if only_annotated:
+            query = query.filter(models.MicroscopyFOV.annotation != None)  # noqa
 
         if 'rois' in included_fields:
             query = query.options(

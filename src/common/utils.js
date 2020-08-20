@@ -3,21 +3,18 @@ import * as d3 from 'd3';
 import settings from './settings.js';
 
 
-export function loadFovs (cellLineId, onLoad) {
+export function loadAnnotatedFovs (cellLineId, onLoad) {
 
     // retrieve the FOV metadata
-    const url = `${settings.apiUrl}/lines/${cellLineId}/fovs?fields=rois`
+    const url = `${settings.apiUrl}/lines/${cellLineId}/fovs?fields=rois&onlyannotated=true`
     d3.json(url).then(fovs => {
 
-        // only FOVs with manual annotations should be displayed
-        const viewableFovs = fovs.filter(fov => fov.annotation);
-
-        // concat all ROIs (because fov.rois is a list)
-        let rois = [].concat(...viewableFovs.map(fov => fov.rois));
+        // concat all ROIs (note that fov.rois is always list)
+        let rois = [].concat(...fovs.map(fov => fov.rois));
         
         const fovState = {
+            fovs,
             rois,
-            fovs: viewableFovs,
             roiId: rois[0]?.id,
             fovId: rois[0]?.fov_id, 
         };

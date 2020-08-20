@@ -9,7 +9,7 @@ import MassSpecPlotContainer from './massSpecPlotContainer.jsx';
 import TargetAnnotator from './targetAnnotator.jsx';
 import { SectionHeader } from './common.jsx';
 import settings from '../common/settings.js';
-import { loadFovs } from '../common/utils.js';
+import { loadAnnotatedFovs } from '../common/utils.js';
 
 
 export default class Overview extends Component {
@@ -27,7 +27,7 @@ export default class Overview extends Component {
 
     componentDidUpdate (prevProps) {
         if (prevProps.cellLineId===this.props.cellLineId) return;
-        loadFovs(this.props.cellLineId, fovState => this.setState({...fovState}));
+        loadAnnotatedFovs(this.props.cellLineId, fovState => this.setState({...fovState}));
     }
 
 

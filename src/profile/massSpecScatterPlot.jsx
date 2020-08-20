@@ -179,14 +179,21 @@ export default class MassSpecScatterPlot extends Component {
             // to speed up the rendering of the plot, randomly drop most non-significant hits
             nonSigHits = nonSigHits.filter(d => d.pval > 3 || d3.randomUniform(0, 1)() > .5);
 
-            // construct a label from the gene names 
-            // (there is one gene name for each ensg_id)
-            sigHits.forEach(hit => hit.label = hit.uniprot_gene_names?.sort().join(', '));
-            
-            // flag the significant hits
-            sigHits.forEach(hit => hit.is_significant_hit = true);
+            sigHits.forEach(hit => {
+                // label the significant hits (so we can concatenate all of the hits together)
+                hit.is_significant_hit = true;
 
+                // construct a label from the gene names (there is one gene name for each ensg_id)
+                hit.label = hit.uniprot_gene_names?.sort().join(', ');
+            });
+                        
             this.hits = [...sigHits, ...nonSigHits];
+
+            // create a unique id for each hit
+            // (this is needed later to correctly bind the data to the scatter dots and captions)
+            const pulldownId = data.metadata.id;
+            this.hits.forEach((hit, ind) => hit.id = `${pulldownId}-${ind}`);
+
             this.pulldownMetadata = data.metadata;
 
             // construct data points for the FDR curves
@@ -478,7 +485,7 @@ export default class MassSpecScatterPlot extends Component {
         this.fdrLines.fiveRight.datum(this.fivePercentFDRData.right);
 
         // the hits to plot (note that we show only significant hits in stoichiometry mode)
-        let hits = [];
+        let hits;
         if (this.props.mode==='Stoichiometry') {
             hits = this.hits.filter(d => this.hitIsSignificant(d));
         } else {

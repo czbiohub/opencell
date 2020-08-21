@@ -126,9 +126,31 @@ label.bp3-label {
 	background-color: rgba(209, 212, 214, 0.7) !important;
 }
 
+/* the height of the blueprint sliders is hard-coded to 40px, which is a bit too much */
+.bp3-slider {height: 30px !important;}
+
 /* hide the tooltip-like captions below the slider handles */
 .bp3-slider-handle .bp3-slider-label {
     visibility: hidden !important;
+}
+
+/* hide the tick-like labels below the slider tracks */
+.bp3-slider-label {
+    visibility: hidden !important;
+}
+
+/* change the fill color of the slider tracks */
+.bp3-slider-progress.bp3-intent-primary {
+    background-color: #ccc !important;
+}
+
+/* change the fill color of the slider marker/handle, and disable shadows */
+.bp3-slider-handle {
+	border-radius: 10px !important;
+	background-image: none !important;
+	box-shadow: none !important;
+	-webkit-box-shadow: none !important;
+	background-color: #999 !important;
 }
 
 

@@ -227,22 +227,26 @@ export default class ViewerContainer extends Component {
             <div className='flex flex-wrap w-100 pt2 pb2'>
 
                 {/* Hoechst min/max/gamma */}
-                <div className='flex-0-0-auto w-50 pl0 pr3'>
-                    <div className=''>Hoechst range</div>
+                <div className='flex-0-0-auto w-40 pl3 pr3'>
+                    <div className='pb1'>
+                        {`Hoechst range: ${this.state.hoechstMin}% to ${this.state.hoechstMax}%`}
+                    </div>
                     <RangeSlider 
                         min={0} 
                         max={150} 
-                        stepSize={0.1}
+                        stepSize={1}
                         labelStepSize={50}
                         labelRenderer={value => String(Math.round(value))}
                         value={[this.state.hoechstMin, this.state.hoechstMax]}
                         onChange={values => this.setState({hoechstMin: values[0], hoechstMax: values[1]})}
                     />
-                    <div className='pt2'>Hoechst gamma</div>
+                    <div className='pb1'>
+                        {`Hoechst gamma: ${this.state.hoechstGamma.toFixed(2)}`}
+                    </div>
                     <Slider
                         min={0.5} 
                         max={1.5} 
-                        stepSize={0.01} 
+                        stepSize={0.05} 
                         labelStepSize={0.5}
                         showTrackFill={false}
                         value={this.state.hoechstGamma}
@@ -251,22 +255,26 @@ export default class ViewerContainer extends Component {
                 </div>
 
                 {/* GFP min/max/gamma */}
-                <div className='flex-0-0-auto w-50 pl3 pr3'>
-                    <div className=''>GFP range</div>
+                <div className='flex-0-0-auto w-40 pl3 pr3'>
+                    <div className='pb1'>
+                        {`GFP range: ${this.state.gfpMin}% to ${this.state.gfpMax}%`}
+                    </div>
                     <RangeSlider 
                         min={0} 
                         max={150} 
-                        stepSize={0.1}
+                        stepSize={1}
                         labelStepSize={50}
                         labelRenderer={value => String(Math.round(value))}
                         value={[this.state.gfpMin, this.state.gfpMax]}
                         onChange={values => this.setState({gfpMin: values[0], gfpMax: values[1]})}
                     />
-                    <div className='pt2'>GFP gamma</div>
+                    <div className='pb1'>
+                        {`GFP gamma: ${this.state.gfpGamma.toFixed(2)}`}
+                    </div>
                     <Slider
                         min={0.5} 
                         max={1.5} 
-                        stepSize={0.01} 
+                        stepSize={0.05} 
                         labelStepSize={0.5}
                         showTrackFill={false}
                         value={this.state.gfpGamma}
@@ -275,13 +283,16 @@ export default class ViewerContainer extends Component {
                 </div>
 
                 {/* z-index slider */}
-                <div className='flex-0-0-auto w-100 pt2 pl0 pr3'>
-                    <div className=''>z-slice</div>
+                <div className='flex-0-0-auto w-80 pl3 pr3'>
+                    <div className='pb1'>
+                        {`Z-slice ${this.state.zIndex + 1}/${this.numSlices}`}
+                    </div>
                     <Slider 
                         min={0} 
                         max={this.numSlices - 1} 
                         stepSize={1}
                         labelStepSize={50}
+                        showTrackFill={false}
                         value={this.state.zIndex}
                         onChange={value => this.setState({zIndex: parseInt(value)})}
                     />

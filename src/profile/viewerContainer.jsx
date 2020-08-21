@@ -44,10 +44,10 @@ export default class ViewerContainer extends Component {
         this.defaultDisplayState = {
             gfpMin: 0,
             gfpMax: 50,
-            gfpGamma: 1,
-            dapiMin: 5,
-            dapiMax: 50,
-            dapiGamma: 1,
+            gfpGamma: .7,
+            hoechstMin: 0,
+            hoechstMax: 90,
+            hoechstGamma: 1.0,
         }
 
         this.state = {
@@ -57,7 +57,7 @@ export default class ViewerContainer extends Component {
             // 'Volume' or 'Slice'
             localizationMode: "Slice",
 
-            // 'GFP', 'DAPI', or 'Both'
+            // 'GFP', 'Hoechst', or 'Both'
             localizationChannel: "Both",
 
             imageQuality: "Low",
@@ -155,7 +155,7 @@ export default class ViewerContainer extends Component {
                     <div className='dib pr3'>
                         <ButtonGroup 
                             label='Channel' 
-                            values={['DAPI', 'GFP', 'Both']}
+                            values={['Hoechst', 'GFP', 'Both']}
                             activeValue={this.state.localizationChannel}
                             onClick={value => this.setState({localizationChannel: value})}
                         />
@@ -199,21 +199,21 @@ export default class ViewerContainer extends Component {
             {/* Localization controls - min/max/z-index sliders */}
             <div className='flex flex-wrap w-100 pt2 pb2'>
                 <div className='flex-0-0-auto w-50'>
-                    <div className=''>{`DAPI range: [${this.state.dapiMin}, ${this.state.dapiMax}]`}</div>
+                    <div className=''>{`Hoechst range: [${this.state.hoechstMin}, ${this.state.hoechstMax}]`}</div>
                     <Slider 
                         label='Min'
-                        min={0} max={100} value={this.state.dapiMin}
-                        onChange={value => this.setState({dapiMin: value})}/>
+                        min={0} max={100} value={this.state.hoechstMin}
+                        onChange={value => this.setState({hoechstMin: value})}/>
                     <Slider 
                         label='Max'
-                        min={0} max={150} value={this.state.dapiMax}
-                        onChange={value => this.setState({dapiMax: value})}/>
+                        min={0} max={150} value={this.state.hoechstMax}
+                        onChange={value => this.setState({hoechstMax: value})}/>
 
-                    <div className='pt2'>{`DAPI gamma: ${this.state.dapiGamma.toFixed(2)}`}</div>                    
+                    <div className='pt2'>{`Hoechst gamma: ${this.state.hoechstGamma.toFixed(2)}`}</div>                    
                     <Slider 
                         label='Gamma'
-                        min={.5} max={2} step={0.05} value={this.state.dapiGamma}
-                        onChange={value => this.setState({dapiGamma: parseFloat(value)})}/>
+                        min={.5} max={2} step={0.05} value={this.state.hoechstGamma}
+                        onChange={value => this.setState({hoechstGamma: parseFloat(value)})}/>
                 </div>
 
                 <div className='flex-0-0-auto w-50'>

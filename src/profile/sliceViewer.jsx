@@ -17,15 +17,15 @@ export default class SliceViewer extends Component {
         this.maybeInitData = this.maybeInitData.bind(this);
         this.displaySlice = this.displaySlice.bind(this);
 
-        // WARNING: hard-coded indicies for DAPI and GFP volume data
-        // that is, the DAPI volume is given by `this.props.volumes[this.dapiInd]`
+        // WARNING: hard-coded indicies for Hoechst and GFP volume data
+        // that is, the Hoechst volume is given by `this.props.volumes[this.hoechstInd]`
         // this order is determined in App.componentDidMount
-        this.dapiInd = 0;
+        this.hoechstInd = 0;
         this.gfpInd = 1;
 
         // the same indicies keyed by the values of this.props.localizationChannel 
         this.volumeInds = {
-            'DAPI': this.dapiInd,
+            'Hoechst': this.hoechstInd,
             'GFP': this.gfpInd,
         };
 
@@ -131,15 +131,15 @@ export default class SliceViewer extends Component {
         }
 
         const gfpRange = [this.props.gfpMin, this.props.gfpMax].map(val => val*255/100);
-        const dapiRange = [this.props.dapiMin, this.props.dapiMax].map(val => val*255/100);
+        const hoechstRange = [this.props.hoechstMin, this.props.hoechstMax].map(val => val*255/100);
 
         // display a single channel in grayscale
         if (this.props.localizationChannel!=='Both') {
 
             const ind = this.volumeInds[this.props.localizationChannel];
     
-            const [min, max] = [dapiRange, gfpRange][ind];
-            const gamma = [this.props.dapiGamma, this.props.gfpGamma][ind];
+            const [min, max] = [hoechstRange, gfpRange][ind];
+            const gamma = [this.props.hoechstGamma, this.props.gfpGamma][ind];
 
             const slice = this.props.volumes[ind].data.slice(
                 this.props.zIndex*this.numPx, (this.props.zIndex + 1)*this.numPx
@@ -155,29 +155,42 @@ export default class SliceViewer extends Component {
                 sliceInd += 1;
             }
         
-        // display color image (DAPI in gray and GFP in green)
+        // display color image (Hoechst in gray and GFP in green)
         } else {
 
             // hard-coded weights for the green channel
             //const [redRatio, greenRatio, blueRatio] = [.1, .92, .1];
 
-            // hard-coded weights for blue (DAPI)
+            // hard-coded weights for blue (Hoechst)
             const [redRatio, greenRatio, blueRatio] = [0, 0, 1];
 
             const slices = this.props.volumes.map(volume => {
-                return volume.data.slice(this.props.zIndex*this.numPx, (this.props.zIndex + 1)*this.numPx);
+                return volume.data.slice(
+                    this.props.zIndex*this.numPx, (this.props.zIndex + 1)*this.numPx
+                );
             });
             
             let sliceInd = 0;
-            let gfpVal, dapiVal;
+            let gfpVal, hoechstVal;
             for (let ind = 0; ind < this.imData.length; ind += 4) {
 
-                gfpVal = scaleIntensity(slices[this.gfpInd][sliceInd], gfpRange[0], gfpRange[1], this.props.gfpGamma);
-                dapiVal = scaleIntensity(slices[this.dapiInd][sliceInd], dapiRange[0], dapiRange[1], this.props.dapiGamma);
+                gfpVal = scaleIntensity(
+                    slices[this.gfpInd][sliceInd], 
+                    gfpRange[0], 
+                    gfpRange[1], 
+                    this.props.gfpGamma
+                );
+        
+                hoechstVal = scaleIntensity(
+                    slices[this.hoechstInd][sliceInd], 
+                    hoechstRange[0], 
+                    hoechstRange[1], 
+                    this.props.hoechstGamma
+                );
 
-                this.imData[ind] = gfpVal + redRatio*dapiVal;
-                this.imData[ind + 1] = gfpVal + greenRatio*dapiVal;
-                this.imData[ind + 2] = gfpVal + blueRatio*dapiVal;
+                this.imData[ind] = gfpVal + redRatio*hoechstVal;
+                this.imData[ind + 1] = gfpVal + greenRatio*hoechstVal;
+                this.imData[ind + 2] = gfpVal + blueRatio*hoechstVal;
                 sliceInd += 1;
             }
         }

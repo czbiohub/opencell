@@ -35,7 +35,7 @@ export default class VolumeViewer extends Component {
     getMinMax(channel) {
 
         const minMaxs = {
-            'DAPI': [this.props.dapiMin/100, this.props.dapiMax/100, this.props.dapiGamma],
+            'Hoechst': [this.props.hoechstMin/100, this.props.hoechstMax/100, this.props.hoechstGamma],
             'GFP': [this.props.gfpMin/100, this.props.gfpMax/100, this.props.gfpGamma],
         };
 
@@ -47,7 +47,7 @@ export default class VolumeViewer extends Component {
     getVolume(channel) {
         // WARNING: the channel indicies here must match those found in App.componentDidMount
         const inds = {
-            'DAPI': 0,
+            'Hoechst': 0,
             'GFP': 1,
             'Both': 1,
         };
@@ -106,13 +106,13 @@ export default class VolumeViewer extends Component {
 
         // the blue material for two-color mode
         if (fields.includes('u_data')) {
-            this.material_blue.uniforms['u_data'].value = this.createTexture(this.getVolume('DAPI'));
+            this.material_blue.uniforms['u_data'].value = this.createTexture(this.getVolume('Hoechst'));
         }
         if (fields.includes('u_clim')) {
-            this.material_blue.uniforms['u_clim'].value.set(...this.getMinMax('DAPI'));
+            this.material_blue.uniforms['u_clim'].value.set(...this.getMinMax('Hoechst'));
         }
 
-        // only show the blue mesh (DAPI) in two-color mode
+        // only show the blue mesh (Hoechst) in two-color mode
         this.mesh_blue.visible = this.props.localizationChannel==='Both';
 
         this.renderVolume();

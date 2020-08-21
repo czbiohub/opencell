@@ -24,7 +24,7 @@ export function loadAnnotatedFovs (cellLineId, onLoad) {
 
 
 export function loadStack(url, onLoad) {
-    //
+    // Load the z-stack of an ROI (as a tiled JPG)
     //
 
     const sliceSize = settings.zSliceSize;
@@ -38,7 +38,7 @@ export function loadStack(url, onLoad) {
         xLength: sliceSize,
         yLength: sliceSize,
         zLength: numRawSlices * 2 - 1,
-        data: new Uint8Array(sliceSize * sliceSize * (numRawSlices * 2 - 1)),
+        data: new Uint8Array(numPixelsPerSlice * (numRawSlices * 2 - 1)),
     };
 
     const img = new Image;
@@ -75,6 +75,42 @@ export function loadStack(url, onLoad) {
         }
 
         onLoad(volume);
+    };
+
+    img.src = url;
+
+}
+
+
+export function loadProj(url, onLoad) {
+    // Load the 2D z-projection of an ROI
+    //
+
+    const sliceSize = settings.zSliceSize;
+    const canvasWidth = sliceSize;
+    const canvasHeight = sliceSize ;
+    const numPixels = sliceSize * sliceSize;
+
+    const proj = {
+        xLength: sliceSize,
+        yLength: sliceSize,
+        zLength: 1,
+        data: new Uint8Array(numPixels),
+    };
+
+    const img = new Image;
+    img.setAttribute('crossOrigin', '');
+    img.onload = function () {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.setAttribute('width', canvasWidth);
+        canvas.setAttribute('height', canvasHeight);
+        context.drawImage(img, 0, 0);
+        const imageData = context.getImageData(0, 0, canvasWidth, canvasHeight);
+        for (let ind = 0; ind < numPixels; ind++) {
+            proj.data[ind] = imageData.data[4*ind];
+        }
+        onLoad(proj);
     };
 
     img.src = url;

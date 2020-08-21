@@ -37,7 +37,7 @@ export default class SliceViewer extends Component {
     
     componentDidMount() {
         this.initViewer();
-        if (this.props.stacksLoaded) {
+        if (this.props.loaded) {
             this.maybeInitData();
             this.displaySlice();
         }
@@ -46,7 +46,7 @@ export default class SliceViewer extends Component {
 
     componentDidUpdate (prevProps) {
 
-        if (!this.props.stacksLoaded) return;
+        if (!this.props.loaded) return;
 
         this.maybeInitData();
 

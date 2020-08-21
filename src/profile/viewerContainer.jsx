@@ -53,9 +53,10 @@ export default class ViewerContainer extends Component {
         this.state = {
 
             stacksLoaded: false,
+            projsLoaded: false,
 
-            // 'Volume' or 'Slice'
-            localizationMode: "Slice",
+            // 'Volume', 'Slice' or 'Proj'
+            localizationMode: "Proj",
 
             // 'GFP', 'Hoechst', or 'Both'
             localizationChannel: "Both",
@@ -89,7 +90,13 @@ export default class ViewerContainer extends Component {
 
         const loadStack = (filepath) => {
             return new Promise((resolve, reject) => {
-                utils.loadStack(filepath, volume => resolve(volume));
+                utils.loadStack(filepath, data => resolve(data));
+            });
+        }
+
+        const loadProj = (filepath) => {
+            return new Promise((resolve, reject) => {
+                utils.loadProj(filepath, data => resolve(data));
             });
         }
 
@@ -101,16 +108,25 @@ export default class ViewerContainer extends Component {
         // ***WARNING***
         // the order of the channels in the `filepaths` array below matters,
         // because it is *independently* hard-coded in SliceViewer and VolumeViewer
-
         const quality = this.state.imageQuality==='Low' ? 'lqtile' : 'hqtile';
-        const filepaths = [
+        const stackFilepaths = [
             `${settings.apiUrl}/rois/${this.props.roiId}/${quality}/405`,
             `${settings.apiUrl}/rois/${this.props.roiId}/${quality}/488`,
         ];
 
-        Promise.all(filepaths.map(loadStack)).then(volumes => {
+        Promise.all(stackFilepaths.map(loadStack)).then(volumes => {
             this.volumes = volumes;
             this.setState({stacksLoaded: true});
+        });
+
+        // load the z-projections
+        const projFilepaths = [
+            `${settings.apiUrl}/rois/${this.props.roiId}/proj/405`,
+            `${settings.apiUrl}/rois/${this.props.roiId}/proj/488`,
+        ];
+        Promise.all(projFilepaths.map(loadProj)).then(projs => {
+            this.projs = projs;
+            this.setState({projsLoaded: true});
         });
     }
 
@@ -130,7 +146,10 @@ export default class ViewerContainer extends Component {
             localizationContent = <VolumeViewer volumes={this.volumes} {...this.state}/>
         }
         if (this.state.localizationMode==='Slice') {
-            localizationContent = <SliceViewer volumes={this.volumes} {...this.state}/>
+            localizationContent = <SliceViewer volumes={this.volumes} loaded={this.state.stacksLoaded} {...this.state}/>
+        }
+        if (this.state.localizationMode==='Proj') {
+            localizationContent = <SliceViewer volumes={this.projs} loaded={this.state.projsLoaded} {...this.state} zIndex={0}/>
         }
 
         // the current FOV and ROI
@@ -147,7 +166,7 @@ export default class ViewerContainer extends Component {
                     <div className='dib pr3'>
                         <ButtonGroup 
                             label='Mode' 
-                            values={['Slice', 'Volume']}
+                            values={['Proj', 'Slice', 'Volume']}
                             activeValue={this.state.localizationMode}
                             onClick={value => this.setState({localizationMode: value})}
                         />
@@ -265,7 +284,7 @@ export default class ViewerContainer extends Component {
                 null
             )}
 
-            {this.state.stacksLoaded ? (
+            {this.state.projsLoaded ? (
                 null
             ) : (
                 <div className="f2 tc loading-overlay">Loading...</div>

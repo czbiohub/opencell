@@ -60,6 +60,8 @@ export default class ViewerContainer extends Component {
             // 'GFP', 'DAPI', or 'Both'
             localizationChannel: "Both",
 
+            imageQuality: "Low",
+
             // the middle of the z-stack
             zIndex: parseInt(this.numSlices/2),
         };
@@ -70,10 +72,8 @@ export default class ViewerContainer extends Component {
 
     componentDidUpdate(prevProps, prevState, snapshot) {
 
-        // reload the z-stacks only if the ROI has changed
-        if (prevProps.roiId!==this.props.roiId) {
-            this.loadStacks();
-        }
+        if (prevProps.roiId!==this.props.roiId) this.loadStacks();
+        if (prevState.imageQuality!==this.state.imageQuality) this.loadStacks();
 
         // reset the GFP black point if the target has changed
         // (because the black point is different for low-GFP targets)
@@ -101,9 +101,11 @@ export default class ViewerContainer extends Component {
         // ***WARNING***
         // the order of the channels in the `filepaths` array below matters,
         // because it is *independently* hard-coded in SliceViewer and VolumeViewer
+
+        const quality = this.state.imageQuality==='Low' ? 'lqtile' : 'hqtile';
         const filepaths = [
-            `${settings.apiUrl}/rois/${this.props.roiId}/crop/405`,
-            `${settings.apiUrl}/rois/${this.props.roiId}/crop/488`,
+            `${settings.apiUrl}/rois/${this.props.roiId}/${quality}/405`,
+            `${settings.apiUrl}/rois/${this.props.roiId}/${quality}/488`,
         ];
 
         Promise.all(filepaths.map(loadStack)).then(volumes => {
@@ -147,14 +149,24 @@ export default class ViewerContainer extends Component {
                             label='Mode' 
                             values={['Slice', 'Volume']}
                             activeValue={this.state.localizationMode}
-                            onClick={value => this.setState({localizationMode: value})}/>
+                            onClick={value => this.setState({localizationMode: value})}
+                        />
                     </div>
                     <div className='dib pr3'>
                         <ButtonGroup 
                             label='Channel' 
                             values={['DAPI', 'GFP', 'Both']}
                             activeValue={this.state.localizationChannel}
-                            onClick={value => this.setState({localizationChannel: value})}/>
+                            onClick={value => this.setState({localizationChannel: value})}
+                        />
+                    </div>
+                    <div className='dib pr3'>
+                        <ButtonGroup 
+                            label='Quality' 
+                            values={['Low', 'High']}
+                            activeValue={this.state.imageQuality}
+                            onClick={value => this.setState({imageQuality: value})}
+                        />
                     </div>
                     <div className="dib pr3">
                         <Select 
@@ -163,7 +175,6 @@ export default class ViewerContainer extends Component {
                             itemRenderer={roiItemRenderer} 
                             filterable={false}
                             onItemSelect={roi => {
-                                this.setState({stacksLoaded: false});
                                 this.props.changeRoi(roi.id, roi.fov_id)}
                             }
                         >
@@ -176,13 +187,6 @@ export default class ViewerContainer extends Component {
                                 />
                             </div>
                         </Select>
-                    </div>
-                    <div className="dib pr3">
-                        <Button
-                            className="pl2 bp3-button-custom"
-                            text={"Reset"}
-                            onClick={() => this.setState({...this.defaultDisplayState})}
-                        />
                     </div>
                 </div>
             </div>
@@ -236,6 +240,13 @@ export default class ViewerContainer extends Component {
                         label='z-index'
                         min={0} max={this.numSlices - 1} value={this.state.zIndex}
                         onChange={value => this.setState({zIndex: parseInt(value)})}/>
+                </div>
+                <div className="dib pr3">
+                    <Button
+                        className="pl2 bp3-button-custom"
+                        text={"Reset"}
+                        onClick={() => this.setState({...this.defaultDisplayState})}
+                    />
                 </div>
             </div>
             

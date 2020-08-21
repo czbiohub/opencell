@@ -37,7 +37,7 @@ export default class Overview extends Component {
                 <div className="flex" style={{minWidth: '1600px'}}>
 
                     {/* Left column - about box and expression and facs plots*/}
-                    <div className="pl3 pr4 pt0" style={{width: '400px'}}>
+                    <div className="pl2 pr4 pt0" style={{width: '400px'}}>
 
                         {/* 'About' textbox */}
                         <div className='pb4'>
@@ -60,7 +60,7 @@ export default class Overview extends Component {
 
                     {/* Center column - sliceViewer and volumeViewer */}
                     {/* note the hard-coded width (because the ROIs are always 600px */}
-                    <div className="pl3 pr3" style={{width: '670px'}}>
+                    <div className="pl0 pr3" style={{width: '700px'}}>
                         <SectionHeader title='Localization'/>
                         <ViewerContainer
                             cellLineId={this.props.cellLineId}

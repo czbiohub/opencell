@@ -1,8 +1,8 @@
 import React, { Component } from 'react';
-import { Button, MenuItem } from "@blueprintjs/core";
+import { Button, MenuItem, Slider, RangeSlider } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
 
-import Slider from './slider.jsx';
+// import Slider from './slider.jsx';
 import ButtonGroup from './buttonGroup.jsx';
 import SliceViewer from './sliceViewer.jsx';
 import VolumeViewer from './volumeViewer.jsx';
@@ -143,13 +143,21 @@ export default class ViewerContainer extends Component {
 
         let localizationContent;
         if (this.state.localizationMode==='Volume') {
-            localizationContent = <VolumeViewer volumes={this.volumes} {...this.state}/>
+            localizationContent = <VolumeViewer {...this.state} volumes={this.volumes}/>
         }
-        if (this.state.localizationMode==='Slice') {
-            localizationContent = <SliceViewer volumes={this.volumes} loaded={this.state.stacksLoaded} {...this.state}/>
+        else if (this.state.localizationMode==='Slice') {
+            localizationContent = (
+                <SliceViewer 
+                    {...this.state} volumes={this.volumes} loaded={this.state.stacksLoaded}
+                />
+            );
         }
-        if (this.state.localizationMode==='Proj') {
-            localizationContent = <SliceViewer volumes={this.projs} loaded={this.state.projsLoaded} {...this.state} zIndex={0}/>
+        else if (this.state.localizationMode==='Proj') {
+            localizationContent = (
+                <SliceViewer 
+                    {...this.state} volumes={this.projs} loaded={this.state.projsLoaded} zIndex={0}
+                />
+            );
         }
 
         // the current FOV and ROI
@@ -217,49 +225,68 @@ export default class ViewerContainer extends Component {
 
             {/* Localization controls - min/max/z-index sliders */}
             <div className='flex flex-wrap w-100 pt2 pb2'>
-                <div className='flex-0-0-auto w-50'>
-                    <div className=''>{`Hoechst range: [${this.state.hoechstMin}, ${this.state.hoechstMax}]`}</div>
-                    <Slider 
-                        label='Min'
-                        min={0} max={100} value={this.state.hoechstMin}
-                        onChange={value => this.setState({hoechstMin: value})}/>
-                    <Slider 
-                        label='Max'
-                        min={0} max={150} value={this.state.hoechstMax}
-                        onChange={value => this.setState({hoechstMax: value})}/>
 
-                    <div className='pt2'>{`Hoechst gamma: ${this.state.hoechstGamma.toFixed(2)}`}</div>                    
-                    <Slider 
-                        label='Gamma'
-                        min={.5} max={2} step={0.05} value={this.state.hoechstGamma}
-                        onChange={value => this.setState({hoechstGamma: parseFloat(value)})}/>
+                {/* Hoechst min/max/gamma */}
+                <div className='flex-0-0-auto w-50 pl0 pr3'>
+                    <div className=''>Hoechst range</div>
+                    <RangeSlider 
+                        min={0} 
+                        max={150} 
+                        stepSize={0.1}
+                        labelStepSize={50}
+                        labelRenderer={value => String(Math.round(value))}
+                        value={[this.state.hoechstMin, this.state.hoechstMax]}
+                        onChange={values => this.setState({hoechstMin: values[0], hoechstMax: values[1]})}
+                    />
+                    <div className='pt2'>Hoechst gamma</div>
+                    <Slider
+                        min={0.5} 
+                        max={1.5} 
+                        stepSize={0.01} 
+                        labelStepSize={0.5}
+                        showTrackFill={false}
+                        value={this.state.hoechstGamma}
+                        onChange={value => this.setState({hoechstGamma: parseFloat(value)})}
+                    />
                 </div>
 
-                <div className='flex-0-0-auto w-50'>
-                    <div className=''>{`GFP range: [${this.state.gfpMin}, ${this.state.gfpMax}]`}</div>
-                    <Slider 
-                        label='Min'
-                        min={0} max={100} value={this.state.gfpMin}
-                        onChange={value => this.setState({gfpMin: value})}/>
-                    <Slider 
-                        label='Max'
-                        min={0} max={150} value={this.state.gfpMax}
-                        onChange={value => this.setState({gfpMax: value})}/>
-
-                    <div className='pt2'>{`GFP gamma: ${this.state.gfpGamma.toFixed(2)}`}</div>                    
-                    <Slider 
-                        label='Gamma'
-                        min={.5} max={2} step={0.05} value={this.state.gfpGamma}
-                        onChange={value => this.setState({gfpGamma: parseFloat(value)})}/>
+                {/* GFP min/max/gamma */}
+                <div className='flex-0-0-auto w-50 pl3 pr3'>
+                    <div className=''>GFP range</div>
+                    <RangeSlider 
+                        min={0} 
+                        max={150} 
+                        stepSize={0.1}
+                        labelStepSize={50}
+                        labelRenderer={value => String(Math.round(value))}
+                        value={[this.state.gfpMin, this.state.gfpMax]}
+                        onChange={values => this.setState({gfpMin: values[0], gfpMax: values[1]})}
+                    />
+                    <div className='pt2'>GFP gamma</div>
+                    <Slider
+                        min={0.5} 
+                        max={1.5} 
+                        stepSize={0.01} 
+                        labelStepSize={0.5}
+                        showTrackFill={false}
+                        value={this.state.gfpGamma}
+                        onChange={value => this.setState({gfpGamma: parseFloat(value)})}
+                    />
                 </div>
 
-                <div className='flex-0-0-auto w-100 pt2'>
-                    <div className=''>{`Z-slice: ${this.state.zIndex + 1}/${this.numSlices}`}</div>
+                {/* z-index slider */}
+                <div className='flex-0-0-auto w-100 pt2 pl0 pr3'>
+                    <div className=''>z-slice</div>
                     <Slider 
-                        label='z-index'
-                        min={0} max={this.numSlices - 1} value={this.state.zIndex}
-                        onChange={value => this.setState({zIndex: parseInt(value)})}/>
+                        min={0} 
+                        max={this.numSlices - 1} 
+                        stepSize={1}
+                        labelStepSize={50}
+                        value={this.state.zIndex}
+                        onChange={value => this.setState({zIndex: parseInt(value)})}
+                    />
                 </div>
+
                 <div className="dib pr3">
                     <Button
                         className="pl2 bp3-button-custom"
@@ -284,7 +311,10 @@ export default class ViewerContainer extends Component {
                 null
             )}
 
-            {this.state.projsLoaded ? (
+            {(
+                this.state.stacksLoaded || 
+                (this.state.projsLoaded && this.state.localizationMode==='Proj')
+            ) ? (
                 null
             ) : (
                 <div className="f2 tc loading-overlay">Loading...</div>

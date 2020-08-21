@@ -335,18 +335,19 @@ class MicroscopyFOV(Resource):
 
 class MicroscopyFOVROI(Resource):
 
-    def get(self, roi_id, kind, channel):
+    def get(self, roi_id, roi_kind, channel):
         '''
         Get the image data for a given ROI
 
-        kind : the kind of image data
-            Currently, only 'crop' is implemented (returns a z-stack as a tiled JPG)
-        channel : one of '405', '488', or 'rgb'
-            Note that 'rgb' does not work for kind='crop',
-            because z-stacks are constructed separately for each channel
+        roi_kind : the kind of ROI data to return
+            'proj' returns a z-projection
+            'lqtile' and 'hqtile' return low- and high-quality versions of the z-stack
+            (as a one-dimensional tiled array of z-slices)
+        channel : one of '405' or '488'
+
         '''
-        if kind != 'crop':
-            flask.abort(404, 'Invalid kind')
+        if roi_kind not in ['proj', 'lqtile', 'hqtile']:
+            flask.abort(404, 'Invalid ROI kind %s' % roi_kind)
 
         roi = (
             flask.current_app.Session.query(models.MicroscopyFOVROI)
@@ -354,15 +355,16 @@ class MicroscopyFOVROI(Resource):
             .one_or_none()
         )
         if not roi:
-            flask.abort(404, 'Invalid roi_id')
+            flask.abort(404, 'Invalid roi_id %s' % roi_id)
 
         microscopy_dir = flask.current_app.config.get('OPENCELL_MICROSCOPY_DIR')
         processor = FOVProcessor.from_database(roi.fov)
         filepath = processor.dst_filepath(
             dst_root=microscopy_dir,
+            kind='roi',
             roi_id=roi_id,
+            roi_kind=roi_kind,
             channel=channel,
-            kind='crop',
             ext='jpg'
         )
 

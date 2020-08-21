@@ -12,7 +12,7 @@ from opencell.database import models, utils, uniprot_utils
 from opencell.imaging.processors import FOVProcessor
 
 
-def cell_line_payload(cell_line, optional_fields):
+def cell_line_payload(cell_line, included_fields):
     '''
     The JSON payload returned by the /lines endpoint of the API
     Note that, awkwardly, the RNAseq data is a column in the crispr_design table
@@ -80,7 +80,7 @@ def cell_line_payload(cell_line, optional_fields):
     }
 
     # get the thumbnail of the annotated ROI from the 'best' FOV
-    if 'best-fov' in optional_fields:
+    if 'best-fov' in included_fields:
         fov = cell_line.get_best_fov()
         if fov and fov.rois:
             # hack: we assume there is only one ROI (the annotated ROI)
@@ -100,7 +100,6 @@ def facs_payload(facs_dataset):
 def fov_payload(fov, include_rois=False, include_thumbnails=False):
     '''
     The JSON payload for an FOV (and its ROIs)
-    optional_fields : an optional list of ['rois', 'thumbnails']
     '''
 
     # basic metadata

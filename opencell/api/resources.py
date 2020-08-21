@@ -51,16 +51,16 @@ class CellLines(Resource):
         args = flask.request.args
         plate_id = args.get('plate')
         target_name = args.get('target')
-        included_ids = args.get('ids')
-        optional_fields = args.get('fields')
 
-        optional_fields = optional_fields.split(',') if optional_fields else []
-        included_ids = [int(_id) for _id in included_ids.split(',')] if included_ids else []
+        included_fields = args.get('fields')
+        included_fields = included_fields.split(',') if included_fields else []
+
+        cell_line_ids = args.get('ids')
+        cell_line_ids = [int(_id) for _id in cell_line_ids.split(',')] if cell_line_ids else []
 
         query = (
             flask.current_app.Session.query(models.CrisprDesign)
-            .options(db.orm.joinedload(models.CrisprDesign.cell_lines))
-            .options(db.orm.joinedload(models.CrisprDesign.uniprot_metadata))
+            .options(db.orm.joinedload(models.CrisprDesign.cell_lines, innerjoin=True))
         )
 
         # filter crispr designs by plate_id
@@ -83,26 +83,28 @@ class CellLines(Resource):
                 query = exact_query
 
         # retrieve all of the cell lines corresponding to the filtered crispr designs
-        ids = []
-        [ids.extend([line.id for line in design.cell_lines]) for design in query.all()]
+        all_ids = []
+        [all_ids.extend([line.id for line in design.cell_lines]) for design in query.all()]
 
         # retain only the cell_line_ids that were included in the URL (if any)
-        if len(included_ids):
-            ids = list(set(ids).intersection(included_ids))
+        if len(cell_line_ids):
+            all_ids = list(set(all_ids).intersection(cell_line_ids))
 
         lines = (
             flask.current_app.Session.query(models.CellLine)
             .options(
-                db.orm.joinedload(models.CellLine.crispr_design, innerjoin=True),
+                (
+                    db.orm.joinedload(models.CellLine.crispr_design, innerjoin=True)
+                    .joinedload(models.CrisprDesign.uniprot_metadata, innerjoin=True)
+                ), (
+                    db.orm.joinedload(models.CellLine.fovs)
+                    .joinedload(models.MicroscopyFOV.annotation)
+                ),
                 db.orm.joinedload(models.CellLine.facs_dataset),
                 db.orm.joinedload(models.CellLine.sequencing_dataset),
                 db.orm.joinedload(models.CellLine.annotation),
-                (
-                    db.orm.joinedload(models.CellLine.fovs)
-                    .joinedload(models.MicroscopyFOV.annotation, innerjoin=True)
-                ),
             )
-            .filter(models.CellLine.id.in_(ids))
+            .filter(models.CellLine.id.in_(all_ids))
             .all()
         )
 
@@ -110,7 +112,7 @@ class CellLines(Resource):
         if flask.current_app.config['ENV'] == 'dev':
             lines = lines[::1]
 
-        payload = [payloads.cell_line_payload(line, optional_fields) for line in lines]
+        payload = [payloads.cell_line_payload(line, included_fields) for line in lines]
         return flask.jsonify(payload)
 
 

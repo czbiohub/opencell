@@ -197,7 +197,9 @@ export default class FovAnnotator extends Component {
     fetchData () {
         if (!this.props.cellLineId) return;
         this.setState({loaded: false, roiVisible: false});
-        const url = `${settings.apiUrl}/lines/${this.props.cellLineId}/fovs?fields=thumbnails`;
+
+        // get metadata for all of the cell line's FOVs
+        const url = `${settings.apiUrl}/lines/${this.props.cellLineId}/fovs?fields=thumbnails&onlyannotated=false`;
         d3.json(url).then(fovs => {
             this.fovs = fovs;
             this.setState({

@@ -9,7 +9,7 @@ import MassSpecPlotContainer from './massSpecPlotContainer.jsx';
 import TargetAnnotator from './targetAnnotator.jsx';
 import { SectionHeader } from './common.jsx';
 import settings from '../common/settings.js';
-import { loadFovs } from '../common/utils.js';
+import { loadAnnotatedFovs } from '../common/utils.js';
 
 
 export default class Overview extends Component {
@@ -27,7 +27,7 @@ export default class Overview extends Component {
 
     componentDidUpdate (prevProps) {
         if (prevProps.cellLineId===this.props.cellLineId) return;
-        loadFovs(this.props.cellLineId, fovState => this.setState({...fovState}));
+        loadAnnotatedFovs(this.props.cellLineId, fovState => this.setState({...fovState}));
     }
 
 
@@ -37,7 +37,7 @@ export default class Overview extends Component {
                 <div className="flex" style={{minWidth: '1600px'}}>
 
                     {/* Left column - about box and expression and facs plots*/}
-                    <div className="pl3 pr4 pt0" style={{width: '400px'}}>
+                    <div className="pl2 pr4 pt0" style={{width: '400px'}}>
 
                         {/* 'About' textbox */}
                         <div className='pb4'>
@@ -60,7 +60,7 @@ export default class Overview extends Component {
 
                     {/* Center column - sliceViewer and volumeViewer */}
                     {/* note the hard-coded width (because the ROIs are always 600px */}
-                    <div className="pl3 pr3" style={{width: '650px'}}>
+                    <div className="pl0 pr3" style={{width: '700px'}}>
                         <SectionHeader title='Localization'/>
                         <ViewerContainer
                             cellLineId={this.props.cellLineId}

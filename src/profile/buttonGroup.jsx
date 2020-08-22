@@ -17,12 +17,13 @@ class ButtonGroup extends Component {
     
     render() {
 
-        const buttons = this.props.values.map(value => {
+        const buttons = this.props.values.map((value, ind) => {
+            const label = this.props.labels ? this.props.labels[ind] : value;
             return (
                 <SimpleButton 
                     active={this.props.activeValue===value} 
                     onClick={d => this.props.onClick(value)} 
-                    text={value}
+                    text={label}
                     key={value}/>
             );
         });

@@ -228,7 +228,7 @@ class Gallery extends Component {
         }
 
         if (prevState.cellLineId!==this.state.cellLineId) {
-            utils.loadFovs(this.state.cellLineId, fovState => this.setState({...fovState}));    
+            utils.loadAnnotatedFovs(this.state.cellLineId, fovState => this.setState({...fovState}));    
         }
     }
 

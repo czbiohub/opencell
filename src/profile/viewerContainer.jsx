@@ -1,8 +1,8 @@
 import React, { Component } from 'react';
-import { Button, MenuItem } from "@blueprintjs/core";
+import { Button, MenuItem, Slider, RangeSlider } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
 
-import Slider from './slider.jsx';
+// import Slider from './slider.jsx';
 import ButtonGroup from './buttonGroup.jsx';
 import SliceViewer from './sliceViewer.jsx';
 import VolumeViewer from './volumeViewer.jsx';
@@ -42,43 +42,43 @@ export default class ViewerContainer extends Component {
 
         // default values for the display settings
         this.defaultDisplayState = {
-            gfpMin: 0,
-            gfpMax: 50,
-            gfpGamma: 1,
-            dapiMin: 5,
-            dapiMax: 50,
-            dapiGamma: 1,
+            min488: 0,
+            max488: 50,
+            gamma488: 1.0,
+            min405: 0,
+            max405: 100,
+            gamma405: 1.0,
         }
 
         this.state = {
 
-            stacksLoaded: false,
+            // 'Volume', 'Slice' or 'Proj'
+            mode: "Proj",
 
-            // 'Volume' or 'Slice'
-            localizationMode: "Slice",
+            // '405', '488', or 'Both'
+            channel: "Both",
 
-            // 'GFP', 'DAPI', or 'Both'
-            localizationChannel: "Both",
+            imageQuality: "Low",
 
             // the middle of the z-stack
             zIndex: parseInt(this.numSlices/2),
-        };
 
+            stacksLoaded: false,
+            projsLoaded: false,
+        };
         this.state = {...this.defaultDisplayState, ...this.state};
     }
 
 
     componentDidUpdate(prevProps, prevState, snapshot) {
 
-        // reload the z-stacks only if the ROI has changed
-        if (prevProps.roiId!==this.props.roiId) {
-            this.loadStacks();
-        }
+        if (prevProps.roiId!==this.props.roiId) this.loadStacks();
+        if (prevState.imageQuality!==this.state.imageQuality) this.loadStacks();
 
         // reset the GFP black point if the target has changed
         // (because the black point is different for low-GFP targets)
         if (prevProps.cellLineId!==this.props.cellLineId) {
-            this.setState({gfpMin: this.props.isLowGfp ? 10 : 0});
+            this.setState({min488: this.props.isLowGfp ? 10 : 0});
         }
     }
 
@@ -89,7 +89,13 @@ export default class ViewerContainer extends Component {
 
         const loadStack = (filepath) => {
             return new Promise((resolve, reject) => {
-                utils.loadStack(filepath, volume => resolve(volume));
+                utils.loadStack(filepath, data => resolve(data));
+            });
+        }
+
+        const loadProj = (filepath) => {
+            return new Promise((resolve, reject) => {
+                utils.loadProj(filepath, data => resolve(data));
             });
         }
 
@@ -101,14 +107,24 @@ export default class ViewerContainer extends Component {
         // ***WARNING***
         // the order of the channels in the `filepaths` array below matters,
         // because it is *independently* hard-coded in SliceViewer and VolumeViewer
-        const filepaths = [
-            `${settings.apiUrl}/rois/${this.props.roiId}/crop/405`,
-            `${settings.apiUrl}/rois/${this.props.roiId}/crop/488`,
+        const quality = this.state.imageQuality==='Low' ? 'lqtile' : 'hqtile';
+        const stackFilepaths = [
+            `${settings.apiUrl}/rois/${this.props.roiId}/${quality}/405`,
+            `${settings.apiUrl}/rois/${this.props.roiId}/${quality}/488`,
         ];
-
-        Promise.all(filepaths.map(loadStack)).then(volumes => {
+        Promise.all(stackFilepaths.map(loadStack)).then(volumes => {
             this.volumes = volumes;
             this.setState({stacksLoaded: true});
+        });
+
+        // load the z-projections
+        const projFilepaths = [
+            `${settings.apiUrl}/rois/${this.props.roiId}/proj/405`,
+            `${settings.apiUrl}/rois/${this.props.roiId}/proj/488`,
+        ];
+        Promise.all(projFilepaths.map(loadProj)).then(projs => {
+            this.projs = projs;
+            this.setState({projsLoaded: true});
         });
     }
 
@@ -123,12 +139,23 @@ export default class ViewerContainer extends Component {
             );
         }
 
-        let localizationContent;
-        if (this.state.localizationMode==='Volume') {
-            localizationContent = <VolumeViewer volumes={this.volumes} {...this.state}/>
+        let viewer;
+        if (this.state.mode==='Volume') {
+            viewer = <VolumeViewer {...this.state} volumes={this.volumes}/>
         }
-        if (this.state.localizationMode==='Slice') {
-            localizationContent = <SliceViewer volumes={this.volumes} {...this.state}/>
+        else if (this.state.mode==='Slice') {
+            viewer = (
+                <SliceViewer 
+                    {...this.state} volumes={this.volumes} loaded={this.state.stacksLoaded}
+                />
+            );
+        }
+        else if (this.state.mode==='Proj') {
+            viewer = (
+                <SliceViewer 
+                    {...this.state} volumes={this.projs} loaded={this.state.projsLoaded} zIndex={0}
+                />
+            );
         }
 
         // the current FOV and ROI
@@ -145,16 +172,27 @@ export default class ViewerContainer extends Component {
                     <div className='dib pr3'>
                         <ButtonGroup 
                             label='Mode' 
-                            values={['Slice', 'Volume']}
-                            activeValue={this.state.localizationMode}
-                            onClick={value => this.setState({localizationMode: value})}/>
+                            values={['Proj', 'Slice', 'Volume']}
+                            activeValue={this.state.mode}
+                            onClick={value => this.setState({mode: value})}
+                        />
                     </div>
                     <div className='dib pr3'>
                         <ButtonGroup 
                             label='Channel' 
-                            values={['DAPI', 'GFP', 'Both']}
-                            activeValue={this.state.localizationChannel}
-                            onClick={value => this.setState({localizationChannel: value})}/>
+                            values={['405', '488', 'Both']}
+                            labels={['DNA', 'Protein', 'Both']}
+                            activeValue={this.state.channel}
+                            onClick={value => this.setState({channel: value})}
+                        />
+                    </div>
+                    <div className='dib pr3'>
+                        <ButtonGroup 
+                            label='Quality' 
+                            values={['Low', 'High']}
+                            activeValue={this.state.imageQuality}
+                            onClick={value => this.setState({imageQuality: value})}
+                        />
                     </div>
                     <div className="dib pr3">
                         <Select 
@@ -163,7 +201,6 @@ export default class ViewerContainer extends Component {
                             itemRenderer={roiItemRenderer} 
                             filterable={false}
                             onItemSelect={roi => {
-                                this.setState({stacksLoaded: false});
                                 this.props.changeRoi(roi.id, roi.fov_id)}
                             }
                         >
@@ -177,65 +214,93 @@ export default class ViewerContainer extends Component {
                             </div>
                         </Select>
                     </div>
-                    <div className="dib pr3">
-                        <Button
-                            className="pl2 bp3-button-custom"
-                            text={"Reset"}
-                            onClick={() => this.setState({...this.defaultDisplayState})}
-                        />
-                    </div>
                 </div>
             </div>
 
-            {/* slice viewer or volume rendering */}
-            <div className="fl">
-                {localizationContent}
-            </div>
+            {/* the z-slice viewer or volume rendering */}
+            <div className="fl">{viewer}</div>
 
-            {/* Localization controls - min/max/z-index sliders */}
+            {/* Display settings */}
             <div className='flex flex-wrap w-100 pt2 pb2'>
-                <div className='flex-0-0-auto w-50'>
-                    <div className=''>{`DAPI range: [${this.state.dapiMin}, ${this.state.dapiMax}]`}</div>
-                    <Slider 
-                        label='Min'
-                        min={0} max={100} value={this.state.dapiMin}
-                        onChange={value => this.setState({dapiMin: value})}/>
-                    <Slider 
-                        label='Max'
-                        min={0} max={150} value={this.state.dapiMax}
-                        onChange={value => this.setState({dapiMax: value})}/>
 
-                    <div className='pt2'>{`DAPI gamma: ${this.state.dapiGamma.toFixed(2)}`}</div>                    
-                    <Slider 
-                        label='Gamma'
-                        min={.5} max={2} step={0.05} value={this.state.dapiGamma}
-                        onChange={value => this.setState({dapiGamma: parseFloat(value)})}/>
+                {/* 405 min/max/gamma */}
+                <div className='flex-0-0-auto w-40 pl3 pr3'>
+                    <div className='pb1'>
+                        {`DNA image range: ${this.state.min405}% to ${this.state.max405}%`}
+                    </div>
+                    <RangeSlider 
+                        min={0} 
+                        max={150} 
+                        stepSize={1}
+                        labelStepSize={50}
+                        labelRenderer={value => String(Math.round(value))}
+                        value={[this.state.min405, this.state.max405]}
+                        onChange={values => this.setState({min405: values[0], max405: values[1]})}
+                    />
+                    <div className='pb1'>
+                        {`DNA image gamma: ${this.state.gamma405.toFixed(2)}`}
+                    </div>
+                    <Slider
+                        min={0.5} 
+                        max={1.5} 
+                        stepSize={0.05} 
+                        labelStepSize={0.5}
+                        showTrackFill={false}
+                        value={this.state.gamma405}
+                        onChange={value => this.setState({gamma405: parseFloat(value)})}
+                    />
                 </div>
 
-                <div className='flex-0-0-auto w-50'>
-                    <div className=''>{`GFP range: [${this.state.gfpMin}, ${this.state.gfpMax}]`}</div>
-                    <Slider 
-                        label='Min'
-                        min={0} max={100} value={this.state.gfpMin}
-                        onChange={value => this.setState({gfpMin: value})}/>
-                    <Slider 
-                        label='Max'
-                        min={0} max={150} value={this.state.gfpMax}
-                        onChange={value => this.setState({gfpMax: value})}/>
-
-                    <div className='pt2'>{`GFP gamma: ${this.state.gfpGamma.toFixed(2)}`}</div>                    
-                    <Slider 
-                        label='Gamma'
-                        min={.5} max={2} step={0.05} value={this.state.gfpGamma}
-                        onChange={value => this.setState({gfpGamma: parseFloat(value)})}/>
+                {/* 488 min/max/gamma */}
+                <div className='flex-0-0-auto w-40 pl3 pr3'>
+                    <div className='pb1'>
+                        {`Protein image range: ${this.state.min488}% to ${this.state.max488}%`}
+                    </div>
+                    <RangeSlider 
+                        min={0} 
+                        max={150} 
+                        stepSize={1}
+                        labelStepSize={50}
+                        labelRenderer={value => String(Math.round(value))}
+                        value={[this.state.min488, this.state.max488]}
+                        onChange={values => this.setState({min488: values[0], max488: values[1]})}
+                    />
+                    <div className='pb1'>
+                        {`Protein image gamma: ${this.state.gamma488.toFixed(2)}`}
+                    </div>
+                    <Slider
+                        min={0.5} 
+                        max={1.5} 
+                        stepSize={0.05} 
+                        labelStepSize={0.5}
+                        showTrackFill={false}
+                        value={this.state.gamma488}
+                        onChange={value => this.setState({gamma488: parseFloat(value)})}
+                    />
                 </div>
 
-                <div className='flex-0-0-auto w-100 pt2'>
-                    <div className=''>{`Z-slice: ${this.state.zIndex + 1}/${this.numSlices}`}</div>
+                {/* z-index slider */}
+                <div className='flex-0-0-auto w-80 pl3 pr3'>
+                    <div className='pb1'>
+                        {`Z-slice: ${this.state.zIndex + 1}/${this.numSlices}`}
+                    </div>
                     <Slider 
-                        label='z-index'
-                        min={0} max={this.numSlices - 1} value={this.state.zIndex}
-                        onChange={value => this.setState({zIndex: parseInt(value)})}/>
+                        min={0} 
+                        max={this.numSlices - 1} 
+                        stepSize={1}
+                        labelStepSize={50}
+                        showTrackFill={false}
+                        value={this.state.zIndex}
+                        onChange={value => this.setState({zIndex: parseInt(value)})}
+                    />
+                </div>
+
+                <div className="dib pr3">
+                    <Button
+                        className="pl2 bp3-button-custom"
+                        text={"Reset"}
+                        onClick={() => this.setState({...this.defaultDisplayState})}
+                    />
                 </div>
             </div>
             
@@ -254,7 +319,9 @@ export default class ViewerContainer extends Component {
                 null
             )}
 
-            {this.state.stacksLoaded ? (
+            {(
+                this.state.stacksLoaded || (this.state.projsLoaded && this.state.mode==='Proj')
+            ) ? (
                 null
             ) : (
                 <div className="f2 tc loading-overlay">Loading...</div>

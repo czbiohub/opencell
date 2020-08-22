@@ -16,42 +16,33 @@ export default class SliceViewer extends Component {
         this.initViewer = this.initViewer.bind(this);
         this.maybeInitData = this.maybeInitData.bind(this);
         this.displaySlice = this.displaySlice.bind(this);
+        this.zoom = this.zoom.bind(this);
 
-        // WARNING: hard-coded indicies for DAPI and GFP volume data
-        // that is, the DAPI volume is given by `this.props.volumes[this.dapiInd]`
-        // this order is determined in App.componentDidMount
-        this.dapiInd = 0;
-        this.gfpInd = 1;
+        // WARNING: hard-coded indices for 405 and 488 image data
+        // that is, the 405 volume is given by `this.props.volumes[this.ind405]`
+        this.ind405 = 0;
+        this.ind488 = 1;
 
-        // the same indicies keyed by the values of this.props.localizationChannel 
+        // the same indicies keyed by the values of this.props.channel 
         this.volumeInds = {
-            'DAPI': this.dapiInd,
-            'GFP': this.gfpInd,
+            '405': this.ind405,
+            '488': this.ind488,
         };
 
         // hard-coded size of the image data (assuming square aspect ratio)
         this.imageSize = 600;
-
     }
 
-    
     componentDidMount() {
         this.initViewer();
-        if (this.props.stacksLoaded) {
-            this.maybeInitData();
-            this.displaySlice();
-        }
+        if (!this.props.loaded) return;
+        this.maybeInitData();
+        this.displaySlice();
     }
 
-
     componentDidUpdate (prevProps) {
-
-        if (!this.props.stacksLoaded) return;
-
+        if (!this.props.loaded) return;
         this.maybeInitData();
-
-        // TODO check whether any of the display-related props have changed
-        // (if not, there's no reason to call displaySlice)
         this.displaySlice();
     }
 
@@ -59,9 +50,8 @@ export default class SliceViewer extends Component {
     maybeInitData() {
 
         // get the volume shape and initialize the image array 
-        // only if this is the first update after the NRRD files loaded
+        // only if this is the first update after the images were loaded
         if (this.imData) return;
-
         if (!this.props.volumes) return;
 
         const volume = this.props.volumes[0];
@@ -89,30 +79,45 @@ export default class SliceViewer extends Component {
                          .attr("width", this.imageSize)
                          .attr("height", this.imageSize);
         
-        const context = canvas.node().getContext('2d');
-        //const displaySlice = this.displaySlice();
-
-        // trying and failing to add zoom and pan to the canvas
-        //canvas.call(d3.zoom().scaleExtent([1, 8]).on('zoom', zoom));
-        function zoom () {
-
-            const transform = d3.event.transform;
-            const imageData = context.getImageData(0, 0, this.imageSize, this.imageSize);
-
-            context.save();
-
-            context.clearRect(0, 0, canvas.property('width'), canvas.property('height'));
-
-            context.translate(transform.x, transform.y);
-            context.scale(transform.k, transform.k);
-
-            // TODO: how to re-draw the image (in imageData) without using putImageData?
-            // (because putImageData ignores the context's transform, 
-            // which we just set above using .translate and .scale)
-            context.restore();
-        }
+        // create an in-memory canvas to call putImageData on
+        // (needed because putImageData ignores the context's transform)
+        const memCanvas = document.createElement("canvas");
+        d3.select(memCanvas).attr("width", this.imageSize).attr("height", this.imageSize);
 
         this.canvas = canvas.node();
+        this.memCanvas = memCanvas;
+
+        const zoom = d3.zoom()
+            .scaleExtent([0.5, 8])
+            .on('zoom', () => this.zoom(d3.event.transform));
+
+        canvas.call(zoom);
+    }
+
+
+    zoom(transform) {
+        
+        const context = this.canvas.getContext("2d");
+        context.save();
+        context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        context.translate(transform.x, transform.y);
+        context.scale(transform.k, transform.k);
+        
+        // flip the image vertically to align it
+        // with the initial top-down view in the volume rendering
+        context.scale(1, -1);
+        context.translate(0, -this.canvas.height);
+
+        // disable smoothing to show the true pixels when zoomed in
+        context.imageSmoothingEnabled = false;
+
+        // re-draw the image
+        context.drawImage(this.memCanvas, 0, 0, this.imageSize, this.imageSize);
+        context.restore();
+
+        // save the transform so we can re-apply it after changing the z-slice
+        this.lastTransform = transform;
     }
 
 
@@ -130,16 +135,16 @@ export default class SliceViewer extends Component {
             return intensity;
         }
 
-        const gfpRange = [this.props.gfpMin, this.props.gfpMax].map(val => val*255/100);
-        const dapiRange = [this.props.dapiMin, this.props.dapiMax].map(val => val*255/100);
+        const range488 = [this.props.min488, this.props.max488].map(val => val*255/100);
+        const range405 = [this.props.min405, this.props.max405].map(val => val*255/100);
 
-        // display a single channel in grayscale
-        if (this.props.localizationChannel!=='Both') {
+        // a single channel in grayscale
+        if (this.props.channel!=='Both') {
 
-            const ind = this.volumeInds[this.props.localizationChannel];
+            const ind = this.volumeInds[this.props.channel];
     
-            const [min, max] = [dapiRange, gfpRange][ind];
-            const gamma = [this.props.dapiGamma, this.props.gfpGamma][ind];
+            const [min, max] = [range405, range488][ind];
+            const gamma = [this.props.gamma405, this.props.gamma488][ind];
 
             const slice = this.props.volumes[ind].data.slice(
                 this.props.zIndex*this.numPx, (this.props.zIndex + 1)*this.numPx
@@ -149,52 +154,61 @@ export default class SliceViewer extends Component {
             let sliceInd = 0;
             for (let ind = 0; ind < this.imData.length; ind += 4) {
                 val = scaleIntensity(slice[sliceInd], min, max, gamma);
-                this.imData[ind] = val;
+                this.imData[ind + 0] = val;
                 this.imData[ind + 1] = val;
                 this.imData[ind + 2] = val;
                 sliceInd += 1;
             }
         
-        // display color image (DAPI in gray and GFP in green)
+        // both channels in a gray-blue image
         } else {
 
-            // hard-coded weights for the green channel
-            //const [redRatio, greenRatio, blueRatio] = [.1, .92, .1];
-
-            // hard-coded weights for blue (DAPI)
+            // hard-coded weights for blue (405 channel)
             const [redRatio, greenRatio, blueRatio] = [0, 0, 1];
 
             const slices = this.props.volumes.map(volume => {
-                return volume.data.slice(this.props.zIndex*this.numPx, (this.props.zIndex + 1)*this.numPx);
+                return volume.data.slice(
+                    this.props.zIndex*this.numPx, (this.props.zIndex + 1)*this.numPx
+                );
             });
             
             let sliceInd = 0;
-            let gfpVal, dapiVal;
+            let val405, val488;
             for (let ind = 0; ind < this.imData.length; ind += 4) {
 
-                gfpVal = scaleIntensity(slices[this.gfpInd][sliceInd], gfpRange[0], gfpRange[1], this.props.gfpGamma);
-                dapiVal = scaleIntensity(slices[this.dapiInd][sliceInd], dapiRange[0], dapiRange[1], this.props.dapiGamma);
+                val488 = scaleIntensity(
+                    slices[this.ind488][sliceInd], 
+                    range488[0], 
+                    range488[1], 
+                    this.props.gamma488
+                );
+        
+                val405 = scaleIntensity(
+                    slices[this.ind405][sliceInd], 
+                    range405[0], 
+                    range405[1], 
+                    this.props.gamma405
+                );
 
-                this.imData[ind] = gfpVal + redRatio*dapiVal;
-                this.imData[ind + 1] = gfpVal + greenRatio*dapiVal;
-                this.imData[ind + 2] = gfpVal + blueRatio*dapiVal;
+                this.imData[ind + 0] = val488 + redRatio * val405;
+                this.imData[ind + 1] = val488 + greenRatio * val405;
+                this.imData[ind + 2] = val488 + blueRatio * val405;
                 sliceInd += 1;
             }
         }
 
-        // draw the image on the canvas
-        let context = this.canvas.getContext('2d');
-        const imageData = context.getImageData(0, 0, this.imageSize, this.imageSize);
+        // draw the image on the in-memory canvas
+        let memContext = this.memCanvas.getContext('2d');
+        const imageData = memContext.getImageData(0, 0, this.imageSize, this.imageSize);
         imageData.data.set(this.imData);
-        context.putImageData(imageData, 0, 0);
+        memContext.putImageData(imageData, 0, 0);
 
-        // HACK: flip the image vertically 
-        // to align it with the initial top-down view in the volume rendering
-        if (context.getTransform().m22===1) {
-            context.scale(1, -1);
-            context.translate(0, -this.canvas.height);
-        }
-        context.drawImage(this.canvas, 0, 0, this.imageSize, this.imageSize);
+        // draw the image on the real canvas
+        const context = this.canvas.getContext("2d");
+        context.drawImage(this.memCanvas, 0, 0, this.imageSize, this.imageSize);
+
+        // re-apply the existing transform
+        this.zoom(this.lastTransform || d3.zoomIdentity);
     }
 
 

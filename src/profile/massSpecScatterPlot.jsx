@@ -170,22 +170,32 @@ export default class MassSpecScatterPlot extends Component {
         const url = `${settings.apiUrl}/lines/${this.props.cellLineId}/pulldown`;
         d3.json(url).then(data => {
 
-            let hits = data.hits;
+            let sigHits = data.significant_hits;
+            let nonSigHits = data.nonsignificant_hits;
+
+            // create an array of dicts for nonsig hits to be consistent with sig hits
+            nonSigHits = nonSigHits.map(d => ({pval: d[0], enrichment: d[1]}));
 
             // to speed up the rendering of the plot, randomly drop most non-significant hits
-            hits = hits.filter(d => {
-                return (
-                    this.hitIsSignificant(d) || d.pval > 3 || d3.randomUniform(0, 1)() > .7
-                );
+            nonSigHits = nonSigHits.filter(d => d.pval > 3 || d3.randomUniform(0, 1)() > .5);
+
+            sigHits.forEach(hit => {
+                // label the significant hits (so we can concatenate all of the hits together)
+                hit.is_significant_hit = true;
+
+                // construct a label from the gene names (there is one gene name for each ensg_id)
+                hit.label = hit.uniprot_gene_names?.sort().join(', ');
             });
+                        
+            this.hits = [...sigHits, ...nonSigHits];
 
-            // construct a label from the gene names 
-            // (there is one gene name for each ensg_id)
-            hits.forEach(hit => hit.label = hit.uniprot_gene_names?.sort().join(', '));
+            // create a unique id for each hit
+            // (this is needed later to correctly bind the data to the scatter dots and captions)
+            const pulldownId = data.metadata.id;
+            this.hits.forEach((hit, ind) => hit.id = `${pulldownId}-${ind}`);
 
-            this.hits = hits;
             this.pulldownMetadata = data.metadata;
-            
+
             // construct data points for the FDR curves
             this.onePercentFDRData = this.constructFDRCurve({
                 x0: data.metadata.fdr_1_offset, c: data.metadata.fdr_1_curvature
@@ -475,7 +485,7 @@ export default class MassSpecScatterPlot extends Component {
         this.fdrLines.fiveRight.datum(this.fivePercentFDRData.right);
 
         // the hits to plot (note that we show only significant hits in stoichiometry mode)
-        let hits = [];
+        let hits;
         if (this.props.mode==='Stoichiometry') {
             hits = this.hits.filter(d => this.hitIsSignificant(d));
         } else {

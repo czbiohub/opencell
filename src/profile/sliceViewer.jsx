@@ -18,16 +18,15 @@ export default class SliceViewer extends Component {
         this.displaySlice = this.displaySlice.bind(this);
         this.zoom = this.zoom.bind(this);
 
-        // WARNING: hard-coded indicies for Hoechst and GFP volume data
-        // that is, the Hoechst volume is given by `this.props.volumes[this.hoechstInd]`
-        // this order is determined in App.componentDidMount
-        this.hoechstInd = 0;
-        this.gfpInd = 1;
+        // WARNING: hard-coded indices for 405 and 488 image data
+        // that is, the 405 volume is given by `this.props.volumes[this.ind405]`
+        this.ind405 = 0;
+        this.ind488 = 1;
 
-        // the same indicies keyed by the values of this.props.localizationChannel 
+        // the same indicies keyed by the values of this.props.channel 
         this.volumeInds = {
-            'Hoechst': this.hoechstInd,
-            'GFP': this.gfpInd,
+            '405': this.ind405,
+            '488': this.ind488,
         };
 
         // hard-coded size of the image data (assuming square aspect ratio)
@@ -136,16 +135,16 @@ export default class SliceViewer extends Component {
             return intensity;
         }
 
-        const gfpRange = [this.props.gfpMin, this.props.gfpMax].map(val => val*255/100);
-        const hoechstRange = [this.props.hoechstMin, this.props.hoechstMax].map(val => val*255/100);
+        const range488 = [this.props.min488, this.props.max488].map(val => val*255/100);
+        const range405 = [this.props.min405, this.props.max405].map(val => val*255/100);
 
-        // display a single channel in grayscale
-        if (this.props.localizationChannel!=='Both') {
+        // a single channel in grayscale
+        if (this.props.channel!=='Both') {
 
-            const ind = this.volumeInds[this.props.localizationChannel];
+            const ind = this.volumeInds[this.props.channel];
     
-            const [min, max] = [hoechstRange, gfpRange][ind];
-            const gamma = [this.props.hoechstGamma, this.props.gfpGamma][ind];
+            const [min, max] = [range405, range488][ind];
+            const gamma = [this.props.gamma405, this.props.gamma488][ind];
 
             const slice = this.props.volumes[ind].data.slice(
                 this.props.zIndex*this.numPx, (this.props.zIndex + 1)*this.numPx
@@ -161,13 +160,10 @@ export default class SliceViewer extends Component {
                 sliceInd += 1;
             }
         
-        // display color image (Hoechst in gray and GFP in green)
+        // both channels in a gray-blue image
         } else {
 
-            // hard-coded weights for the green channel
-            //const [redRatio, greenRatio, blueRatio] = [.1, .92, .1];
-
-            // hard-coded weights for blue (Hoechst)
+            // hard-coded weights for blue (405 channel)
             const [redRatio, greenRatio, blueRatio] = [0, 0, 1];
 
             const slices = this.props.volumes.map(volume => {
@@ -177,26 +173,26 @@ export default class SliceViewer extends Component {
             });
             
             let sliceInd = 0;
-            let gfpVal, hoechstVal;
+            let val405, val488;
             for (let ind = 0; ind < this.imData.length; ind += 4) {
 
-                gfpVal = scaleIntensity(
-                    slices[this.gfpInd][sliceInd], 
-                    gfpRange[0], 
-                    gfpRange[1], 
-                    this.props.gfpGamma
+                val488 = scaleIntensity(
+                    slices[this.ind488][sliceInd], 
+                    range488[0], 
+                    range488[1], 
+                    this.props.gamma488
                 );
         
-                hoechstVal = scaleIntensity(
-                    slices[this.hoechstInd][sliceInd], 
-                    hoechstRange[0], 
-                    hoechstRange[1], 
-                    this.props.hoechstGamma
+                val405 = scaleIntensity(
+                    slices[this.ind405][sliceInd], 
+                    range405[0], 
+                    range405[1], 
+                    this.props.gamma405
                 );
 
-                this.imData[ind + 0] = gfpVal + redRatio * hoechstVal;
-                this.imData[ind + 1] = gfpVal + greenRatio * hoechstVal;
-                this.imData[ind + 2] = gfpVal + blueRatio * hoechstVal;
+                this.imData[ind + 0] = val488 + redRatio * val405;
+                this.imData[ind + 1] = val488 + greenRatio * val405;
+                this.imData[ind + 2] = val488 + blueRatio * val405;
                 sliceInd += 1;
             }
         }
@@ -213,7 +209,6 @@ export default class SliceViewer extends Component {
 
         // re-apply the existing transform
         this.zoom(this.lastTransform || d3.zoomIdentity);
-
     }
 
 

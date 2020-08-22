@@ -34,24 +34,22 @@ export default class VolumeViewer extends Component {
 
     getMinMax(channel) {
 
+        // the keys here must match the labels of the 'channel' buttons in viewerContainer
         const minMaxs = {
-            'Hoechst': [this.props.hoechstMin/100, this.props.hoechstMax/100, this.props.hoechstGamma],
-            'GFP': [this.props.gfpMin/100, this.props.gfpMax/100, this.props.gfpGamma],
+            '405': [this.props.min405/100, this.props.max405/100, this.props.gamma405],
+            '488': [this.props.min488/100, this.props.max488/100, this.props.gamma488],
         };
-
-        minMaxs['Both'] = minMaxs['GFP'];
+        minMaxs['Both'] = minMaxs['488'];
         return minMaxs[channel];
     }
 
 
     getVolume(channel) {
-        // WARNING: the channel indicies here must match those found in App.componentDidMount
         const inds = {
-            'Hoechst': 0,
-            'GFP': 1,
+            '405': 0,
+            '488': 1,
             'Both': 1,
         };
-
         return this.props.volumes[inds[channel]];
     }
 
@@ -84,7 +82,7 @@ export default class VolumeViewer extends Component {
         this.maybeCreateMaterial();
 
         // if the target or channel has changed, re-create the texture
-        if (this.reloadTexture || (prevProps.localizationChannel!==this.props.localizationChannel)) {
+        if (this.reloadTexture || (prevProps.channel!==this.props.channel)) {
             this.reloadTexture = false;
             this.updateUniforms(['u_data', 'u_clim']);
 
@@ -98,22 +96,22 @@ export default class VolumeViewer extends Component {
     updateUniforms(fields) {
 
         if (fields.includes('u_data')) {
-            this.material_gray.uniforms['u_data'].value = this.createTexture(this.getVolume(this.props.localizationChannel));
+            this.material_gray.uniforms['u_data'].value = this.createTexture(this.getVolume(this.props.channel));
         }
         if (fields.includes('u_clim')) {
-            this.material_gray.uniforms['u_clim'].value.set(...this.getMinMax(this.props.localizationChannel));
+            this.material_gray.uniforms['u_clim'].value.set(...this.getMinMax(this.props.channel));
         }
 
         // the blue material for two-color mode
         if (fields.includes('u_data')) {
-            this.material_blue.uniforms['u_data'].value = this.createTexture(this.getVolume('Hoechst'));
+            this.material_blue.uniforms['u_data'].value = this.createTexture(this.getVolume('405'));
         }
         if (fields.includes('u_clim')) {
-            this.material_blue.uniforms['u_clim'].value.set(...this.getMinMax('Hoechst'));
+            this.material_blue.uniforms['u_clim'].value.set(...this.getMinMax('405'));
         }
 
-        // only show the blue mesh (Hoechst) in two-color mode
-        this.mesh_blue.visible = this.props.localizationChannel==='Both';
+        // the blue mesh (with the 405 channel) is hidden except in two-color mode
+        this.mesh_blue.visible = this.props.channel==='Both';
 
         this.renderVolume();
     }
@@ -199,7 +197,7 @@ export default class VolumeViewer extends Component {
         // hack-ish way to determine whether this method has already been called once
         if (this.material_gray) return;
 
-        const volume = this.getVolume(this.props.localizationChannel);
+        const volume = this.getVolume(this.props.channel);
 
         const shape = [volume.xLength, volume.yLength, volume.zLength];
         const center = shape.map(val => val/2 - .5);

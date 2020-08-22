@@ -42,31 +42,30 @@ export default class ViewerContainer extends Component {
 
         // default values for the display settings
         this.defaultDisplayState = {
-            gfpMin: 0,
-            gfpMax: 50,
-            gfpGamma: 1.0,
-            hoechstMin: 0,
-            hoechstMax: 100,
-            hoechstGamma: 1.0,
+            min488: 0,
+            max488: 50,
+            gamma488: 1.0,
+            min405: 0,
+            max405: 100,
+            gamma405: 1.0,
         }
 
         this.state = {
 
-            stacksLoaded: false,
-            projsLoaded: false,
-
             // 'Volume', 'Slice' or 'Proj'
-            localizationMode: "Proj",
+            mode: "Proj",
 
-            // 'GFP', 'Hoechst', or 'Both'
-            localizationChannel: "Both",
+            // '405', '488', or 'Both'
+            channel: "Both",
 
             imageQuality: "Low",
 
             // the middle of the z-stack
             zIndex: parseInt(this.numSlices/2),
-        };
 
+            stacksLoaded: false,
+            projsLoaded: false,
+        };
         this.state = {...this.defaultDisplayState, ...this.state};
     }
 
@@ -79,7 +78,7 @@ export default class ViewerContainer extends Component {
         // reset the GFP black point if the target has changed
         // (because the black point is different for low-GFP targets)
         if (prevProps.cellLineId!==this.props.cellLineId) {
-            this.setState({gfpMin: this.props.isLowGfp ? 10 : 0});
+            this.setState({min488: this.props.isLowGfp ? 10 : 0});
         }
     }
 
@@ -113,7 +112,6 @@ export default class ViewerContainer extends Component {
             `${settings.apiUrl}/rois/${this.props.roiId}/${quality}/405`,
             `${settings.apiUrl}/rois/${this.props.roiId}/${quality}/488`,
         ];
-
         Promise.all(stackFilepaths.map(loadStack)).then(volumes => {
             this.volumes = volumes;
             this.setState({stacksLoaded: true});
@@ -141,19 +139,19 @@ export default class ViewerContainer extends Component {
             );
         }
 
-        let localizationContent;
-        if (this.state.localizationMode==='Volume') {
-            localizationContent = <VolumeViewer {...this.state} volumes={this.volumes}/>
+        let viewer;
+        if (this.state.mode==='Volume') {
+            viewer = <VolumeViewer {...this.state} volumes={this.volumes}/>
         }
-        else if (this.state.localizationMode==='Slice') {
-            localizationContent = (
+        else if (this.state.mode==='Slice') {
+            viewer = (
                 <SliceViewer 
                     {...this.state} volumes={this.volumes} loaded={this.state.stacksLoaded}
                 />
             );
         }
-        else if (this.state.localizationMode==='Proj') {
-            localizationContent = (
+        else if (this.state.mode==='Proj') {
+            viewer = (
                 <SliceViewer 
                     {...this.state} volumes={this.projs} loaded={this.state.projsLoaded} zIndex={0}
                 />
@@ -175,16 +173,17 @@ export default class ViewerContainer extends Component {
                         <ButtonGroup 
                             label='Mode' 
                             values={['Proj', 'Slice', 'Volume']}
-                            activeValue={this.state.localizationMode}
-                            onClick={value => this.setState({localizationMode: value})}
+                            activeValue={this.state.mode}
+                            onClick={value => this.setState({mode: value})}
                         />
                     </div>
                     <div className='dib pr3'>
                         <ButtonGroup 
                             label='Channel' 
-                            values={['Hoechst', 'GFP', 'Both']}
-                            activeValue={this.state.localizationChannel}
-                            onClick={value => this.setState({localizationChannel: value})}
+                            values={['405', '488', 'Both']}
+                            labels={['DNA', 'Protein', 'Both']}
+                            activeValue={this.state.channel}
+                            onClick={value => this.setState({channel: value})}
                         />
                     </div>
                     <div className='dib pr3'>
@@ -218,18 +217,16 @@ export default class ViewerContainer extends Component {
                 </div>
             </div>
 
-            {/* slice viewer or volume rendering */}
-            <div className="fl">
-                {localizationContent}
-            </div>
+            {/* the z-slice viewer or volume rendering */}
+            <div className="fl">{viewer}</div>
 
-            {/* Localization controls - min/max/z-index sliders */}
+            {/* Display settings */}
             <div className='flex flex-wrap w-100 pt2 pb2'>
 
-                {/* Hoechst min/max/gamma */}
+                {/* 405 min/max/gamma */}
                 <div className='flex-0-0-auto w-40 pl3 pr3'>
                     <div className='pb1'>
-                        {`Hoechst range: ${this.state.hoechstMin}% to ${this.state.hoechstMax}%`}
+                        {`DNA image range: ${this.state.min405}% to ${this.state.max405}%`}
                     </div>
                     <RangeSlider 
                         min={0} 
@@ -237,11 +234,11 @@ export default class ViewerContainer extends Component {
                         stepSize={1}
                         labelStepSize={50}
                         labelRenderer={value => String(Math.round(value))}
-                        value={[this.state.hoechstMin, this.state.hoechstMax]}
-                        onChange={values => this.setState({hoechstMin: values[0], hoechstMax: values[1]})}
+                        value={[this.state.min405, this.state.max405]}
+                        onChange={values => this.setState({min405: values[0], max405: values[1]})}
                     />
                     <div className='pb1'>
-                        {`Hoechst gamma: ${this.state.hoechstGamma.toFixed(2)}`}
+                        {`DNA image gamma: ${this.state.gamma405.toFixed(2)}`}
                     </div>
                     <Slider
                         min={0.5} 
@@ -249,15 +246,15 @@ export default class ViewerContainer extends Component {
                         stepSize={0.05} 
                         labelStepSize={0.5}
                         showTrackFill={false}
-                        value={this.state.hoechstGamma}
-                        onChange={value => this.setState({hoechstGamma: parseFloat(value)})}
+                        value={this.state.gamma405}
+                        onChange={value => this.setState({gamma405: parseFloat(value)})}
                     />
                 </div>
 
-                {/* GFP min/max/gamma */}
+                {/* 488 min/max/gamma */}
                 <div className='flex-0-0-auto w-40 pl3 pr3'>
                     <div className='pb1'>
-                        {`GFP range: ${this.state.gfpMin}% to ${this.state.gfpMax}%`}
+                        {`Protein image range: ${this.state.min488}% to ${this.state.max488}%`}
                     </div>
                     <RangeSlider 
                         min={0} 
@@ -265,11 +262,11 @@ export default class ViewerContainer extends Component {
                         stepSize={1}
                         labelStepSize={50}
                         labelRenderer={value => String(Math.round(value))}
-                        value={[this.state.gfpMin, this.state.gfpMax]}
-                        onChange={values => this.setState({gfpMin: values[0], gfpMax: values[1]})}
+                        value={[this.state.min488, this.state.max488]}
+                        onChange={values => this.setState({min488: values[0], max488: values[1]})}
                     />
                     <div className='pb1'>
-                        {`GFP gamma: ${this.state.gfpGamma.toFixed(2)}`}
+                        {`Protein image gamma: ${this.state.gamma488.toFixed(2)}`}
                     </div>
                     <Slider
                         min={0.5} 
@@ -277,15 +274,15 @@ export default class ViewerContainer extends Component {
                         stepSize={0.05} 
                         labelStepSize={0.5}
                         showTrackFill={false}
-                        value={this.state.gfpGamma}
-                        onChange={value => this.setState({gfpGamma: parseFloat(value)})}
+                        value={this.state.gamma488}
+                        onChange={value => this.setState({gamma488: parseFloat(value)})}
                     />
                 </div>
 
                 {/* z-index slider */}
                 <div className='flex-0-0-auto w-80 pl3 pr3'>
                     <div className='pb1'>
-                        {`Z-slice ${this.state.zIndex + 1}/${this.numSlices}`}
+                        {`Z-slice: ${this.state.zIndex + 1}/${this.numSlices}`}
                     </div>
                     <Slider 
                         min={0} 
@@ -323,8 +320,7 @@ export default class ViewerContainer extends Component {
             )}
 
             {(
-                this.state.stacksLoaded || 
-                (this.state.projsLoaded && this.state.localizationMode==='Proj')
+                this.state.stacksLoaded || (this.state.projsLoaded && this.state.mode==='Proj')
             ) ? (
                 null
             ) : (

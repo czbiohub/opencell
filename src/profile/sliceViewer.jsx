@@ -16,6 +16,7 @@ export default class SliceViewer extends Component {
         this.initViewer = this.initViewer.bind(this);
         this.maybeInitData = this.maybeInitData.bind(this);
         this.displaySlice = this.displaySlice.bind(this);
+        this.zoom = this.zoom.bind(this);
 
         // WARNING: hard-coded indicies for Hoechst and GFP volume data
         // that is, the Hoechst volume is given by `this.props.volumes[this.hoechstInd]`
@@ -31,27 +32,18 @@ export default class SliceViewer extends Component {
 
         // hard-coded size of the image data (assuming square aspect ratio)
         this.imageSize = 600;
-
     }
 
-    
     componentDidMount() {
         this.initViewer();
-        if (this.props.loaded) {
-            this.maybeInitData();
-            this.displaySlice();
-        }
+        if (!this.props.loaded) return;
+        this.maybeInitData();
+        this.displaySlice();
     }
 
-
     componentDidUpdate (prevProps) {
-
         if (!this.props.loaded) return;
-
         this.maybeInitData();
-
-        // TODO check whether any of the display-related props have changed
-        // (if not, there's no reason to call displaySlice)
         this.displaySlice();
     }
 
@@ -59,9 +51,8 @@ export default class SliceViewer extends Component {
     maybeInitData() {
 
         // get the volume shape and initialize the image array 
-        // only if this is the first update after the NRRD files loaded
+        // only if this is the first update after the images were loaded
         if (this.imData) return;
-
         if (!this.props.volumes) return;
 
         const volume = this.props.volumes[0];
@@ -89,30 +80,45 @@ export default class SliceViewer extends Component {
                          .attr("width", this.imageSize)
                          .attr("height", this.imageSize);
         
-        const context = canvas.node().getContext('2d');
-        //const displaySlice = this.displaySlice();
-
-        // trying and failing to add zoom and pan to the canvas
-        //canvas.call(d3.zoom().scaleExtent([1, 8]).on('zoom', zoom));
-        function zoom () {
-
-            const transform = d3.event.transform;
-            const imageData = context.getImageData(0, 0, this.imageSize, this.imageSize);
-
-            context.save();
-
-            context.clearRect(0, 0, canvas.property('width'), canvas.property('height'));
-
-            context.translate(transform.x, transform.y);
-            context.scale(transform.k, transform.k);
-
-            // TODO: how to re-draw the image (in imageData) without using putImageData?
-            // (because putImageData ignores the context's transform, 
-            // which we just set above using .translate and .scale)
-            context.restore();
-        }
+        // create an in-memory canvas to call putImageData on
+        // (needed because putImageData ignores the context's transform)
+        const memCanvas = document.createElement("canvas");
+        d3.select(memCanvas).attr("width", this.imageSize).attr("height", this.imageSize);
 
         this.canvas = canvas.node();
+        this.memCanvas = memCanvas;
+
+        const zoom = d3.zoom()
+            .scaleExtent([0.5, 8])
+            .on('zoom', () => this.zoom(d3.event.transform));
+
+        canvas.call(zoom);
+    }
+
+
+    zoom(transform) {
+        
+        const context = this.canvas.getContext("2d");
+        context.save();
+        context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        context.translate(transform.x, transform.y);
+        context.scale(transform.k, transform.k);
+        
+        // flip the image vertically to align it
+        // with the initial top-down view in the volume rendering
+        context.scale(1, -1);
+        context.translate(0, -this.canvas.height);
+
+        // disable smoothing to show the true pixels when zoomed in
+        context.imageSmoothingEnabled = false;
+
+        // re-draw the image
+        context.drawImage(this.memCanvas, 0, 0, this.imageSize, this.imageSize);
+        context.restore();
+
+        // save the transform so we can re-apply it after changing the z-slice
+        this.lastTransform = transform;
     }
 
 
@@ -149,7 +155,7 @@ export default class SliceViewer extends Component {
             let sliceInd = 0;
             for (let ind = 0; ind < this.imData.length; ind += 4) {
                 val = scaleIntensity(slice[sliceInd], min, max, gamma);
-                this.imData[ind] = val;
+                this.imData[ind + 0] = val;
                 this.imData[ind + 1] = val;
                 this.imData[ind + 2] = val;
                 sliceInd += 1;
@@ -188,26 +194,26 @@ export default class SliceViewer extends Component {
                     this.props.hoechstGamma
                 );
 
-                this.imData[ind] = gfpVal + redRatio*hoechstVal;
-                this.imData[ind + 1] = gfpVal + greenRatio*hoechstVal;
-                this.imData[ind + 2] = gfpVal + blueRatio*hoechstVal;
+                this.imData[ind + 0] = gfpVal + redRatio * hoechstVal;
+                this.imData[ind + 1] = gfpVal + greenRatio * hoechstVal;
+                this.imData[ind + 2] = gfpVal + blueRatio * hoechstVal;
                 sliceInd += 1;
             }
         }
 
-        // draw the image on the canvas
-        let context = this.canvas.getContext('2d');
-        const imageData = context.getImageData(0, 0, this.imageSize, this.imageSize);
+        // draw the image on the in-memory canvas
+        let memContext = this.memCanvas.getContext('2d');
+        const imageData = memContext.getImageData(0, 0, this.imageSize, this.imageSize);
         imageData.data.set(this.imData);
-        context.putImageData(imageData, 0, 0);
+        memContext.putImageData(imageData, 0, 0);
 
-        // HACK: flip the image vertically 
-        // to align it with the initial top-down view in the volume rendering
-        if (context.getTransform().m22===1) {
-            context.scale(1, -1);
-            context.translate(0, -this.canvas.height);
-        }
-        context.drawImage(this.canvas, 0, 0, this.imageSize, this.imageSize);
+        // draw the image on the real canvas
+        const context = this.canvas.getContext("2d");
+        context.drawImage(this.memCanvas, 0, 0, this.imageSize, this.imageSize);
+
+        // re-apply the existing transform
+        this.zoom(this.lastTransform || d3.zoomIdentity);
+
     }
 
 

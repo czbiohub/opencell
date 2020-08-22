@@ -44,9 +44,9 @@ export default class ViewerContainer extends Component {
         this.defaultDisplayState = {
             gfpMin: 0,
             gfpMax: 50,
-            gfpGamma: .7,
+            gfpGamma: 1.0,
             hoechstMin: 0,
-            hoechstMax: 90,
+            hoechstMax: 100,
             hoechstGamma: 1.0,
         }
 

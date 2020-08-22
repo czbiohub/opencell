@@ -164,7 +164,7 @@ export default class VolumeViewer extends Component {
         });
         controls.target.set(h/2, h/2, 32);
         controls.minZoom = 0.5;
-        controls.maxZoom = 4;
+        controls.maxZoom = 8;
         controls.update();
         
     }

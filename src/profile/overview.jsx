@@ -61,7 +61,7 @@ export default class Overview extends Component {
                     {/* Center column - sliceViewer and volumeViewer */}
                     {/* note the hard-coded width (because the ROIs are always 600px */}
                     <div className="pl0 pr3" style={{width: '700px'}}>
-                        <SectionHeader title='Localization'/>
+                        <SectionHeader title='Fluorescence microscopy'/>
                         <ViewerContainer
                             cellLineId={this.props.cellLineId}
                             fovs={this.state.fovs}
@@ -86,7 +86,7 @@ export default class Overview extends Component {
                             </div>
                         ) : (
                             <div>
-                                <SectionHeader title='Interactions'/>
+                                <SectionHeader title='Protein interactions'/>
                                 <MassSpecPlotContainer
                                     cellLineId={this.props.cellLineId}
                                     changeTarget={this.props.onSearchChange}

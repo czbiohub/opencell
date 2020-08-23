@@ -43,7 +43,6 @@ export default class Profile extends Component {
 
         this.onSearchChange = this.onSearchChange.bind(this);
         this.changeCellLineId = this.changeCellLineId.bind(this);
-
     }
 
 
@@ -75,7 +74,6 @@ export default class Profile extends Component {
         });
     }
 
-
     onSearchChange (value) {
         // fired when the user hits enter in the header's target search text input
         // (`value` is the string in the textbox)
@@ -90,9 +88,7 @@ export default class Profile extends Component {
         });
     }
 
-
     componentDidMount () {
-        
         d3.json(`${settings.apiUrl}/lines`).then(lines => {
             this.allCellLines = lines;     
             this.setState({linesLoaded: true});
@@ -106,10 +102,9 @@ export default class Profile extends Component {
         });
     }
 
-
     componentWillReceiveProps (nextProps) {
-        // this is hackish: we end up here only if the user clicked the back or forward buttons;
-        // so we know that we do not want to push the new cellLineId to the history,
+        // this is hackish: we end up here only if the user clicked the back or forward buttons,
+        // which means we do not want to push the new cellLineId to the history,
         // so we pass false to this.changeCellLineId
         this.changeCellLineId(nextProps.match.params.cellLineId, false);
     }

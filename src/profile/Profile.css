@@ -8,6 +8,7 @@
 }
 
 .header-opencell-title {
+    font-family: "Helvetica Neue";
     font-size: 40px;
     font-weight: 100;
     letter-spacing: 2px;
@@ -54,6 +55,40 @@
     width: 150px;
     text-transform: uppercase;
 }
+
+
+/* firefox 19+ */
+::-moz-placeholder { 
+    color: rgb(154, 154, 154);
+    font-size: 14px;
+    font-weight: normal;
+    text-transform: none;
+}
+
+/* Firefox 18- */
+:-moz-placeholder { 
+    color: rgb(154, 154, 154);
+    font-size: 14px;
+    font-weight: normal;
+    text-transform: none;
+}
+
+/* chrome, opera, safari */
+::-webkit-input-placeholder {
+    color: rgb(154, 154, 154);
+    font-size: 14px;
+    font-weight: normal;
+    text-transform: none;
+}
+
+ /* IE 10+ */
+ :-ms-input-placeholder {
+    color: rgb(154, 154, 154);
+    font-size: 14px;
+    font-weight: normal;
+    text-transform: none;
+}
+
 
 /* the header for each main panel/section */
 .section-header {

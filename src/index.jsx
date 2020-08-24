@@ -1,13 +1,15 @@
-import React from 'react';
+import * as d3 from 'd3';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
 import ReactDOM from 'react-dom';
 
 import {
     BrowserRouter,
     Switch,
-    Route
+    Route,
+    Redirect
   } from "react-router-dom";
 
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation, useParams, useRouteMatch } from "react-router-dom";
 
 import 'tachyons';
 import './common/common.css';
@@ -17,11 +19,81 @@ import Dashboard from './dashboard/Dashboard';
 import Profile from './profile/Profile.jsx';
 import Gallery from './gallery/Gallery.jsx';
 import FOVOverview from './microscopy/FOVOverview.jsx';
+import settings from './common/settings.js';
+
+
+
+
+function useCellLineId () {
+
+    let history = useHistory();
+    let match = useRouteMatch('/:mode');
+
+    const [cellLineId, setCellLineId] = useState();
+
+    const onSetCellLineId = (newCellLineId, push = true) => {
+
+        newCellLineId = parseInt(newCellLineId);
+        if (isNaN(newCellLineId) || newCellLineId===cellLineId) return;
+
+        console.log(`cellLineId changing from ${cellLineId} to ${newCellLineId}`);
+        setCellLineId(newCellLineId);
+
+        if (push) {
+            console.log(`Pushing to history: /${match.params.mode}/${newCellLineId}`);
+            history.push(`/${match.params.mode}/${newCellLineId}`);
+        }
+    }
+
+    return [cellLineId, onSetCellLineId];
+}
+
 
 function App() {
+
+    const [cellLineId, setCellLineId] = useCellLineId();
+    const [targetNameQuery, setTargetNameQuery] = useState();
+
+    // retrieve a cellLineId from the target name query 
+    useEffect(() => {
+        if (!targetNameQuery) return;
+        d3.json(`${settings.apiUrl}/lines?target=${targetNameQuery}`).then(lines => {
+            for (const line of lines) {
+                if (line) {
+                    setCellLineId(line.metadata.cell_line_id, true);
+                    break;
+                }
+            }
+        });
+    }, [targetNameQuery]);
+
+
+
+    let history = useHistory();
+    let location = useLocation();
+    let match = useRouteMatch('/:mode/:cellLineId');
+
+    // load the inital target
+    useLayoutEffect(() => {
+        if (match.isExact) {
+            setCellLineId(match.params.cellLineId, false);
+        }
+    }, []);
+
+
+    // handle the back button
+    useEffect(() => {
+        return () => {
+            if (history.action === "POP" && match.isExact) {
+                // setCellLineId(match.params.cellLineId, false); 
+            }
+        }
+    });
+
+
     return (
         <div>
-            <Navbar/>
+            <Navbar onSearchChange={setTargetNameQuery}/>
             <Switch>
                 <Route path="/" exact={true}>
                     <div>This is the homepage</div>
@@ -30,9 +102,18 @@ function App() {
                 <Route path="/dashboard" component={Dashboard}/>
 
                 <Route 
-                    path={["/profile/:cellLineId", "/profile"]} 
-                    component={Profile}
+                    path={"/profile/:cellLineId"}
+                    render={props => (
+                        <Profile 
+                            {...props} 
+                            cellLineId={cellLineId} 
+                            onCellLineSelect={(id, push = true) => setCellLineId(id, push)}
+                        />
+                    )}
                 />
+
+                {/* default initial target */}
+                <Route path={"/profile"}></Route>
 
                 <Route 
                     path={["/fovs/:cellLineId", "/fovs"]}

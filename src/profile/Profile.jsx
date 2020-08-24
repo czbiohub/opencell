@@ -20,10 +20,6 @@ import * as utils from '../common/utils.js';
 import '../common/common.css';
 import './Profile.css';
 
-const initialTarget = 'POLR2F';
-
-
-
 
 export default class Profile extends Component {
 
@@ -36,69 +32,41 @@ export default class Profile extends Component {
         this.allCellLines = [];
 
         this.state = {
-            cellLineId: null,
+            // cellLineId: null,
             targetName: null,
             linesLoaded: false,
         };
-
-        this.onSearchChange = this.onSearchChange.bind(this);
-        this.changeCellLineId = this.changeCellLineId.bind(this);
     }
 
 
-    changeCellLineId (cellLineId, push = true) {
+    componentDidUpdate(prevProps) {
         
+        if (prevProps.cellLineId===this.props.cellLineId) return;
         if (!this.state.linesLoaded) return;
-        if (!cellLineId || this.state.cellLineId===cellLineId) return;
 
-        cellLineId = parseInt(cellLineId);
+        //if (!cellLineId || this.state.cellLineId===cellLineId) return;
+
         const cellLine = this.allCellLines.filter(
-            line => line.metadata?.cell_line_id === cellLineId
+            line => line.metadata?.cell_line_id === parseInt(this.props.cellLineId)
         )[0];
 
         if (!cellLine) {
-            console.log(`No cell line found for cellLineId ${cellLineId}`);
+            console.log(`No cell line found for cellLineId ${this.props.cellLineId}`);
             return;
         };
-
-        const newUrl = `${this.props.match.path.split("/:")[0]}/${cellLineId}${this.props.location.search}`;
-        if (push) {
-            // console.log(`Created new URL: ${newUrl}`);
-            this.props.history.push(newUrl);
-        }
     
         this.cellLine = cellLine;
         this.setState({
-            cellLineId,
+            // cellLineId,
             targetName: this.cellLine.metadata.target_name,
         });
     }
 
-    onSearchChange (value) {
-        // fired when the user hits enter in the header's target search text input
-        // (`value` is the string in the textbox)
-        d3.json(`${settings.apiUrl}/lines?target=${value}`).then(lines => {
-            for (const line of lines) {
-                if (line) {
-                    const newCellLineId = line.metadata.cell_line_id;
-                    this.changeCellLineId(newCellLineId);
-                    break;
-                }
-            }
-        });
-    }
 
     componentDidMount () {
         d3.json(`${settings.apiUrl}/lines`).then(lines => {
             this.allCellLines = lines;     
             this.setState({linesLoaded: true});
-
-            // initial target to display
-            this.props.match.params.cellLineId ? (
-                this.changeCellLineId(this.props.match.params.cellLineId, false)
-            ) : (
-                this.onSearchChange(this.urlParams.get('target') || initialTarget)
-            );
         });
     }
 
@@ -106,7 +74,7 @@ export default class Profile extends Component {
         // this is hackish: we end up here only if the user clicked the back or forward buttons,
         // which means we do not want to push the new cellLineId to the history,
         // so we pass false to this.changeCellLineId
-        this.changeCellLineId(nextProps.match.params.cellLineId, false);
+        this.props.onCellLineSelect(nextProps.match.params.cellLineId, false);
     }
 
 
@@ -122,18 +90,18 @@ export default class Profile extends Component {
                     {this.props.showFovAnnotator ? (
                         <FovAnnotator 
                             cellLines={this.allCellLines}
-                            cellLineId={this.state.cellLineId}
+                            cellLineId={this.props.cellLineId}
                             onSearchChange={this.onSearchChange}
-                            onCellLineSelect={this.changeCellLineId}
+                            onCellLineSelect={this.props.onCellLineSelect}
                         />
                     ) : (
                         <Overview
                             cellLine={this.cellLine}
                             cellLines={this.allCellLines}
-                            cellLineId={this.state.cellLineId}
+                            cellLineId={this.props.cellLineId}
                             targetName={this.state.targetName}
                             onSearchChange={this.onSearchChange}
-                            onCellLineSelect={this.changeCellLineId}
+                            onCellLineSelect={this.props.onCellLineSelect}
                             showTargetAnnotator={this.props.showTargetAnnotator}
                         />
                     )}

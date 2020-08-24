@@ -57,6 +57,11 @@
 }
 
 
+/* 
+Default style for input placeholder text
+note that pseudo-elements can't be listed, so these blocks are duplicates
+*/
+
 /* firefox 19+ */
 ::-moz-placeholder { 
     color: rgb(154, 154, 154);

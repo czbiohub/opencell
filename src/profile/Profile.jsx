@@ -1,6 +1,18 @@
 
 import * as d3 from 'd3';
-import React, { Component } from 'react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
+import ReactDOM from 'react-dom';
+
+import {
+    BrowserRouter,
+    Switch,
+    Route,
+    Redirect,
+    useHistory, 
+    useLocation, 
+    useParams, 
+    useRouteMatch
+ } from "react-router-dom";
 
 import { Button, Radio, RadioGroup, MenuItem } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
@@ -21,97 +33,72 @@ import '../common/common.css';
 import './Profile.css';
 
 
-export default class Profile extends Component {
+export default function Profile (props) {
 
-    constructor (props) {
-        super(props);
+    const [allCellLines, setAllCellLines] = useState([]);
 
-        this.urlParams = new URLSearchParams(window.location.search);
-
-        this.cellLine = {};
-        this.allCellLines = [];
-
-        this.state = {
-            // cellLineId: null,
-            targetName: null,
-            linesLoaded: false,
-        };
-    }
-
-
-    componentDidUpdate(prevProps) {
-        
-        if (prevProps.cellLineId===this.props.cellLineId) return;
-        if (!this.state.linesLoaded) return;
-
-        //if (!cellLineId || this.state.cellLineId===cellLineId) return;
-
-        const cellLine = this.allCellLines.filter(
-            line => line.metadata?.cell_line_id === parseInt(this.props.cellLineId)
-        )[0];
-
-        if (!cellLine) {
-            console.log(`No cell line found for cellLineId ${this.props.cellLineId}`);
-            return;
-        };
-    
-        this.cellLine = cellLine;
-        this.setState({
-            // cellLineId,
-            targetName: this.cellLine.metadata.target_name,
-        });
-    }
-
-
-    componentDidMount () {
+    // load the metadata for all cell lines
+    useEffect(() => {
         d3.json(`${settings.apiUrl}/lines`).then(lines => {
-            this.allCellLines = lines;     
-            this.setState({linesLoaded: true});
+            setAllCellLines(lines);  
         });
-    }
+    }, [])
 
-    componentWillReceiveProps (nextProps) {
-        // this is hackish: we end up here only if the user clicked the back or forward buttons,
-        // which means we do not want to push the new cellLineId to the history,
-        // so we pass false to this.changeCellLineId
-        this.props.onCellLineSelect(nextProps.match.params.cellLineId, false);
-    }
+    // this is hackish: we end up here only if the user clicked the back or forward buttons,
+    // which means we do not want to push the new cellLineId to the history
+    useEffect(() => {
+        const cellLineIdFromUrl = parseInt(props.match.params.cellLineId);
+        console.log(`Profile changing id from ${props.cellLineId} to ${cellLineIdFromUrl}`)
+        props.setCellLineId(cellLineIdFromUrl, false);
+    }, [props.match]);
 
 
-    render () {
-        return (
-            <div>
-                {/* main container */}
-                <div className="pl4 pr4" style={{width: '2000px'}}>
+    useEffect(() => {
+        console.log(`Profile cellLineId is ${props.cellLineId} and cellLines.length is ${allCellLines.length}`)
+    });
 
-                    {/* page header and metadata */}
-                    <Header cellLine={this.cellLine} onSearchChange={this.onSearchChange}/>
+    const cellLine = allCellLines.filter(
+        line => line.metadata?.cell_line_id === props.cellLineId
+    )[0];
 
-                    {this.props.showFovAnnotator ? (
-                        <FovAnnotator 
-                            cellLines={this.allCellLines}
-                            cellLineId={this.props.cellLineId}
-                            onSearchChange={this.onSearchChange}
-                            onCellLineSelect={this.props.onCellLineSelect}
-                        />
-                    ) : (
-                        <Overview
-                            cellLine={this.cellLine}
-                            cellLines={this.allCellLines}
-                            cellLineId={this.props.cellLineId}
-                            targetName={this.state.targetName}
-                            onSearchChange={this.onSearchChange}
-                            onCellLineSelect={this.props.onCellLineSelect}
-                            showTargetAnnotator={this.props.showTargetAnnotator}
-                        />
-                    )}
-                </div>
+    if (allCellLines.length && !cellLine) {
+        console.log(`No cell line found for cellLineId ${props.cellLineId}`);
+    };
 
-                {this.state.linesLoaded ? (null) : (<div className='loading-overlay'/>)}
+    if (!cellLine) return null;
+        
+    return (
+        <div>
+            {/* main container */}
+            <div className="pl4 pr4" style={{width: '2000px'}}>
+
+                {/* page header and metadata */}
+                <Header cellLine={cellLine} onSearchChange={() => {}}/>
+
+                {props.showFovAnnotator ? (
+                    <FovAnnotator 
+                        cellLines={allCellLines}
+                        cellLineId={props.cellLineId}
+                        onSearchChange={() => {}}
+                        onCellLineSelect={props.setCellLineId}
+                    />
+                ) : (
+                    <Overview
+                        cellLine={cellLine}
+                        cellLines={allCellLines}
+                        cellLineId={props.cellLineId}
+                        targetName={cellLine.metadata.target_name}
+                        onSearchChange={() => {}}
+                        onCellLineSelect={props.setCellLineId}
+                        showTargetAnnotator={props.showTargetAnnotator}
+                    />
+                )}
             </div>
 
-        );
-    }
+            {allCellLines.length ? (null) : (<div className='loading-overlay'/>)}
+        </div>
+
+    );
 }
 
 

@@ -6,10 +6,12 @@ import {
     BrowserRouter,
     Switch,
     Route,
-    Redirect
-  } from "react-router-dom";
-
-import { useHistory, useLocation, useParams, useRouteMatch } from "react-router-dom";
+    Redirect,
+    useHistory, 
+    useLocation, 
+    useParams, 
+    useRouteMatch
+ } from "react-router-dom";
 
 import 'tachyons';
 import './common/common.css';
@@ -23,12 +25,10 @@ import settings from './common/settings.js';
 
 
 
-
 function useCellLineId () {
 
     let history = useHistory();
     let match = useRouteMatch('/:mode');
-
     const [cellLineId, setCellLineId] = useState();
 
     const onSetCellLineId = (newCellLineId, push = true) => {
@@ -36,15 +36,17 @@ function useCellLineId () {
         newCellLineId = parseInt(newCellLineId);
         if (isNaN(newCellLineId) || newCellLineId===cellLineId) return;
 
-        console.log(`cellLineId changing from ${cellLineId} to ${newCellLineId}`);
-        setCellLineId(newCellLineId);
-
+        // note: history.push must be called before setCellLineId to avoid a race-like condition
+        // in which history.push triggers the Profile component's back-button callback
+        // to call setCellLineId again before the call to setCellLineId here has 'finished'
         if (push) {
             console.log(`Pushing to history: /${match.params.mode}/${newCellLineId}`);
             history.push(`/${match.params.mode}/${newCellLineId}`);
         }
-    }
 
+        console.log(`setCellLineId changing id from ${cellLineId} to ${newCellLineId}`);
+        setCellLineId(newCellLineId);
+    }
     return [cellLineId, onSetCellLineId];
 }
 
@@ -68,27 +70,19 @@ function App() {
     }, [targetNameQuery]);
 
 
-
     let history = useHistory();
     let location = useLocation();
     let match = useRouteMatch('/:mode/:cellLineId');
-
-    // load the inital target
-    useLayoutEffect(() => {
-        if (match.isExact) {
-            setCellLineId(match.params.cellLineId, false);
-        }
-    }, []);
 
 
     // handle the back button
     useEffect(() => {
         return () => {
-            if (history.action === "POP" && match.isExact) {
-                // setCellLineId(match.params.cellLineId, false); 
+            if (history.action === "POP" && match?.isExact) {
+                console.log(`back button handler with ${match.params.cellLineId}`);
             }
         }
-    });
+    }, []);
 
 
     return (
@@ -105,9 +99,7 @@ function App() {
                     path={"/profile/:cellLineId"}
                     render={props => (
                         <Profile 
-                            {...props} 
-                            cellLineId={cellLineId} 
-                            onCellLineSelect={(id, push = true) => setCellLineId(id, push)}
+                            {...props} cellLineId={cellLineId} setCellLineId={setCellLineId}
                         />
                     )}
                 />

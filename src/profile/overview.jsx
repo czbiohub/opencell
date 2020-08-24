@@ -1,7 +1,6 @@
 import * as d3 from 'd3';
 import React, { Component } from 'react';
 
-import CellLineTable from './cellLineTable.jsx';
 import ExpressionPlot from '../common/expressionPlot.jsx';
 import FacsPlotContainer from './facsPlotContainer.jsx';
 import ViewerContainer from './viewerContainer.jsx';
@@ -95,18 +94,6 @@ export default class Overview extends Component {
                         )}
                     </div>
                 </div>
-
-
-                {/* table of all targets */}
-                <div className="w-100 pt0 pl4 pb5">
-                    <SectionHeader title='All cell lines'/>
-                    <CellLineTable 
-                        cellLineId={this.props.cellLineId}
-                        cellLines={this.props.cellLines}
-                        onCellLineSelect={this.props.onCellLineSelect}
-                    />
-                </div>
-
             </div>
         );
     }

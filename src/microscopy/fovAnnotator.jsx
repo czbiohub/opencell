@@ -430,20 +430,9 @@ export default class FovAnnotator extends Component {
 
                 {/* thumbnail grid */}
                 <div className="w-100 pt3 thumbnail-grid">{thumbnails}</div>
-
-                {/* table of all targets */}
-                <div className="w-100">
-                    <CellLineTable 
-                        cellLineId={this.props.cellLineId}
-                        cellLines={this.props.cellLines}
-                        onCellLineSelect={this.props.onCellLineSelect}
-                    />
-                </div>
-
             </div>
         );
     }
-
 }
 
 

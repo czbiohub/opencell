@@ -17,10 +17,11 @@ import {
 import { Button, Radio, RadioGroup, MenuItem } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
 
-import Navbar from '../common/navbar.jsx';
 import Header from './header.jsx';
 import Overview from './overview.jsx';
 import FovAnnotator from '../microscopy/fovAnnotator.jsx';
+import CellLineTable from './cellLineTable.jsx';
+import { SectionHeader } from './common.jsx';
 
 import 'tachyons';
 import 'react-table/react-table.css';
@@ -53,9 +54,11 @@ export default function Profile (props) {
     }, [props.match]);
 
 
+    // debugging
     useEffect(() => {
         console.log(`Profile cellLineId is ${props.cellLineId} and cellLines.length is ${allCellLines.length}`)
     });
+
 
     const cellLine = allCellLines.filter(
         line => line.metadata?.cell_line_id === props.cellLineId
@@ -77,7 +80,6 @@ export default function Profile (props) {
 
                 {props.showFovAnnotator ? (
                     <FovAnnotator 
-                        cellLines={allCellLines}
                         cellLineId={props.cellLineId}
                         onSearchChange={() => {}}
                         onCellLineSelect={props.setCellLineId}
@@ -85,7 +87,6 @@ export default function Profile (props) {
                 ) : (
                     <Overview
                         cellLine={cellLine}
-                        cellLines={allCellLines}
                         cellLineId={props.cellLineId}
                         targetName={cellLine.metadata.target_name}
                         onSearchChange={() => {}}
@@ -93,6 +94,16 @@ export default function Profile (props) {
                         showTargetAnnotator={props.showTargetAnnotator}
                     />
                 )}
+
+                {/* table of all targets */}
+                <div className="w-100 pt2 pb2">
+                    <SectionHeader title='All cell lines'/>
+                    <CellLineTable 
+                        cellLines={allCellLines}
+                        cellLineId={props.cellLineId}
+                        onCellLineSelect={props.setCellLineId}
+                    />
+                </div>
             </div>
 
             {allCellLines.length ? (null) : (<div className='loading-overlay'/>)}

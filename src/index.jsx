@@ -108,14 +108,23 @@ function App() {
                 <Route path={"/profile"}></Route>
 
                 <Route 
-                    path={["/fovs/:cellLineId", "/fovs"]}
-                    render={props => (<Profile {...props} showFovAnnotator/>)}
+                    path={"/fovs/:cellLineId"}
+                    render={props => (
+                        <Profile 
+                            {...props} cellLineId={cellLineId} setCellLineId={setCellLineId} showFovAnnotator
+                        />
+                    )}
                 />
 
                 <Route 
-                    path={["/annotations/:cellLineId", "/annotations"]}
-                    render={props => (<Profile {...props} showTargetAnnotator/>)}
+                    path={"/annotations/:cellLineId"}
+                    render={props => (
+                        <Profile 
+                            {...props} cellLineId={cellLineId} setCellLineId={setCellLineId} showTargetAnnotator
+                        />
+                    )}
                 />
+
 
                 <Route path="/gallery" component={Gallery}/>
 

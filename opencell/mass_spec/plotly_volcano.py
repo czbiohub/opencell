@@ -309,7 +309,7 @@ def all_hits_two_fdrs(pval_df, fdr1, fdr2):
     return pval_df
 
 
-def comparison_volcano_temp(v_df, v2_df, bait, plate, fcd1, fcd2):
+def comparison_volcano_temp(v_df, v2_df, bait, plate):
     """plot volcano plots from two analyses for qualitative comparisons"""
 
     # initiate dfs
@@ -344,9 +344,8 @@ def comparison_volcano_temp(v_df, v2_df, bait, plate, fcd1, fcd2):
             ymax = 30
 
         # FCD plot calculation
-        if i == 2:
-            fcd1 = bait_vals.iloc[0]['fdr1']
-            fcd2 = bait_vals.iloc[0]['fdr5']
+        fcd1 = bait_vals.iloc[0]['fdr1']
+        fcd2 = bait_vals.iloc[0]['fdr5']
 
 
         x1 = np.array(list(np.linspace(-12, -1 * fcd1[1] - 0.001, 200))

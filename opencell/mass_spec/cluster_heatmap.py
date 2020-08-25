@@ -337,9 +337,48 @@ def generate_clusterone_matrix(stoichs, cluster_one, clusters, metric):
     selected_stoichs = stoichs[
         stoichs['target'].isin(genes) & stoichs['prey'].isin(genes)
     ]
+
+    selected_stoichs.sort_values(
+        by=metric, ascending=False, inplace=True)
+    selected_stoichs.drop_duplicates(['target', 'prey'], inplace=True)
+
     matrix = convert_to_sparse_matrix(selected_stoichs, metric=metric)
 
     return matrix
+
+
+def return_cluster_members(designation, cluster_list):
+    """
+    aux function for generate_mpl_matrix
+    """
+    intersection = set(designation).intersection(set(cluster_list))
+    if len(intersection) > 0:
+        return True
+    else:
+        return False
+
+
+def generate_mpl_matrix(stoichs, cluster_one, clusters, metric):
+    """ generate cluster dendrogram from listed clusters """
+
+    stoichs = stoichs.copy()
+    cluster_one = cluster_one.copy()
+
+    # retrieve specified clusters
+    cluster_one = cluster_one[cluster_one['mcl_cluster'].apply(
+        return_cluster_members, args=[clusters])]
+
+    genes = cluster_one['gene_names'].to_list()
+
+    selected_stoichs = stoichs[
+        stoichs['target'].isin(genes) & stoichs['prey'].isin(genes)
+    ]
+    selected_stoichs.sort_values(
+        by=metric, ascending=False, inplace=True)
+    selected_stoichs.drop_duplicates(['target', 'prey'], inplace=True)
+    matrix = convert_to_sparse_matrix(selected_stoichs, metric=metric)
+
+    return genes, selected_stoichs, matrix
 
 
 def convert_to_sparse_matrix(double_df, metric='distance'):
@@ -365,6 +404,7 @@ def convert_to_sparse_matrix(double_df, metric='distance'):
         sample.set_index('prey', drop=True, inplace=True)
         sample.rename(columns={metric: target}, inplace=True)
         matrix.update(sample, join='left')
+
 
     return matrix
 

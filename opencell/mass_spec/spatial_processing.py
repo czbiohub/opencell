@@ -33,8 +33,6 @@ def spatial_raw_file(file_name, identity=True, filter_rows=True, find_gene_names
         print('Reading ' + file_name + '...')
     ms_df = pd.read_csv(file_name, sep='\t', header=0, low_memory=False)
 
-    # retrieve column names from the df
-    col_names = list(ms_df)
 
     # filter rows that do not meet the QC
     if filter_rows:
@@ -60,6 +58,13 @@ def spatial_raw_file(file_name, identity=True, filter_rows=True, find_gene_names
     selected_cols = ['Protein IDs', 'Majority protein IDs', 'Protein names',
         'Gene names', 'Fasta headers']
 
+
+    # filter unwanted columns from the df
+    ms_df.drop(columns=['Intensity'], inplace=True)
+
+    # retrieve column names from the df
+    col_names = list(ms_df)
+
     # select intensity_cols
     intensity_cols = pys.select_intensity_cols(col_names, 'intensity')
     if identity:
@@ -68,8 +73,7 @@ def spatial_raw_file(file_name, identity=True, filter_rows=True, find_gene_names
     else:
         selected_cols = selected_cols + intensity_cols
 
-    # filter unwanted columns from the df
-    ms_df.drop(columns=['Intensity'], inplace=True)
+
     ms_df = ms_df[selected_cols]
 
 
@@ -222,7 +226,7 @@ def fraction_proportion(noc_grouped):
     return noc_grouped
 
 
-def integrate_proportions(noc_prop):
+def integrate_proportions(noc_prop, noc=True):
     noc_prop = noc_prop.copy()
     # Get all the Reps
     reps = noc_prop.columns.get_level_values('replicates').to_list()
@@ -237,7 +241,7 @@ def integrate_proportions(noc_prop):
 
 
     base_idxs = base.index.to_list()
-    multi_args = zip(repeat(base), base_idxs)
+    multi_args = zip(repeat(base), base_idxs, repeat(noc))
 
     p = Pool()
     results = p.starmap(pool_proportion_median, multi_args)
@@ -249,17 +253,27 @@ def integrate_proportions(noc_prop):
     median_nocs, qualities = unwrap_results[0], unwrap_results[1]
 
     final_noc = noc_prop['Info']
-    final_noc['NOC_quality'] = qualities
+    final_noc['Rep_consistency'] = qualities
     med_nocs = list(zip(*median_nocs))
-    cyto, nuc, org = med_nocs[0], med_nocs[1], med_nocs[2]
-    final_noc['nuclear'] = nuc
-    final_noc['organellar'] = org
-    final_noc['cyto'] = cyto
+    if noc:
+        cyto, nuc, org = med_nocs[0], med_nocs[1], med_nocs[2]
+        final_noc['nuclear'] = nuc
+        final_noc['organellar'] = org
+        final_noc['cyto'] = cyto
+    else:
+        final_noc['01K'] = med_nocs[0]
+        final_noc['03K'] = med_nocs[1]
+        final_noc['05K'] = med_nocs[2]
+        final_noc['12K'] = med_nocs[3]
+        final_noc['24K'] = med_nocs[4]
+        final_noc['80K'] = med_nocs[5]
+        final_noc['Cyt'] = med_nocs[6]
+
 
     return final_noc
 
 
-def pool_proportion_median(base, idx):
+def pool_proportion_median(base, idx, noc=True):
     """
     sub-function of integrate_proportions used for multiprocessing
     """
@@ -277,7 +291,10 @@ def pool_proportion_median(base, idx):
     quality = 6 - len(drop_idxs)
 
     if quality == 0:
-        return [[0, 0, 0], 0]
+        if noc:
+            return [[0, 0, 0], 0]
+        else:
+            return [[0, 0, 0, 0, 0, 0, 0], 0]
 
     # drop poorly correlating replicates
     elif quality < 6:

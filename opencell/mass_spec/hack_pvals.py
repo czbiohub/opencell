@@ -340,8 +340,13 @@ def get_pvals_bagging(x, control_df):
 
 def calc_thresh(enrich, fc_var1, fc_var2):
     """simple function to get FCD thresh to recognize hits"""
+
     if enrich < fc_var2:
         return np.inf
+
+    elif (enrich == 0) & (fc_var2 == 0):
+        return np.inf
+
     else:
         return fc_var1 / (abs(enrich) - fc_var2)
 

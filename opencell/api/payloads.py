@@ -130,8 +130,12 @@ def fov_payload(fov, include_rois=False, include_thumbnails=False):
         'annotation': fov.annotation.as_dict() if fov.annotation else None
     }
 
-    if include_rois:
-        payload['rois'] = [roi.as_dict() for roi in fov.rois]
+    # assume there's only one annotated ROI per FOV, and always include the ROI thumbnail
+    if include_rois and fov.rois:
+        roi = fov.rois[0]
+        roi_payload = roi.as_dict()
+        roi_payload['thumbnail'] = roi.get_thumbnail('rgb').as_dict()
+        payload['rois'] = [roi_payload]
 
     if include_thumbnails:
         thumbnail = fov.get_thumbnail('rgb')

@@ -1,27 +1,60 @@
 
-.header-container > div {
-    flex: 0 0 auto;
-}
 
-.header-container {
-    font-family: "Helvetica Neue";
-}
-
-.header-opencell-title {
+.navbar-opencell-title {
     font-family: "Helvetica Neue";
     font-size: 40px;
     font-weight: 100;
     letter-spacing: 2px;
 }
 
-.header-target-name {
-    font-size: 66px;
+.navbar-search-textbox {
+    font-size: 24px;
+    font-weight: bold;
+    padding: 5px;
+    width: 150px;
+    text-transform: uppercase;
+}
+
+
+
+.clm-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    font-family: "Helvetica Neue";
+}
+
+.clm-target-name {
+    font-size: 60px;
     font-weight: 400;
 }
 
-.header-metadata-item {
+.clm-protein-description {
+    font-size: 22px;
+    font-weight: 200;
+}
+
+.clm-item {
+    flex: 0 49%;
+    height: 50px;
+}
+
+
+.metadata-item {
     margin-right: 25px;
     max-width: 200px;
+}
+
+.metadata-item abbr {
+    text-decoration: none;
+    line-height: 1em;
+    margin-left: 2px;
+    font-size: 14px;
+}
+
+.metadata-item-label {
+    color: #aaa;
+    font-family: "Avenir";
 }
 
 .overflow-hidden {
@@ -30,31 +63,6 @@
     text-overflow: ellipsis;
 }
 
-.header-metadata-item abbr {
-    text-decoration: none;
-    line-height: 1em;
-    margin-left: 2px;
-    font-size: 14px;
-}
-
-.header-metadata-item-label {
-    color: #aaa;
-    font-family: "Avenir";
-}
-
-.header-search-label {
-    color: #aaa;
-    padding-top: 5px;
-    font-family: "Avenir";
-}
-
-.header-search-textbox {
-    font-size: 24px;
-    font-weight: bold;
-    padding: 5px;
-    width: 150px;
-    text-transform: uppercase;
-}
 
 
 /* 
@@ -191,7 +199,7 @@ note that pseudo-elements can't be listed, so these blocks are duplicates
     stroke-width: 1px;
 }
 
-.protein-function-container {
+.about-this-protein-container {
     height: 150px;
     overflow: auto;
     line-height: 1.33;
@@ -201,7 +209,7 @@ note that pseudo-elements can't be listed, so these blocks are duplicates
 in order for the plots to be vertically aligned */
 .expression-plot-container, 
 .facs-plot-container {
-    margin-left: -20px;
+    margin-left: -10px;
     margin-right: 10px;
     margin-top: 10px;
 }

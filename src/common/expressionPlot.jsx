@@ -67,7 +67,7 @@ class ExpressionPlot extends Component {
         this.frameProps = {  
 
             // note that the width here is ignored by ResponsiveXYFrame
-            size: [400, 300],
+            size: [400, 250],
             
             margin,
             xExtent,

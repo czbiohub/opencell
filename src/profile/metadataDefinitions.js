@@ -22,7 +22,7 @@ const cellLineMetadataDefinitions = [
     },{
         id: 'target_terminus',
         accessor: row => row.metadata?.target_terminus,
-        Header: 'Term',
+        Header: 'Terminus',
         units: null,
     },{
         id: 'uniprot_id',

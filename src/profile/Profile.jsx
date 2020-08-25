@@ -17,9 +17,8 @@ import {
 import { Button, Radio, RadioGroup, MenuItem } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
 
-import Header from './header.jsx';
 import Overview from './overview.jsx';
-import FovAnnotator from '../microscopy/fovAnnotator.jsx';
+import FovAnnotator from './fovAnnotator.jsx';
 import CellLineTable from './cellLineTable.jsx';
 import { SectionHeader } from './common.jsx';
 
@@ -73,22 +72,14 @@ export default function Profile (props) {
     return (
         <div>
             {/* main container */}
-            <div className="pl4 pr4" style={{width: '2000px'}}>
-
-                {/* page header and metadata */}
-                <Header cellLine={cellLine} onSearchChange={() => {}}/>
+            <div className="pl3 pr3" style={{width: '2000px'}}>
 
                 {props.showFovAnnotator ? (
-                    <FovAnnotator 
-                        cellLineId={props.cellLineId}
-                        onSearchChange={() => {}}
-                        onCellLineSelect={props.setCellLineId}
-                    />
+                    <FovAnnotator cellLineId={props.cellLineId} cellLine={cellLine}/>
                 ) : (
                     <Overview
                         cellLine={cellLine}
                         cellLineId={props.cellLineId}
-                        targetName={cellLine.metadata.target_name}
                         onSearchChange={() => {}}
                         onCellLineSelect={props.setCellLineId}
                         showTargetAnnotator={props.showTargetAnnotator}
@@ -96,7 +87,7 @@ export default function Profile (props) {
                 )}
 
                 {/* table of all targets */}
-                <div className="w-100 pt2 pb2">
+                <div className="w-100 pl2 pt2 pb2">
                     <SectionHeader title='All cell lines'/>
                     <CellLineTable 
                         cellLines={allCellLines}

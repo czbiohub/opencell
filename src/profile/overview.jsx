@@ -9,6 +9,7 @@ import TargetAnnotator from './targetAnnotator.jsx';
 import { SectionHeader } from './common.jsx';
 import settings from '../common/settings.js';
 import { loadAnnotatedFovs } from '../common/utils.js';
+import CellLineMetadata from './cellLineMetadata.jsx';
 
 
 export default class Overview extends Component {
@@ -36,12 +37,14 @@ export default class Overview extends Component {
                 <div className="flex" style={{minWidth: '1600px'}}>
 
                     {/* Left column - about box and expression and facs plots*/}
-                    <div className="pl2 pr4 pt0" style={{width: '400px'}}>
+                    <div className="pl2 pr4 pt0" style={{width: '350px'}}>
+
+                        <CellLineMetadata cellLine={this.props.cellLine}/>
 
                         {/* 'About' textbox */}
                         <div className='pb4'>
                             <SectionHeader title='About this protein'/>
-                            <div className='pt2 protein-function-container'>
+                            <div className='pt2 about-this-protein-container'>
                                 <p>{this.props.cellLine.uniprot_metadata?.annotation}</p>
                             </div>
                         </div>
@@ -49,7 +52,7 @@ export default class Overview extends Component {
                         {/* expression scatterplot*/}
                         <SectionHeader title='Expression level'/>
                         <div className="fl w-100 pb3 expression-plot-container">
-                            <ExpressionPlot targetName={this.props.targetName}/>
+                            <ExpressionPlot targetName={this.props.cellLine.metadata.target_name}/>
                         </div>
 
                         {/* FACS plot */}
@@ -59,7 +62,7 @@ export default class Overview extends Component {
 
                     {/* Center column - sliceViewer and volumeViewer */}
                     {/* note the hard-coded width (because the ROIs are always 600px */}
-                    <div className="pl0 pr3" style={{width: '700px'}}>
+                    <div className="pt3 pl0 pr3" style={{width: '700px'}}>
                         <SectionHeader title='Fluorescence microscopy'/>
                         <ViewerContainer
                             cellLineId={this.props.cellLineId}
@@ -74,7 +77,7 @@ export default class Overview extends Component {
                     </div>
                 
                     {/* Right column - annotations or volcano plot */}
-                    <div className="pl3 pb3" style={{width: '600px'}}>
+                    <div className="pa3" style={{width: '600px'}}>
                         {this.props.showTargetAnnotator ? (
                             <div>
                                 <SectionHeader title='Annotations'/>    

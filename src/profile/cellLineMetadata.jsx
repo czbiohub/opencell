@@ -13,7 +13,7 @@ export default function CellLineMetadata (props) {
             width: 49,
         },{
             id: 'uniprot_id',
-            width: 49,
+            width: 30,
         },{
             id: 'target_terminus',
             width: 24,
@@ -38,7 +38,11 @@ export default function CellLineMetadata (props) {
     const items = layout.map(item => {
         const def = cellLineMetadataDefinitions.filter(def => def.id===item.id)[0];
         return (
-            <div key={def.id} className='pr2 pt2 pb2 clm-item overflow-hidden' style={{flex: `0 ${item.width}%`}}>
+            <div 
+                key={def.id} 
+                className='pr2 pt2 pb2 clm-item overflow-hidden' 
+                style={{flex: `1 1 ${item.width}%`}}
+            >
                 <MetadataItem
                     scale={4}
                     value={def.accessor(props.cellLine)}

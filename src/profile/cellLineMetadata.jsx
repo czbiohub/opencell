@@ -7,31 +7,45 @@ import { MetadataItem } from './common.jsx';
 export default function CellLineMetadata (props) {
 
     // metadata items to display in the header
-    let definitionIds = [
-        'uniprot_id',
-        'target_family', 
-        'target_terminus', 
-        'plate_id', 
-        'well_id', 
-        'hdr_all', 
-        'hdr_modified', 
-        'facs_grade',
+    const layout = [
+        {
+            id: 'target_family',
+            width: 49,
+        },{
+            id: 'uniprot_id',
+            width: 49,
+        },{
+            id: 'target_terminus',
+            width: 24,
+        },{
+            id: 'hdr_all',
+            width: 24,
+        },{
+            id: 'hdr_modified',
+            width: 24,
+        },{
+            id: 'facs_grade',
+            width: 24,
+        },{
+            id: 'plate_id',
+            width: 24,
+        },{
+            id: 'well_id',
+            width: 24,
+        }
     ];
 
-    const definitions = cellLineMetadataDefinitions.filter(
-        def => definitionIds.includes(def.id)
-    );
-
-    const items = definitions.map(def => {
+    const items = layout.map(item => {
+        const def = cellLineMetadataDefinitions.filter(def => def.id===item.id)[0];
         return (
-            <MetadataItem
-                key={def.id}
-                scale={4}
-                className="pr2 clm-item"
-                value={def.accessor(props.cellLine)}
-                label={def.Header}
-                units={def.units}
-            />
+            <div key={def.id} className='pr2 pt2 pb2 clm-item overflow-hidden' style={{flex: `0 ${item.width}%`}}>
+                <MetadataItem
+                    scale={4}
+                    value={def.accessor(props.cellLine)}
+                    label={def.Header}
+                    units={def.units}
+                />
+            </div>
         );
     });
 

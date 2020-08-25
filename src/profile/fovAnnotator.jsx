@@ -353,7 +353,7 @@ export default class FovAnnotator extends Component {
                     </div>
 
                     {/* FOV z-projection */}
-                    <div className="" style={{flex: '0 0 auto'}}>
+                    <div className="pt3" style={{flex: '0 0 auto'}}>
                         <div style={{position: 'relative', float: 'left'}}>
                             <img 
                                 width='600px' 
@@ -385,12 +385,15 @@ export default class FovAnnotator extends Component {
                             }
 
                             {this.state.loaded ? (null) : (<div className='loading-overlay'/>)}
-
+                            
+                            {/* thumbnail grid */}
+                            <div className="w-100 pt3 thumbnail-grid">{thumbnails}</div>
+            
                         </div>
                     </div>
 
                     {/* FOV annotation submission and clear buttons */}
-                    <div className="w-20 pl4 flex" style={{flexDirection: 'column'}}>
+                    <div className="pt3 pl4 w-20 flex" style={{flexDirection: 'column'}}>
                         <Button
                             text={'Remove new ROI'}
                             className={'ma2 bp3-button'}
@@ -421,8 +424,7 @@ export default class FovAnnotator extends Component {
                         />                       
                         <Button
                             text={'Delete entire annotation'}
-                            className={'ma2 bp3-button'}
-                            style={{marginTop: 'auto'}}
+                            className={'ma2 mt5 bp3-button'}
                             onClick={event => this.onClear()}
                             intent={this.state.deletionStatus || 'none'}
                         /> 
@@ -430,8 +432,6 @@ export default class FovAnnotator extends Component {
 
                 </div>
 
-                {/* thumbnail grid */}
-                <div className="w-100 pt3 thumbnail-grid">{thumbnails}</div>
             </div>
         );
     }

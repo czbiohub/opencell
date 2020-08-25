@@ -1,6 +1,6 @@
 
 import React, { Component } from 'react';
-
+import {Link} from 'react-router-dom';
 
 export default function Navbar (props) {
     
@@ -26,13 +26,13 @@ export default function Navbar (props) {
             <div className='flex items-center' style={{}}>
 
                 <div className='pl3 pr3' style={{borderRight: '1px solid #aaa'}}>
-                    <a href="./">Home</a>
+                    <Link to='/'>Home</Link>
                 </div>
                 <div className='pl3 pr3' style={{borderRight: '1px solid #aaa'}}>
-                    <a href="./dashboard">Dashboard</a>
+                    <Link to="/dashboard">Dashboard</Link>
                 </div>
                 <div className='pl3 pr3'>
-                    <a href="./profile">Profile</a>
+                    <Link to="/gallery">Gallery</Link>
                 </div>
 
                 <div className='pl3'>

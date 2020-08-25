@@ -44,20 +44,12 @@ export default function Profile (props) {
         });
     }, [])
 
-    // this is hackish: we end up here only if the user clicked the back or forward buttons,
-    // which means we do not want to push the new cellLineId to the history
+    // update the cellLineId when the user clicks the back or forward buttons
+    // (this effect also runs after calls to history.push)
     useEffect(() => {
         const cellLineIdFromUrl = parseInt(props.match.params.cellLineId);
-        console.log(`Profile changing id from ${props.cellLineId} to ${cellLineIdFromUrl}`)
         props.setCellLineId(cellLineIdFromUrl, false);
     }, [props.match]);
-
-
-    // debugging
-    useEffect(() => {
-        console.log(`Profile cellLineId is ${props.cellLineId} and cellLines.length is ${allCellLines.length}`)
-    });
-
 
     const cellLine = allCellLines.filter(
         line => line.metadata?.cell_line_id === props.cellLineId
@@ -68,7 +60,7 @@ export default function Profile (props) {
     };
 
     if (!cellLine) return null;
-        
+
     return (
         <div>
             {/* main container */}

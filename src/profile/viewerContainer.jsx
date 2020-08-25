@@ -70,8 +70,11 @@ export default class ViewerContainer extends Component {
     }
 
 
-    componentDidUpdate(prevProps, prevState, snapshot) {
+    componentDidMount() {
+        if (this.props.roiId) this.loadStacks();
+    }
 
+    componentDidUpdate(prevProps, prevState, snapshot) {
         if (prevProps.roiId!==this.props.roiId) this.loadStacks();
         if (prevState.imageQuality!==this.state.imageQuality) this.loadStacks();
 

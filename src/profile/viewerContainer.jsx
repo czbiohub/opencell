@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import { Button, MenuItem, Slider, RangeSlider } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
+import classNames from 'classnames';
 
 // import Slider from './slider.jsx';
 import ButtonGroup from './buttonGroup.jsx';
@@ -14,17 +15,35 @@ import { fovMetadataDefinitions } from './metadataDefinitions.js';
 import 'tachyons';
 import './Profile.css';
 
-function roiLabel (roi) {
-    return roi && `FOV ${roi.fov_id} (${roi.kind[0].toUpperCase()})`
+
+function Thumbnail (props) {
+    const divClassName = classNames(
+        'pa1 pr2 pl2', 'roi-thumbnail-container',
+        {'roi-thumbnail-container-active': props.active}
+    );
+
+    return (
+        <div className={divClassName} onClick={props.onClick}>
+            <img 
+                width={60}
+                height={60}
+                src={`data:image/jpg;base64,${props.thumbnail?.data}`}
+            />
+            <div className='roi-thumbnail-caption'>
+                <span>{props.text}</span>
+            </div>
+        </div>
+    );
 }
+
 
 function roiItemRenderer (roi, props) {
     if (!props.modifiers.matchesPredicate) return null;
     return (
-        <MenuItem
+        <Thumbnail
             key={roi.id}
             text={`FOV ${roi.fov_id}`}
-            label={`(${roi.kind[0].toUpperCase()})`}
+            thumbnail={roi.thumbnail}
             active={props.modifiers.active}
             onClick={props.handleClick}
         />
@@ -172,6 +191,36 @@ export default class ViewerContainer extends Component {
             {/* display controls */}
             <div className="pt3 pb2">
                 <div className='fl w-100 pb3'>
+
+                    <div className="roi-thumbnail-select-container dib pr3">
+                        <Select 
+                        className={'roi-select'}
+                            activeItem={roi}
+                            items={this.props.rois} 
+                            itemRenderer={roiItemRenderer} 
+                            itemListRenderer={props => {
+                                return (
+                                    <div className="roi-select-menu-container">
+                                        {props.items.map(props.renderItem)}
+                                    </div>
+                                );
+                            }}
+                            filterable={false}
+                            onItemSelect={roi => {
+                                this.props.changeRoi(roi.id, roi.fov_id)}
+                            }
+                        >
+                            <div className='simple-button-group'>
+                                <div className="simple-button-group-label">Select FOV</div>
+                                <Button 
+                                    className="bp3-button-custom"
+                                    rightIcon="double-caret-vertical"
+                                    text={`FOV ${roi.fov_id}`}
+                                />
+                            </div>
+                        </Select>
+                    </div>
+
                     <div className='dib pr3'>
                         <ButtonGroup 
                             label='Mode' 
@@ -197,26 +246,7 @@ export default class ViewerContainer extends Component {
                             onClick={value => this.setState({imageQuality: value})}
                         />
                     </div>
-                    <div className="dib pr3">
-                        <Select 
-                            activeItem={roi}
-                            items={this.props.rois} 
-                            itemRenderer={roiItemRenderer} 
-                            filterable={false}
-                            onItemSelect={roi => {
-                                this.props.changeRoi(roi.id, roi.fov_id)}
-                            }
-                        >
-                            <div className='simple-button-group'>
-                                <div className="simple-button-group-label">Select FOV</div>
-                                <Button 
-                                    className="bp3-button-custom"
-                                    rightIcon="double-caret-vertical"
-                                    text={roiLabel(roi)}
-                                />
-                            </div>
-                        </Select>
-                    </div>
+
                 </div>
             </div>
 

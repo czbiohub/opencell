@@ -66,6 +66,43 @@
 
 
 
+.roi-thumbnail-container {
+    cursor: pointer;
+    text-align: center;
+    border-radius: 3px;
+}
+
+.roi-thumbnail-container:hover {
+    background-color: #ddd;
+}
+
+.roi-thumbnail-container-active,
+.roi-thumbnail-container-active:hover {
+    background-color: rgb(164, 199, 230);
+}
+
+/* flip the thumbnails so their orientation matches the volume viewer */
+.roi-thumbnail-container img {
+    -webkit-transform: scaleY(-1);
+    transform: scaleY(-1);
+}
+
+.roi-thumbnail-caption {
+    text-align: center;
+    font-size: 12px;
+}
+
+/* this class corresponds to the select menu item container */
+.roi-select-menu-container {
+    min-width: auto;
+    display: flex;
+    padding: 5px;
+    margin: 0;
+    border-radius: 3px;
+    color: #182026;
+}
+
+
 /* 
 Default style for input placeholder text
 note that pseudo-elements can't be listed, so these blocks are duplicates

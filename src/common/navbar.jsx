@@ -42,7 +42,7 @@ export default function Navbar (props) {
                         defaultValue={''}
                         onKeyPress={(event) => {
                             if (event.charCode===13) {
-                                props.onSearchChange(event.currentTarget.value);
+                                props.onTargetSearch(event.currentTarget.value);
                             }
                         }}
                         placeholder="Search for a protein"

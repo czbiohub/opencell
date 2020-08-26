@@ -24,7 +24,6 @@ import FOVOverview from './microscopy/FOVOverview.jsx';
 import settings from './common/settings.js';
 
 
-
 function useCellLineId () {
     // manages the current cellLineId, which is both an app-level piece of state
     // and is included in the URL of the 'profile', 'fovs', and 'annotations' pages
@@ -108,31 +107,32 @@ function App() {
 
     return (
         <div>
-            <Navbar onSearchChange={onTargetSearch}/>
+            <Navbar onTargetSearch={onTargetSearch}/>
             <Switch>
                 <Route path="/" exact={true}>
                     <div>This is the homepage</div>
                 </Route>
 
-                <Route path="/dashboard" component={Dashboard}/>
-
                 <Route 
                     path={"/profile/:cellLineId"}
                     render={props => (
                         <Profile 
-                            {...props} cellLineId={cellLineId} setCellLineId={setCellLineId}
+                            {...props} 
+                            cellLineId={cellLineId} 
+                            setCellLineId={setCellLineId}
+                            onTargetSearch={onTargetSearch} 
                         />
                     )}
                 />
-
-                {/* default initial target */}
-                <Route path={"/profile"}></Route>
 
                 <Route 
                     path={"/fovs/:cellLineId"}
                     render={props => (
                         <Profile 
-                            {...props} cellLineId={cellLineId} setCellLineId={setCellLineId} showFovAnnotator
+                            {...props} 
+                            cellLineId={cellLineId} 
+                            setCellLineId={setCellLineId}
+                            showFovAnnotator
                         />
                     )}
                 />
@@ -141,13 +141,17 @@ function App() {
                     path={"/annotations/:cellLineId"}
                     render={props => (
                         <Profile 
-                            {...props} cellLineId={cellLineId} setCellLineId={setCellLineId} showTargetAnnotator
+                            {...props} 
+                            cellLineId={cellLineId} 
+                            setCellLineId={setCellLineId} 
+                            showTargetAnnotator
                         />
                     )}
                 />
 
-
+                <Route path="/profile"></Route>
                 <Route path="/gallery" component={Gallery}/>
+                <Route path="/dashboard" component={Dashboard}/>
 
                 {/* TODO: fix this - FOVOverview needs a plateId prop */}
                 <Route path="/microscopy" component={FOVOverview}/>,

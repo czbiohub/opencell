@@ -99,7 +99,7 @@ export default class Overview extends Component {
                                 <SectionHeader title='Protein interactions'/>
                                 <MassSpecPlotContainer
                                     cellLineId={this.props.cellLineId}
-                                    changeTarget={this.props.onSearchChange}
+                                    changeTarget={this.props.onTargetSearch}
                                 />
                             </div>
                         )}

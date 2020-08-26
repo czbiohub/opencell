@@ -72,7 +72,7 @@ export default function Profile (props) {
                     <Overview
                         cellLine={cellLine}
                         cellLineId={props.cellLineId}
-                        onSearchChange={() => {}}
+                        onTargetSearch={props.onTargetSearch}
                         onCellLineSelect={props.setCellLineId}
                         showTargetAnnotator={props.showTargetAnnotator}
                     />

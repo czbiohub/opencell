@@ -1,13 +1,32 @@
+import sys
 import pandas as pd
 import numpy as np
 import random
 import re
+
 import itertools
 import markov_clustering as mc
 import networkx as nx
 import pval_calculation as pval
 from itertools import repeat
+import cluster_heatmap as ch
 from multiprocessing import Pool
+
+
+from opencell.database import ms_utils
+from opencell.database import ms_operations as ms_ops
+from opencell.database import models, utils
+
+import sqlalchemy
+from sqlalchemy import inspect
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, String, Numeric
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import scoped_session
+from sqlalchemy import func
+from sqlalchemy import or_
+from sqlalchemy import desc
 
 
 def retrieve_cluster_df(network_df, cluster, target_col='target', prey_col='prey'):
@@ -202,3 +221,143 @@ def annotate_mcl_clusters(umap_df, mcl_df, gene_col, first_clust=True):
     umap_df = umap_df.merge(mcl_df, on=gene_col, how='left')
 
     return umap_df
+
+
+def cluster_matrix_to_sql_table(mcl, network, method='single', metric='cosine', edge='stoich'):
+    mcl = mcl.copy()
+    network = network.copy()
+
+    mcl_explode = mcl.explode('mcl_cluster')
+    cluster_list = mcl_explode['mcl_cluster'].unique()
+    cluster_list.sort()
+
+
+    # lists to populate, will become dataframe columns
+    cluster_col = []
+    cols_col = []
+    rows_col = []
+    targets_col = []
+    preys_col = []
+    pull_plate_col = []
+
+    for cluster in cluster_list:
+        # get cluster sub-matrix and network selection
+        _, selected_network, cluster_matrix = ch.generate_mpl_matrix(
+            network, mcl, clusters=[cluster], metric=edge)
+
+        # Get the hierarchical order of targets and preys
+        bait_leaves = ch.bait_leaves(cluster_matrix, method=method, metric=metric)
+        prey_leaves = ch.prey_leaves(cluster_matrix, method=method, metric=metric)
+
+        # go thru each bait leaf and prey leaf and populate the list
+        for col, bait in enumerate(bait_leaves):
+            for row, prey in enumerate(prey_leaves):
+                selection = selected_network[
+                    (selected_network['target'] == bait) & (selected_network['prey'] == prey)]
+                # if there is an interaction, add an entry
+                if selection.shape[0] > 0:
+                    cluster_col.append(cluster)
+                    cols_col.append(col)
+                    rows_col.append(row)
+                    targets_col.append(bait)
+                    preys_col.append(prey)
+                    pull_plate_col.append(selection.plate.item())
+    sql = pd.DataFrame()
+    sql['cluster'] = cluster_col
+    sql['target_name'] = targets_col
+    sql['prey'] = preys_col
+    sql['col_index'] = cols_col
+    sql['row_index'] = rows_col
+    sql['pulldown_plate_id'] = pull_plate_col
+    return sql
+
+
+def sql_table_add_hit_id(sql_table, pulldowns, url):
+    """
+    from the cluster sql table, start a query to access proper hit
+    IDs for finalizing the table
+
+    """
+
+    sql_table = sql_table.copy()
+    pulldowns = pulldowns.copy()
+
+    sql_table['pulldown_plate_id'] = sql_table['pulldown_plate_id'].apply(
+        ms_utils.format_ms_plate)
+
+    # merge Crispr design and well ids from pulldowns table
+    sql_table = sql_table.merge(
+        pulldowns, on=['pulldown_plate_id', 'target_name'], how='left')
+
+    # sort by design id and well id for faster queries
+    sort_table = sql_table.sort_values(['design_id', 'well_id'])
+    sort_table.reset_index(drop=True, inplace=True)
+
+
+    # start a sequel session
+    # initiate and connect engine
+    engine = sqlalchemy.create_engine(url)
+    engine.connect()
+
+    session_factory = sessionmaker(bind=engine)
+    session = scoped_session(session_factory)
+
+
+    hit_ids = []
+    pwell_id = ''
+    pdesign_id = ''
+    # iterate through each row of sql_table and query the Hit ID
+
+
+    for i, row in sort_table.iterrows():
+        # progress notation
+        if i % 100 == 0:
+            status = str(i) + '/' + str(sort_table.shape[0])
+            sys.stdout.write("\r{}".format(status))
+
+
+        well_id = row.well_id
+        design_id = row.design_id
+        plate_id = row.pulldown_plate_id
+        preys = row.prey
+        preys = preys.split(';')
+
+        # get the cellline_id, skip if preceding row had the same query
+        if not (well_id == pwell_id) & (design_id == pdesign_id):
+            pull_cls = ms_ops.MassSpecPolyclonalOperations.from_plate_well(session, design_id, well_id)
+            cell_line_id = pull_cls.line.id
+
+        query_hit = False
+        # iterate through each gene name in protein group and query for the hit id
+        for prey in preys:
+            prey = '%' + prey + '%'
+            hit_query = (
+                session.query(models.MassSpecHit)
+                .join(models.MassSpecPulldown)
+                .join(models.MassSpecProteinGroup)
+                .filter(or_(models.MassSpecHit.is_significant_hit,
+                    models.MassSpecHit.is_minor_hit))
+                .filter(models.MassSpecPulldown.cell_line_id == cell_line_id)
+                .filter(models.MassSpecPulldown.pulldown_plate_id == plate_id)
+                .filter(func.array_to_string(
+                    models.MassSpecProteinGroup.gene_names, ' ').like(prey))
+                .order_by(desc(models.MassSpecHit.pval))
+                .limit(1)
+                .one_or_none())
+            # if there is a matching hit, add the hit id and break loop
+            if hit_query:
+                hit_ids.append(hit_query.id)
+                query_hit = True
+                break
+        # if there was no hit, append a null value
+        if not query_hit:
+            hit_ids.append(None)
+
+        # save well id and design id for next iteration
+        pwell_id = well_id
+        pdesign_id = design_id
+
+    sort_table['hit_id'] = hit_ids
+    sort_table = sort_table.sort_values(['cluster', 'col_index', 'row_index'])
+
+    return sort_table

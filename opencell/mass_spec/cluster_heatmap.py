@@ -42,7 +42,7 @@ def dendro_heatmap(matrix_df, zmin, zmax, verbose=True):
     return heatmap
 
 
-def bait_leaves(matrix_df, method='average', distance='euclidean'):
+def bait_leaves(matrix_df, method='average', metric='euclidean'):
     """Calculate the prey linkage and return the list of
     prey plotting sequence to use for heatmap. Use prey_kmeans for better performance
     rtype: prey_leaves list"""
@@ -54,17 +54,17 @@ def bait_leaves(matrix_df, method='average', distance='euclidean'):
     # Transpose to get linkages of baits
     matrix_df = matrix_df.T
 
-    bait_linkage = linkage(matrix_df, method=method, optimal_ordering=True)
+    bait_linkage = linkage(matrix_df, method=method, metric=metric, optimal_ordering=True)
 
     # Retreieve the order of baits in the new linkage
-    bait_leaves = leaves_list(bait_linkage)
-    bait_leaves = [list(matrix_df.index)[x] for x in bait_leaves]
+    bait_lvs = leaves_list(bait_linkage)
+    bait_lvs = [list(matrix_df.index)[x] for x in bait_lvs]
 
 
-    return bait_leaves
+    return bait_lvs
 
 
-def prey_leaves(matrix_df, method='average', distance='euclidean'):
+def prey_leaves(matrix_df, method='average', metric='euclidean'):
     """Calculate the prey linkage and return the list of
     prey plotting sequence to use for heatmap. Use prey_kmeans for better performance.
 
@@ -73,13 +73,13 @@ def prey_leaves(matrix_df, method='average', distance='euclidean'):
     matrix_df = matrix_df.copy()
 
 
-    prey_linkage = linkage(matrix_df, method=method, optimal_ordering=True)
+    prey_linkage = linkage(matrix_df, method=method, metric=metric, optimal_ordering=True)
 
     # Retrieve the order of preys in the new linkage
-    prey_leaves = leaves_list(prey_linkage)
-    prey_leaves = [list(matrix_df.index)[x] for x in prey_leaves]
+    prey_lvs = leaves_list(prey_linkage)
+    prey_lvs = [list(matrix_df.index)[x] for x in prey_lvs]
 
-    return prey_leaves
+    return prey_lvs
 
 
 def cluster_heatmap(matrix_df, clusters, method='ward', metric='euclidean', off_diagonal=False):
@@ -108,8 +108,8 @@ def cluster_heatmap(matrix_df, clusters, method='ward', metric='euclidean', off_
     cluster_df = cluster_df[(cluster_df.T != 0).any()]
     cluster_df = cluster_df.loc[:, (cluster_df != 0).any(axis=0)]
 
-    p_leaves = prey_leaves(cluster_df, method=method, distance=metric)
-    b_leaves = bait_leaves(cluster_df, method=method, distance=metric)
+    p_leaves = prey_leaves(cluster_df, method=method, metric=metric)
+    b_leaves = bait_leaves(cluster_df, method=method, metric=metric)
 
 
     # Correctly order the plot df according to dendro leaves

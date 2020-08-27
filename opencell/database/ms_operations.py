@@ -15,6 +15,30 @@ from opencell.database import ms_utils
 from opencell.imaging import processors
 
 
+def bulk_insert_cluster_heatmap(session, cluster_table, errors='warn'):
+    """
+    insert every row of cluster table
+    """
+    # a list of all clusters to add
+    all_clusters = []
+    for ind, row in cluster_table.iterrows():
+        cluster = models.MassSpecClusterHeatmap(
+            cluster_id = int(row.cluster),
+            hit_id = int(row.hit_id),
+            row_index = int(row.row_index),
+            col_index = int(row.col_index)
+        )
+        all_clusters.append(cluster)
+     # bulk save
+    try:
+        session.bulk_save_objects(all_clusters)
+        session.commit()
+    except Exception as exception:
+        session.rollback()
+        if errors == 'raise':
+            raise
+        if errors == 'warn':
+            print('Error in bulk_insert_hits: %s' % exception)
 
 def insert_pulldown_plate(session, row, errors='warn'):
     """ From a pd row, insert a single pulldown plate data """

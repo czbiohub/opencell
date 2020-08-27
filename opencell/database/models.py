@@ -1027,7 +1027,6 @@ class MassSpecClusterHeatmap(Base):
     visualization in OpenCell
     """
 
-
     __tablename__ = 'mass_spec_cluster_heatmap'
     id = db.Column(db.Integer, primary_key=True)
 

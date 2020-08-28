@@ -23,10 +23,10 @@ def bulk_insert_cluster_heatmap(session, cluster_table, errors='warn'):
     all_clusters = []
     for ind, row in cluster_table.iterrows():
         cluster = models.MassSpecClusterHeatmap(
-            cluster_id = int(row.cluster_id),
-            hit_id = int(row.hit_id),
-            row_index = int(row.row_index),
-            col_index = int(row.col_index)
+            cluster_id=int(row.cluster_id),
+            hit_id=int(row.hit_id),
+            row_index=int(row.row_index),
+            col_index=int(row.col_index)
         )
         all_clusters.append(cluster)
      # bulk save
@@ -40,8 +40,9 @@ def bulk_insert_cluster_heatmap(session, cluster_table, errors='warn'):
         if errors == 'warn':
             print('Error in bulk_insert_hits: %s' % exception)
 
+
 def insert_pulldown_plate(session, row, errors='warn'):
-    """ From a pd row, insert a single pulldown plate data """
+    """ From a pd row, insert a row into the pulldown_plate table """
 
     # drop any existing data
     plate = (
@@ -58,6 +59,36 @@ def insert_pulldown_plate(session, row, errors='warn'):
         description=row.plate_number_subset
     )
     utils.add_and_commit(session, plate, errors=errors)
+
+
+def insert_protein_group(session, row, errors='warn'):
+    """
+    from a pd row, insert a row into the protein group table
+    """
+
+    # create the id from the concatenated uniprot_ids
+    protein_group_id, uniprot_ids = ms_utils.create_protein_group_id(row.name)
+
+    # remove duplicate entry
+    existing_group = (
+        session.query(models.MassSpecProteinGroup)
+        .filter(models.MassSpecProteinGroup.id == protein_group_id)
+        .one_or_none()
+    )
+    if existing_group:
+        utils.delete_and_commit(session, existing_group)
+
+    if row.gene_names:
+        gene_names = row.gene_names.split(';')
+    else:
+        gene_names = None
+
+    protein_group = models.MassSpecProteinGroup(
+        id=protein_group_id,
+        gene_names=gene_names,
+        uniprot_ids=uniprot_ids
+    )
+    utils.add_and_commit(session, protein_group, errors=errors)
 
 
 class MassSpecPolyclonalOperations(operations.PolyclonalLineOperations):
@@ -81,45 +112,65 @@ class MassSpecPolyclonalOperations(operations.PolyclonalLineOperations):
 
 class MassSpecPulldownOperations:
     '''
+    Database operations related to a single pulldown
     '''
 
-    def bulk_insert_hits(self, session, target, target_hits, pulldown_df, errors='warn'):
+    def __init__(self, pulldown):
+        self.pulldown = pulldown
+
+
+    @classmethod
+    def from_ids(cls, session, plate_design_id, well_id, sort_count, pulldown_plate_id):
+        '''
+        Get a pulldown from a combination of
+        plate_design_id, well_id, and pulldown_plate_id, and sort_count
+        '''
+
+        # get the cell_line_id
+        pull_cls = MassSpecPolyclonalOperations.from_plate_well(
+            session, plate_design_id, well_id, sort_count
+        )
+
+        pulldown = (
+            session.query(models.MassSpecPulldown)
+            .filter(models.MassSpecPulldown.cell_line_id == pull_cls.line.id)
+            .filter(models.MassSpecPulldown.pulldown_plate_id == pulldown_plate_id)
+            .one()
+        )
+        return cls(pulldown)
+
+
+    @classmethod
+    def from_target(cls, session, target, pulldown_df, sort_count):
+        '''
+        Get a pulldown from a target name, given a pulldown dataframe and a sort_count
+        '''
+        pulldown_plate_id, target_name = target.split('_')
+        pulldown_plate_id = ms_utils.format_ms_plate(pulldown_plate_id)
+
+        # get the pulldown for this plate_id and target_name
+        pulldown_row = pulldown_df.loc[
+            (pulldown_df['pulldown_plate_id'] == pulldown_plate_id) &
+            (pulldown_df['target_name'] == target_name)
+        ]
+
+        plate_design_id, well_id = pulldown_row.design_id.item(), pulldown_row.well_id.item()
+        return cls.from_ids(session, plate_design_id, well_id, pulldown_plate_id, sort_count)
+
+
+    def bulk_insert_hits(self, session, target_hits, errors='warn'):
         """
         convenience method tying together multiple definitions
         for each target, add entire rows to the database by bulk_save_objects
         """
-        plate_id, target_name = target.split('_')
-        plate_id = ms_utils.format_ms_plate(plate_id)
-
-        # get the pulldown for this plate_id and target_name
-        pulldown_meta = pulldown_df.loc[
-            (pulldown_df['pulldown_plate_id'] == plate_id)
-            & (pulldown_df['target_name'] == target_name)
-        ]
-
-        # retrieve the design id and well id
-        design_id, well_id = pulldown_meta.design_id.item(), pulldown_meta.well_id.item()
-
-        # get the cellline_id
-        pull_cls = MassSpecPolyclonalOperations.from_plate_well(session, design_id, well_id)
-        cell_line_id = pull_cls.line.id
-
-        # get the pulldown_id
-        pulldown = (
-            session.query(models.MassSpecPulldown)
-            .filter(models.MassSpecPulldown.cell_line_id == cell_line_id)
-            .filter(models.MassSpecPulldown.pulldown_plate_id == plate_id)
-            .one()
-        )
-        pulldown_id = pulldown.id
 
         # remove existing hits under same pulldown
-        self.remove_target_hits(session, pulldown_id, errors=errors)
+        self.remove_all_hits(session, errors=errors)
 
         # add all Hit instances to a list
         all_hits = []
         for _, row in target_hits.iterrows():
-            hit = self.create_hit(row, pulldown_id)
+            hit = self.create_hit(row)
             all_hits.append(hit)
 
         # bulk save
@@ -134,118 +185,45 @@ class MassSpecPulldownOperations:
                 print('Error in bulk_insert_hits: %s' % exception)
 
 
-    @staticmethod
-    def insert_protein_group(session, row, errors='warn'):
-        """
-        from a pd row, insert a protein group data
-        """
-
-        # create the id from the concatenated uniprot_ids
-        protein_group_id, uniprot_ids = ms_utils.create_protein_group_id(row.name)
-
-        # remove duplicate entry
-        existing_group = (
-            session.query(models.MassSpecProteinGroup)
-            .filter(models.MassSpecProteinGroup.id == protein_group_id)
-            .one_or_none()
-        )
-        if existing_group:
-            utils.delete_and_commit(session, existing_group)
-
-        if row.gene_names:
-            gene_names = row.gene_names.split(';')
-        else:
-            gene_names = None
-
-        protein_group = models.MassSpecProteinGroup(
-            id=protein_group_id,
-            gene_names=gene_names,
-            uniprot_ids=uniprot_ids
-        )
-        utils.add_and_commit(session, protein_group, errors=errors)
-
-
-    @staticmethod
-    def insert_fdrs(self, session, target, row, pulldown_df):
+    def insert_fdrs(self, session, row):
         """
         Insert Dynamic FDR values
         """
 
-        plate_id, target_name = target.split('_')
-        plate_id = ms_utils.format_ms_plate(plate_id)
+        self.pulldown.fdr_1_offset = row.fdr1[1]
+        self.pulldown.fdr_1_curvature = row.fdr1[0]
 
-        # get the pulldown for this plate_id and target_name
-        pulldown_meta = pulldown_df.loc[
-            (pulldown_df['pulldown_plate_id'] == plate_id)
-            & (pulldown_df['target_name'] == target_name)
-        ]
+        self.pulldown.fdr_5_offset = row.fdr5[1]
+        self.pulldown.fdr_5_curvature = row.fdr5[0]
 
-        # retrieve the design id and well id
-        design_id, well_id = pulldown_meta.design_id.item(), pulldown_meta.well_id.item()
-
-        # get the cellline_id
-        pull_cls = MassSpecPolyclonalOperations.from_plate_well(session, design_id, well_id)
-        cell_line_id = pull_cls.line.id
-
-        # get the pulldown_id
-        pulldown = (
-            session.query(models.MassSpecPulldown)
-            .filter(models.MassSpecPulldown.cell_line_id == cell_line_id)
-            .filter(models.MassSpecPulldown.pulldown_plate_id == plate_id)
-            .one()
-        )
-        pulldown.fdr_1_offset = row.fdr1[1]
-        pulldown.fdr_1_curvature = row.fdr1[0]
-
-        pulldown.fdr_5_offset = row.fdr5[1]
-        pulldown.fdr_5_curvature = row.fdr5[0]
-
-        session.add(pulldown)
+        session.add(self.pulldown)
         session.commit()
 
 
-    @staticmethod
-    def manual_flag_pulldown(session, pulldown_plate_id, design_id, well_id, errors='warn'):
+    def manually_flag_pulldown(self, session, errors='warn'):
         '''
-        some crispr designs have multiple pulldowns, this method
-        allows manual flagging of a pulldown to be shown in opencell.
-
+        Because some crispr designs have multiple pulldowns,
+        this method manually flags self.pulldown to indicate
+        that it should be the one returned by the /pulldowns API endpoint
         '''
-        # get the cellline_id
-        pull_cls = MassSpecPolyclonalOperations.from_plate_well(session, design_id, well_id)
-        cell_line_id = pull_cls.line.id
 
-        # get retrieve all the pulldowns
-        pulldowns = (session.query(models.MassSpecPulldown)
-            .filter(models.MassSpecPulldown.cell_line_id == cell_line_id))
-
-        # mark the given pulldown as True and all others as False
-        for pulldown in pulldowns:
-            if pulldown.pulldown_plate_id == pulldown_plate_id:
-                pulldown.manual_display_flag = True
-            else:
-                pulldown.manual_display_flag = False
-
+        # reset the manual flags for all pulldowns from the pulldown's cell line
+        for pulldown in self.pulldown.cell_line.pulldowns:
+            pulldown.manual_display_flag = False
             session.add(pulldown)
             session.commit()
 
+        # flag the current pulldown
+        self.pulldown.manual_display_flag = True
+        session.add(self.pulldown)
+        session.commit()
 
 
-
-
-
-    @staticmethod
-    def remove_target_hits(session, pulldown_id, errors='warn'):
+    def remove_all_hits(self, session, errors='warn'):
         '''
-        remove duplicate entries
+        Remove all of the pulldown's hits
         '''
-        duplicate_hits = (
-            session.query(models.MassSpecHit)
-            .join(models.MassSpecPulldown)
-            .filter(models.MassSpecPulldown.id == pulldown_id)
-            .all()
-        )
-        for hit in duplicate_hits:
+        for hit in self.pulldown.hits:
             session.delete(hit)
 
         try:
@@ -258,8 +236,7 @@ class MassSpecPulldownOperations:
                 print('Error in remove_target_hits: %s' % exception)
 
 
-    @staticmethod
-    def create_hit(row, pulldown_id):
+    def create_hit(self, row):
         """
         From a pd row, create a MassSpecHit instance
         """
@@ -267,7 +244,7 @@ class MassSpecPulldownOperations:
 
         hit = models.MassSpecHit(
             protein_group_id=protein_group_id,
-            pulldown_id=pulldown_id,
+            pulldown_id=self.pulldown.id,
             pval=row.pvals,
             enrichment=row.enrichment,
             is_significant_hit=row.hits,
@@ -276,5 +253,4 @@ class MassSpecPulldownOperations:
             interaction_stoich=row.interaction_stoi,
             abundance_stoich=row.abundance_stoi
         )
-
         return hit

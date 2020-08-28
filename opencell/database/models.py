@@ -1019,3 +1019,32 @@ class MassSpecHit(Base):
 
     # A hit needs to have a unique set of target (pulldown) and the prey (protein_group)
     __table_args__ = (db.UniqueConstraint(pulldown_id, protein_group_id),)
+
+class MassSpecClusterHeatmap(Base):
+    """
+    This table contains hard-coded cluster memberships of interactions as well as
+    coordinates for hierarchical layout of cluster heatmap. Used for cluster heatmap
+    visualization in OpenCell
+    """
+
+    __tablename__ = 'mass_spec_cluster_heatmap'
+    id = db.Column(db.Integer, primary_key=True)
+
+    # cluster group id - in a numerical range
+    cluster_id = db.Column(db.Integer, nullable=False)
+
+    # hit id that the heatmap coordinate refers to in target-prey match
+    hit_id = db.Column(
+        db.Integer, db.ForeignKey('mass_spec_hit.id'), nullable=False)
+
+    # row index of the heat map
+    row_index = db.Column(db.Integer, nullable=False)
+
+    # col index of the heatmap
+    col_index = db.Column(db.Integer, nullable=False)
+
+    # one to one relationship to a mass spec hit
+    hit = db.orm.relationship("MassSpecHit", uselist=False)
+
+    # The cluster heatmap needs to have a unique set of cluster_id, row and col index
+    __table_args__ = (db.UniqueConstraint(cluster_id, row_index, col_index),)

@@ -309,6 +309,8 @@ def sql_table_add_hit_id(sql_table, pulldowns, url):
 
 
     hit_ids = []
+    # also append hit's gene names for fast validation
+    hit_gene_names = []
     pwell_id = ''
     pdesign_id = ''
     # iterate through each row of sql_table and query the Hit ID
@@ -336,8 +338,7 @@ def sql_table_add_hit_id(sql_table, pulldowns, url):
         # iterate through each gene name in protein group and query for the hit id
         # return all hits that contain part of the gene name
         for prey in preys:
-            prey_query = '%' + prey + '%'
-            hit_query = (
+            hit = (
                 session.query(models.MassSpecHit)
                 .join(models.MassSpecPulldown)
                 .join(models.MassSpecProteinGroup)
@@ -345,19 +346,18 @@ def sql_table_add_hit_id(sql_table, pulldowns, url):
                     models.MassSpecHit.is_minor_hit))
                 .filter(models.MassSpecPulldown.cell_line_id == cell_line_id)
                 .filter(models.MassSpecPulldown.pulldown_plate_id == plate_id)
-                .filter(func.array_to_string(
-                    models.MassSpecProteinGroup.gene_names, ' ').like(prey_query))
+                .filter(
+                    sqlalchemy.any_(
+                        models.MassSpecProteinGroup.gene_names) == prey)
                 .order_by(desc(models.MassSpecHit.pval))
-                .all())
-            # if there are matching hits, validate exact match of gene name
-            # and append to hit_ids, break loop
-            if hit_query:
-                for hit in hit_query:
-                    hit_gene_names = hit.protein_group.gene_names
-                    if prey in hit_gene_names:
-                        hit_ids.append(hit.id)
-                        query_hit = True
-                        break
+                .limit(1)
+                .one())
+            # if there is a matching hit, append hit id and gene names
+            if hit:
+                hit_ids.append(hit.id)
+                hit_gene_names.append(hit.protein_group.gene_names)
+                query_hit = True
+                break
         # if there was no hit, append a null value
         if not query_hit:
             hit_ids.append(None)
@@ -368,6 +368,7 @@ def sql_table_add_hit_id(sql_table, pulldowns, url):
         pdesign_id = design_id
 
     sort_table['hit_id'] = hit_ids
+    sort_table['hit_gene_names'] = hit_gene_names
     sort_table = sort_table.sort_values(['cluster', 'col_index', 'row_index'])
 
     return sort_table

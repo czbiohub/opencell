@@ -60,25 +60,14 @@ select * from(
 where 're_sort' = any(cats);
 
 
-
--- drop all rows from all microscopy-related tables
-TRUNCATE microscopy_dataset CASCADE;
-
--- rename a table
-ALTER TABLE table_name RENAME TO new_table_name;
-
--- rename a column
-ALTER TABLE table_name RENAME COLUMN column_name TO new_column_name;
-
--- add a column to an existing table
-ALTER TABLE table_name ADD COLUMN column_name data_type;
-
--- remove a column from an existing table
-ALTER TABLE table_name DROP COLUMN column_name [CASCADE];
-
 -- replace a string in a column
 UPDATE microscopy_fov_result
 SET column = REPLACE (column, 'old-string', 'new-string');
+
+-- rename a value in an enum
+-- (note that there is no way to remove a value without dropping and re-creating the enum)
+ALTER TYPE some_enum RENAME VALUE 'old-value' TO 'new-value';
+
 
 -- add on delete cascade to microscopy_fov_result foreign key
 ALTER TABLE microscopy_fov_result
@@ -87,7 +76,6 @@ ADD CONSTRAINT fk_microscopy_fov_result_fov_id_microscopy_fov FOREIGN KEY (fov_i
    REFERENCES public.microscopy_fov (id) MATCH SIMPLE
    ON UPDATE NO ACTION
    ON DELETE CASCADE;
-
 
 
 -- count FOVs per dataset and plate

@@ -316,13 +316,13 @@ class PolyclonalLineOperations:
 
         if not lines:
             raise ValueError(
-                "No cell line for a sort_count of %s found for well %s of plate %s"
+                "No cell line exists with a sort_count of %s for well %s of plate %s"
                 % (sort_count, well_id, design_id)
             )
 
         if len(lines) > 1:
             raise ValueError(
-                "More than one cell line of sort_count '%s' found for well %s of plate %s"
+                "More than one cell line exists with a sort_count of %s for well %s of plate %s"
                 % (sort_count, well_id, design_id)
             )
 

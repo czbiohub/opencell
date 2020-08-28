@@ -285,7 +285,7 @@ def insert_microscopy_datasets(
             if update:
                 print('Warning: updating existing entry for %s' % row.pml_id)
             else:
-                print('Warning: dataset %s already exists' % row.pml_id)
+                print('Warning: dataset %s already exists and will not be updated' % row.pml_id)
                 continue
         else:
             dataset = models.MicroscopyDataset(pml_id=row.pml_id)

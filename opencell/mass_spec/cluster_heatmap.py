@@ -9,11 +9,12 @@ import seaborn as sns
 import plotly.figure_factory as ff
 from scipy.cluster.hierarchy import linkage, leaves_list
 from sklearn.cluster import KMeans
+import plotly.express as px
 import time
 
 
 
-def dendro_heatmap(matrix_df, hexmap, zmin, zmax, verbose=True):
+def dendro_heatmap(matrix_df, zmin, zmax, verbose=True):
     """ From the dendro_leaves data, generate a properly oriented
     heatmap
 
@@ -32,13 +33,100 @@ def dendro_heatmap(matrix_df, hexmap, zmin, zmax, verbose=True):
     # Generate the heatmap
     heatmap = [
         go.Heatmap(x=columns, y=rows, z=plot_df.values.tolist(),
-        colorscale=hexmap, zmin=zmin, zmax=zmax)]
+        colorscale='Viridis', zmin=zmin, zmax=zmax)]
 
     if verbose:
         end_time = np.round(time.time() - start_time, 2)
         print("Finished heatmap in " + str(end_time) + " seconds.")
 
     return heatmap
+
+
+def bait_leaves(matrix_df, method='average', metric='euclidean'):
+    """Calculate the prey linkage and return the list of
+    prey plotting sequence to use for heatmap. Use prey_kmeans for better performance
+    rtype: prey_leaves list"""
+
+    # Create a matrix_df, taking median of all replicates
+    matrix_df = matrix_df.copy()
+
+
+    # Transpose to get linkages of baits
+    matrix_df = matrix_df.T
+
+    bait_linkage = linkage(matrix_df, method=method, metric=metric, optimal_ordering=True)
+
+    # Retreieve the order of baits in the new linkage
+    bait_lvs = leaves_list(bait_linkage)
+    bait_lvs = [list(matrix_df.index)[x] for x in bait_lvs]
+
+
+    return bait_lvs
+
+
+def prey_leaves(matrix_df, method='average', metric='euclidean'):
+    """Calculate the prey linkage and return the list of
+    prey plotting sequence to use for heatmap. Use prey_kmeans for better performance.
+
+    rtype: prey_leaves list"""
+
+    matrix_df = matrix_df.copy()
+
+
+    prey_linkage = linkage(matrix_df, method=method, metric=metric, optimal_ordering=True)
+
+    # Retrieve the order of preys in the new linkage
+    prey_lvs = leaves_list(prey_linkage)
+    prey_lvs = [list(matrix_df.index)[x] for x in prey_lvs]
+
+    return prey_lvs
+
+
+def cluster_heatmap(matrix_df, clusters, method='ward', metric='euclidean', off_diagonal=False):
+
+    matrix_df = matrix_df.copy()
+
+    # get all off diagonal targets if true
+    if off_diagonal:
+        row_df = matrix_df.loc[matrix_df.index.isin(clusters, level='cluster')]
+        cols = (row_df.sum() > 0).index.tolist()
+
+        col_df = matrix_df.loc[:, matrix_df.columns.isin(clusters, level='cluster')]
+        rows = col_df[col_df.sum(axis=1) > 0].index.tolist()
+
+        cluster_df = matrix_df.T[rows].T[cols]
+
+    else:
+        cluster_df = matrix_df.loc[
+            matrix_df.index.isin(clusters, level='cluster'),
+            matrix_df.columns.isin(clusters, level='cluster'),
+        ]
+    cluster_df.columns = cluster_df.columns.droplevel(level='cluster')
+    cluster_df.index = cluster_df.index.droplevel(level='cluster')
+
+    # drop all zero cols or rows
+    cluster_df = cluster_df[(cluster_df.T != 0).any()]
+    cluster_df = cluster_df.loc[:, (cluster_df != 0).any(axis=0)]
+
+    p_leaves = prey_leaves(cluster_df, method=method, metric=metric)
+    b_leaves = bait_leaves(cluster_df, method=method, metric=metric)
+
+
+    # Correctly order the plot df according to dendro leaves
+    cluster_df = cluster_df.T[p_leaves].T
+
+    # Reorder columns based on bait_leaves
+    cluster_df = cluster_df[b_leaves]
+
+
+    # Generate the heatmap
+    heatmap = [
+        go.Heatmap(x=list(cluster_df), y=list(cluster_df.index), z=cluster_df.values.tolist(),
+        colorscale='blues')]
+
+    return heatmap
+
+
 
 
 def cluster_map(matrix_df, clusters, width=800, height=800, method='ward', metric='euclidean',
@@ -249,9 +337,48 @@ def generate_clusterone_matrix(stoichs, cluster_one, clusters, metric):
     selected_stoichs = stoichs[
         stoichs['target'].isin(genes) & stoichs['prey'].isin(genes)
     ]
+
+    selected_stoichs.sort_values(
+        by=metric, ascending=False, inplace=True)
+    selected_stoichs.drop_duplicates(['target', 'prey'], inplace=True)
+
     matrix = convert_to_sparse_matrix(selected_stoichs, metric=metric)
 
     return matrix
+
+
+def return_cluster_members(designation, cluster_list):
+    """
+    aux function for generate_mpl_matrix
+    """
+    intersection = set(designation).intersection(set(cluster_list))
+    if len(intersection) > 0:
+        return True
+    else:
+        return False
+
+
+def generate_mpl_matrix(stoichs, cluster_one, clusters, metric):
+    """ generate cluster dendrogram from listed clusters """
+
+    stoichs = stoichs.copy()
+    cluster_one = cluster_one.copy()
+
+    # retrieve specified clusters
+    cluster_one = cluster_one[cluster_one['mcl_cluster'].apply(
+        return_cluster_members, args=[clusters])]
+
+    genes = cluster_one['gene_names'].to_list()
+
+    selected_stoichs = stoichs[
+        stoichs['target'].isin(genes) & stoichs['prey'].isin(genes)
+    ]
+    selected_stoichs.sort_values(
+        by=metric, ascending=False, inplace=True)
+    selected_stoichs.drop_duplicates(['target', 'prey'], inplace=True)
+    matrix = convert_to_sparse_matrix(selected_stoichs, metric=metric)
+
+    return genes, selected_stoichs, matrix
 
 
 def convert_to_sparse_matrix(double_df, metric='distance'):
@@ -277,6 +404,7 @@ def convert_to_sparse_matrix(double_df, metric='distance'):
         sample.set_index('prey', drop=True, inplace=True)
         sample.rename(columns={metric: target}, inplace=True)
         matrix.update(sample, join='left')
+
 
     return matrix
 

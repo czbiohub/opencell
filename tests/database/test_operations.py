@@ -113,29 +113,14 @@ def test_create_polyclonal_lines(session):
     when the TestPolyclonalLines class was executed
     '''
 
-    eps = session.query(models.Electroporation).all()
-    assert len(eps) == 2
-    assert eps[0].progenitor_cell_line.name == constants.PARENTAL_LINE_NAME
-    assert eps[0].plate_design_id == 'P0001'
-    assert eps[1].plate_design_id == 'P0002'
-
     # check that we inserted the correct number of lines
     lines = session.query(models.CellLine).filter(models.CellLine.line_type == 'POLYCLONAL').all()
     assert len(lines) == 96*2
-
-    # check the number of lines associated with the electroporation of plate1
-    # (note that later plates have fewer than 96 lines per plate/electropration,
-    # because some well are negative controls)
-    ep = (
-        session.query(models.Electroporation)
-        .filter(models.Electroporation.plate_design_id == 'P0001')
-        .one_or_none()
-    )
-    assert len(ep.cell_lines) == 96
+    assert lines[0].progenitor_cell_line.name == constants.PARENTAL_LINE_NAME
 
     # check that the lines have the correct plate_id
-    plate_ids = [line.crispr_design.plate_design_id for line in ep.cell_lines]
-    assert set(plate_ids) == set(['P0001'])
+    plate_ids = [line.crispr_design.plate_design_id for line in lines]
+    assert set(plate_ids) == set(['P0001', 'P0002'])
 
 
 @pytest.mark.usefixtures('insert_plates')

@@ -149,6 +149,10 @@ def insert_plate_microscopy_fovs(session, cache_dir=None, errors='warn'):
         on the PlateMicroscopy directory are cached
     '''
 
+    # PlateMicroscopy FOVs are all from the original sorted lines
+    # (and never from resorted lines)
+    sort_count = 1
+
     pm = PlateMicroscopyManager(cache_dir=cache_dir)
 
     # generate the raw metadata
@@ -165,7 +169,7 @@ def insert_plate_microscopy_fovs(session, cache_dir=None, errors='warn'):
 
         try:
             line_ops = operations.PolyclonalLineOperations.from_plate_well(
-                session, plate_id, well_id
+                session, plate_id, well_id, sort_count=sort_count
             )
         except Exception:
             print('Cannot insert FOVs for (%s, %s) because no cell line exists' % group)
@@ -175,10 +179,12 @@ def insert_plate_microscopy_fovs(session, cache_dir=None, errors='warn'):
 
 def insert_raw_pipeline_microscopy_fovs(session, root_dir, pml_id, errors='warn'):
     '''
-    Insert all raw FOVs from a single raw-pipeline-microscopy dataset
+    Insert all FOVs from a single raw-pipeline-microscopy dataset
 
-    (Note that there is substantial code duplication between this method
-    and insert_plate_microscopy_fovs above)
+    **Assumes all FOVs are of polyclonal cell lines**
+
+    Note that there is substantial code duplication between this method
+    and insert_plate_microscopy_fovs above.
 
     root_dir : the path to the 'raw-pipeline-microscopy' directory
     pml_id : the ID of the dataset whose FOVs are to be inserted
@@ -197,16 +203,23 @@ def insert_raw_pipeline_microscopy_fovs(session, root_dir, pml_id, errors='warn'
         os.path.join(row.src_dirpath, row.src_filename) for ind, row in metadata.iterrows()
     ]
 
-    metadata = metadata.groupby(['plate_id', 'pipeline_well_id'])
+    if 'sort_count' not in metadata.columns:
+        print(
+            'Warning: there is no sort_count column in the FOV metadata '
+            'so a sort_count of 1 will be used'
+        )
+        metadata['sort_count'] = 1
+
+    metadata = metadata.groupby(['plate_id', 'pipeline_well_id', 'sort_count'])
     for group in metadata.groups:
-        plate_id, well_id = group
+        plate_id, well_id, sort_count = group
         group_metadata = metadata.get_group(group)
         try:
             line_ops = operations.PolyclonalLineOperations.from_plate_well(
-                session, plate_id, well_id
+                session, plate_id, well_id, sort_count
             )
         except ValueError:
-            print('Cannot insert FOVs for (%s, %s) because no cell line exists' % group)
+            print('Cannot insert FOVs for %s because no cell line exists' % (group,))
             continue
         line_ops.insert_microscopy_fovs(session, group_metadata, errors=errors)
 

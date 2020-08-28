@@ -22,6 +22,7 @@ def cell_line_payload(cell_line, included_fields):
     # metadata object included in every playload
     metadata = {
         'cell_line_id': cell_line.id,
+        'sort_count': cell_line.sort_count,
         'well_id': design.well_id,
         'plate_id': design.plate_design_id,
         'target_name': design.target_name,

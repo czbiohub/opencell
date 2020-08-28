@@ -23,7 +23,7 @@ def bulk_insert_cluster_heatmap(session, cluster_table, errors='warn'):
     all_clusters = []
     for ind, row in cluster_table.iterrows():
         cluster = models.MassSpecClusterHeatmap(
-            cluster_id = int(row.cluster),
+            cluster_id = int(row.cluster_id),
             hit_id = int(row.hit_id),
             row_index = int(row.row_index),
             col_index = int(row.col_index)

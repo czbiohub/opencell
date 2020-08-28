@@ -224,6 +224,11 @@ def annotate_mcl_clusters(umap_df, mcl_df, gene_col, first_clust=True):
 
 
 def cluster_matrix_to_sql_table(mcl, network, method='single', metric='cosine', edge='stoich'):
+    """
+    Transform the cluster output from MCL clustering into a sparse
+    hierarchical matrix of interactions, and format into a SQL table
+    for use in DB front-end
+    """
     mcl = mcl.copy()
     network = network.copy()
 
@@ -263,7 +268,7 @@ def cluster_matrix_to_sql_table(mcl, network, method='single', metric='cosine', 
                     preys_col.append(prey)
                     pull_plate_col.append(selection.plate.item())
     sql = pd.DataFrame()
-    sql['cluster'] = cluster_col
+    sql['cluster_id'] = cluster_col
     sql['target_name'] = targets_col
     sql['prey'] = preys_col
     sql['col_index'] = cols_col
@@ -329,8 +334,9 @@ def sql_table_add_hit_id(sql_table, pulldowns, url):
 
         query_hit = False
         # iterate through each gene name in protein group and query for the hit id
+        # return all hits that contain part of the gene name
         for prey in preys:
-            prey = '%' + prey + '%'
+            prey_query = '%' + prey + '%'
             hit_query = (
                 session.query(models.MassSpecHit)
                 .join(models.MassSpecPulldown)
@@ -340,18 +346,22 @@ def sql_table_add_hit_id(sql_table, pulldowns, url):
                 .filter(models.MassSpecPulldown.cell_line_id == cell_line_id)
                 .filter(models.MassSpecPulldown.pulldown_plate_id == plate_id)
                 .filter(func.array_to_string(
-                    models.MassSpecProteinGroup.gene_names, ' ').like(prey))
+                    models.MassSpecProteinGroup.gene_names, ' ').like(prey_query))
                 .order_by(desc(models.MassSpecHit.pval))
-                .limit(1)
-                .one_or_none())
-            # if there is a matching hit, add the hit id and break loop
+                .all())
+            # if there are matching hits, validate exact match of gene name
+            # and append to hit_ids, break loop
             if hit_query:
-                hit_ids.append(hit_query.id)
-                query_hit = True
-                break
+                for hit in hit_query:
+                    hit_gene_names = hit.protein_group.gene_names
+                    if prey in hit_gene_names:
+                        hit_ids.append(hit.id)
+                        query_hit = True
+                        break
         # if there was no hit, append a null value
         if not query_hit:
             hit_ids.append(None)
+            print("Hit not Found!")
 
         # save well id and design id for next iteration
         pwell_id = well_id

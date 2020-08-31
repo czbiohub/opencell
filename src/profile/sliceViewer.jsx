@@ -46,6 +46,11 @@ export default class SliceViewer extends Component {
         this.displaySlice();
     }
 
+    componentWillUnmount () {
+        this.props.setCameraPosition(this.cameraPosition);
+        this.props.setCameraZoom(this.cameraZoom);
+    }
+
 
     maybeInitData() {
 
@@ -108,11 +113,22 @@ export default class SliceViewer extends Component {
         // with the initial top-down view in the volume rendering
         context.scale(1, -1);
         context.translate(0, -this.canvas.height);
+        
+        // calculate the current xy position in the coordinates used by the volume viewer camera
+        // for reference, context.transform()(.e, .f) corner coordinates are
+        // (300, 300)  (-300, 300)
+        // (300, -300)  (-300, -300)
+        // and the threejs camera.position(.x, .y) corner coordinates are:
+        // (0, 600) ---- (600, 600)
+        // (0, 0)   ---- (600, 0)
+        this.cameraPosition = {
+            x: -(context.getTransform().e - this.canvas.width/2)/transform.k, 
+            y: (context.getTransform().f - this.canvas.height/2)/transform.k,
+        };
+        this.cameraZoom = transform.k;
 
-        // disable smoothing to show the true pixels when zoomed in
+        // re-draw the image (without smoothing, to show the true pixels when zoomed in)
         context.imageSmoothingEnabled = false;
-
-        // re-draw the image
         context.drawImage(this.memCanvas, 0, 0, this.imageSize, this.imageSize);
         context.restore();
 
@@ -124,6 +140,9 @@ export default class SliceViewer extends Component {
     displaySlice() {
 
         if (!this.props.volumes) return;
+
+        // clamp the z-index to zero in z-projection mode
+        const zIndex = this.props.mode==='Proj' ? 0 : this.props.zIndex;
 
         const scaleIntensity = (intensity, min, max, gamma) => {
             if (intensity < min) return 0;
@@ -147,7 +166,7 @@ export default class SliceViewer extends Component {
             const gamma = [this.props.gamma405, this.props.gamma488][ind];
 
             const slice = this.props.volumes[ind].data.slice(
-                this.props.zIndex*this.numPx, (this.props.zIndex + 1)*this.numPx
+                zIndex*this.numPx, (zIndex + 1)*this.numPx
             );
 
             let val;
@@ -168,7 +187,7 @@ export default class SliceViewer extends Component {
 
             const slices = this.props.volumes.map(volume => {
                 return volume.data.slice(
-                    this.props.zIndex*this.numPx, (this.props.zIndex + 1)*this.numPx
+                    zIndex*this.numPx, (zIndex + 1)*this.numPx
                 );
             });
             

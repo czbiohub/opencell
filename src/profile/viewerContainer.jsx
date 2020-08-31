@@ -82,6 +82,10 @@ export default class ViewerContainer extends Component {
             // the middle of the z-stack
             zIndex: parseInt(this.numSlices/2),
 
+            // default position and zoom for the volume viewer's camera
+            cameraPosition: {x: 300, y: 300},
+            cameraZoom: 1,
+
             stacksLoaded: false,
             projsLoaded: false,
         };
@@ -94,14 +98,19 @@ export default class ViewerContainer extends Component {
     }
 
     componentDidUpdate(prevProps, prevState, snapshot) {
-        if (prevProps.roiId!==this.props.roiId) this.loadStacks();
-        if (prevState.imageQuality!==this.state.imageQuality) this.loadStacks();
+
+        if (
+            prevProps.roiId!==this.props.roiId || 
+            prevState.imageQuality!==this.state.imageQuality
+        ) this.loadStacks();
 
         // reset the GFP black point if the target has changed
         // (because the black point is different for low-GFP targets)
         if (prevProps.cellLineId!==this.props.cellLineId) {
             this.setState({min488: this.props.isLowGfp ? 10 : 0});
         }
+
+
     }
 
 
@@ -165,17 +174,23 @@ export default class ViewerContainer extends Component {
         if (this.state.mode==='Volume') {
             viewer = <VolumeViewer {...this.state} volumes={this.volumes}/>
         }
-        else if (this.state.mode==='Slice') {
+        else {
+            let volumes, loaded;
+            if (this.state.mode==='Slice') {
+                volumes = this.volumes;
+                loaded = this.state.stacksLoaded;
+            }
+            else if (this.state.mode==='Proj') {
+                volumes = this.projs;
+                loaded = this.state.projsLoaded;
+            }
             viewer = (
                 <SliceViewer 
-                    {...this.state} volumes={this.volumes} loaded={this.state.stacksLoaded}
-                />
-            );
-        }
-        else if (this.state.mode==='Proj') {
-            viewer = (
-                <SliceViewer 
-                    {...this.state} volumes={this.projs} loaded={this.state.projsLoaded} zIndex={0}
+                    {...this.state}
+                    volumes={volumes} 
+                    loaded={loaded} 
+                    setCameraZoom={cameraZoom => this.setState({cameraZoom})}
+                    setCameraPosition={cameraPosition => this.setState({cameraPosition})}
                 />
             );
         }

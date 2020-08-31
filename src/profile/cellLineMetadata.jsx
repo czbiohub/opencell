@@ -32,6 +32,9 @@ export default function CellLineMetadata (props) {
         },{
             id: 'well_id',
             width: 24,
+        },{
+            id: 'sort_count',
+            width: 24,
         }
     ];
 

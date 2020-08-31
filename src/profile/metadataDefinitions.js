@@ -39,6 +39,11 @@ const cellLineMetadataDefinitions = [
         Header: 'Well',
         units: null,
     },{
+        id: 'sort_count',
+        accessor: row => row.metadata?.sort_count,
+        Header: 'Sort count',
+        units: null,
+    },{
         id: 'hek_tpm',
         accessor: row => Math.round(row.metadata?.hek_tpm),
         Header: 'Expression (tpm)',

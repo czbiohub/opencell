@@ -82,6 +82,11 @@ export default class VolumeViewer extends Component {
             return;
         }
 
+        if (this.props.shouldResetZoom) {
+            this.userHasMovedCamera = false;
+            this.props.didResetZoom();
+        }
+
         // only need to create the material once (populates this.material)
         this.maybeCreateMaterial();
 

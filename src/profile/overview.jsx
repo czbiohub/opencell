@@ -70,7 +70,7 @@ export default class Overview extends Component {
 
                     {/* Center column - sliceViewer and volumeViewer */}
                     {/* note the hard-coded width (because the ROIs are always 600px */}
-                    <div className="pt3 pl0 pr3" style={{width: '700px'}}>
+                    <div className="pt3 pl0 pr3" style={{width: '620px'}}>
                         <SectionHeader title='Fluorescence microscopy'/>
                         <ViewerContainer
                             cellLineId={this.props.cellLineId}

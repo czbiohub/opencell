@@ -49,10 +49,18 @@ export default class SliceViewer extends Component {
     }
 
     componentDidUpdate (prevProps) {
+
+        // reset the zoom if a new ROI is being loaded
         if (!this.props.loaded) {
             this.userHasZoomed = false;
             return;
-        };
+        }
+
+        // reset the zoom if the user clicked the reset button in the viewer container
+        if (this.props.shouldResetZoom) {
+            this.userHasZoomed = false;
+            this.props.didResetZoom();
+        }
         this.maybeInitData();
         this.displaySlice();
     }

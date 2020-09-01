@@ -67,6 +67,9 @@ export default class ViewerContainer extends Component {
             min405: 0,
             max405: 100,
             gamma405: 1.0,
+        }
+
+        this.defaultZoomState = {
             cameraPosition: {x: 300, y: 300},
             cameraZoom: 1,
         }
@@ -87,7 +90,7 @@ export default class ViewerContainer extends Component {
             stacksLoaded: false,
             projsLoaded: false,
         };
-        this.state = {...this.defaultDisplayState, ...this.state};
+        this.state = {...this.defaultDisplayState, ...this.defaultZoomState, ...this.state};
     }
 
 
@@ -175,6 +178,7 @@ export default class ViewerContainer extends Component {
                 volumes={this.volumes}
                 setCameraZoom={cameraZoom => this.setState({cameraZoom})}
                 setCameraPosition={cameraPosition => this.setState({cameraPosition})}
+                didResetZoom={() => this.setState({shouldResetZoom: false})}
             />
         }
         else {
@@ -194,6 +198,7 @@ export default class ViewerContainer extends Component {
                     loaded={loaded} 
                     setCameraZoom={cameraZoom => this.setState({cameraZoom})}
                     setCameraPosition={cameraPosition => this.setState({cameraPosition})}
+                    didResetZoom={() => this.setState({shouldResetZoom: false})}
                 />
             );
         }
@@ -208,9 +213,9 @@ export default class ViewerContainer extends Component {
 
             {/* display controls */}
             <div className="pt3 pb2">
-                <div className='fl w-100 pb3'>
+                <div className='flex flex-wrap w-100 pb3'>
 
-                    <div className="roi-thumbnail-select-container dib pr3">
+                    <div className="roi-thumbnail-select-container pr3">
                         <Select 
                         className={'roi-select'}
                             activeItem={roi}
@@ -239,7 +244,7 @@ export default class ViewerContainer extends Component {
                         </Select>
                     </div>
 
-                    <div className='dib pr3'>
+                    <div className='pr3'>
                         <ButtonGroup 
                             label='Mode' 
                             values={['Proj', 'Slice', 'Volume']}
@@ -247,7 +252,7 @@ export default class ViewerContainer extends Component {
                             onClick={value => this.setState({mode: value})}
                         />
                     </div>
-                    <div className='dib pr3'>
+                    <div className='pr3'>
                         <ButtonGroup 
                             label='Channel' 
                             values={['405', '488', 'Both']}
@@ -256,7 +261,7 @@ export default class ViewerContainer extends Component {
                             onClick={value => this.setState({channel: value})}
                         />
                     </div>
-                    <div className='dib pr3'>
+                    <div className='pr3'>
                         <ButtonGroup 
                             label='Quality' 
                             values={['Low', 'High']}
@@ -264,6 +269,19 @@ export default class ViewerContainer extends Component {
                             onClick={value => this.setState({imageQuality: value})}
                         />
                     </div>
+
+                    <div className="flex-0-0-auto pt3">
+                    <Button
+                        className="bp3-button-custom"
+                        text={"Reset zoom"}
+                        onClick={() => this.setState({shouldResetZoom: true, ...this.defaultZoomState})}
+                    />
+                    <Button
+                        className="ml2 bp3-button-custom"
+                        text={"Reset display settings"}
+                        onClick={() => this.setState({...this.defaultDisplayState})}
+                    />
+                </div>
 
                 </div>
             </div>
@@ -275,7 +293,7 @@ export default class ViewerContainer extends Component {
             <div className='flex flex-wrap w-100 pt2 pb2'>
 
                 {/* 405 min/max/gamma */}
-                <div className='flex-0-0-auto w-40 pl3 pr3'>
+                <div className='flex-0-0-auto w-50 pl3 pr3'>
                     <div className='pb1'>
                         {`DNA image range: ${this.state.min405}% to ${this.state.max405}%`}
                     </div>
@@ -303,7 +321,7 @@ export default class ViewerContainer extends Component {
                 </div>
 
                 {/* 488 min/max/gamma */}
-                <div className='flex-0-0-auto w-40 pl3 pr3'>
+                <div className='flex-0-0-auto w-50 pl3 pr3'>
                     <div className='pb1'>
                         {`Protein image range: ${this.state.min488}% to ${this.state.max488}%`}
                     </div>
@@ -346,13 +364,6 @@ export default class ViewerContainer extends Component {
                     />
                 </div>
 
-                <div className="dib pr3">
-                    <Button
-                        className="pl2 bp3-button-custom"
-                        text={"Reset"}
-                        onClick={() => this.setState({...this.defaultDisplayState})}
-                    />
-                </div>
             </div>
             
             {this.props.showMetadata ? (

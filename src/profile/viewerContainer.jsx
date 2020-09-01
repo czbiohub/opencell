@@ -213,6 +213,8 @@ export default class ViewerContainer extends Component {
 
             {/* display controls */}
             <div className="pt3 pb2">
+
+                {/* top row */}
                 <div className='flex flex-wrap w-100 pb3'>
 
                     <div className="roi-thumbnail-select-container pr3">
@@ -246,10 +248,10 @@ export default class ViewerContainer extends Component {
 
                     <div className='pr3'>
                         <ButtonGroup 
-                            label='Mode' 
-                            values={['Proj', 'Slice', 'Volume']}
-                            activeValue={this.state.mode}
-                            onClick={value => this.setState({mode: value})}
+                            label='Quality' 
+                            values={['Low', 'High']}
+                            activeValue={this.state.imageQuality}
+                            onClick={value => this.setState({imageQuality: value})}
                         />
                     </div>
                     <div className='pr3'>
@@ -261,28 +263,32 @@ export default class ViewerContainer extends Component {
                             onClick={value => this.setState({channel: value})}
                         />
                     </div>
-                    <div className='pr3'>
+                </div>
+                    
+                {/* bottom row of controls */}
+                <div className='flex items-center w-100' style={{justifyContent: 'space-between'}}>
+                    <div className='flex'>
                         <ButtonGroup 
-                            label='Quality' 
-                            values={['Low', 'High']}
-                            activeValue={this.state.imageQuality}
-                            onClick={value => this.setState({imageQuality: value})}
+                            label='' 
+                            values={['Proj', 'Slice', 'Volume']}
+                            labels={['Z-projection', 'Z-slice', 'Volume rendering']}
+                            activeValue={this.state.mode}
+                            onClick={value => this.setState({mode: value})}
                         />
                     </div>
-
-                    <div className="flex-0-0-auto pt3">
-                    <Button
-                        className="bp3-button-custom"
-                        text={"Reset zoom"}
-                        onClick={() => this.setState({shouldResetZoom: true, ...this.defaultZoomState})}
-                    />
-                    <Button
-                        className="ml2 bp3-button-custom"
-                        text={"Reset display settings"}
-                        onClick={() => this.setState({...this.defaultDisplayState})}
-                    />
-                </div>
-
+                    
+                    <div className='flex' style={{alignSelf: 'flex-end'}}>
+                        <Button
+                            className="bp3-button-custom"
+                            text={"Reset zoom"}
+                            onClick={() => this.setState({shouldResetZoom: true, ...this.defaultZoomState})}
+                        />
+                        <Button
+                            className="ml2 bp3-button-custom"
+                            text={"Reset display settings"}
+                            onClick={() => this.setState({...this.defaultDisplayState})}
+                        />
+                    </div>
                 </div>
             </div>
 

@@ -82,6 +82,7 @@ export default class ViewerContainer extends Component {
             // '405', '488', or 'Both'
             channel: "Both",
 
+            // 'Low' or 'High'
             imageQuality: "Low",
 
             // the middle of the z-stack
@@ -92,6 +93,8 @@ export default class ViewerContainer extends Component {
             shouldResetZoom: false,
         };
         this.state = {...this.defaultDisplayState, ...this.defaultZoomState, ...this.state};
+
+        this.resetZoom = this.resetZoom.bind(this);
     }
 
 
@@ -109,13 +112,9 @@ export default class ViewerContainer extends Component {
         // reset the camera zoom and the GFP black point if the target has changed
         // (because the black point is different for low-GFP targets)
         if (prevProps.cellLineId!==this.props.cellLineId) {
-            this.setState({
-                shouldResetZoom: true, 
-                min488: this.props.isLowGfp ? 10 : 0
-            });
+            this.setState({min488: this.props.isLowGfp ? 10 : 0,});
+            this.resetZoom();
         }
-
-
     }
 
 
@@ -162,6 +161,11 @@ export default class ViewerContainer extends Component {
             this.projs = projs;
             this.setState({projsLoaded: true});
         });
+    }
+
+
+    resetZoom() {
+        this.setState({shouldResetZoom: true, ...this.defaultZoomState});
     }
 
 
@@ -237,7 +241,7 @@ export default class ViewerContainer extends Component {
                             filterable={false}
                             onItemSelect={roi => {
                                 this.props.changeRoi(roi.id, roi.fov_id);
-                                this.setState({shouldResetZoom: true});
+                                this.resetZoom();
                             }}
                         >
                             <div className='simple-button-group'>
@@ -286,7 +290,7 @@ export default class ViewerContainer extends Component {
                         <Button
                             className="bp3-button-custom"
                             text={"Reset zoom"}
-                            onClick={() => this.setState({shouldResetZoom: true, ...this.defaultZoomState})}
+                            onClick={() => this.resetZoom()}
                         />
                         <Button
                             className="ml2 bp3-button-custom"

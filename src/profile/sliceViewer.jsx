@@ -1,4 +1,5 @@
 
+import { scale } from 'chroma-js';
 import * as d3 from 'd3';
 import React, { Component } from 'react';
 
@@ -16,7 +17,8 @@ export default class SliceViewer extends Component {
         this.initViewer = this.initViewer.bind(this);
         this.maybeInitData = this.maybeInitData.bind(this);
         this.displaySlice = this.displaySlice.bind(this);
-        this.zoom = this.zoom.bind(this);
+        this.onZoom = this.onZoom.bind(this);
+        this.applyInitialTransform = this.applyInitialTransform.bind(this);
 
         // WARNING: hard-coded indices for 405 and 488 image data
         // that is, the 405 volume is given by `this.props.volumes[this.ind405]`
@@ -31,6 +33,12 @@ export default class SliceViewer extends Component {
 
         // hard-coded size of the image data (assuming square aspect ratio)
         this.imageSize = 600;
+
+        // this flag is false until the user triggers the d3.zoom callback;
+        // it is necessary to ensure that applyInitialTransform is called in displaySlice
+        // each time the component updates until the user themselves
+        // alters the transform by panning or zooming
+        this.userHasZoomed = false;
     }
 
     componentDidMount() {
@@ -41,7 +49,10 @@ export default class SliceViewer extends Component {
     }
 
     componentDidUpdate (prevProps) {
-        if (!this.props.loaded) return;
+        if (!this.props.loaded) {
+            this.userHasZoomed = false;
+            return;
+        };
         this.maybeInitData();
         this.displaySlice();
     }
@@ -86,22 +97,24 @@ export default class SliceViewer extends Component {
         
         // create an in-memory canvas to call putImageData on
         // (needed because putImageData ignores the context's transform)
-        const memCanvas = document.createElement("canvas");
-        d3.select(memCanvas).attr("width", this.imageSize).attr("height", this.imageSize);
-
+        const virtualCanvas = document.createElement("canvas");
+        d3.select(virtualCanvas).attr("width", this.imageSize).attr("height", this.imageSize);
+        
         this.canvas = canvas.node();
-        this.memCanvas = memCanvas;
+        this.virtualCanvas = virtualCanvas;
 
-        const zoom = d3.zoom()
+        this.zoom = d3.zoom()
             .scaleExtent([0.5, 8])
-            .on('zoom', () => this.zoom(d3.event.transform));
+            .on('zoom', () => this.onZoom(d3.event.transform));
 
-        canvas.call(zoom);
+        canvas.call(this.zoom);
     }
 
 
-    zoom(transform) {
+    onZoom(transform) {
         
+        if (!transform.isProgrammatic) this.userHasZoomed = true;
+
         const context = this.canvas.getContext("2d");
         context.save();
         context.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -115,12 +128,10 @@ export default class SliceViewer extends Component {
         context.translate(0, -this.canvas.height);
         
         // calculate the current xy position in the coordinates used by the volume viewer camera
-        // for reference, context.transform()(.e, .f) corner coordinates are
-        // (300, 300)  (-300, 300)
-        // (300, -300)  (-300, -300)
-        // and the threejs camera.position(.x, .y) corner coordinates are:
-        // (0, 600) ---- (600, 600)
-        // (0, 0)   ---- (600, 0)
+        // for reference, the context.transform()(.e, .f) corner coordinates are
+        // top left (300, 300) and bottom right (-300, -300)
+        // and the threejs camera.position(.x, .y) corner coordinates are
+        // top left (0, 600) and bottom right (600, 600)
         this.cameraPosition = {
             x: -(context.getTransform().e - this.canvas.width/2)/transform.k, 
             y: (context.getTransform().f - this.canvas.height/2)/transform.k,
@@ -129,7 +140,7 @@ export default class SliceViewer extends Component {
 
         // re-draw the image (without smoothing, to show the true pixels when zoomed in)
         context.imageSmoothingEnabled = false;
-        context.drawImage(this.memCanvas, 0, 0, this.imageSize, this.imageSize);
+        context.drawImage(this.virtualCanvas, 0, 0, this.imageSize, this.imageSize);
         context.restore();
 
         // save the transform so we can re-apply it after changing the z-slice
@@ -137,9 +148,35 @@ export default class SliceViewer extends Component {
     }
 
 
+    applyInitialTransform () {
+
+        let transform = {
+            k: this.props.cameraZoom,
+            x: -this.props.cameraZoom * this.props.cameraPosition.x + 300,
+            y: this.props.cameraZoom * (this.props.cameraPosition.y - 600) + 300,
+        }
+
+        transform = d3.zoomIdentity
+            .translate(transform.x, transform.y)
+            .scale(transform.k);
+
+        // hack: add a new property to the transform to indicate that it was constructed here,
+        // rather than d3.event.transform, so that the userHasZoomed flag
+        // can be correctly updated in this.onZoom
+        transform.isProgrammatic = true;
+
+        // call the this.zoom callback with this transform
+        // note: this is necessary to correctly set the initial state of the this.zoom instance;
+        // simply calling `this.onZoom(transform)` will not work
+        d3.select(this.canvas).call(this.zoom.transform, transform);
+
+    }
+
+
     displaySlice() {
 
         if (!this.props.volumes) return;
+        if (!this.userHasZoomed) this.applyInitialTransform();
 
         // clamp the z-index to zero in z-projection mode
         const zIndex = this.props.mode==='Proj' ? 0 : this.props.zIndex;
@@ -217,17 +254,17 @@ export default class SliceViewer extends Component {
         }
 
         // draw the image on the in-memory canvas
-        let memContext = this.memCanvas.getContext('2d');
-        const imageData = memContext.getImageData(0, 0, this.imageSize, this.imageSize);
+        let context = this.virtualCanvas.getContext('2d');
+        const imageData = context.getImageData(0, 0, this.imageSize, this.imageSize);
         imageData.data.set(this.imData);
-        memContext.putImageData(imageData, 0, 0);
+        context.putImageData(imageData, 0, 0);
 
         // draw the image on the real canvas
-        const context = this.canvas.getContext("2d");
-        context.drawImage(this.memCanvas, 0, 0, this.imageSize, this.imageSize);
+        context = this.canvas.getContext("2d");
+        context.drawImage(this.virtualCanvas, 0, 0, this.imageSize, this.imageSize);
 
         // re-apply the existing transform
-        this.zoom(this.lastTransform || d3.zoomIdentity);
+        this.onZoom(this.lastTransform);
     }
 
 

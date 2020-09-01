@@ -102,6 +102,14 @@ export default class VolumeViewer extends Component {
 
     }
 
+    componentWillUnmount() {
+        this.props.setCameraPosition({
+            x: this.controls.target.x, 
+            y: this.controls.target.y
+        });
+        this.props.setCameraZoom(this.camera.zoom);
+    }
+
     
     updateUniforms(fields) {
 

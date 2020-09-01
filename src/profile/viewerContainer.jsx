@@ -67,6 +67,8 @@ export default class ViewerContainer extends Component {
             min405: 0,
             max405: 100,
             gamma405: 1.0,
+            cameraPosition: {x: 300, y: 300},
+            cameraZoom: 1,
         }
 
         this.state = {
@@ -81,10 +83,6 @@ export default class ViewerContainer extends Component {
 
             // the middle of the z-stack
             zIndex: parseInt(this.numSlices/2),
-
-            // default position and zoom for the volume viewer's camera
-            cameraPosition: {x: 300, y: 300},
-            cameraZoom: 1,
 
             stacksLoaded: false,
             projsLoaded: false,
@@ -172,7 +170,12 @@ export default class ViewerContainer extends Component {
 
         let viewer;
         if (this.state.mode==='Volume') {
-            viewer = <VolumeViewer {...this.state} volumes={this.volumes}/>
+            viewer = <VolumeViewer 
+                {...this.state} 
+                volumes={this.volumes}
+                setCameraZoom={cameraZoom => this.setState({cameraZoom})}
+                setCameraPosition={cameraPosition => this.setState({cameraPosition})}
+            />
         }
         else {
             let volumes, loaded;

@@ -78,7 +78,6 @@ export default class VolumeViewer extends Component {
         // in order to reload the texture when this method is called again after the stacks have loaded
         if (!this.props.stacksLoaded) {
             this.reloadTexture = true;
-            this.userHasMovedCamera = false;
             return;
         }
 

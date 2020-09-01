@@ -232,8 +232,9 @@ export default class ViewerContainer extends Component {
                             }}
                             filterable={false}
                             onItemSelect={roi => {
-                                this.props.changeRoi(roi.id, roi.fov_id)}
-                            }
+                                this.props.changeRoi(roi.id, roi.fov_id);
+                                this.setState({shouldResetZoom: true});
+                            }}
                         >
                             <div className='simple-button-group'>
                                 <div className="simple-button-group-label">Select FOV</div>

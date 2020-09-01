@@ -89,6 +89,7 @@ export default class ViewerContainer extends Component {
 
             stacksLoaded: false,
             projsLoaded: false,
+            shouldResetZoom: false,
         };
         this.state = {...this.defaultDisplayState, ...this.defaultZoomState, ...this.state};
     }
@@ -105,10 +106,13 @@ export default class ViewerContainer extends Component {
             prevState.imageQuality!==this.state.imageQuality
         ) this.loadStacks();
 
-        // reset the GFP black point if the target has changed
+        // reset the camera zoom and the GFP black point if the target has changed
         // (because the black point is different for low-GFP targets)
         if (prevProps.cellLineId!==this.props.cellLineId) {
-            this.setState({min488: this.props.isLowGfp ? 10 : 0});
+            this.setState({
+                shouldResetZoom: true, 
+                min488: this.props.isLowGfp ? 10 : 0
+            });
         }
 
 
@@ -117,7 +121,7 @@ export default class ViewerContainer extends Component {
 
     loadStacks() {
 
-        this.setState({stacksLoaded: false});
+        this.setState({stacksLoaded: false, projsLoaded: false});
 
         const loadStack = (filepath) => {
             return new Promise((resolve, reject) => {

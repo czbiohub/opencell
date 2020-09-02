@@ -78,7 +78,7 @@ def parse_args():
         'crop_annotated_rois',
         'generate_annotated_roi_thumbnails',
         'generate_nucleus_segmentations',
-        'process_all_fovs',
+        'process_all',
     ]
 
     for dest in action_arg_dests:
@@ -422,7 +422,7 @@ def main():
         method_name = 'process_raw_tiff'
         method_kwargs = {'dst_root': config.OPENCELL_MICROSCOPY_DIR}
 
-        if not args.process_all_fovs:
+        if not args.process_all:
             fovs = get_unprocessed_fovs(engine, Session, result_kind='raw-tiff-metadata')
         try:
             do_fov_tasks(Session, config, method_name, method_kwargs, fovs=fovs)
@@ -441,7 +441,7 @@ def main():
     if args.calculate_z_profiles:
         method_name = 'calculate_z_profiles'
         method_kwargs = {}
-        if not args.process_all_fovs:
+        if not args.process_all:
             fovs = get_unprocessed_fovs(engine, Session, result_kind='z-profiles')
         do_fov_tasks(Session, config, method_name, method_kwargs, fovs=fovs)
 
@@ -450,7 +450,7 @@ def main():
     if args.generate_clean_tiffs:
         method_name = 'generate_clean_tiff'
         method_kwargs = {'dst_root': config.OPENCELL_MICROSCOPY_DIR}
-        if not args.process_all_fovs:
+        if not args.process_all:
             fovs = get_unprocessed_fovs(engine, Session, result_kind='clean-tiff-metadata')
         do_fov_tasks(Session, config, method_name, method_kwargs, fovs=fovs)
 
@@ -470,7 +470,7 @@ def main():
             'fov_scorer': fov_scorer
         }
 
-        if not args.process_all_fovs:
+        if not args.process_all:
             fovs = get_unprocessed_fovs(engine, Session, result_kind='fov-features')
         do_fov_tasks(Session, config, method_name, method_kwargs, fovs=fovs)
 
@@ -520,12 +520,17 @@ def main():
         method_kwargs = {'dst_root': config.OPENCELL_MICROSCOPY_DIR}
 
         # only process annotated FOVs
-        fovs = (
+        query = (
             Session.query(models.MicroscopyFOV)
             .filter(models.MicroscopyFOV.annotation.has())
-            .all()
         )
-        do_fov_tasks(Session, config, method_name, method_kwargs, fovs=fovs)
+
+        # only process FOVs annotated since the last time annotated ROIs were cropped
+        # (this means ROIs from FOVs with newly-edited existing annotations will not be updated)
+        if not args.process_all:
+            query = query.filter(~models.MicroscopyFOV.rois.any())
+
+        do_fov_tasks(Session, config, method_name, method_kwargs, fovs=query.all())
 
 
     if args.generate_annotated_roi_thumbnails:

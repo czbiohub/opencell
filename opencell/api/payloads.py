@@ -61,10 +61,10 @@ def cell_line_payload(cell_line, included_fields):
             'facs_intensity': cell_line.facs_dataset.scalars.get('rel_median_log')
         })
 
-    # summary stats for FOVs and pulldowns
+    # placeholder for FOV counts
     counts = {
-        'num_fovs': len(cell_line.fovs),
-        'num_fovs_annotated': len([fov for fov in cell_line.fovs if fov.annotation]),
+        'num_fovs': None,
+        'num_fovs_annotated': None,
     }
 
     # all of the manual annotation categories

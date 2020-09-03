@@ -987,7 +987,7 @@ class MassSpecClusterHeatmap(Base):
     # col index of the heatmap
     col_index = db.Column(db.Integer, nullable=False)
 
-    # one to one relationship to a mass spec hit
+    # many cluster rows to one mass spec hit
     hit = db.orm.relationship("MassSpecHit", uselist=False)
 
     # The cluster heatmap needs to have a unique set of cluster_id, row and col index

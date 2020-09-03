@@ -48,6 +48,8 @@ class CellLines(Resource):
     @cache.cached(timeout=3600, key_prefix=cache_key)
     def get(self):
 
+        Session = flask.current_app.Session
+
         args = flask.request.args
         plate_id = args.get('plate')
         target_name = args.get('target')
@@ -59,7 +61,7 @@ class CellLines(Resource):
         cell_line_ids = [int(_id) for _id in cell_line_ids.split(',')] if cell_line_ids else []
 
         query = (
-            flask.current_app.Session.query(models.CrisprDesign)
+            Session.query(models.CrisprDesign)
             .options(db.orm.joinedload(models.CrisprDesign.cell_lines, innerjoin=True))
         )
 
@@ -91,14 +93,11 @@ class CellLines(Resource):
             all_ids = list(set(all_ids).intersection(cell_line_ids))
 
         lines = (
-            flask.current_app.Session.query(models.CellLine)
+            Session.query(models.CellLine)
             .options(
                 (
                     db.orm.joinedload(models.CellLine.crispr_design, innerjoin=True)
                     .joinedload(models.CrisprDesign.uniprot_metadata, innerjoin=True)
-                ), (
-                    db.orm.joinedload(models.CellLine.fovs)
-                    .joinedload(models.MicroscopyFOV.annotation)
                 ),
                 db.orm.joinedload(models.CellLine.facs_dataset),
                 db.orm.joinedload(models.CellLine.sequencing_dataset),
@@ -108,9 +107,18 @@ class CellLines(Resource):
             .all()
         )
 
-        # limit the number of lines in dev mode (to speed things up)
-        if flask.current_app.config['ENV'] == 'dev':
-            lines = lines[::1]
+        # TODO: pass the FOV counts to the cell_line_payload method if they are needed
+        _ = (
+            Session.query(
+                models.CellLine.id,
+                db.func.count(models.MicroscopyFOV.id).label('num_fovs'),
+                db.func.count(models.MicroscopyFOVAnnotation.id).label('num_annotated_fovs'),
+            )
+            .outerjoin(models.CellLine.fovs)
+            .outerjoin(models.MicroscopyFOV.annotation)
+            .group_by(models.CellLine.id)
+            .all()
+        )
 
         payload = [payloads.cell_line_payload(line, included_fields) for line in lines]
         return flask.jsonify(payload)
@@ -276,7 +284,7 @@ class CellLinePulldown(CellLineResource):
             .all()
         )
 
-        # we only need the pval and enrichment for the non-significant hits
+        # we need only the pval and enrichment for the non-significant hits
         nonsignificant_hits = (
             flask.current_app.Session.query(models.MassSpecHit.pval, models.MassSpecHit.enrichment)
             .filter(models.MassSpecHit.pulldown_id == pulldown.id)

@@ -1,39 +1,57 @@
 
 import React, { Component } from 'react';
+import {Link} from 'react-router-dom';
 
-
-export default class Navbar extends Component {
-
-    constructor (props) {
-        super(props);
-    }
+export default function Navbar (props) {
     
-    render () {
+    return (
+        // main container
+        <div>
 
-        return (
-            // main container
-            <div>
+        {/* 'space-between' left- and right-justifies the two children divs */}
+        <div 
+            className="flex items-center w-100 pr3 pl3 pt1 pb1" 
+            style={{justifyContent: 'space-between', backgroundColor: "#eee"}}
+        >
 
-            {/* full-bleed navbar */}
-            <div className="w-100 pa2 bg-black-10 f3">
-                <div className='dib f3 pr4'>OpenCell v0.0.1</div>
-
-                {/* mock navbar links */}
-                <div className='fr pt2 dib f5'>
-                    <div className='dib pl3 pr3' style={{borderRight: '1px solid #aaa'}}>
-                        <a href="./">Home</a>
-                    </div>
-                    <div className='dib pl3 pr3' style={{borderRight: '1px solid #aaa'}}>
-                        <a href="./dashboard">Dashboard</a>
-                    </div>
-                    <div className='dib pl3 pr3'>
-                        <a href="./profile">Profile</a>
-                    </div>
-
+            {/* left-side content */}
+            <div className="flex items-center">
+                <div>
+                    <img src='./logos/opencell_logo.png' width={70} height={70} style={{mixBlendMode: 'darken'}}/>
                 </div>
+                <div className="pl3 blue navbar-opencell-title">OpenCell</div>
             </div>
+
+            {/* right-justified content */}
+            <div className='flex items-center' style={{}}>
+
+                <div className='pl3 pr3' style={{borderRight: '1px solid #aaa'}}>
+                    <Link to='/'>Home</Link>
+                </div>
+                <div className='pl3 pr3' style={{borderRight: '1px solid #aaa'}}>
+                    <Link to="/dashboard">Dashboard</Link>
+                </div>
+                <div className='pl3 pr3'>
+                    <Link to="/gallery">Gallery</Link>
+                </div>
+
+                <div className='pl3'>
+                    <input 
+                        type='text' 
+                        className='navbar-search-textbox' 
+                        defaultValue={''}
+                        onKeyPress={(event) => {
+                            if (event.charCode===13) {
+                                props.onTargetSearch(event.currentTarget.value);
+                            }
+                        }}
+                        placeholder="Search for a protein"
+                    />
+                </div>
+
             </div>
-        );
-    }
+        </div>
+        </div>
+    );
 }
 

@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import { Button, MenuItem, Slider, RangeSlider } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
+import classNames from 'classnames';
 
 // import Slider from './slider.jsx';
 import ButtonGroup from './buttonGroup.jsx';
@@ -14,17 +15,35 @@ import { fovMetadataDefinitions } from './metadataDefinitions.js';
 import 'tachyons';
 import './Profile.css';
 
-function roiLabel (roi) {
-    return roi && `FOV ${roi.fov_id} (${roi.kind[0].toUpperCase()})`
+
+function Thumbnail (props) {
+    const divClassName = classNames(
+        'pa1 pr2 pl2', 'roi-thumbnail-container',
+        {'roi-thumbnail-container-active': props.active}
+    );
+
+    return (
+        <div className={divClassName} onClick={props.onClick}>
+            <img 
+                width={60}
+                height={60}
+                src={`data:image/jpg;base64,${props.thumbnail?.data}`}
+            />
+            <div className='roi-thumbnail-caption'>
+                <span>{props.text}</span>
+            </div>
+        </div>
+    );
 }
+
 
 function roiItemRenderer (roi, props) {
     if (!props.modifiers.matchesPredicate) return null;
     return (
-        <MenuItem
+        <Thumbnail
             key={roi.id}
             text={`FOV ${roi.fov_id}`}
-            label={`(${roi.kind[0].toUpperCase()})`}
+            thumbnail={roi.thumbnail}
             active={props.modifiers.active}
             onClick={props.handleClick}
         />
@@ -50,6 +69,11 @@ export default class ViewerContainer extends Component {
             gamma405: 1.0,
         }
 
+        this.defaultZoomState = {
+            cameraPosition: {x: 300, y: 300},
+            cameraZoom: 1,
+        }
+
         this.state = {
 
             // 'Volume', 'Slice' or 'Proj'
@@ -58,6 +82,7 @@ export default class ViewerContainer extends Component {
             // '405', '488', or 'Both'
             channel: "Both",
 
+            // 'Low' or 'High'
             imageQuality: "Low",
 
             // the middle of the z-stack
@@ -65,27 +90,37 @@ export default class ViewerContainer extends Component {
 
             stacksLoaded: false,
             projsLoaded: false,
+            shouldResetZoom: false,
         };
-        this.state = {...this.defaultDisplayState, ...this.state};
+        this.state = {...this.defaultDisplayState, ...this.defaultZoomState, ...this.state};
+
+        this.resetZoom = this.resetZoom.bind(this);
     }
 
 
+    componentDidMount() {
+        if (this.props.roiId) this.loadStacks();
+    }
+
     componentDidUpdate(prevProps, prevState, snapshot) {
 
-        if (prevProps.roiId!==this.props.roiId) this.loadStacks();
-        if (prevState.imageQuality!==this.state.imageQuality) this.loadStacks();
+        if (
+            prevProps.roiId!==this.props.roiId || 
+            prevState.imageQuality!==this.state.imageQuality
+        ) this.loadStacks();
 
-        // reset the GFP black point if the target has changed
+        // reset the camera zoom and the GFP black point if the target has changed
         // (because the black point is different for low-GFP targets)
         if (prevProps.cellLineId!==this.props.cellLineId) {
-            this.setState({min488: this.props.isLowGfp ? 10 : 0});
+            this.setState({min488: this.props.isLowGfp ? 10 : 0,});
+            this.resetZoom();
         }
     }
 
 
     loadStacks() {
 
-        this.setState({stacksLoaded: false});
+        this.setState({stacksLoaded: false, projsLoaded: false});
 
         const loadStack = (filepath) => {
             return new Promise((resolve, reject) => {
@@ -129,6 +164,11 @@ export default class ViewerContainer extends Component {
     }
 
 
+    resetZoom() {
+        this.setState({shouldResetZoom: true, ...this.defaultZoomState});
+    }
+
+
     render () {
         
         if (!this.props.rois.length) {
@@ -141,19 +181,32 @@ export default class ViewerContainer extends Component {
 
         let viewer;
         if (this.state.mode==='Volume') {
-            viewer = <VolumeViewer {...this.state} volumes={this.volumes}/>
+            viewer = <VolumeViewer 
+                {...this.state} 
+                volumes={this.volumes}
+                setCameraZoom={cameraZoom => this.setState({cameraZoom})}
+                setCameraPosition={cameraPosition => this.setState({cameraPosition})}
+                didResetZoom={() => this.setState({shouldResetZoom: false})}
+            />
         }
-        else if (this.state.mode==='Slice') {
+        else {
+            let volumes, loaded;
+            if (this.state.mode==='Slice') {
+                volumes = this.volumes;
+                loaded = this.state.stacksLoaded;
+            }
+            else if (this.state.mode==='Proj') {
+                volumes = this.projs;
+                loaded = this.state.projsLoaded;
+            }
             viewer = (
                 <SliceViewer 
-                    {...this.state} volumes={this.volumes} loaded={this.state.stacksLoaded}
-                />
-            );
-        }
-        else if (this.state.mode==='Proj') {
-            viewer = (
-                <SliceViewer 
-                    {...this.state} volumes={this.projs} loaded={this.state.projsLoaded} zIndex={0}
+                    {...this.state}
+                    volumes={volumes} 
+                    loaded={loaded} 
+                    setCameraZoom={cameraZoom => this.setState({cameraZoom})}
+                    setCameraPosition={cameraPosition => this.setState({cameraPosition})}
+                    didResetZoom={() => this.setState({shouldResetZoom: false})}
                 />
             );
         }
@@ -168,16 +221,49 @@ export default class ViewerContainer extends Component {
 
             {/* display controls */}
             <div className="pt3 pb2">
-                <div className='fl w-100 pb3'>
-                    <div className='dib pr3'>
+
+                {/* top row */}
+                <div className='flex flex-wrap w-100 pb3'>
+
+                    <div className="roi-thumbnail-select-container pr3">
+                        <Select 
+                        className={'roi-select'}
+                            activeItem={roi}
+                            items={this.props.rois} 
+                            itemRenderer={roiItemRenderer} 
+                            itemListRenderer={props => {
+                                return (
+                                    <div className="roi-select-menu-container">
+                                        {props.items.map(props.renderItem)}
+                                    </div>
+                                );
+                            }}
+                            filterable={false}
+                            onItemSelect={roi => {
+                                this.props.changeRoi(roi.id, roi.fov_id);
+                                this.resetZoom();
+                            }}
+                        >
+                            <div className='simple-button-group'>
+                                <div className="simple-button-group-label">Select FOV</div>
+                                <Button 
+                                    className="bp3-button-custom"
+                                    rightIcon="double-caret-vertical"
+                                    text={`FOV ${roi.fov_id}`}
+                                />
+                            </div>
+                        </Select>
+                    </div>
+
+                    <div className='pr3'>
                         <ButtonGroup 
-                            label='Mode' 
-                            values={['Proj', 'Slice', 'Volume']}
-                            activeValue={this.state.mode}
-                            onClick={value => this.setState({mode: value})}
+                            label='Quality' 
+                            values={['Low', 'High']}
+                            activeValue={this.state.imageQuality}
+                            onClick={value => this.setState({imageQuality: value})}
                         />
                     </div>
-                    <div className='dib pr3'>
+                    <div className='pr3'>
                         <ButtonGroup 
                             label='Channel' 
                             values={['405', '488', 'Both']}
@@ -186,33 +272,31 @@ export default class ViewerContainer extends Component {
                             onClick={value => this.setState({channel: value})}
                         />
                     </div>
-                    <div className='dib pr3'>
+                </div>
+                    
+                {/* bottom row of controls */}
+                <div className='flex items-center w-100' style={{justifyContent: 'space-between'}}>
+                    <div className='flex'>
                         <ButtonGroup 
-                            label='Quality' 
-                            values={['Low', 'High']}
-                            activeValue={this.state.imageQuality}
-                            onClick={value => this.setState({imageQuality: value})}
+                            label='' 
+                            values={['Proj', 'Slice', 'Volume']}
+                            labels={['Z-projection', 'Z-slice', 'Volume rendering']}
+                            activeValue={this.state.mode}
+                            onClick={value => this.setState({mode: value})}
                         />
                     </div>
-                    <div className="dib pr3">
-                        <Select 
-                            activeItem={roi}
-                            items={this.props.rois} 
-                            itemRenderer={roiItemRenderer} 
-                            filterable={false}
-                            onItemSelect={roi => {
-                                this.props.changeRoi(roi.id, roi.fov_id)}
-                            }
-                        >
-                            <div className='simple-button-group'>
-                                <div className="simple-button-group-label">Select FOV</div>
-                                <Button 
-                                    className="bp3-button-custom"
-                                    rightIcon="double-caret-vertical"
-                                    text={roiLabel(roi)}
-                                />
-                            </div>
-                        </Select>
+                    
+                    <div className='flex' style={{alignSelf: 'flex-end'}}>
+                        <Button
+                            className="bp3-button-custom"
+                            text={"Reset zoom"}
+                            onClick={() => this.resetZoom()}
+                        />
+                        <Button
+                            className="ml2 bp3-button-custom"
+                            text={"Reset display settings"}
+                            onClick={() => this.setState({...this.defaultDisplayState})}
+                        />
                     </div>
                 </div>
             </div>
@@ -224,7 +308,7 @@ export default class ViewerContainer extends Component {
             <div className='flex flex-wrap w-100 pt2 pb2'>
 
                 {/* 405 min/max/gamma */}
-                <div className='flex-0-0-auto w-40 pl3 pr3'>
+                <div className='flex-0-0-auto w-50 pl3 pr3'>
                     <div className='pb1'>
                         {`DNA image range: ${this.state.min405}% to ${this.state.max405}%`}
                     </div>
@@ -252,7 +336,7 @@ export default class ViewerContainer extends Component {
                 </div>
 
                 {/* 488 min/max/gamma */}
-                <div className='flex-0-0-auto w-40 pl3 pr3'>
+                <div className='flex-0-0-auto w-50 pl3 pr3'>
                     <div className='pb1'>
                         {`Protein image range: ${this.state.min488}% to ${this.state.max488}%`}
                     </div>
@@ -295,13 +379,6 @@ export default class ViewerContainer extends Component {
                     />
                 </div>
 
-                <div className="dib pr3">
-                    <Button
-                        className="pl2 bp3-button-custom"
-                        text={"Reset"}
-                        onClick={() => this.setState({...this.defaultDisplayState})}
-                    />
-                </div>
             </div>
             
             {this.props.showMetadata ? (

@@ -22,7 +22,7 @@ const cellLineMetadataDefinitions = [
     },{
         id: 'target_terminus',
         accessor: row => row.metadata?.target_terminus,
-        Header: 'Term',
+        Header: 'Terminus',
         units: null,
     },{
         id: 'uniprot_id',
@@ -37,6 +37,11 @@ const cellLineMetadataDefinitions = [
         id: 'well_id',
         accessor: row => row.metadata?.well_id,
         Header: 'Well',
+        units: null,
+    },{
+        id: 'sort_count',
+        accessor: row => row.metadata?.sort_count,
+        Header: 'Sort count',
         units: null,
     },{
         id: 'hek_tpm',

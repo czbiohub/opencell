@@ -1,26 +1,61 @@
 
-.header-container > div {
-    flex: 0 0 auto;
-}
 
-.header-container {
+.navbar-opencell-title {
     font-family: "Helvetica Neue";
-}
-
-.header-opencell-title {
     font-size: 40px;
     font-weight: 100;
     letter-spacing: 2px;
 }
 
-.header-target-name {
-    font-size: 66px;
+.navbar-search-textbox {
+    font-size: 24px;
+    font-weight: bold;
+    padding: 5px;
+    width: 150px;
+    text-transform: uppercase;
+}
+
+
+
+.clm-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    font-family: "Helvetica Neue";
+}
+
+.clm-target-name {
+    font-size: 60px;
     font-weight: 400;
 }
 
-.header-metadata-item {
+.clm-protein-description {
+    font-size: 22px;
+    font-weight: 200;
+}
+
+.clm-item {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* .clm-item:last-child { border: none; } */
+
+
+.metadata-item {
     margin-right: 25px;
     max-width: 200px;
+}
+
+.metadata-item abbr {
+    text-decoration: none;
+    line-height: 1em;
+    margin-left: 2px;
+    font-size: 14px;
+}
+
+.metadata-item-label {
+    color: #aaa;
+    font-family: "Avenir";
 }
 
 .overflow-hidden {
@@ -29,31 +64,82 @@
     text-overflow: ellipsis;
 }
 
-.header-metadata-item abbr {
-    text-decoration: none;
-    line-height: 1em;
-    margin-left: 2px;
-    font-size: 14px;
+
+
+.roi-thumbnail-container {
+    cursor: pointer;
+    text-align: center;
+    border-radius: 3px;
 }
 
-.header-metadata-item-label {
-    color: #aaa;
-    font-family: "Avenir";
+.roi-thumbnail-container:hover {
+    background-color: #ddd;
 }
 
-.header-search-label {
-    color: #aaa;
-    padding-top: 5px;
-    font-family: "Avenir";
+.roi-thumbnail-container-active,
+.roi-thumbnail-container-active:hover {
+    background-color: rgb(164, 199, 230);
 }
 
-.header-search-textbox {
-    font-size: 24px;
-    font-weight: bold;
+/* flip the thumbnails so their orientation matches the volume viewer */
+.roi-thumbnail-container img {
+    -webkit-transform: scaleY(-1);
+    transform: scaleY(-1);
+}
+
+.roi-thumbnail-caption {
+    text-align: center;
+    font-size: 12px;
+}
+
+/* this class corresponds to the select menu item container */
+.roi-select-menu-container {
+    min-width: auto;
+    display: flex;
     padding: 5px;
-    width: 150px;
-    text-transform: uppercase;
+    margin: 0;
+    border-radius: 3px;
+    color: #182026;
 }
+
+
+/* 
+Default style for input placeholder text
+note that pseudo-elements can't be listed, so these blocks are duplicates
+*/
+
+/* firefox 19+ */
+::-moz-placeholder { 
+    color: rgb(154, 154, 154);
+    font-size: 14px;
+    font-weight: normal;
+    text-transform: none;
+}
+
+/* Firefox 18- */
+:-moz-placeholder { 
+    color: rgb(154, 154, 154);
+    font-size: 14px;
+    font-weight: normal;
+    text-transform: none;
+}
+
+/* chrome, opera, safari */
+::-webkit-input-placeholder {
+    color: rgb(154, 154, 154);
+    font-size: 14px;
+    font-weight: normal;
+    text-transform: none;
+}
+
+ /* IE 10+ */
+ :-ms-input-placeholder {
+    color: rgb(154, 154, 154);
+    font-size: 14px;
+    font-weight: normal;
+    text-transform: none;
+}
+
 
 /* the header for each main panel/section */
 .section-header {
@@ -151,7 +237,7 @@
     stroke-width: 1px;
 }
 
-.protein-function-container {
+.about-this-protein-container {
     height: 150px;
     overflow: auto;
     line-height: 1.33;
@@ -161,7 +247,7 @@
 in order for the plots to be vertically aligned */
 .expression-plot-container, 
 .facs-plot-container {
-    margin-left: -20px;
+    margin-left: -10px;
     margin-right: 10px;
     margin-top: 10px;
 }

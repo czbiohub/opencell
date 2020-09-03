@@ -38,13 +38,13 @@ export default class FacsPlotContainer extends Component {
                             activeValue={this.state.facsShowGFP}
                             onClick={value => this.setState({facsShowGFP: value})}/>
                     </div>
-                    <div className='dib pr4'>
+                    {/* <div className='dib pr4'>
                         <ButtonGroup 
                             label='Annotations' 
                             values={['On', 'Off']}
                             activeValue={this.state.facsShowAnnotations}
                             onClick={value => this.setState({facsShowAnnotations: value})}/>
-                    </div>
+                    </div> */}
                 </div>
 
                 {/* FACS plot itself*/}

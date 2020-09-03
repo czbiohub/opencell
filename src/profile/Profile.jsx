@@ -1,14 +1,26 @@
 
 import * as d3 from 'd3';
-import React, { Component } from 'react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
+import ReactDOM from 'react-dom';
+
+import {
+    BrowserRouter,
+    Switch,
+    Route,
+    Redirect,
+    useHistory, 
+    useLocation, 
+    useParams, 
+    useRouteMatch
+ } from "react-router-dom";
 
 import { Button, Radio, RadioGroup, MenuItem } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
 
-import Navbar from '../common/navbar.jsx';
-import Header from './header.jsx';
 import Overview from './overview.jsx';
-import FovAnnotator from '../microscopy/fovAnnotator.jsx';
+import FovAnnotator from './fovAnnotator.jsx';
+import CellLineTable from './cellLineTable.jsx';
+import { SectionHeader } from './common.jsx';
 
 import 'tachyons';
 import 'react-table/react-table.css';
@@ -20,135 +32,67 @@ import * as utils from '../common/utils.js';
 import '../common/common.css';
 import './Profile.css';
 
-const initialTarget = 'POLR2F';
 
+export default function Profile (props) {
 
+    const [allCellLines, setAllCellLines] = useState([]);
 
-
-export default class Profile extends Component {
-
-    constructor (props) {
-        super(props);
-
-        this.urlParams = new URLSearchParams(window.location.search);
-
-        this.cellLine = {};
-        this.allCellLines = [];
-
-        this.state = {
-            cellLineId: null,
-            targetName: null,
-            linesLoaded: false,
-        };
-
-        this.onSearchChange = this.onSearchChange.bind(this);
-        this.changeCellLineId = this.changeCellLineId.bind(this);
-
-    }
-
-
-    changeCellLineId (cellLineId, push = true) {
-        
-        if (!this.state.linesLoaded) return;
-        if (!cellLineId || this.state.cellLineId===cellLineId) return;
-
-        cellLineId = parseInt(cellLineId);
-        const cellLine = this.allCellLines.filter(
-            line => line.metadata?.cell_line_id === cellLineId
-        )[0];
-
-        if (!cellLine) {
-            console.log(`No cell line found for cellLineId ${cellLineId}`);
-            return;
-        };
-
-        const newUrl = `${this.props.match.path.split("/:")[0]}/${cellLineId}${this.props.location.search}`;
-        if (push) {
-            // console.log(`Created new URL: ${newUrl}`);
-            this.props.history.push(newUrl);
-        }
-    
-        this.cellLine = cellLine;
-        this.setState({
-            cellLineId,
-            targetName: this.cellLine.metadata.target_name,
-        });
-    }
-
-
-    onSearchChange (value) {
-        // fired when the user hits enter in the header's target search text input
-        // (`value` is the string in the textbox)
-        d3.json(`${settings.apiUrl}/lines?target=${value}`).then(lines => {
-            for (const line of lines) {
-                if (line) {
-                    const newCellLineId = line.metadata.cell_line_id;
-                    this.changeCellLineId(newCellLineId);
-                    break;
-                }
-            }
-        });
-    }
-
-
-    componentDidMount () {
-        
+    // load the metadata for all cell lines
+    useEffect(() => {
         d3.json(`${settings.apiUrl}/lines`).then(lines => {
-            this.allCellLines = lines;     
-            this.setState({linesLoaded: true});
-
-            // initial target to display
-            this.props.match.params.cellLineId ? (
-                this.changeCellLineId(this.props.match.params.cellLineId, false)
-            ) : (
-                this.onSearchChange(this.urlParams.get('target') || initialTarget)
-            );
+            setAllCellLines(lines);  
         });
-    }
+    }, [])
 
+    // update the cellLineId when the user clicks the back or forward buttons
+    // (this effect also runs after calls to history.push)
+    useEffect(() => {
+        const cellLineIdFromUrl = parseInt(props.match.params.cellLineId);
+        props.setCellLineId(cellLineIdFromUrl, false);
+    }, [props.match]);
 
-    componentWillReceiveProps (nextProps) {
-        // this is hackish: we end up here only if the user clicked the back or forward buttons;
-        // so we know that we do not want to push the new cellLineId to the history,
-        // so we pass false to this.changeCellLineId
-        this.changeCellLineId(nextProps.match.params.cellLineId, false);
-    }
+    const cellLine = allCellLines.filter(
+        line => line.metadata?.cell_line_id === props.cellLineId
+    )[0];
 
+    if (allCellLines.length && !cellLine) {
+        console.log(`No cell line found for cellLineId ${props.cellLineId}`);
+    };
 
-    render () {
-        return (
-            <div>
-                {/* main container */}
-                <div className="pl4 pr4" style={{width: '2000px'}}>
+    if (!cellLine) return null;
 
-                    {/* page header and metadata */}
-                    <Header cellLine={this.cellLine} onSearchChange={this.onSearchChange}/>
+    return (
+        <div>
+            {/* main container */}
+            <div className="pl3 pr3" style={{width: '2000px'}}>
 
-                    {this.props.showFovAnnotator ? (
-                        <FovAnnotator 
-                            cellLines={this.allCellLines}
-                            cellLineId={this.state.cellLineId}
-                            onSearchChange={this.onSearchChange}
-                            onCellLineSelect={this.changeCellLineId}
-                        />
-                    ) : (
-                        <Overview
-                            cellLine={this.cellLine}
-                            cellLines={this.allCellLines}
-                            cellLineId={this.state.cellLineId}
-                            targetName={this.state.targetName}
-                            onSearchChange={this.onSearchChange}
-                            onCellLineSelect={this.changeCellLineId}
-                            showTargetAnnotator={this.props.showTargetAnnotator}
-                        />
-                    )}
+                {props.showFovAnnotator ? (
+                    <FovAnnotator cellLineId={props.cellLineId} cellLine={cellLine}/>
+                ) : (
+                    <Overview
+                        cellLine={cellLine}
+                        cellLineId={props.cellLineId}
+                        onTargetSearch={props.onTargetSearch}
+                        onCellLineSelect={props.setCellLineId}
+                        showTargetAnnotator={props.showTargetAnnotator}
+                    />
+                )}
+
+                {/* table of all targets */}
+                <div className="w-100 pl2 pt2 pb2">
+                    <SectionHeader title='All cell lines'/>
+                    <CellLineTable 
+                        cellLines={allCellLines}
+                        cellLineId={props.cellLineId}
+                        onCellLineSelect={props.setCellLineId}
+                    />
                 </div>
-
-                {this.state.linesLoaded ? (null) : (<div className='loading-overlay'/>)}
             </div>
 
-        );
-    }
+            {allCellLines.length ? (null) : (<div className='loading-overlay'/>)}
+        </div>
+
+    );
 }
 
 

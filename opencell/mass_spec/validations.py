@@ -205,46 +205,6 @@ def prep_all_hits_clusterone(all_hits, metric, hit_bools=True):
     return all_hits
 
 
-def calculate_corum_coverage(all_hits, corum):
-    """
-    Calculate % of total possible corum coverage
-    """
-    all_hits = all_hits.copy()
-    all_hits = all_hits[all_hits['target'] != all_hits['prey']]
-    corum = corum.copy()
-
-    targets = set(all_hits['target'].to_list())
-
-    # only select complex in corum if target exists in corum subunits
-    corum['in_gene'] = corum['subunits'].apply(check_in_list, args=[targets])
-    subcorum = corum[corum['in_gene'].map(lambda x: len(x) > 0)]
-
-    subcorum = subcorum[['ComplexName', 'subunits']]
-
-    subcorum['coverage'] = subcorum['subunits'].apply(find_subunits, args=[all_hits])
-
-    nominator = subcorum['coverage'].apply(lambda x: len(x)).sum()
-    denom = subcorum['subunits'].apply(lambda x: len(x)).sum()
-
-    return nominator, denom, 100 * nominator / denom
-
-
-def check_in_list(x, intersect_genes):
-    genes = []
-    for gene in x:
-        if gene in intersect_genes:
-            genes.append(gene)
-    return genes
-
-
-def find_subunits(sub_list, interactions):
-
-    targets = interactions[interactions['target'].isin(sub_list)]
-    prey_list = targets['prey'].to_list()
-
-    return list(set(sub_list).intersection(set(prey_list)))
-
-
 def calculate_coes_coverage(all_hits, coes, target_col, prey_col):
     """
     calculate proportion of coessential edges
@@ -424,6 +384,54 @@ def corum_interaction_coverage(
     return coverage_sum, overlap_sum
 
 
+def corum_precision(network, corum, target_col, prey_col):
+    """
+    Calculates corum precisions by filtering for all interactions
+    where both interactors belong to a CORUM list of members
+    and calculating precision of those that are actual corum interactors
+    """
+    network = network[[target_col, prey_col]]
+    corum = corum.copy()
+
+    corum_genes = set(corum['prot_1'].to_list() + corum['prot_2'].to_list())
+
+    # Get all the interactions where both interactors are in corum set
+    network = network[
+        (network[target_col].isin(corum_genes))
+        & (network[prey_col].isin(corum_genes))]
+
+    network['precision_genes'] = network.values.tolist()
+    network['precision'] = network['precision_genes'].apply(
+        aux_corum_precision, args=[corum, ]
+    )
+    return network
+
+
+
+def aux_corum_precision(target_prey, corum):
+    """
+    Auxillary function to corum_precision, matches whether an interaction
+    exists in corum set
+    """
+    target, prey = target_prey[0], target_prey[1]
+
+    # leftside search
+    left_corum = corum[corum['prot_1'] == target]
+    if prey in left_corum['prot_2'].to_list():
+        return True
+
+    # rightside search
+    right_corum = corum[corum['prot_2'] == target]
+    if prey in right_corum['prot_1'].to_list():
+        return True
+
+    return False
+
+
+
+
+
+
 def corum_interaction_coverage_2(network_df, corum, target_col, prey_col,
         distance=True, directional=False):
     """
@@ -508,11 +516,14 @@ def groupby_max(interactions, target_col, prey_col, edge_col):
     return interactions
 
 
-def convert_to_unique_interactions(dataset, target_col, prey_col):
+def convert_to_unique_interactions(dataset, target_col, prey_col, target_match=False):
     """
     convert bait/prey interactions to unique, directionless interactions using gene names
     """
     dataset = dataset.copy()
+
+    if not target_match:
+        dataset = dataset[dataset[target_col] != dataset[prey_col]]
 
     # combine values from two columns to a list and sort alphabetically
     dataset = dataset[[target_col, prey_col]]

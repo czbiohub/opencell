@@ -12,7 +12,7 @@ from itertools import repeat
 import cluster_heatmap as ch
 from multiprocessing import Pool
 
-
+# sys.path.append('../../../')
 from opencell.database import ms_utils
 from opencell.database import ms_operations as ms_ops
 from opencell.database import models, utils
@@ -372,3 +372,72 @@ def sql_table_add_hit_id(sql_table, pulldowns, url):
     sort_table = sort_table.sort_values(['cluster', 'col_index', 'row_index'])
 
     return sort_table
+
+
+def poor_annotation_preys(network, annot, annot_score, target_col, prey_col):
+    """
+    Using a network of unique interactions, include preys that are poorly annotated
+    """
+
+    annot = annot[annot['Annotation'] >= annot_score]
+    network = network.copy()
+
+    network_genes = set(network[target_col].to_list() + network[prey_col].to_list())
+    annot['OC_prey'] = annot['Gene names'].apply(
+        lambda x: list(set(x).intersection(network_genes))
+    )
+    annot['OC_prey'] = annot['OC_prey'].apply(lambda x: ' '.join(x) if x else None)
+    annot = annot.sort_values(['OC_prey', 'Annotation'])
+
+    annot = annot[annot['OC_prey'].apply(lambda x: True if x else False)]
+
+    return annot
+
+
+def poor_annotation_prey_cluster(clusters, annot):
+    """
+    Use output from explode_cluster_group to append cluster information
+    """
+
+    clusters = clusters.copy()
+    annot = annot.copy()
+
+    annot.merge(clusters.rename(columns={'gene_names': 'OC_prey'}), how='left')
+
+    return annot
+
+
+def poor_annotation_prey_interactors(annot, network, target_col, prey_col):
+    """
+    Append a list of all interactors by the poorly annotated preys
+    """
+    annot = annot.copy()
+    network = network.copy()
+
+    annot['OC_prey_interactors'] = annot['OC_prey'].apply(
+        aux_poor_interactors, args=[network, target_col, prey_col])
+
+    annot['interactor_count'] = annot['OC_prey_interactors'].apply(len)
+
+    return annot
+
+
+def aux_poor_interactors(prey, network, target_col, prey_col):
+    """
+    aux function for poor_annotation_prey_interactors
+    """
+    network = network.copy()
+    interactors = []
+
+    # left side
+    left = network[network[target_col] == prey]
+    if left.shape[0] > 0:
+        interactors += left[prey_col].to_list()
+
+    # right side
+    right = network[network[prey_col] == prey]
+
+    if right.shape[0] > 0:
+        interactors += right[target_col].to_list()
+
+    return interactors

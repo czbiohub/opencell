@@ -201,7 +201,6 @@ def insert_resorted_lines(session, resorts_snapshot, errors='warn'):
         utils.format_well_id
     )
 
-    resorted_lines = []
     for ind, row in resorts_snapshot.iterrows():
         print('Inserting resorted cell line for (%s, %s)' % (row.plate_id, row.pipeline_well_id))
 

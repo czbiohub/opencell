@@ -145,10 +145,15 @@ def fov_payload(fov, include_rois=False, include_thumbnails=False):
     return payload
 
 
-def pulldown_payload(pulldown, significant_hits, nonsignificant_hits):
+def pulldown_hits_payload(pulldown, significant_hits, nonsignificant_hits):
     '''
     The JSON payload for a mass spec pulldown and all of its hits
-    For speed, we use a direct query to retrieve and serialize the hits
+
+    pulldown : a models.MassSpecPulldown instance
+    significant_hits : a list of models.MassSpecHit instances corresponding to
+        the pulldown's significant hits
+    nonsignificant_hits : a list of tuples of (pval, enrichment)
+        for all of the pulldown's non-significant hits (usually thousands)
     '''
 
     hit_columns = [
@@ -158,45 +163,60 @@ def pulldown_payload(pulldown, significant_hits, nonsignificant_hits):
         'abundance_stoich'
     ]
 
-    hit_payloads = []
+    significant_hit_payloads = []
     for hit in significant_hits:
-        hit_payload = {column: getattr(hit, column) for column in hit_columns}
 
-        # gene names from the reference uniprot metadata
-        names = []
-        if not hit.protein_group.uniprot_metadata:
-            names = ['Unknown']
-        for metadata in hit.protein_group.uniprot_metadata:
-            if metadata.gene_names != 'NaN':
-                name = metadata.gene_names.split(' ')[0]
-            else:
-                name = metadata.uniprot_id
-            names.append(name)
-        hit_payload['uniprot_gene_names'] = names
+        significant_hit_payload = {
+            column: getattr(hit, column) for column in hit_columns
+        }
 
-        # target names of the crispr designs that are mapped to this hit's protein group
-        hit_payload['opencell_target_names'] = [
-            design.target_name for design in hit.protein_group.crispr_designs
-        ]
+        # add the protein group metadata
+        significant_hit_payload.update(protein_group_payload(hit.protein_group))
 
-        # whether this hit corresponds to the target itself
+        # whether this hit is the 'bait' - that is, corresponds to the target itself
         design_ids = [design.id for design in hit.protein_group.crispr_designs]
-        hit_payload['is_bait'] = pulldown.cell_line.crispr_design.id in design_ids
+        significant_hit_payload['is_bait'] = pulldown.cell_line.crispr_design.id in design_ids
 
-        hit_payloads.append(hit_payload)
+        significant_hit_payloads.append(significant_hit_payload)
 
     # hackish way to coerce NaNs and Infs to None
-    hit_payloads = json.loads(pd.DataFrame(data=hit_payloads).to_json(orient='records'))
+    significant_hit_payloads = json.loads(
+        pd.DataFrame(data=significant_hit_payloads).to_json(orient='records')
+    )
 
     # compress the nonsignificant hits by dropping digits
-    nonsignificant_hits = [
-        [float('%0.3f' % pval), float('%0.3f' % enr)]
-        for pval, enr in nonsignificant_hits
+    nonsignificant_hit_payloads = [
+        [float('%0.3f' % pval), float('%0.3f' % enrichment)]
+        for pval, enrichment in nonsignificant_hits
     ]
 
     payload = {
         'metadata': pulldown.as_dict(),
-        'significant_hits': hit_payloads,
-        'nonsignificant_hits': nonsignificant_hits
+        'significant_hits': significant_hit_payloads,
+        'nonsignificant_hits': nonsignificant_hit_payloads
     }
+    return payload
+
+
+def protein_group_payload(protein_group):
+    '''
+    '''
+    payload = {}
+
+    # gene names from the reference uniprot metadata
+    names = []
+    if not protein_group.uniprot_metadata:
+        names = ['Unknown']
+    for metadata in protein_group.uniprot_metadata:
+        if metadata.gene_names != 'NaN':
+            name = metadata.gene_names.split(' ')[0]
+        else:
+            name = metadata.uniprot_id
+        names.append(name)
+    payload['uniprot_gene_names'] = names
+
+    # target names of the crispr designs that are mapped to this protein group
+    payload['opencell_target_names'] = [
+        design.target_name for design in protein_group.crispr_designs
+    ]
     return payload

@@ -964,6 +964,7 @@ class MassSpecHit(Base):
     # A hit needs to have a unique set of target (pulldown) and the prey (protein_group)
     __table_args__ = (db.UniqueConstraint(pulldown_id, protein_group_id),)
 
+
 class MassSpecClusterHeatmap(Base):
     """
     This table contains hard-coded cluster memberships of interactions as well as

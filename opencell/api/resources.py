@@ -1,6 +1,7 @@
 import os
 import io
 import flask
+import json
 import urllib
 import imageio
 import tifffile
@@ -145,14 +146,43 @@ class CellLineResource(Resource):
             .one_or_none()
         )
 
-    def get(self, cell_line_id):
-        ...
+    @staticmethod
+    def get_pulldown(cell_line_id):
+        '''
+        Select the correct pulldown for a cell line
 
-    def put(self, cell_line_id):
-        ...
+        This logic is necessary because there should always be only one 'good' pulldown,
+        but there may be multiple pulldowns per cell line in the database
+        '''
+        line = (
+            flask.current_app.Session.query(models.CellLine)
+            .options(db.orm.joinedload(models.CellLine.pulldowns, innerjoin=True))
+            .filter(models.CellLine.id == cell_line_id)
+            .one_or_none()
+        )
 
-    def delete(self, cell_line_id):
-        ...
+        if not line or not line.pulldowns:
+            return flask.abort(
+                404, 'There are no pulldowns associated with cell line %d' % cell_line_id
+            )
+
+        # the manually-flagged 'good' pulldowns
+        # (there should be only one of these, but we don't enforce this)
+        candidate_pulldowns = [
+            pulldown for pulldown in line.pulldowns if pulldown.manual_display_flag
+        ]
+
+        # if no pulldowns were flagged, find the pulldowns with hits
+        if not candidate_pulldowns:
+            candidate_pulldowns = [
+                pulldown for pulldown in line.pulldowns if pulldown.hits
+            ]
+
+        # pick either the first flagged pulldown, the first pulldown with hits,
+        # or the first pulldown
+        pulldown = candidate_pulldowns[0] if candidate_pulldowns else line.pulldowns[0]
+        return pulldown
+
 
 
 class CellLine(CellLineResource):
@@ -176,9 +206,9 @@ class FACSDataset(CellLineResource):
         return flask.jsonify(payload)
 
 
-class CellLineFOVs(CellLineResource):
+class MicroscopyFOVMetadata(CellLineResource):
     '''
-    The MicroscopyFOVs associated with a cell line
+    Metadata for all of the FOVs associated with a cell line
     '''
     def get(self, cell_line_id):
 
@@ -232,36 +262,15 @@ class CellLineFOVs(CellLineResource):
         return flask.jsonify(payload)
 
 
-class CellLinePulldown(CellLineResource):
+class PulldownHits(CellLineResource):
     '''
-    The mass spec pulldown and associated hits for a given cell line
-    Note that there is always one 'good' pulldown per cell line,
-    from the perspective of the API and the public-facing frontend
-    (though there may be multiple pulldowns per cell line in the database)
+    The mass spec pulldown and its associated hits for a given cell line
     '''
     def get(self, cell_line_id):
-        line = self.get_cell_line(cell_line_id)
-        if not line.pulldowns:
-            return flask.abort(
-                404, 'There are no pulldowns associated with cell line %d' % cell_line_id
-            )
 
-        # the manually-flagged 'good' pulldowns
-        # (there should be only one of these, but we don't enforce this)
-        candidate_pulldowns = [
-            pulldown for pulldown in line.pulldowns if pulldown.manual_display_flag
-        ]
+        Session = flask.current_app.Session
 
-        # if none were flagged, find the pulldowns with hits
-        if not candidate_pulldowns:
-            candidate_pulldowns = [
-                pulldown for pulldown in line.pulldowns if pulldown.hits
-            ]
-
-        # pick either the first flagged pulldown, the first pulldown with hits,
-        # or the first pulldown
-        pulldown = candidate_pulldowns[0] if candidate_pulldowns else line.pulldowns[0]
-
+        pulldown = self.get_pulldown(cell_line_id)
         if not pulldown.hits:
             return flask.abort(
                 404, 'The pulldown for cell line %s does not have any hits' % cell_line_id
@@ -269,7 +278,7 @@ class CellLinePulldown(CellLineResource):
 
         # we need the crispr designs and uniprot metadata for the significant hits
         significant_hits = (
-            flask.current_app.Session.query(models.MassSpecHit)
+            Session.query(models.MassSpecHit)
             .options(
                 db.orm.joinedload(models.MassSpecHit.protein_group, innerjoin=True)
                     .joinedload(models.MassSpecProteinGroup.crispr_designs),
@@ -286,14 +295,129 @@ class CellLinePulldown(CellLineResource):
 
         # we need only the pval and enrichment for the non-significant hits
         nonsignificant_hits = (
-            flask.current_app.Session.query(models.MassSpecHit.pval, models.MassSpecHit.enrichment)
+            Session.query(models.MassSpecHit.pval, models.MassSpecHit.enrichment)
             .filter(models.MassSpecHit.pulldown_id == pulldown.id)
             .filter(models.MassSpecHit.is_minor_hit == False)  # noqa
             .filter(models.MassSpecHit.is_significant_hit == False)  # noqa
             .all()
         )
 
-        payload = payloads.pulldown_payload(pulldown, significant_hits, nonsignificant_hits)
+        # construct the JSON payload from the pulldown and hit instances
+        payload = payloads.pulldown_hits_payload(pulldown, significant_hits, nonsignificant_hits)
+        return flask.jsonify(payload)
+
+
+class PulldownClusters(CellLineResource):
+    '''
+    The cluster heatmap(s) in which a cell line's pulldown appears
+
+    The cluster heatmap represents a
+    '''
+    def get(self, cell_line_id):
+        Session = flask.current_app.Session
+        pulldown = self.get_pulldown(cell_line_id)
+
+        # get the cluster_ids of all clusters in which the pulldown appears
+        rows = (
+            Session.query(db.distinct(models.MassSpecClusterHeatmap.cluster_id))
+            .join(models.MassSpecClusterHeatmap.hit)
+            .join(models.MassSpecHit.pulldown)
+            .filter(models.MassSpecPulldown.id == pulldown.id)
+            .all()
+        )
+        cluster_ids = [row[0] for row in rows]
+
+        if not cluster_ids:
+            return flask.abort(
+                404, 'The pulldown for cell line %s does not appear in any clusters' % cell_line_id
+            )
+
+        # for now, if there are multiple clusters, pick the first one
+        cluster_id = cluster_ids[0]
+
+        # get the cluster heatmap tiles
+        # (one row of the ClusterHeatmap table corresponds to one tile)
+        rows = (
+            Session.query(
+                models.MassSpecClusterHeatmap.hit_id,
+                models.MassSpecClusterHeatmap.row_index,
+                models.MassSpecClusterHeatmap.col_index,
+                models.MassSpecHit.pval,
+                models.MassSpecHit.enrichment,
+                models.MassSpecHit.interaction_stoich,
+                models.MassSpecHit.abundance_stoich,
+            )
+            .join(models.MassSpecClusterHeatmap.hit)
+            .filter(models.MassSpecClusterHeatmap.cluster_id == cluster_id)
+            .all()
+        )
+        heatmap_tiles = pd.DataFrame(data=rows)
+
+        # pick an arbitrary hit_id from each column and each row of the heatmap
+        # we will use these hit_ids to retrieve the pulldown and protein group metadata
+        # for the columns and rows, respectively, since we know/assume that all of the hits
+        # in each column correspond to the same pulldown, and all of the hits in each row
+        # correspond to the same protein group
+        heatmap_row_metadata = heatmap_tiles.groupby('row_index').first().reset_index()
+        heatmap_column_metadata = heatmap_tiles.groupby('col_index').first().reset_index()
+
+        # the pulldowns corresponding to the heatmap columns
+        heatmap_column_pulldowns = (
+            Session.query(
+                models.MassSpecHit.id.label('hit_id'),
+                models.MassSpecHit.pulldown_id,
+                models.CellLine.id.label('cell_line_id'),
+                models.CrisprDesign.target_name
+            )
+            .join(models.MassSpecHit.pulldown)
+            .join(models.MassSpecPulldown.cell_line)
+            .join(models.CrisprDesign)
+            .filter(
+                models.MassSpecHit.id.in_(heatmap_column_metadata.hit_id.astype(int).tolist())
+            )
+            .all()
+        )
+
+        # merge the col_index with the pulldown metadata
+        heatmap_column_metadata = pd.merge(
+            heatmap_column_metadata[['hit_id', 'col_index']],
+            pd.DataFrame(data=heatmap_column_pulldowns),
+            on='hit_id'
+        )
+
+        # the protein groups corresponding to the heatmap rows
+        # (the hits are included so that we can use the hit_id to merge the protein group metadata
+        # with heatmap_row_metadata dataframe)
+        heatmap_rows = (
+            Session.query(models.MassSpecHit, models.MassSpecProteinGroup)
+            .join(models.MassSpecProteinGroup.hits)
+            .filter(models.MassSpecHit.id.in_(heatmap_row_metadata.hit_id.astype(int).tolist()))
+            .all()
+        )
+
+        # construct the protein group metadata
+        protein_group_metadata = []
+        for hit, protein_group in heatmap_rows:
+            metadata = payloads.protein_group_payload(protein_group)
+            metadata['hit_id'] = hit.id
+            protein_group_metadata.append(metadata)
+
+        # merge the row_index with the protein group metadata
+        heatmap_row_metadata = pd.merge(
+            heatmap_row_metadata[['hit_id', 'row_index']],
+            pd.DataFrame(data=protein_group_metadata),
+            on='hit_id'
+        )
+
+        # drop the now-useless hit_id column from the row and column metadata
+        heatmap_row_metadata.drop(labels='hit_id', axis=1, inplace=True)
+        heatmap_column_metadata.drop(labels='hit_id', axis=1, inplace=True)
+
+        payload = {
+            'heatmap_tiles': json.loads(heatmap_tiles.to_json(orient='records')),
+            'heatmap_rows': json.loads(heatmap_row_metadata.to_json(orient='records')),
+            'heatmap_columns': json.loads(heatmap_column_metadata.to_json(orient='records')),
+        }
         return flask.jsonify(payload)
 
 

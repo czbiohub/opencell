@@ -51,8 +51,9 @@ def create_app(args):
 
     # cell-line-dependent datasets
     api.add_resource(resources.FACSDataset, '/lines/<int:cell_line_id>/facs')
-    api.add_resource(resources.CellLineFOVs, '/lines/<int:cell_line_id>/fovs')
-    api.add_resource(resources.CellLinePulldown, '/lines/<int:cell_line_id>/pulldown')
+    api.add_resource(resources.MicroscopyFOVMetadata, '/lines/<int:cell_line_id>/fovs')
+    api.add_resource(resources.PulldownHits, '/lines/<int:cell_line_id>/pulldown_hits')
+    api.add_resource(resources.PulldownClusters, '/lines/<int:cell_line_id>/pulldown_clusters')
     api.add_resource(resources.CellLineAnnotation, '/lines/<int:cell_line_id>/annotation')
 
     # FOV and ROI image data (z-stacks and z-projections)

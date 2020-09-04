@@ -29,7 +29,8 @@ def bulk_insert_cluster_heatmap(session, cluster_table, errors='warn'):
             col_index=int(row.col_index)
         )
         all_clusters.append(cluster)
-     # bulk save
+
+    # bulk save
     try:
         session.bulk_save_objects(all_clusters)
         session.commit()
@@ -150,8 +151,8 @@ class MassSpecPulldownOperations:
 
         # get the pulldown for this plate_id and target_name
         pulldown_row = pulldown_df.loc[
-            (pulldown_df['pulldown_plate_id'] == pulldown_plate_id) &
-            (pulldown_df['target_name'] == target_name)
+            (pulldown_df['pulldown_plate_id'] == pulldown_plate_id)
+            & (pulldown_df['target_name'] == target_name)
         ]
 
         plate_design_id, well_id = pulldown_row.design_id.item(), pulldown_row.well_id.item()

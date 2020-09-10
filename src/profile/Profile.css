@@ -253,6 +253,13 @@ in order for the plots to be vertically aligned */
 }
 
 
+.cluster-heatmap-container .tick text {
+    cursor: pointer;
+}
+
+.cluster-heatmap-container .tick text:hover {
+    color: gray;
+}
 
 /* --------------------- expression scatterplot and FACS plot --------------------- */
 
@@ -286,6 +293,7 @@ in order for the plots to be vertically aligned */
     color: #fff;
     border-radius: 4px;
     pointer-events: none;
+    width: fit-content;
 }
 
 /* Creates a small triangle extender for the tooltip */

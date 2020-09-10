@@ -70,22 +70,15 @@ export default class MassSpecScatterPlot extends Component {
         // transform when zoomed/panned
         this.zoomTransform = undefined;
 
-
         this.calcDotColor = d => {
-
             const baitColor = chroma('#01a1dd').alpha(0.7);  // blue
             const sigHitColor = chroma('#ff463a').alpha(0.5);  // dark red
             const minorHitColor = chroma('#ff9b89').alpha(0.5);  // light red
             const notSigHitColor = chroma('#333').alpha(0.2);
-
-            // special color if the hit is the target (i.e., the bait) itself
             if (d.is_bait) return baitColor
-
             if (!this.hitIsSignificant(d)) return notSigHitColor;
-
             return d.is_minor_hit ? minorHitColor : sigHitColor;
         }
-
 
         this.calcDotClass = d => {
             // use this to experiment with the dot colors by editing the css classes in devtools
@@ -94,13 +87,10 @@ export default class MassSpecScatterPlot extends Component {
             return d.is_minor_hit ? 'minor-hit-dot' : 'sig-hit-dot';
         }
 
-    
         this.calcDotStroke = d => {
             if (!this.hitIsSignificant(d)) return 'none';
-
-            // stroke in black we have data for it
+            // stroke in black if the hit is also an opencell target
             if (d.opencell_target_names?.length) return chroma('#333').alpha(.9);
-
             return chroma(this.calcDotColor(d)).darken(2);
         }
     
@@ -125,7 +115,6 @@ export default class MassSpecScatterPlot extends Component {
             return (this.plotProps.dotRadius - minRadius) * weight + minRadius;
         }
 
-    
         this.captionOpacityScale = k => {
             const val = d3.scaleLinear()
                 .range([0, 1])
@@ -167,7 +156,7 @@ export default class MassSpecScatterPlot extends Component {
         // fetch the pulldown metadata and the hits from the backend
 
         this.setState({loaded: false});
-        const url = `${settings.apiUrl}/lines/${this.props.cellLineId}/pulldown`;
+        const url = `${settings.apiUrl}/lines/${this.props.cellLineId}/pulldown_hits`;
         d3.json(url).then(data => {
 
             let sigHits = data.significant_hits;
@@ -266,16 +255,16 @@ export default class MassSpecScatterPlot extends Component {
 
     createScatterPlot () {
 
-        const pp = this.plotProps;
+        const p = this.plotProps;
 
         // override manuallly defined widths
-        pp.width = ReactDOM.findDOMNode(this.node).offsetWidth;
-        pp.height = pp.width * pp.aspectRatio;
+        p.width = ReactDOM.findDOMNode(this.node).offsetWidth;
+        p.height = p.width * p.aspectRatio;
         
         const svg = d3.select(this.node)
             .append('svg')
-            .attr('width', pp.width)
-            .attr('height', pp.height);
+            .attr('width', p.width)
+            .attr('height', p.height);
 
         // semi-opaque loading status div (visible when data is loading or there is no data)
         const loadingDiv = d3.select(this.node)
@@ -283,44 +272,44 @@ export default class MassSpecScatterPlot extends Component {
             .attr('class', 'f2 tc loading-overlay')
             .style('visibility', 'hidden');
                 
-        this.xScale = d3.scaleLinear().range([pp.padLeft, pp.width - pp.padRight]);
-        this.yScale = d3.scaleLinear().range([pp.height - pp.padBottom, pp.padTop]);
+        this.xScale = d3.scaleLinear().range([p.padLeft, p.width - p.padRight]);
+        this.yScale = d3.scaleLinear().range([p.height - p.padBottom, p.padTop]);
 
         this.xAxis = d3.axisBottom(this.xScale)
-            .tickSize(-pp.height + pp.padTop + pp.padBottom, 0)
-            .ticks(pp.numTicks);
+            .tickSize(-p.height + p.padTop + p.padBottom, 0)
+            .ticks(p.numTicks);
 
         this.yAxis = d3.axisLeft(this.yScale)
-            .tickSize(-pp.width + pp.padLeft + pp.padRight, 0)
-            .ticks(pp.numTicks);  
+            .tickSize(-p.width + p.padLeft + p.padRight, 0)
+            .ticks(p.numTicks);  
 
         // y axis container
         svg.append("g")
             .attr("class", "axis")
             .attr("id", "y-axis")
-            .attr("transform", `translate(${pp.padLeft}, 0)`);
+            .attr("transform", `translate(${p.padLeft}, 0)`);
 
         // x-axis container
         svg.append("g")
             .attr("class", "axis")
             .attr("id", "x-axis")
-            .attr("transform", `translate(0, ${pp.height - pp.padBottom})`);
+            .attr("transform", `translate(0, ${p.height - p.padBottom})`);
 
         // x-axis label
         svg.append("text")
             .attr("class", "axis-label")
             .attr("id", "x-axis-label")
             .attr("text-anchor", "middle")
-            .attr("x", pp.width/2)
-            .attr("y", pp.height - pp.xAxisLabelOffset);
+            .attr("x", p.width/2)
+            .attr("y", p.height - p.xAxisLabelOffset);
 
         // y-axis label
         svg.append("text")
             .attr("class", "axis-label")
             .attr("id", "y-axis-label")
             .attr("text-anchor", "middle")
-            .attr("x", -pp.height/2)
-            .attr("y", pp.yAxisLabelOffset)
+            .attr("x", -p.height/2)
+            .attr("y", p.yAxisLabelOffset)
             .attr("transform", "rotate(-90)");
 
         // scatter dot container
@@ -332,10 +321,10 @@ export default class MassSpecScatterPlot extends Component {
         g.append("clipPath")
             .attr("id", `clip`)
             .append("rect")
-            .attr("x", pp.padLeft)
-            .attr("y", pp.padTop)
-            .attr("width", pp.width - pp.padLeft - pp.padRight)
-            .attr("height", pp.height - pp.padTop - pp.padBottom);
+            .attr("x", p.padLeft)
+            .attr("y", p.padTop)
+            .attr("width", p.width - p.padLeft - p.padRight)
+            .attr("height", p.height - p.padTop - p.padBottom);
 
         // container for the legend (added last so its on top)
         const legendContainer = svg.append("g");

@@ -5,6 +5,8 @@ import ExpressionPlot from '../common/expressionPlot.jsx';
 import FacsPlotContainer from './facsPlotContainer.jsx';
 import ViewerContainer from './viewerContainer.jsx';
 import MassSpecPlotContainer from './massSpecPlotContainer.jsx';
+import MassSpecHeatmapContainer from './massSpecHeatmapContainer.jsx';
+
 import TargetAnnotator from './targetAnnotator.jsx';
 import { SectionHeader } from './common.jsx';
 import settings from '../common/settings.js';
@@ -96,11 +98,20 @@ export default class Overview extends Component {
                             </div>
                         ) : (
                             <div>
+                            <div>
                                 <SectionHeader title='Protein interactions'/>
                                 <MassSpecPlotContainer
                                     cellLineId={this.props.cellLineId}
                                     changeTarget={this.props.onTargetSearch}
                                 />
+                            </div>
+                            <div>
+                                <SectionHeader title='Protein clusters'/>
+                                <MassSpecHeatmapContainer
+                                    cellLineId={this.props.cellLineId}
+                                    changeTarget={this.props.onTargetSearch}
+                                />
+                            </div>
                             </div>
                         )}
                     </div>

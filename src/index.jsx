@@ -67,12 +67,16 @@ function useTargetSearch (setCellLineId) {
     // (e.g., to redirect from /gallery to /profile even if the search, and cellLineId, is unchanged)
     
     const [doSearch, setDoSearch] = useState(false);
-    const [targetNameQuery, setTargetNameQuery] = useState();
+    const [targetName, setTargetName] = useState();
 
     // retrieve a cellLineId from the target name query 
     useEffect(() => {
-        if (!targetNameQuery || !doSearch) return;
-        d3.json(`${settings.apiUrl}/lines?target=${targetNameQuery}`).then(lines => {
+        if (!targetName || !doSearch) return;
+
+        // hack to get the correct lines for CLTA and BCAP31 (the positive controls)
+        let plateId = ['clta', 'bcap31'].includes(targetName) ? 'P0001' : '';
+
+        d3.json(`${settings.apiUrl}/lines?target=${targetName}&plate=${plateId}`).then(lines => {
             for (const line of lines) {
                 if (line) {
                     setCellLineId(line.metadata.cell_line_id, true);
@@ -83,7 +87,7 @@ function useTargetSearch (setCellLineId) {
         });
     }, [doSearch]);
 
-    const onTargetSearch = (query) => { setTargetNameQuery(query); setDoSearch(true); };
+    const onTargetSearch = (query) => { setTargetName(query); setDoSearch(true); };
     return onTargetSearch;
 }
 
@@ -157,7 +161,7 @@ function App() {
                 <Route path="/microscopy" component={FOVOverview}/>,
 
                 <Route>
-                    <div>Page not found</div>
+                    <div className="f2 pa3 w-100 ma">Page not found</div>
                 </Route>
             </Switch>
         </div>

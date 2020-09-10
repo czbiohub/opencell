@@ -5,7 +5,7 @@ import ExpressionPlot from '../common/expressionPlot.jsx';
 import FacsPlotContainer from './facsPlotContainer.jsx';
 import ViewerContainer from './viewerContainer.jsx';
 import MassSpecPlotContainer from './massSpecPlotContainer.jsx';
-import MassSpecClusterHeatmap from './massSpecClusterHeatmap.jsx';
+import MassSpecHeatmapContainer from './massSpecHeatmapContainer.jsx';
 
 import TargetAnnotator from './targetAnnotator.jsx';
 import { SectionHeader } from './common.jsx';
@@ -105,9 +105,9 @@ export default class Overview extends Component {
                                     changeTarget={this.props.onTargetSearch}
                                 />
                             </div>
-                            <div className='cluster-heatmap-container'>
+                            <div>
                                 <SectionHeader title='Protein clusters'/>
-                                <MassSpecClusterHeatmap
+                                <MassSpecHeatmapContainer
                                     cellLineId={this.props.cellLineId}
                                     changeTarget={this.props.onTargetSearch}
                                 />

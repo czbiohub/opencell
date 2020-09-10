@@ -26,7 +26,7 @@ export default class MassSpecPlotContainer extends Component {
 
             // whether to reset the plot's zoom/pan transform
             // this is a hack: volcanoPlot just listens for changes to this value
-            resetZoom: false,
+            resetPlotZoom: false,
         };
     }
 

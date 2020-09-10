@@ -10,7 +10,7 @@ import './Profile.css';
 import settings from '../common/settings.js';
 
 
-export default class MassSpecClusterHeatmap extends Component {
+export default class MassSpecHeatmap extends Component {
 
     constructor (props) {
         super(props);
@@ -30,7 +30,15 @@ export default class MassSpecClusterHeatmap extends Component {
             yAxisLabelOffset: 15,
         };
 
+        this.colormapDomains = {
+            'pval': [0, 50],
+            'enrichment': [1, 10],
+            'interaction_stoich': [-5, 0],
+            'abundance_stoich': [-3, 3],
+        }
+
         this.getData = this.getData.bind(this);
+        this.tileColor = this.tileColor.bind(this);
         this.createHeatmap = this.createHeatmap.bind(this);
         this.updateHeatmap = this.updateHeatmap.bind(this);
         }
@@ -66,7 +74,8 @@ export default class MassSpecClusterHeatmap extends Component {
     }
 
     tileColor (tile) {
-        return chroma.scale("Blues").domain([0, 50])(tile.pval);
+        const scale = chroma.scale("Blues").domain(this.colormapDomains[this.props.colorMode]);
+        return scale(tile[this.props.colorMode]);
     }
 
     toolTipText (tile) {

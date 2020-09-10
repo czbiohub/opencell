@@ -161,3 +161,14 @@ order by plate_id, well_id
 
 -- explode the protein_group table by gene_names list
 select *, unnest(gene_names) as gene_name from mass_spec_protein_group
+
+-- count the mass spec clusters per cell line
+select cell_line_id, count(*) as n from (
+    select cluster_id, min(hit_id) as hit_id
+    from mass_spec_cluster_heatmap
+    group by (cluster_id, col_index)
+) as clusters
+inner join mass_spec_hit hit on hit.id = clusters.hit_id
+inner join mass_spec_pulldown pd on pd.id = hit.pulldown_id
+group by cell_line_id
+order by n desc

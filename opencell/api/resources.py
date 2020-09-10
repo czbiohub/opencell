@@ -414,9 +414,10 @@ class PulldownClusters(CellLineResource):
         heatmap_column_metadata.drop(labels='hit_id', axis=1, inplace=True)
 
         payload = {
-            'heatmap_tiles': json.loads(heatmap_tiles.to_json(orient='records')),
-            'heatmap_rows': json.loads(heatmap_row_metadata.to_json(orient='records')),
-            'heatmap_columns': json.loads(heatmap_column_metadata.to_json(orient='records')),
+            'metadata': {'cluster_id': cluster_id},
+            'tiles': json.loads(heatmap_tiles.to_json(orient='records')),
+            'rows': json.loads(heatmap_row_metadata.to_json(orient='records')),
+            'columns': json.loads(heatmap_column_metadata.to_json(orient='records')),
         }
         return flask.jsonify(payload)
 

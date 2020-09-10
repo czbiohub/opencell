@@ -4,7 +4,6 @@ import chroma from 'chroma-js';
 
 import ButtonGroup from './buttonGroup.jsx';
 import MassSpecScatterPlot from './massSpecScatterPlot.jsx';
-import MassSpecClusterHeatmap from './massSpecClusterHeatmap.jsx';
 
 import 'tachyons';
 import './Profile.css';
@@ -71,11 +70,6 @@ export default class MassSpecPlotContainer extends Component {
                         showCaptions={this.state.showPlotCaptions}
                         resetZoom={this.state.resetPlotZoom}
                         colorMode={this.state.plotColorMode}
-                    />
-                </div>
-                <div className='w-100 cluster-heatmap-container'>
-                    <MassSpecClusterHeatmap
-                        cellLineId={this.props.cellLineId}
                     />
                 </div>
             </div>

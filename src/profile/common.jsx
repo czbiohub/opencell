@@ -33,7 +33,7 @@ function MetadataContainer (props) {
     const className = classNames(
         'metadata-item',
         {
-            'flex-0-0': props.orientation==='row',
+            'pb2 flex-0-0': props.orientation==='row',
             'pt2': props.orientation==='column',
         }
     );
@@ -52,7 +52,10 @@ function MetadataContainer (props) {
     });
 
     return (
-        <div className={`flex ${props.className}`} style={{flexDirection: props.orientation}}>
+        <div
+            className={`flex flex-wrap ${props.className}`} 
+            style={{flexDirection: props.orientation}}
+        >
             {metadataItems}
         </div>
     );

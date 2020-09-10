@@ -55,9 +55,9 @@ export default class MassSpecClusterHeatmap extends Component {
         this.setState({loaded: false, loadingError: false});
         const url = `${settings.apiUrl}/lines/${this.props.cellLineId}/pulldown_clusters`;
         d3.json(url).then(data => {
-            this.rows = data.heatmap_rows;
-            this.columns = data.heatmap_columns;
-            this.tiles = data.heatmap_tiles;
+            this.rows = data.rows;
+            this.columns = data.columns;
+            this.tiles = data.tiles;
             this.setState({loaded: true, loadingError: false});
         },
         error => {
@@ -66,7 +66,13 @@ export default class MassSpecClusterHeatmap extends Component {
     }
 
     tileColor (tile) {
-        return chroma.scale("ylGnBu").domain([0, 50])(tile.pval);
+        return chroma.scale("Blues").domain([0, 50])(tile.pval);
+    }
+
+    toolTipText (tile) {
+        const row = this.rows.filter(row => row.row_index===tile.row_index)[0];
+        const col = this.columns.filter(col => col.col_index===tile.col_index)[0];
+        return `Interactor: ${row.uniprot_gene_names[0]}<br>Pulldown: ${col.target_name}`;
     }
 
 
@@ -109,6 +115,13 @@ export default class MassSpecClusterHeatmap extends Component {
 
         this.svg = svg;
         this.loadingDiv = loadingDiv;  
+
+        this.tip = tip()
+            .offset([-9, 2])
+            .attr("class", "d3-tip")
+            .html(d => this.toolTipText(d));
+        svg.call(this.tip);
+
     }
 
     
@@ -136,6 +149,8 @@ export default class MassSpecClusterHeatmap extends Component {
             return this.rows.filter(row => row.row_index===index)[0]?.uniprot_gene_names[0];
         });
 
+        const toolTip = this.tip;
+
         const tiles = this.g.selectAll(".heatmap-tile").data(this.tiles, d => d.hit_id);
         tiles.exit().remove();
         tiles.enter().append("rect")
@@ -145,11 +160,23 @@ export default class MassSpecClusterHeatmap extends Component {
             .attr("y", d => this.yScale(d.row_index))
             .attr("width", this.xScale.bandwidth())
             .attr("height", this.yScale.bandwidth())
-            .style("fill", d => this.tileColor(d));
+            .style("fill", d => this.tileColor(d))
+            .on("mouseover", function (d) {
+                toolTip.show(d, this);
+            })
+            .on("mouseout", function (d) {
+                toolTip.hide(d, this);
+            });
         
         this.svg.select("#x-axis").call(this.xAxis.scale(this.xScale));
         this.svg.select("#y-axis").call(this.yAxis.scale(this.yScale));
 
+        // click on x-axis ticks to change the target
+        const changeTarget = this.props.changeTarget;
+        this.svg.select("#x-axis").selectAll(".tick").on("click", function (d) {
+            const targetName = d3.select(this).select("text").text();
+            changeTarget(targetName);
+        });
     }
 
 

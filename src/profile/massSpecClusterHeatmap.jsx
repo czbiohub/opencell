@@ -161,22 +161,30 @@ export default class MassSpecClusterHeatmap extends Component {
             .attr("width", this.xScale.bandwidth())
             .attr("height", this.yScale.bandwidth())
             .style("fill", d => this.tileColor(d))
+            .style("stroke", "white")
+            .style("stroke-width", 0)
             .on("mouseover", function (d) {
+                d3.select(this).style("stroke-width", 1);
                 toolTip.show(d, this);
             })
             .on("mouseout", function (d) {
+                d3.select(this).style("stroke-width", 0);
                 toolTip.hide(d, this);
             });
         
         this.svg.select("#x-axis").call(this.xAxis.scale(this.xScale));
         this.svg.select("#y-axis").call(this.yAxis.scale(this.yScale));
 
-        // click on x-axis ticks to change the target
+        // rotate x-axis tick labels and make them clickable
         const changeTarget = this.props.changeTarget;
-        this.svg.select("#x-axis").selectAll(".tick").on("click", function (d) {
-            const targetName = d3.select(this).select("text").text();
-            changeTarget(targetName);
-        });
+        this.svg.select("#x-axis")
+            .selectAll("text")
+            .attr("transform", "rotate(-45)")
+            .style("text-anchor", "end")
+            .on("click", function (d) {
+                const targetName = d3.select(this).text();
+                changeTarget(targetName);
+            });
     }
 
 

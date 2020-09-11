@@ -62,7 +62,7 @@ export default class ViewerContainer extends Component {
         // default values for the display settings
         this.defaultDisplayState = {
             min488: 0,
-            max488: 50,
+            max488: 90,
             gamma488: 1.0,
             min405: 0,
             max405: 100,

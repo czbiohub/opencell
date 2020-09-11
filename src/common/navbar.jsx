@@ -29,7 +29,13 @@ export default function Navbar (props) {
                     <Link to='/'>Home</Link>
                 </div>
                 <div className='pl3 pr3' style={{borderRight: '1px solid #aaa'}}>
-                    <Link to="/dashboard">Dashboard</Link>
+                    <Link to="/profile/401">Targets</Link>
+                </div>
+                <div className='pl3 pr3' style={{borderRight: '1px solid #aaa'}}>
+                    <Link to="/fovs/401">FOVs</Link>
+                </div>
+                <div className='pl3 pr3' style={{borderRight: '1px solid #aaa'}}>
+                    <Link to="/annotations/401">Annotations</Link>
                 </div>
                 <div className='pl3 pr3'>
                     <Link to="/gallery">Gallery</Link>

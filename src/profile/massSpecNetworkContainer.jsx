@@ -79,26 +79,25 @@ export default class MassSpecNetworkContainer extends Component {
                 ...data.rows.map(row => row.uniprot_gene_names[0]),
                 ...data.columns.map(col => col.target_name),
             ];
-            
-            this.elements = [];
-            
-            // generate the nodes
-            targetNames.forEach(name => this.elements.push({data: {id: name}}));
 
-            // generate the edges
-            data.tiles.forEach(tile => {
-                const rowName = data.rows.filter(row => row.row_index===tile.row_index)[0].uniprot_gene_names[0];
-                const colName = data.columns.filter(col => col.col_index===tile.col_index)[0].target_name;
-                if (rowName!==colName) this.elements.push({data: {source: rowName, target: colName}});
-            });
+            if (targetNames.length < 100) {
 
+                // generate the nodes
+                this.elements = targetNames.map(name => ({data: {id: name}}));
+
+                // generate the edges
+                data.tiles.forEach(tile => {
+                    const rowName = data.rows.filter(row => row.row_index===tile.row_index)[0].uniprot_gene_names[0];
+                    const colName = data.columns.filter(col => col.col_index===tile.col_index)[0].target_name;
+                    if (rowName!==colName) this.elements.push({data: {source: rowName, target: colName}});
+                });
+            }
             this.setState({loaded: true, loadingError: false});
         },
         error => {
             this.setState({loaded: true, loadingError: true});
         });
     }
-
 
 
     render () {

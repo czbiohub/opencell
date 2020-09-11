@@ -5,13 +5,13 @@ import ExpressionPlot from '../common/expressionPlot.jsx';
 import FacsPlotContainer from './facsPlotContainer.jsx';
 import ViewerContainer from './viewerContainer.jsx';
 import MassSpecPlotContainer from './massSpecPlotContainer.jsx';
-import MassSpecHeatmapContainer from './massSpecHeatmapContainer.jsx';
 
 import TargetAnnotator from './targetAnnotator.jsx';
 import { SectionHeader } from './common.jsx';
 import settings from '../common/settings.js';
 import { loadAnnotatedFovs } from '../common/utils.js';
 import CellLineMetadata from './cellLineMetadata.jsx';
+import MassSpecNetworkContainer from './massSpecNetworkContainer.jsx';
 
 
 export default class Overview extends Component {
@@ -85,7 +85,7 @@ export default class Overview extends Component {
                             changeRoi={(roiId, fovId) => this.setState({roiId, fovId})}
                         />
                     </div>
-                
+
                     {/* Right column - annotations or volcano plot */}
                     <div className="pa3" style={{width: '600px'}}>
                         {this.props.showTargetAnnotator ? (
@@ -106,8 +106,8 @@ export default class Overview extends Component {
                                 />
                             </div>
                             <div>
-                                <SectionHeader title='Protein clusters'/>
-                                <MassSpecHeatmapContainer
+                                <SectionHeader title='Interaction network'/>
+                                <MassSpecNetworkContainer
                                     cellLineId={this.props.cellLineId}
                                     changeTarget={this.props.onTargetSearch}
                                 />

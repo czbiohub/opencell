@@ -54,6 +54,7 @@ def create_app(args):
     api.add_resource(resources.MicroscopyFOVMetadata, '/lines/<int:cell_line_id>/fovs')
     api.add_resource(resources.PulldownHits, '/lines/<int:cell_line_id>/pulldown_hits')
     api.add_resource(resources.PulldownClusters, '/lines/<int:cell_line_id>/pulldown_clusters')
+    api.add_resource(resources.PulldownInteractions, '/lines/<int:cell_line_id>/pulldown_interactions')
     api.add_resource(resources.CellLineAnnotation, '/lines/<int:cell_line_id>/annotation')
 
     # FOV and ROI image data (z-stacks and z-projections)

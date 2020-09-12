@@ -121,7 +121,9 @@ class CellLines(Resource):
             .all()
         )
 
-        payload = [payloads.cell_line_payload(line, included_fields) for line in lines]
+        payload = [
+            payloads.generate_cell_line_payload(line, included_fields) for line in lines
+        ]
         return flask.jsonify(payload)
 
 
@@ -146,44 +148,6 @@ class CellLineResource(Resource):
             .one_or_none()
         )
 
-    @staticmethod
-    def get_pulldown(cell_line_id):
-        '''
-        Select the correct pulldown for a cell line
-
-        This logic is necessary because there should always be only one 'good' pulldown,
-        but there may be multiple pulldowns per cell line in the database
-        '''
-        line = (
-            flask.current_app.Session.query(models.CellLine)
-            .options(db.orm.joinedload(models.CellLine.pulldowns, innerjoin=True))
-            .filter(models.CellLine.id == cell_line_id)
-            .one_or_none()
-        )
-
-        if not line or not line.pulldowns:
-            return flask.abort(
-                404, 'There are no pulldowns associated with cell line %d' % cell_line_id
-            )
-
-        # the manually-flagged 'good' pulldowns
-        # (there should be only one of these, but we don't enforce this)
-        candidate_pulldowns = [
-            pulldown for pulldown in line.pulldowns if pulldown.manual_display_flag
-        ]
-
-        # if no pulldowns were flagged, find the pulldowns with hits
-        if not candidate_pulldowns:
-            candidate_pulldowns = [
-                pulldown for pulldown in line.pulldowns if pulldown.hits
-            ]
-
-        # pick either the first flagged pulldown, the first pulldown with hits,
-        # or the first pulldown
-        pulldown = candidate_pulldowns[0] if candidate_pulldowns else line.pulldowns[0]
-        return pulldown
-
-
 
 class CellLine(CellLineResource):
 
@@ -192,7 +156,7 @@ class CellLine(CellLineResource):
         optional_fields, error = self.parse_listlike_arg('fields', allowed_values=['best-fov'])
         if error:
             return error
-        payload = payloads.cell_line_payload(line, optional_fields)
+        payload = payloads.generate_cell_line_payload(line, optional_fields)
         return flask.jsonify(payload)
 
 
@@ -202,7 +166,7 @@ class FACSDataset(CellLineResource):
         line = self.get_cell_line(cell_line_id)
         if not line.facs_dataset:
             return flask.abort(404)
-        payload = payloads.facs_payload(line.facs_dataset)
+        payload = payloads.generate_facs_payload(line.facs_dataset)
         return flask.jsonify(payload)
 
 
@@ -249,7 +213,7 @@ class MicroscopyFOVMetadata(CellLineResource):
             return flask.abort(404, 'There are no FOVs associated with the cell line')
 
         payload = [
-            payloads.fov_payload(
+            payloads.generate_fov_payload(
                 fov,
                 include_rois=('rois' in included_fields),
                 include_thumbnails=('thumbnails' in included_fields)
@@ -262,13 +226,55 @@ class MicroscopyFOVMetadata(CellLineResource):
         return flask.jsonify(payload)
 
 
-class PulldownHits(CellLineResource):
+class PulldownResource(CellLineResource):
+
+    @staticmethod
+    def get_pulldown(cell_line_id):
+        '''
+        Get the 'good' pulldown associated with the cell line
+        '''
+        line = (
+            flask.current_app.Session.query(models.CellLine)
+            .options(db.orm.joinedload(models.CellLine.pulldowns, innerjoin=True))
+            .filter(models.CellLine.id == cell_line_id)
+            .one_or_none()
+        )
+        if not line or not line.pulldowns:
+            return flask.abort(
+                404, 'There are no pulldowns associated with cell line %d' % cell_line_id
+            )
+        return line.get_best_pulldown()
+
+
+    @staticmethod
+    def get_significant_hits(pulldown_id):
+        '''
+        Retrieve the significant hits along with their protein groups
+        and the protein groups' crispr designs and uniprot metadata
+        '''
+        significant_hits = (
+            flask.current_app.Session.query(models.MassSpecHit)
+            .options(
+                db.orm.joinedload(models.MassSpecHit.protein_group, innerjoin=True)
+                    .joinedload(models.MassSpecProteinGroup.crispr_designs),
+                db.orm.joinedload(models.MassSpecHit.protein_group, innerjoin=True)
+                    .joinedload(models.MassSpecProteinGroup.uniprot_metadata),
+            )
+            .filter(models.MassSpecHit.pulldown_id == pulldown_id)
+            .filter(db.or_(
+                models.MassSpecHit.is_minor_hit == True,  # noqa
+                models.MassSpecHit.is_significant_hit == True  # noqa
+            ))
+            .all()
+        )
+        return significant_hits
+
+
+class PulldownHits(PulldownResource):
     '''
-    The mass spec pulldown and its associated hits for a given cell line
+    The mass spec pulldown and its associated hits for a cell line
     '''
     def get(self, cell_line_id):
-
-        Session = flask.current_app.Session
 
         pulldown = self.get_pulldown(cell_line_id)
         if not pulldown.hits:
@@ -276,26 +282,11 @@ class PulldownHits(CellLineResource):
                 404, 'The pulldown for cell line %s does not have any hits' % cell_line_id
             )
 
-        # we need the crispr designs and uniprot metadata for the significant hits
-        significant_hits = (
-            Session.query(models.MassSpecHit)
-            .options(
-                db.orm.joinedload(models.MassSpecHit.protein_group, innerjoin=True)
-                    .joinedload(models.MassSpecProteinGroup.crispr_designs),
-                db.orm.joinedload(models.MassSpecHit.protein_group, innerjoin=True)
-                    .joinedload(models.MassSpecProteinGroup.uniprot_metadata),
-            )
-            .filter(models.MassSpecHit.pulldown_id == pulldown.id)
-            .filter(db.or_(
-                models.MassSpecHit.is_minor_hit == True,  # noqa
-                models.MassSpecHit.is_significant_hit == True  # noqa
-            ))
-            .all()
-        )
+        significant_hits = self.get_significant_hits(pulldown.id)
 
         # we need only the pval and enrichment for the non-significant hits
         nonsignificant_hits = (
-            Session.query(models.MassSpecHit.pval, models.MassSpecHit.enrichment)
+            flask.current_app.Session.query(models.MassSpecHit.pval, models.MassSpecHit.enrichment)
             .filter(models.MassSpecHit.pulldown_id == pulldown.id)
             .filter(models.MassSpecHit.is_minor_hit == False)  # noqa
             .filter(models.MassSpecHit.is_significant_hit == False)  # noqa
@@ -303,11 +294,80 @@ class PulldownHits(CellLineResource):
         )
 
         # construct the JSON payload from the pulldown and hit instances
-        payload = payloads.pulldown_hits_payload(pulldown, significant_hits, nonsignificant_hits)
+        payload = payloads.generate_pulldown_hits_payload(
+            pulldown, significant_hits, nonsignificant_hits
+        )
         return flask.jsonify(payload)
 
 
-class PulldownClusters(CellLineResource):
+class PulldownInteractions(PulldownResource):
+    '''
+    The interaction network for a cell line
+    This consists of
+    1) the direct interactions (between the cell line's target and the pulldown's hits),
+    2) the known interactions between hits that correspond to other opencell targets,
+    3) the inferred interactions betweens hits whose protein groups appear
+       in similar sets of pulldowns
+    '''
+    def get(self, cell_line_id):
+
+        pulldown = self.get_pulldown(cell_line_id)
+        hits = self.get_significant_hits(pulldown.id)
+
+        # create a dict of nodes, keyed by node_id, from the hits
+        nodes = {}
+        for hit in hits:
+            node_id = hit.protein_group.id
+            node = payloads.generate_protein_group_payload(
+                hit.protein_group, pulldown.cell_line.crispr_design.id
+            )
+            node['id'] = node_id
+            nodes[node_id] = node
+
+        # determine if any of the hits correspond to the bait
+        bait_hit_exists = True in [node['is_bait'] for node in nodes.values()]
+
+        # create the bait node, if the bait was not found among the hits
+        if not bait_hit_exists:
+            node_id = 'bait-placeholder'
+            nodes[node_id] = {
+                'id': node_id,
+                'uniprot_gene_names': [],
+                'opencell_target_names': pulldown.cell_line.crispr_design.target_name,
+                'is_bait': True,
+            }
+
+        # create the edges from the bait to its interactors
+        bait_node_id = [node['id'] for node in nodes.values() if node['is_bait']][0]
+
+        edges = []
+        for node in nodes.values():
+            if node['is_bait']:
+                continue
+            edge = {
+                'data': {
+                    'id': '%s-%s' % (bait_node_id, node['id']),
+                    'source': bait_node_id,
+                    'target': node['id'],
+                }
+            }
+            edges.append(edge)
+
+
+        for hit in hits:
+            # if the hit corresponds to an opencell target, create edges between
+            # the hits shared between the hit's target's pulldown and the original pulldown
+            if hit.protein_group.crispr_designs:
+                pass
+
+        payload = {
+            'nodes': [{'data': node} for node in nodes.values()],
+            'edges': edges,
+        }
+        return flask.jsonify(payload)
+
+
+class PulldownClusters(PulldownResource):
     '''
     The cluster heatmap(s) in which a cell line's pulldown appears
 
@@ -398,7 +458,7 @@ class PulldownClusters(CellLineResource):
         # construct the protein group metadata
         protein_group_metadata = []
         for hit, protein_group in heatmap_rows:
-            metadata = payloads.protein_group_payload(protein_group)
+            metadata = payloads.generate_protein_group_payload(protein_group)
             metadata['hit_id'] = hit.id
             protein_group_metadata.append(metadata)
 

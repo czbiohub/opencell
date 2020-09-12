@@ -143,6 +143,35 @@ class CellLine(Base):
         )
 
 
+    def get_best_pulldown(self):
+        '''
+        Get the 'best' pulldown - either the manually flagged pulldown or a pulldown with hits
+        '''
+
+        if not self.pulldowns:
+            return None
+
+        # the manually-flagged 'good' pulldowns
+        # (there should be only one of these, but we don't enforce this)
+        candidate_pulldowns = [
+            pulldown for pulldown in self.pulldowns if pulldown.manual_display_flag
+        ]
+
+        # if no pulldowns were flagged, find the pulldowns with hits
+        if not candidate_pulldowns:
+            if len(self.pulldowns) > 1:
+                candidate_pulldowns = [
+                    pulldown for pulldown in self.pulldowns if pulldown.hits
+                ]
+            else:
+                candidate_pulldowns = self.pulldowns
+
+        # pick either the first flagged pulldown, the first pulldown with hits,
+        # or the first pulldown
+        pulldown = candidate_pulldowns[0] if candidate_pulldowns else self.pulldowns[0]
+        return pulldown
+
+
     def get_top_scoring_fovs(self, ntop=None):
         '''
         Get the n highest-scoring FOVs
@@ -387,6 +416,9 @@ class UniprotMetadata(Base):
 
     # one uniprot_id to many crispr designs
     crispr_designs = db.orm.relationship('CrisprDesign', back_populates='uniprot_metadata')
+
+    def get_primary_gene_name(self):
+        return self.gene_names.split(' ')[0] if self.gene_names != 'NaN' else self.uniprot_id
 
 
 class FACSDataset(Base):

@@ -145,7 +145,9 @@ class CellLine(Base):
 
     def get_best_pulldown(self):
         '''
-        Get the 'best' pulldown - either the manually flagged pulldown or a pulldown with hits
+        Get the 'best' pulldown
+        This logic is necessary because there should always be only one 'good' pulldown,
+        but there may be multiple pulldowns per cell line in the database
         '''
 
         if not self.pulldowns:
@@ -308,7 +310,7 @@ class CrisprDesign(Base):
         db.String, db.ForeignKey('plate_design.design_id'), nullable=False
     )
 
-    # the uniprot_id of the protein tagged by the design
+    # the uniprot_id of the transcript tagged by the design
     uniprot_id = db.Column(
         db.String, db.ForeignKey('uniprot_metadata.uniprot_id')
     )
@@ -392,6 +394,27 @@ class CrisprDesign(Base):
             raise ValueError('Invalid template sequence %s' % value)
         return value
 
+    def get_best_cell_line(self):
+        '''
+        Logic to choose the 'best' cell line when there is more than one
+        '''
+        if not self.cell_lines:
+            return None
+
+        for line in self.cell_lines:
+            if line.sort_count > 1:
+                return line
+
+        for line in self.cell_lines:
+            if line.get_best_pulldown():
+                return line
+
+        for line in self.cell_lines:
+            if line.fovs:
+                return line
+
+        return self.cell_lines[0]
+
 
 class UniprotMetadata(Base):
     '''
@@ -419,6 +442,12 @@ class UniprotMetadata(Base):
 
     def get_primary_gene_name(self):
         return self.gene_names.split(' ')[0] if self.gene_names != 'NaN' else self.uniprot_id
+
+    def __repr__(self):
+        return (
+            "<UniprotMetadata(uniprot_id='%s', ensg_id=%s', gene_name='%s')>" %
+            (self.uniprot_id, self.ensg_id, self.get_primary_gene_name())
+        )
 
 
 class FACSDataset(Base):
@@ -881,7 +910,7 @@ class MassSpecPulldown(Base):
 
     def __repr__(self):
         return (
-            "<Bait(id=%s, pulldown_plate=%s, target=%s)>"
+            "<MassSpecPulldown(id=%s, pulldown_plate_id=%s, target_name=%s)>"
             % (self.id, self.pulldown_plate_id, self.get_target_name())
         )
 

@@ -305,29 +305,77 @@ class PulldownInteractions(PulldownResource):
     The interaction network for a cell line
     This consists of
     1) the direct interactions (between the cell line's target and the pulldown's hits),
-    2) the known interactions between hits that correspond to other opencell targets,
-    3) the inferred interactions betweens hits whose protein groups appear
-       in similar sets of pulldowns
+    2) the observed interactions between direct interactors (e.g., hits)
+       (these are observed when hits correspond to other opencell targets)
+    3) the inferred interactions betweens direct interactors
+       (these are inferred when the protein groups of two hits appear in similar sets of pulldowns)
     '''
     def get(self, cell_line_id):
 
         pulldown = self.get_pulldown(cell_line_id)
-        hits = self.get_significant_hits(pulldown.id)
+        direct_hits = self.get_significant_hits(pulldown.id)
 
-        # create a dict of nodes, keyed by node_id, from the hits
+        direct_node_ids = [hit.protein_group.id for hit in direct_hits]
         nodes = {}
-        for hit in hits:
-            node_id = hit.protein_group.id
+        edges = []
+
+        for direct_hit in direct_hits:
+
+            # create a node for the direct hit
+            node_id = direct_hit.protein_group.id
             node = payloads.generate_protein_group_payload(
-                hit.protein_group, pulldown.cell_line.crispr_design.id
+                direct_hit.protein_group, pulldown.cell_line.crispr_design.id
             )
             node['id'] = node_id
             nodes[node_id] = node
 
-        # determine if any of the hits correspond to the bait
-        bait_hit_exists = True in [node['is_bait'] for node in nodes.values()]
+            # if the hit is the bait itself,
+            # if the hit does not correspond to any opencell targets,
+            # or if the hit corresponds to multiple distinct opencell targets,
+            # we do not need to generate edges between the hit and the other hits
+            designs = direct_hit.protein_group.crispr_designs
+            num_distinct_designs = len(set([d.uniprot_id for d in designs]))
+            if node['is_bait'] or not designs or num_distinct_designs > 1:
+                continue
 
-        # create the bait node, if the bait was not found among the hits
+            # if the hit does correspond to an opencell target,
+            # find the best cell line corresponding to the hit's protein group
+            # note that this is complicated because there may be more than one crispr design
+            # for a given protein group, and because there may be more than one cell line per design
+            # (e.g., for resorted targets)
+            direct_hit_pulldown = None
+            for design in designs:
+                line = design.get_best_cell_line()
+                if line:
+                    direct_hit_pulldown = line.get_best_pulldown()
+                    if direct_hit_pulldown:
+                        break
+
+            # if none of the hit's target's cell lines have pulldowns, we can't do anything
+            if not direct_hit_pulldown:
+                continue
+
+            # the hit's target's hits
+            indirect_hits = self.get_significant_hits(direct_hit_pulldown.id)
+            for indirect_hit in indirect_hits:
+                indirect_node_id = indirect_hit.protein_group.id
+
+                # if the hit of the hit is not among the direct hits, we don't include it
+                if indirect_node_id not in direct_node_ids or indirect_node_id == node_id:
+                    continue
+
+                # create the edge between the two direct hits
+                edges.append({
+                    'data': {
+                        'id': '%s-%s' % (node_id, indirect_node_id),
+                        'source': node_id,
+                        'target': indirect_node_id,
+                        'type': 'prey-prey',
+                    }
+                })
+
+        # create a node for the bait if the bait was not found among the hits
+        bait_hit_exists = True in [node['is_bait'] for node in nodes.values()]
         if not bait_hit_exists:
             node_id = 'bait-placeholder'
             nodes[node_id] = {
@@ -337,28 +385,21 @@ class PulldownInteractions(PulldownResource):
                 'is_bait': True,
             }
 
-        # create the edges from the bait to its interactors
+        # create the edges between the bait and its interactors
         bait_node_id = [node['id'] for node in nodes.values() if node['is_bait']][0]
-
-        edges = []
-        for node in nodes.values():
+        for hit in direct_hits:
+            node_id = hit.protein_group.id
+            node = nodes[node_id]
             if node['is_bait']:
                 continue
-            edge = {
+            edges.append({
                 'data': {
-                    'id': '%s-%s' % (bait_node_id, node['id']),
+                    'id': '%s-%s' % (bait_node_id, node_id),
                     'source': bait_node_id,
-                    'target': node['id'],
+                    'target': node_id,
+                    'type': 'bait-prey',
                 }
-            }
-            edges.append(edge)
-
-
-        for hit in hits:
-            # if the hit corresponds to an opencell target, create edges between
-            # the hits shared between the hit's target's pulldown and the original pulldown
-            if hit.protein_group.crispr_designs:
-                pass
+            })
 
         payload = {
             'nodes': [{'data': node} for node in nodes.values()],

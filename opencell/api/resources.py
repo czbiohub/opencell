@@ -52,8 +52,9 @@ class CellLines(Resource):
         Session = flask.current_app.Session
 
         args = flask.request.args
-        plate_id = args.get('plate')
-        target_name = args.get('target')
+        plate_id = args.get('plate_id')
+        target_like = args.get('target_like')
+        target_name = args.get('target_name')
 
         included_fields = args.get('fields')
         included_fields = included_fields.split(',') if included_fields else []
@@ -61,37 +62,29 @@ class CellLines(Resource):
         cell_line_ids = args.get('ids')
         cell_line_ids = [int(_id) for _id in cell_line_ids.split(',')] if cell_line_ids else []
 
-        query = (
-            Session.query(models.CrisprDesign)
-            .options(db.orm.joinedload(models.CrisprDesign.cell_lines, innerjoin=True))
-        )
+        query = Session.query(models.CellLine).join(models.CellLine.crispr_design)
 
-        # filter crispr designs by plate_id
-        if plate_id:
-            query = query.filter(models.CrisprDesign.plate_design_id == plate_id)
-
-        # filter crispr designs by target name
+        # search for an exact match to the target_name
+        # TODO: filter for 'good' crispr designs when there's more than one for a target name
         if target_name:
-            # check for an exact match to the target name
-            exact_query = query.filter(
+            query = query.filter(
                 db.func.lower(models.CrisprDesign.target_name) == target_name.lower()
             )
-            # if no exact match, filter by startswith
-            if not exact_query.all():
+
+            # hack for the positive controls
+            if target_name.lower() in ['clta', 'bcap31']:
+                query = query.filter(models.CrisprDesign.plate_design_id == 'P0001')
+
+        # filter by plate_id and target_like
+        else:
+            if plate_id:
+                query = query.filter(models.CrisprDesign.plate_design_id == plate_id)
+            if target_like:
                 query = query.filter(
-                    db.func.lower(models.CrisprDesign.target_name)
-                    .startswith(target_name.lower())
+                    db.func.lower(models.CrisprDesign.target_name).startswith(target_like.lower())
                 )
-            else:
-                query = exact_query
-
-        # retrieve all of the cell lines corresponding to the filtered crispr designs
-        all_ids = []
-        [all_ids.extend([line.id for line in design.cell_lines]) for design in query.all()]
-
-        # retain only the cell_line_ids that were included in the URL (if any)
-        if len(cell_line_ids):
-            all_ids = list(set(all_ids).intersection(cell_line_ids))
+            if cell_line_ids:
+                query = query.filter(models.CellLine.id.in_(cell_line_ids))
 
         lines = (
             Session.query(models.CellLine)
@@ -104,7 +97,7 @@ class CellLines(Resource):
                 db.orm.joinedload(models.CellLine.sequencing_dataset),
                 db.orm.joinedload(models.CellLine.annotation),
             )
-            .filter(models.CellLine.id.in_(all_ids))
+            .filter(models.CellLine.id.in_([line.id for line in query.all()]))
             .all()
         )
 

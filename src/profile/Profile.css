@@ -216,10 +216,17 @@
 /* --------------------- cytoscape network --------------------- */
 .cy-node-label-container {
     font-size: 8px;
+    cursor: default;
 }
 
 .cy-node-label-in-opencell {
-    background-color: #1490bd20;
+    /* background-color: #1490bd20; */
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.cy-node-label-in-opencell:hover {
+    color: #666;
 }
 
 /* --------------------- expression scatterplot and FACS plot --------------------- */

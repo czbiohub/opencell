@@ -17,6 +17,7 @@ import './Profile.css';
 cytoscape.use(cise);
 cytoscape.use(nodeHtmlLabel);
 
+
 export default class MassSpecNetworkContainer extends Component {
 
     constructor (props) {
@@ -46,24 +47,30 @@ export default class MassSpecNetworkContainer extends Component {
             {
                 selector: 'node',
                 style: {
-                    'background-color': '#666',
                     height: 5,
-                    width: 5
+                    width: 5,
+                    'background-color': '#555',
+                    // turn off the overlay when the node is clicked
+                    'overlay-padding': '0px',
+                    'overlay-opacity': 0, 
                 }
             },{
                 selector: 'edge',
                 style: {
                     width: 0.5,
+                    opacity: 0.7,
+                    // this turns off overlay and disables clicking/dragging the edges
+                    'overlay-opacity': 0,
                 }
             },{
                 selector: "edge[type='prey-prey']",
                 style: {
-                    'line-color': '#666',
+                    'line-color': '#aaa',
                 }
             },{
                 selector: "edge[type='bait-prey']",
                 style: {
-                    'line-color': '#666',
+                    'line-color': '#555',
                 }
             }
         ];
@@ -74,10 +81,16 @@ export default class MassSpecNetworkContainer extends Component {
                 cssClass: 'cy-node-label-container',
                 valign: 'top',
                 valignBox: 'top',
+
+                // the tpl function is used to set the label container's innerHTML property,
+                // and therefore must return a string of serialized HTML
                 tpl: d => {
                     const names = d.uniprot_gene_names.map(name => {
-                        const className = d.opencell_target_names.includes(name) ? 'cy-node-label-in-opencell' : '';
-                        return `<span class='${className}'>${name}</span>`
+                        const inOpencell = d.opencell_target_names.includes(name);
+                        if (inOpencell) {
+                            return `<span class='cy-node-label-in-opencell'>${name}</span>`
+                        }
+                        return `<span class=''>${name}</span>`
                     })
                     return `<span>${names.join(', ')}</span>`;
                 }
@@ -86,19 +99,28 @@ export default class MassSpecNetworkContainer extends Component {
 
         this.coseLayout = {
             name: 'cose',
-            padding: 100,
-            nodeOverlap: 1,
+            padding: 30,
+            nodeOverlap: 4,
             nestingFactor: .8,
             initialTemp: 1000,
             coolingFactor: 0.99,
             minTemp: 1.0,
-            gravity: 1.4,
-            idealEdgeLength: 30,
-            edgeElasticity: 300, // smaller is tighter
+            gravity: 1.0,
+            idealEdgeLength: 60,
+            edgeElasticity: 600, // smaller is tighter
+            nodeRepulsion: 4000,
+
         }
 
         this.getData = this.getData.bind(this);
+        this.defineLabelEventHandlers = this.defineLabelEventHandlers.bind(this);
 
+    }
+
+    getCiseLayout () {
+        // the cise layout includes a list of clusters (each a list of node ids),
+        // so it must be dynamically generated
+        return {name: 'cise', clusterInfo: this.ciseClusters}
     }
 
     componentDidMount() {
@@ -108,9 +130,12 @@ export default class MassSpecNetworkContainer extends Component {
     }
 
     componentDidUpdate (prevProps) {
-        if (this.cy) {
+        if (this.cy && this.state.loaded) {
             try {
                 this.cy.nodeHtmlLabel(this.nodeHtmlLabel);
+                const layout = this.cy.layout(this.coseLayout);
+                layout.on('layoutstop', this.defineLabelEventHandlers);
+                layout.run();
             }
             catch (err) {
                 console.log(err);
@@ -121,20 +146,33 @@ export default class MassSpecNetworkContainer extends Component {
         }
     }
 
+
+    defineLabelEventHandlers () {
+        const changeTarget = this.props.changeTarget;
+        const labels = d3.selectAll(".cy-node-label-in-opencell")
+            .on("click", function () {
+                const targetName = d3.select(this).text();
+                changeTarget(targetName);
+            });
+    }
+
+
     getData () {
         this.setState({loaded: false, loadingError: false});
         const url = `${settings.apiUrl}/lines/${this.props.cellLineId}/pulldown_interactions`;
         d3.json(url).then(data => {
 
             // create a single cluster from the direct interactors
+            const baitId = data.nodes.filter(node => node.is_bait)[0];
             this.ciseClusters = [
-                data.edges.filter(edge => edge.type==='bait-prey').map(edge => edge.target)
+                data.edges.filter(edge => edge.source===baitId).map(edge => edge.target)
             ];
 
             this.elements = [...data.nodes, ...data.edges];
             this.setState({loaded: true, loadingError: false});
         },
         error => {
+            this.elements = [];
             this.setState({loaded: true, loadingError: true});
         });
     }
@@ -167,14 +205,12 @@ export default class MassSpecNetworkContainer extends Component {
                     </div>
                 </div>
 
-                <div className="w-100 cluster-heatmap-container ba">
+                <div className="w-100 cluster-heatmap-container">
                     {this.state.loaded ? (
                         <CytoscapeComponent
                             style={{width: '500px', height: '500px'}}
                             elements={this.elements}
                             stylesheet={this.style}
-                            layout={this.coseLayout}
-                            nodeHtmlLabel={this.nodeHtmlLabel}
                             zoom={1}
                             minZoom={0.5}
                             maxZoom={3}

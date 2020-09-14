@@ -908,6 +908,81 @@ class MassSpecPulldown(Base):
         '''Convenience method to get target_name for each pulldown'''
         return self.cell_line.crispr_design.target_name
 
+
+    def get_significant_hits(self):
+        '''
+        Retrieve the significant hits and eager-load their protein groups
+        and the protein groups' crispr designs and uniprot metadata
+        '''
+        significant_hits = (
+            db.orm.object_session(self).query(MassSpecHit)
+            .options(
+                db.orm.joinedload(MassSpecHit.protein_group, innerjoin=True)
+                    .joinedload(MassSpecProteinGroup.crispr_designs),
+                db.orm.joinedload(MassSpecHit.protein_group, innerjoin=True)
+                    .joinedload(MassSpecProteinGroup.uniprot_metadata),
+            )
+            .filter(MassSpecHit.pulldown_id == self.id)
+            .filter(db.or_(
+                MassSpecHit.is_minor_hit == True,  # noqa
+                MassSpecHit.is_significant_hit == True  # noqa
+            ))
+            .all()
+        )
+        return significant_hits
+
+
+    def get_bait_hit(self, only_one=False):
+        '''
+        Get the hit that corresponds to the pulldown's target/bait
+        Returns none if the bait does not appear among the hits
+        Assumes that the hits have been eager-loaded
+        '''
+        bait_hits = []
+        for hit in self.hits:
+            if hit.is_significant_hit or hit.is_minor_hit:
+                design_ids = [design.id for design in hit.protein_group.crispr_designs]
+                if self.cell_line.crispr_design.id in design_ids:
+                    bait_hits.append(hit)
+
+        if not bait_hits:
+            return None
+
+        if only_one:
+            # return the hit with the greatest enrichment
+            bait_hits = sorted(bait_hits, key=lambda hit: -hit.enrichment)
+            return bait_hits[0]
+        return bait_hits
+
+
+    def get_interacting_pulldowns(self):
+        '''
+        '''
+        interacting_pulldowns = (
+            db.orm.object_session(self).query(MassSpecPulldown).join(MassSpecHit)
+            .filter(db.or_(
+                MassSpecPulldown.manual_display_flag == None,
+                MassSpecPulldown.manual_display_flag == True
+            ))
+            .filter(MassSpecPulldown.id != self.id)
+            .filter(
+                MassSpecHit.protein_group_id.in_(
+                    [pg.id for pg in self.cell_line.crispr_design.protein_groups]
+                )
+            )
+            .filter(db.or_(
+                MassSpecHit.is_minor_hit == True,  # noqa
+                MassSpecHit.is_significant_hit == True  # noqa
+            ))
+            .options(
+                db.orm.joinedload(MassSpecPulldown.hits, innerjoin=True)
+                .joinedload(MassSpecHit.protein_group, innerjoin=True)
+            )
+            .all()
+        )
+        return interacting_pulldowns
+
+
     def __repr__(self):
         return (
             "<MassSpecPulldown(id=%s, pulldown_plate_id=%s, target_name=%s)>"
@@ -949,6 +1024,9 @@ class MassSpecProteinGroup(Base):
         'UniprotMetadata',
         secondary='protein_group_uniprot_metadata_association'
     )
+
+    def __repr__(self):
+        return "<MassSpecProteinGroup(gene_names=[%s])>" % (', '.join(self.gene_names))
 
 
 class ProteinGroupUniprotMetadataAssociation(Base):

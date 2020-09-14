@@ -246,47 +246,24 @@ class PulldownResource(CellLineResource):
         return line.get_best_pulldown()
 
 
-    @staticmethod
-    def get_significant_hits(pulldown_id):
-        '''
-        Retrieve the significant hits along with their protein groups
-        and the protein groups' crispr designs and uniprot metadata
-        '''
-        significant_hits = (
-            flask.current_app.Session.query(models.MassSpecHit)
-            .options(
-                db.orm.joinedload(models.MassSpecHit.protein_group, innerjoin=True)
-                    .joinedload(models.MassSpecProteinGroup.crispr_designs),
-                db.orm.joinedload(models.MassSpecHit.protein_group, innerjoin=True)
-                    .joinedload(models.MassSpecProteinGroup.uniprot_metadata),
-            )
-            .filter(models.MassSpecHit.pulldown_id == pulldown_id)
-            .filter(db.or_(
-                models.MassSpecHit.is_minor_hit == True,  # noqa
-                models.MassSpecHit.is_significant_hit == True  # noqa
-            ))
-            .all()
-        )
-        return significant_hits
-
 
 class PulldownHits(PulldownResource):
     '''
     The mass spec pulldown and its associated hits for a cell line
     '''
     def get(self, cell_line_id):
-
+        Session = flask.current_app.Session
         pulldown = self.get_pulldown(cell_line_id)
         if not pulldown.hits:
             return flask.abort(
                 404, 'The pulldown for cell line %s does not have any hits' % cell_line_id
             )
 
-        significant_hits = self.get_significant_hits(pulldown.id)
+        significant_hits = pulldown.get_significant_hits()
 
         # we need only the pval and enrichment for the non-significant hits
         nonsignificant_hits = (
-            flask.current_app.Session.query(models.MassSpecHit.pval, models.MassSpecHit.enrichment)
+            Session.query(models.MassSpecHit.pval, models.MassSpecHit.enrichment)
             .filter(models.MassSpecHit.pulldown_id == pulldown.id)
             .filter(models.MassSpecHit.is_minor_hit == False)  # noqa
             .filter(models.MassSpecHit.is_significant_hit == False)  # noqa
@@ -310,10 +287,12 @@ class PulldownInteractions(PulldownResource):
     3) the inferred interactions betweens direct interactors
        (these are inferred when the protein groups of two hits appear in similar sets of pulldowns)
     '''
+
     def get(self, cell_line_id):
 
         pulldown = self.get_pulldown(cell_line_id)
-        direct_hits = self.get_significant_hits(pulldown.id)
+        direct_hits = pulldown.get_significant_hits()
+        # interacting_pulldowns = pulldown.get_interacting_pulldowns()
 
         direct_node_ids = [hit.protein_group.id for hit in direct_hits]
         nodes = {}
@@ -330,7 +309,7 @@ class PulldownInteractions(PulldownResource):
             nodes[node_id] = node
 
             # if the hit is the bait itself,
-            # if the hit does not correspond to any opencell targets,
+            # or if the hit does not correspond to any opencell targets,
             # or if the hit corresponds to multiple distinct opencell targets,
             # we do not need to generate edges between the hit and the other hits
             designs = direct_hit.protein_group.crispr_designs
@@ -356,7 +335,7 @@ class PulldownInteractions(PulldownResource):
                 continue
 
             # the hit's target's hits
-            indirect_hits = self.get_significant_hits(direct_hit_pulldown.id)
+            indirect_hits = direct_hit_pulldown.get_significant_hits()
             for indirect_hit in indirect_hits:
                 indirect_node_id = indirect_hit.protein_group.id
 

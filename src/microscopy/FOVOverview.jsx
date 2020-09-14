@@ -57,7 +57,7 @@ export default class FOVOverview extends Component {
     fetchData () {
         if (!this.props.plateId) return;
         this.setState({loaded: false});
-        const url = `${settings.apiUrl}/lines?plate=${this.props.plateId}&kind=thumbnails`;
+        const url = `${settings.apiUrl}/lines?plate_id=${this.props.plateId}&kind=thumbnails`;
         d3.json(url).then(data => {
             this.data = data;
             this.setState({loaded: true});

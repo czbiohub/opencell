@@ -55,22 +55,39 @@ export default class MassSpecNetworkContainer extends Component {
                     'overlay-opacity': 0, 
                 }
             },{
+                selector: "node[type='bait']",
+                style: {
+                    'background-color': '#51ade1',
+                    'opacity': 1.0,
+                }
+            },{
+                selector: "node[type='hit']",
+                style: {
+                    'background-color': '#ff827d',
+                    'opacity': 1.0,
+                }
+            },{
                 selector: 'edge',
                 style: {
                     width: 0.5,
-                    opacity: 0.7,
+                    opacity: 0.15,
                     // this turns off overlay and disables clicking/dragging the edges
                     'overlay-opacity': 0,
+                    'line-color': "#333",
+                    "curve-style": "haystack",
+                    "target-arrow-shape": "triangle-backcurve",
+                    "arrow-scale": 0.5,
                 }
             },{
                 selector: "edge[type='prey-prey']",
                 style: {
-                    'line-color': '#aaa',
+                    'line-style': "solid",
                 }
             },{
                 selector: "edge[type='bait-prey']",
                 style: {
-                    'line-color': '#555',
+                    //'line-style': "dotted",
+                    //visibility: 'hidden',
                 }
             }
         ];
@@ -101,7 +118,7 @@ export default class MassSpecNetworkContainer extends Component {
             name: 'cose',
             padding: 30,
             nodeOverlap: 4,
-            nestingFactor: .8,
+            nestingFactor: 1,
             initialTemp: 1000,
             coolingFactor: 0.99,
             minTemp: 1.0,

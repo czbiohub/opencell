@@ -1103,6 +1103,17 @@ class MassSpecHit(Base):
     # A hit needs to have a unique set of target (pulldown) and the prey (protein_group)
     __table_args__ = (db.UniqueConstraint(pulldown_id, protein_group_id),)
 
+    def __repr__(self):
+        return (
+            "<MassSpecHit(bait=%s, pval=%0.2f, enrichment=%0.2f, gene_names=[%s])>"
+            % (
+                self.pulldown.get_target_name(),
+                self.pval,
+                self.enrichment,
+                ', '.join(self.protein_group.gene_names)
+            )
+        )
+
 
 class MassSpecClusterHeatmap(Base):
     """

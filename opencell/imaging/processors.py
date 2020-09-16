@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 
 from opencell import constants
-from opencell.imaging import images, utils
+from opencell.imaging import images, utils, nucleus_segmentation
 
 
 class FOVProcessor:
@@ -166,29 +166,42 @@ class FOVProcessor:
         channel=None,
         roi_id=None,
         roi_props=None,
+        roi_kind=None,
         ext=None,
         makedirs=True
     ):
         '''
-        Construct the relative directory path and filename for a given 'kind' of output file
+        Construct the relative directory path and filename for an output file
 
-        The full path is of the form '{kind}/{dst_plate_dir}/{dst_filename}'
-        dst_plate_dir is of the form 'czML0383-P0001'
-        dst_filename is of the form 'czML0383-P0001-A01-PML0123-S01_{kind}-{channel}'
+        Directory path and filename formats:
 
-        If `kind` is 'crop' and if roi_coords are provided,
-        then the roi_coords are included in the filename:
-        'czML00383-P0001-A01-PML0123-S01_CROP-0424-0000-0600-0600-CH405'
+        dst_filepath:   '{kind}/{dst_plate_dir}/{dst_filename}'
+        dst_plate_dir:  'czML0383-{plate_id}'
+        dst_filename:   'czML0383-{plate_id}-{well_id}-{pml_id}-S{site_num}_{appendix}'
 
+        Appendix formats are kind-dependent:
+
+        kind          appendix format
+        -----------------------------------------------------------------
+        'proj'        'PROJ-CH{channel}'
+        'clean'       'CLEAN'
+        'roi'         'ROI-{roi_kind}-{top_left_row}-{top_left_col}-{n_rows}-{n_cols}-CH{channel}'
+
+        roi_kind is one of 'proj', 'hqtile', 'lqtile'
+
+        Note that 'czML0383' is technically the name of the FOV's cell line's parental line,
+        but for opencell datasets, this is always 'czML0383'.
+
+        Here is a full example filename, for an 'roi' file:
+        'czML00383-P0001-A01-PML0123-S01_ROI-HQTILE-0424-0000-0600-0600-CH405'
         '''
 
         if dst_root is None:
             dst_root = ''
 
-        kinds = ['proj', 'crop', 'clean']
+        kinds = ['proj', 'roi', 'clean', 'segmentation']
         if kind not in kinds:
             raise ValueError('%s is not a valid destination kind' % kind)
-        appendix = kind.upper()
 
         # retrieve the roi_props if an roi_id was provided
         if roi_id is not None:
@@ -197,15 +210,18 @@ class FOVProcessor:
                 raise ValueError('ROI %s is not an ROI of FOV %s' % (roi_id, self.fov_id))
             roi_props = row[0]['props']
 
-        # append the ROI coords if roi_props exists
-        # (we don't validate these, but we assume they correspond to
-        # (top_left_row, top_left_col, num_rows, num_cols))
-        if kind == 'crop' and roi_props is not None:
+        # construct the filename appendix, starting from `kind`
+        appendix = kind.upper()
+
+        # append the ROI coords, which we assume correspond to
+        # (top_left_row, top_left_col, num_rows, num_cols)
+        if kind == 'roi':
             for coord in roi_props['xy_coords']:
                 appendix = '%s-%04d' % (appendix, coord)
+            appendix = '%s-%s' % (appendix, roi_kind.upper())
 
         # append the channel last, so that when sorting files,
-        # the two channels of each FOV OR ROI remain adjacent to one another
+        # the two channels of each kind of file remain adjacent to one another
         if channel is not None:
             appendix = '%s-CH%s' % (appendix, channel)
 
@@ -270,7 +286,8 @@ class FOVProcessor:
         if tiff.did_split_channels:
             for channel in [tiff.laser_405, tiff.laser_488]:
                 dst_filepath = self.dst_filepath(
-                    dst_root=dst_root, kind='proj', channel=channel, ext='tif')
+                    dst_root=dst_root, kind='proj', channel=channel, ext='tif'
+                )
                 tiff.project_stack(channel_name=channel, axis='z', dst_filepath=dst_filepath)
 
         # the tiff file must be manually closed
@@ -337,6 +354,20 @@ class FOVProcessor:
             'quality': quality,
             'encoded_ims': encoded_ims,
         }
+        return result
+
+
+    def generate_nucleus_segmentation(self, dst_root):
+        '''
+        Generate nucleus segmentation mask from the z-projection of the 405 channel
+        '''
+        filepath = self.dst_filepath(dst_root, kind='proj', channel='405', ext='tif')
+        im = tifffile.imread(filepath)
+        mask = nucleus_segmentation.generate_final_mask(im)
+
+        result = None
+        dst_filepath = self.dst_filepath(dst_root, kind='segmentation', ext='tif')
+        tifffile.imsave(dst_filepath, (255*mask).astype('uint8'), dtype='uint8')
         return result
 
 
@@ -530,14 +561,14 @@ class FOVProcessor:
         # the desired step size of the final stack in microns
         # (this is chosen to correspond to the xy pixel size,
         # so that the voxels of the resampled stack will be isotropic)
-        target_step_size = 0.2
+        target_step_size = 0.4
 
         # the step size of the raw data
         original_step_size = self.z_step_size(self.pml_id)
 
         # the number of slices the resampled stack must have
-        # (should be equal to (rel_top - rel_buttom) / target_step_size)
-        required_num_slices = 55
+        # this should be equal to, or rounded down from, (rel_top - rel_buttom) / target_step_size
+        required_num_slices = 27
 
         # crop (and maybe pad) around the cell layer in z
         aligned_stacks, alignment_result = tiff.align_cell_layer(
@@ -578,42 +609,40 @@ class FOVProcessor:
                 'original_step_size': original_step_size,
                 'required_num_slices': required_num_slices,
             }
-            roi_props = self.crop_and_save_roi(roi_props, aligned_stacks, dst_root)
+            # crop the ROI
+            roi, roi_props = self._crop_roi(roi_props, aligned_stacks)
+
+            # save the ROI
+            roi_props = self._save_roi(roi, roi_props, dst_root)
+
             all_roi_props.append(roi_props)
+
         return result, all_roi_props
 
 
-    def crop_and_save_roi(self, roi_props, stacks, dst_root):
+    def _crop_roi(self, roi_props, stacks):
         '''
         Crop an ROI from the raw TIFF, resample it in z if necessary,
-        downsample it from uint16 to uint8, and save it as a 1D tiled PNG
+        and downsample it from uint16 to uint8
         '''
 
         num_rows, num_cols, num_z = roi_props['shape']
         row_ind, col_ind, z_ind = roi_props['position']
 
-        for channel in stacks:
-            dst_filepath = self.dst_filepath(
-                dst_root,
-                kind='crop',
-                channel=channel,
-                roi_props=roi_props,
-                ext='jpg'
-            )
+        roi = {}
+        for channel in ['405', '488']:
 
-            # crop the raw stack
-            stack = stacks[channel]
-            cropped_stack = stack[
+            # crop the ROI from the raw stack
+            cropped_stack = stacks[channel][
                 z_ind:(z_ind + num_z),
                 row_ind:(row_ind + num_rows),
                 col_ind:(col_ind + num_cols)
-            ].copy()
+            ]
 
             # move the z dimension from the first to the last axis
-            cropped_stack = np.moveaxis(cropped_stack, 0, -1)
+            cropped_stack = np.moveaxis(cropped_stack.copy(), 0, -1)
 
-            # resample the stack in z so that it has the required z-step size
-            # and number of z-slices
+            # resample the stack in z so it has the required step size and number of z-slices
             cropped_stack, did_resample_stack = self.maybe_resample_stack(
                 cropped_stack,
                 original_step_size=roi_props['original_step_size'],
@@ -633,12 +662,94 @@ class FOVProcessor:
             roi_props['min_intensity_%s' % channel] = min_intensity
             roi_props['max_intensity_%s' % channel] = max_intensity
 
-            # save the stack itself as a one-dimensional tile of z-slices
-            cropped_stack = np.moveaxis(cropped_stack, -1, 0)
-            tile = np.concatenate([zslice for zslice in cropped_stack], axis=0)
-            imageio.imsave(dst_filepath, tile, format='jpg', quality=90)
+            # smooth the hoechst channel slightly to reduce the tiled JPG filesize
+            if channel == '405':
+                cropped_stack = skimage.filters.gaussian(
+                    cropped_stack, sigma=(.5, .5, .5), preserve_range=True
+                )
+                cropped_stack = cropped_stack.astype('uint8')
+
+            roi[channel] = cropped_stack
+        return roi, roi_props
+
+
+    def _save_roi(self, roi, roi_props, dst_root):
+        '''
+        Save an ROI generated by _crop_roi as a one-dimensional tiled array of z-slices
+
+        Note that this method includes hand-picked optimizations
+        to minimize the filesize of the tiled JPGs that are specific to ROIs
+        that are uint8 arrays of shape (600, 600, 27) (or something close to that)
+        '''
+        # common args for the dst_filepath method
+        common_args = dict(
+            dst_root=dst_root,
+            kind='roi',
+            roi_props=roi_props,
+            ext='jpg'
+        )
+
+        tile = {}
+        for channel, stack in roi.items():
+
+            # save the z-projection
+            proj = stack.max(axis=-1)
+            dst_filepath = self.dst_filepath(roi_kind='proj', channel=channel, **common_args)
+            imageio.imsave(dst_filepath, proj, format='jpg', quality=95)
+
+            # reshape the ROI stacks into a one-dimensional tiled array of z-slices
+            stack = np.moveaxis(stack, -1, 0)
+            tile[channel] = np.concatenate([zslice for zslice in stack], axis=0)
+
+        # for high-quality hoechst, use a fixed JPG quality of 90%
+        channel = '405'
+        jpg_quality = 90
+        dst_filepath = self.dst_filepath(roi_kind='hqtile', channel=channel, **common_args)
+        imageio.imsave(dst_filepath, tile[channel], format='jpg', quality=jpg_quality)
+        roi_props['high_jpg_quality_%s' % channel] = jpg_quality
+
+        # for low-quality hoechst, use a fixed JPG quality of 50%
+        jpg_quality = 50
+        dst_filepath = self.dst_filepath(roi_kind='lqtile', channel=channel, **common_args)
+        imageio.imsave(dst_filepath, tile[channel], format='jpg', quality=jpg_quality)
+        roi_props['low_jpg_quality_%s' % channel] = jpg_quality
+
+        # for high-quality GFP, use the JPG quality that yields a filesize less than 4MB
+        channel = '488'
+        target_filesize = 4.0
+        dst_filepath = self.dst_filepath(roi_kind='hqtile', channel=channel, **common_args)
+        jpg_quality = self.save_jpg(
+            dst_filepath, tile[channel], target_filesize, min_quality=70, max_quality=95
+        )
+        roi_props['high_jpg_quality_%s' % channel] = jpg_quality
+
+        # for low-quality GFP, use the JPG quality that yields a filesize less than 1MB
+        target_filesize = 1.0
+        dst_filepath = self.dst_filepath(roi_kind='lqtile', channel=channel, **common_args)
+        jpg_quality = self.save_jpg(
+            dst_filepath, tile[channel], target_filesize, min_quality=30, max_quality=90
+        )
+        roi_props['low_jpg_quality_%s' % channel] = jpg_quality
 
         return roi_props
+
+
+    @staticmethod
+    def save_jpg(filepath, image, target_filesize, min_quality, max_quality):
+        '''
+        Save a JPG with a quality chosen to match a target filesize
+        Note: this is a hackish implementation
+
+        image : numpy array (assumed to be JPG-compatible)
+        target_filesize : the desired filesize, in megabytes
+        min_quality, max_quality : hard-coded bounds on the JPG quality
+        '''
+        jpg_qualities = range(max_quality, min_quality, -5)
+        for jpg_quality in jpg_qualities:
+            imageio.imsave(filepath, image, format='jpg', quality=jpg_quality)
+            if os.stat(filepath).st_size/1024/1024 < target_filesize:
+                break
+        return jpg_quality
 
 
     @staticmethod

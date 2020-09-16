@@ -35,15 +35,7 @@ def create_session_registry(url):
 def create_app(args):
 
     app = Flask(__name__)
-
-    if args.mode == 'dev':
-        config = settings.DevConfig
-    elif args.mode == 'prod':
-        config = settings.ProdConfig
-    elif args.mode == 'test':
-        config = settings.TestConfig
-    app.config.from_object(config)
-
+    app.config.from_object(settings.get_config(args.mode))
     if app.config.get('CORS_ORIGINS'):
         CORS(app, origins=app.config['CORS_ORIGINS'])
 
@@ -68,7 +60,7 @@ def create_app(args):
         resources.MicroscopyFOV, '/fovs/<int:fov_id>/<string:kind>/<string:channel>'
     )
     api.add_resource(
-        resources.MicroscopyFOVROI, '/rois/<int:roi_id>/<string:kind>/<string:channel>'
+        resources.MicroscopyFOVROI, '/rois/<int:roi_id>/<string:roi_kind>/<string:channel>'
     )
 
     # FOV annotations (always one annotation per FOV)
@@ -79,8 +71,8 @@ def create_app(args):
     if args.credentials_filepath:
         app.config['DB_CREDENTIALS_FILEPATH'] = args.credentials_filepath
 
-    if args.opencell_microscopy_dirpath:
-        app.config['OPENCELL_MICROSCOPY_DIRPATH'] = args.opencell_microscopy_dirpath
+    if args.opencell_microscopy_dir:
+        app.config['OPENCELL_MICROSCOPY_DIR'] = args.opencell_microscopy_dir
 
     # create an instance of sqlalchemy's scoped_session registry
     url = utils.url_from_credentials(app.config['DB_CREDENTIALS_FILEPATH'])
@@ -98,7 +90,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', dest='mode', required=True)
     parser.add_argument('--credentials', dest='credentials_filepath')
-    parser.add_argument('--opencell-microscopy', dest='opencell_microscopy_dirpath')
+    parser.add_argument('--opencell-microscopy-dir', dest='opencell_microscopy_dir')
     return parser.parse_args()
 
 

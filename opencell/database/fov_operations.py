@@ -28,6 +28,12 @@ class MicroscopyFOVOperations:
     def __init__(self, fov_id):
         self.fov_id = fov_id
 
+    def insert_nothing(self, session, result):
+        '''
+        Placeholder method with the same signature as all of the `insert_*` methods
+        '''
+        return
+
 
     def insert_raw_tiff_metadata(self, session, result):
         '''
@@ -45,16 +51,14 @@ class MicroscopyFOVOperations:
         events = result.get('events')
 
         row = models.MicroscopyFOVResult(
-            fov_id=self.fov_id,
-            kind='raw-tiff-metadata',
-            data=metadata)
+            fov_id=self.fov_id, kind='raw-tiff-metadata', data=metadata
+        )
         utils.add_and_commit(session, row, errors='raise')
 
         if len(events):
             row = models.MicroscopyFOVResult(
-                fov_id=self.fov_id,
-                kind='raw-tiff-processing-events',
-                data=events)
+                fov_id=self.fov_id, kind='raw-tiff-processing-events', data=events
+            )
             utils.add_and_commit(session, row, errors='raise')
 
 
@@ -65,9 +69,8 @@ class MicroscopyFOVOperations:
         '''
         result = utils.to_jsonable(result)
         row = models.MicroscopyFOVResult(
-            fov_id=self.fov_id,
-            kind='fov-features',
-            data=result)
+            fov_id=self.fov_id, kind='fov-features', data=result
+        )
         utils.add_and_commit(session, row, errors='raise')
 
 
@@ -121,9 +124,8 @@ class MicroscopyFOVOperations:
         '''
         result = utils.to_jsonable(result)
         row = models.MicroscopyFOVResult(
-            fov_id=self.fov_id,
-            kind='z-profiles',
-            data=result)
+            fov_id=self.fov_id, kind='z-profiles', data=result
+        )
         utils.add_and_commit(session, row, errors='raise')
 
 
@@ -133,10 +135,23 @@ class MicroscopyFOVOperations:
         '''
         result = utils.to_jsonable(result)
         row = models.MicroscopyFOVResult(
-            fov_id=self.fov_id,
-            kind='clean-tiff-metadata',
-            data=result)
+            fov_id=self.fov_id, kind='clean-tiff-metadata', data=result
+        )
         utils.add_and_commit(session, row, errors='raise')
+
+
+    def insert_corner_rois(self, session, result):
+        '''
+        Insert the four ROIs cropped from each corner of an FOV
+        '''
+        self._insert_rois(session, result, roi_kind='corner')
+
+
+    def insert_annotated_roi(self, session, result):
+        '''
+        Insert the single manually-annotated ROI (if any)
+        '''
+        self._insert_rois(session, result, roi_kind='annotated')
 
 
     def _insert_rois(self, session, result, roi_kind):
@@ -154,32 +169,15 @@ class MicroscopyFOVOperations:
         result_kind = '%s-roi-cropping' % roi_kind
 
         row = models.MicroscopyFOVResult(
-            fov_id=self.fov_id,
-            kind=result_kind,
-            data=result)
+            fov_id=self.fov_id, kind=result_kind, data=result
+        )
         utils.add_and_commit(session, row, errors='raise')
 
         rois = []
         for roi_props in all_roi_props:
             roi_props = utils.to_jsonable(roi_props)
             roi = models.MicroscopyFOVROI(
-                fov_id=self.fov_id,
-                kind=roi_kind,
-                props=roi_props
+                fov_id=self.fov_id, kind=roi_kind, props=roi_props
             )
             rois.append(roi)
         utils.add_and_commit(session, rois, errors='raise')
-
-
-    def insert_corner_rois(self, session, result):
-        '''
-        Insert the four ROIs cropped from each corner of an FOV
-        '''
-        self._insert_rois(session, result, roi_kind='corner')
-
-
-    def insert_annotated_roi(self, session, result):
-        '''
-        Insert the single manually-annotated ROI (if any)
-        '''
-        self._insert_rois(session, result, roi_kind='annotated')

@@ -9,8 +9,9 @@ import sqlalchemy as db
 from flask_restful import Resource, reqparse
 
 from opencell.imaging import utils
+from opencell.api import payloads
 from opencell.api.cache import cache
-from opencell.database import models, operations, payloads
+from opencell.database import models, operations
 from opencell.database import utils as db_utils
 from opencell.imaging.processors import FOVProcessor
 
@@ -47,19 +48,21 @@ class CellLines(Resource):
     @cache.cached(timeout=3600, key_prefix=cache_key)
     def get(self):
 
+        Session = flask.current_app.Session
+
         args = flask.request.args
         plate_id = args.get('plate')
         target_name = args.get('target')
-        included_ids = args.get('ids')
-        optional_fields = args.get('fields')
 
-        optional_fields = optional_fields.split(',') if optional_fields else []
-        included_ids = [int(_id) for _id in included_ids.split(',')] if included_ids else []
+        included_fields = args.get('fields')
+        included_fields = included_fields.split(',') if included_fields else []
+
+        cell_line_ids = args.get('ids')
+        cell_line_ids = [int(_id) for _id in cell_line_ids.split(',')] if cell_line_ids else []
 
         query = (
-            flask.current_app.Session.query(models.CrisprDesign)
-            .options(db.orm.joinedload(models.CrisprDesign.cell_lines))
-            .options(db.orm.joinedload(models.CrisprDesign.uniprot_metadata))
+            Session.query(models.CrisprDesign)
+            .options(db.orm.joinedload(models.CrisprDesign.cell_lines, innerjoin=True))
         )
 
         # filter crispr designs by plate_id
@@ -82,34 +85,42 @@ class CellLines(Resource):
                 query = exact_query
 
         # retrieve all of the cell lines corresponding to the filtered crispr designs
-        ids = []
-        [ids.extend([line.id for line in design.cell_lines]) for design in query.all()]
+        all_ids = []
+        [all_ids.extend([line.id for line in design.cell_lines]) for design in query.all()]
 
         # retain only the cell_line_ids that were included in the URL (if any)
-        if len(included_ids):
-            ids = list(set(ids).intersection(included_ids))
+        if len(cell_line_ids):
+            all_ids = list(set(all_ids).intersection(cell_line_ids))
 
         lines = (
-            flask.current_app.Session.query(models.CellLine)
+            Session.query(models.CellLine)
             .options(
-                db.orm.joinedload(models.CellLine.crispr_design, innerjoin=True),
+                (
+                    db.orm.joinedload(models.CellLine.crispr_design, innerjoin=True)
+                    .joinedload(models.CrisprDesign.uniprot_metadata, innerjoin=True)
+                ),
                 db.orm.joinedload(models.CellLine.facs_dataset),
                 db.orm.joinedload(models.CellLine.sequencing_dataset),
                 db.orm.joinedload(models.CellLine.annotation),
-                (
-                    db.orm.joinedload(models.CellLine.fovs)
-                    .joinedload(models.MicroscopyFOV.annotation, innerjoin=True)
-                ),
             )
-            .filter(models.CellLine.id.in_(ids))
+            .filter(models.CellLine.id.in_(all_ids))
             .all()
         )
 
-        # limit the number of lines in dev mode (to speed things up)
-        if flask.current_app.config['ENV'] == 'dev':
-            lines = lines[::1]
+        # TODO: pass the FOV counts to the cell_line_payload method if they are needed
+        _ = (
+            Session.query(
+                models.CellLine.id,
+                db.func.count(models.MicroscopyFOV.id).label('num_fovs'),
+                db.func.count(models.MicroscopyFOVAnnotation.id).label('num_annotated_fovs'),
+            )
+            .outerjoin(models.CellLine.fovs)
+            .outerjoin(models.MicroscopyFOV.annotation)
+            .group_by(models.CellLine.id)
+            .all()
+        )
 
-        payload = [payloads.cell_line_payload(line, optional_fields) for line in lines]
+        payload = [payloads.cell_line_payload(line, included_fields) for line in lines]
         return flask.jsonify(payload)
 
 
@@ -171,17 +182,50 @@ class CellLineFOVs(CellLineResource):
     '''
     def get(self, cell_line_id):
 
-        line = self.get_cell_line(cell_line_id)
-        if not line.fovs:
-            return flask.abort(404, 'There are no FOVs associated with the cell line')
+        only_annotated = flask.request.args.get('annotatedonly') == 'true'
 
-        optional_fields, error = self.parse_listlike_arg(
+        included_fields, error = self.parse_listlike_arg(
             name='fields', allowed_values=['rois', 'thumbnails']
         )
         if error:
             return error
 
-        payload = [payloads.fov_payload(fov, optional_fields) for fov in line.fovs]
+        line = self.get_cell_line(cell_line_id)
+        query = (
+            flask.current_app.Session.query(models.MicroscopyFOV)
+            .options(
+                db.orm.joinedload(models.MicroscopyFOV.dataset, innerjoin=True),
+                db.orm.joinedload(models.MicroscopyFOV.results, innerjoin=True),
+                db.orm.joinedload(models.MicroscopyFOV.annotation)
+            )
+            .filter(models.MicroscopyFOV.cell_line_id == line.id)
+        )
+
+        if only_annotated:
+            query = query.filter(models.MicroscopyFOV.annotation != None)  # noqa
+
+        if 'rois' in included_fields:
+            query = query.options(
+                db.orm.joinedload(models.MicroscopyFOV.rois, innerjoin=True)
+            )
+
+        if 'thumbnails' in included_fields:
+            query = query.options(
+                db.orm.joinedload(models.MicroscopyFOV.thumbnails, innerjoin=False)
+            )
+
+        fovs = query.all()
+        if not fovs:
+            return flask.abort(404, 'There are no FOVs associated with the cell line')
+
+        payload = [
+            payloads.fov_payload(
+                fov,
+                include_rois=('rois' in included_fields),
+                include_thumbnails=('thumbnails' in included_fields)
+            )
+            for fov in fovs
+        ]
 
         # sort by FOV score (unscored FOVs last)
         payload = sorted(payload, key=lambda row: row['metadata'].get('score') or -2)[::-1]
@@ -202,35 +246,54 @@ class CellLinePulldown(CellLineResource):
                 404, 'There are no pulldowns associated with cell line %d' % cell_line_id
             )
 
-        # TODO: logic to determine which pulldown is the 'good' one
-        # for now, we take the first pulldown with hits
-        pulldown_id = line.pulldowns[0].id
-        if len(line.pulldowns) > 1:
-            for pulldown in line.pulldowns:
-                if pulldown.hits:
-                    pulldown_id = pulldown.id
-                    break
+        # the manually-flagged 'good' pulldowns
+        # (there should be only one of these, but we don't enforce this)
+        candidate_pulldowns = [
+            pulldown for pulldown in line.pulldowns if pulldown.manual_display_flag
+        ]
 
-        pulldown = (
-            flask.current_app.Session.query(models.MassSpecPulldown)
-            .options(
-                db.orm.joinedload(models.MassSpecPulldown.hits)
-                .joinedload(models.MassSpecHit.protein_group)
-                .joinedload(models.MassSpecProteinGroup.crispr_designs),
-                db.orm.joinedload(models.MassSpecPulldown.hits)
-                .joinedload(models.MassSpecHit.protein_group)
-                .joinedload(models.MassSpecProteinGroup.uniprot_metadata),
-            )
-            .filter(models.MassSpecPulldown.id == pulldown_id)
-            .one()
-        )
+        # if none were flagged, find the pulldowns with hits
+        if not candidate_pulldowns:
+            candidate_pulldowns = [
+                pulldown for pulldown in line.pulldowns if pulldown.hits
+            ]
+
+        # pick either the first flagged pulldown, the first pulldown with hits,
+        # or the first pulldown
+        pulldown = candidate_pulldowns[0] if candidate_pulldowns else line.pulldowns[0]
 
         if not pulldown.hits:
             return flask.abort(
-                404, 'No pulldown with hits found for cell line %s' % cell_line_id
+                404, 'The pulldown for cell line %s does not have any hits' % cell_line_id
             )
 
-        payload = payloads.pulldown_payload(pulldown)
+        # we need the crispr designs and uniprot metadata for the significant hits
+        significant_hits = (
+            flask.current_app.Session.query(models.MassSpecHit)
+            .options(
+                db.orm.joinedload(models.MassSpecHit.protein_group, innerjoin=True)
+                    .joinedload(models.MassSpecProteinGroup.crispr_designs),
+                db.orm.joinedload(models.MassSpecHit.protein_group, innerjoin=True)
+                    .joinedload(models.MassSpecProteinGroup.uniprot_metadata),
+            )
+            .filter(models.MassSpecHit.pulldown_id == pulldown.id)
+            .filter(db.or_(
+                models.MassSpecHit.is_minor_hit == True,  # noqa
+                models.MassSpecHit.is_significant_hit == True  # noqa
+            ))
+            .all()
+        )
+
+        # we need only the pval and enrichment for the non-significant hits
+        nonsignificant_hits = (
+            flask.current_app.Session.query(models.MassSpecHit.pval, models.MassSpecHit.enrichment)
+            .filter(models.MassSpecHit.pulldown_id == pulldown.id)
+            .filter(models.MassSpecHit.is_minor_hit == False)  # noqa
+            .filter(models.MassSpecHit.is_significant_hit == False)  # noqa
+            .all()
+        )
+
+        payload = payloads.pulldown_payload(pulldown, significant_hits, nonsignificant_hits)
         return flask.jsonify(payload)
 
 
@@ -256,7 +319,7 @@ class MicroscopyFOV(Resource):
             flask.abort(404, 'Invalid fov_id')
 
         processor = FOVProcessor.from_database(fov)
-        dst_root = flask.current_app.config.get('OPENCELL_MICROSCOPY_DIRPATH')
+        dst_root = flask.current_app.config.get('OPENCELL_MICROSCOPY_DIR')
         filepath_405 = processor.dst_filepath(dst_root, kind='proj', channel='405', ext='tif')
         filepath_488 = processor.dst_filepath(dst_root, kind='proj', channel='488', ext='tif')
 
@@ -282,18 +345,19 @@ class MicroscopyFOV(Resource):
 
 class MicroscopyFOVROI(Resource):
 
-    def get(self, roi_id, kind, channel):
+    def get(self, roi_id, roi_kind, channel):
         '''
         Get the image data for a given ROI
 
-        kind : the kind of image data
-            Currently, only 'crop' is implemented (returns a z-stack as a tiled JPG)
-        channel : one of '405', '488', or 'rgb'
-            Note that 'rgb' does not work for kind='crop',
-            because z-stacks are constructed separately for each channel
+        roi_kind : the kind of ROI data to return
+            'proj' returns a z-projection
+            'lqtile' and 'hqtile' return low- and high-quality versions of the z-stack
+            (as a one-dimensional tiled array of z-slices)
+        channel : one of '405' or '488'
+
         '''
-        if kind != 'crop':
-            flask.abort(404, 'Invalid kind')
+        if roi_kind not in ['proj', 'lqtile', 'hqtile']:
+            flask.abort(404, 'Invalid ROI kind %s' % roi_kind)
 
         roi = (
             flask.current_app.Session.query(models.MicroscopyFOVROI)
@@ -301,23 +365,27 @@ class MicroscopyFOVROI(Resource):
             .one_or_none()
         )
         if not roi:
-            flask.abort(404, 'Invalid roi_id')
+            flask.abort(404, 'Invalid roi_id %s' % roi_id)
 
+        microscopy_dir = flask.current_app.config.get('OPENCELL_MICROSCOPY_DIR')
         processor = FOVProcessor.from_database(roi.fov)
         filepath = processor.dst_filepath(
-            dst_root=flask.current_app.config.get('OPENCELL_MICROSCOPY_DIRPATH'),
+            dst_root=microscopy_dir,
+            kind='roi',
             roi_id=roi_id,
+            roi_kind=roi_kind,
             channel=channel,
-            kind='crop',
             ext='jpg'
         )
 
-        file = flask.send_file(
-            open(filepath, 'rb'),
-            as_attachment=True,
-            attachment_filename=filepath.split(os.sep)[-1]
-        )
-        return file
+        if microscopy_dir.startswith('http'):
+            return flask.redirect(filepath)
+        else:
+            return flask.send_file(
+                open(filepath, 'rb'),
+                as_attachment=True,
+                attachment_filename=filepath.split(os.sep)[-1]
+            )
 
 
 class CellLineAnnotation(CellLineResource):

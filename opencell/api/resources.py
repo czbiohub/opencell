@@ -290,7 +290,7 @@ class PulldownInteractions(PulldownResource):
         node.pop('is_bait')
         return node
 
-
+    @cache.cached(timeout=3600, key_prefix=cache_key)
     def get(self, cell_line_id):
 
         # the protein groups in one or more heatmap clusters

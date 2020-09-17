@@ -28,7 +28,9 @@ export default class MassSpecNetworkContainer extends Component {
         this.state = {
 
             // placeholder for future plot mode
-            mode: '',
+            layoutName: 'cose',
+
+            includeParentNodes: false,
 
             // placeholder for resetting the visualization
             resetPlotZoom: false,
@@ -45,6 +47,16 @@ export default class MassSpecNetworkContainer extends Component {
 
         this.style = [
             {
+                selector: ':parent',
+                style: {
+                    'shape': 'ellipse',
+                    'background-opacity': .2,
+                    'background-color': "#ffffa7",
+                    // 'border-color': '#999',
+                    'border-opacity': 0,
+                    'border-width': 0.5,
+                }
+            },{
                 selector: 'node',
                 style: {
                     height: 5,
@@ -70,13 +82,21 @@ export default class MassSpecNetworkContainer extends Component {
                 selector: 'edge',
                 style: {
                     width: 0.5,
+                    'line-color': "#333",
+
+                    // haystack without arrows
                     opacity: 0.15,
+                    "curve-style": "haystack",
+
+                    // bezier with arrows
+                    // opacity: 0.5,
+                    // "curve-style": "bezier",
+                    // "target-arrow-shape": "triangle-backcurve",
+                    // "arrow-scale": 0.5,
+                    // "target-arrow-color": "#333",
+
                     // this turns off overlay and disables clicking/dragging the edges
                     'overlay-opacity': 0,
-                    'line-color': "#333",
-                    "curve-style": "haystack",
-                    "target-arrow-shape": "triangle-backcurve",
-                    "arrow-scale": 0.5,
                 }
             },{
                 selector: "edge[type='prey-prey']",
@@ -126,18 +146,33 @@ export default class MassSpecNetworkContainer extends Component {
             idealEdgeLength: 60,
             edgeElasticity: 600, // smaller is tighter
             nodeRepulsion: 4000,
+        }
+
+        this.circleLayout = {
+            name: 'circle',
+            radius: 150,
+            spacingFactor: 1.0
+        }
+
+        this.concentricLayout = {
+            name: 'concentric',
 
         }
 
+        this.ciseLayout = {
+            name: 'cise',
+            animate: false,
+            nodeSeparation: 10,
+            idealInterClusterEdgeLengthCoefficient: 1.2,
+            // higher spring coeffs give tighter clusters
+            springCoeff: 0.3,
+            nodeRepulsion: 2000,
+        }
+
         this.getData = this.getData.bind(this);
+        this.getLayout = this.getLayout.bind(this);
         this.defineLabelEventHandlers = this.defineLabelEventHandlers.bind(this);
 
-    }
-
-    getCiseLayout () {
-        // the cise layout includes a list of clusters (each a list of node ids),
-        // so it must be dynamically generated
-        return {name: 'cise', clusterInfo: this.ciseClusters}
     }
 
     componentDidMount() {
@@ -146,23 +181,28 @@ export default class MassSpecNetworkContainer extends Component {
         }
     }
 
-    componentDidUpdate (prevProps) {
-        if (this.cy && this.state.loaded) {
+    componentDidUpdate (prevProps, prevState) {
+
+        if (
+            prevProps.cellLineId!==this.props.cellLineId || 
+            this.state.includeParentNodes!==prevState.includeParentNodes
+        ) {
+            this.getData();
+        }
+        else if (this.cy && this.state.loaded) {
             try {
                 this.cy.nodeHtmlLabel(this.nodeHtmlLabel);
-                const layout = this.cy.layout(this.coseLayout);
+                const layout = this.cy.layout(this.getLayout());
                 layout.on('layoutstop', this.defineLabelEventHandlers);
                 layout.run();
+                //debugger;
             }
             catch (err) {
                 console.log(err);
             }
         }
-        if (prevProps.cellLineId!==this.props.cellLineId) {
-            this.getData();
-        }
-    }
 
+    }
 
     defineLabelEventHandlers () {
         const changeTarget = this.props.changeTarget;
@@ -173,19 +213,46 @@ export default class MassSpecNetworkContainer extends Component {
             });
     }
 
+    getLayout () {
+        let layout;
+        const layoutName = this.state.layoutName;
+        if (layoutName==='cose') layout = this.coseLayout;
+        if (layoutName==='circle') layout = this.circleLayout;
+        if (layoutName==='concentric') layout = this.concentricLayout;
+        if (layoutName==='cise') layout = {...this.ciseLayout, clusters: this.clusterInfo};
+        return layout;
+    }
 
     getData () {
         this.setState({loaded: false, loadingError: false});
         const url = `${settings.apiUrl}/lines/${this.props.cellLineId}/pulldown_interactions`;
         d3.json(url).then(data => {
 
-            // create a single cluster from the direct interactors
-            const baitId = data.nodes.filter(node => node.is_bait)[0];
-            this.ciseClusters = [
-                data.edges.filter(edge => edge.source===baitId).map(edge => edge.target)
-            ];
+            // include only clusters with at least three nodes
+            const clusters = data.clusters.filter(cluster => cluster.protein_group_ids.length > 2);
+            
+            // lists of node ids in each cluster (required for the CiSE layout)
+            this.clusterInfo = clusters.map(cluster => cluster.protein_group_ids);
 
-            this.elements = [...data.nodes, ...data.edges];
+            // drop edges between the bait (since all nodes interact with the bait)
+            const edges = data.edges; //.filter(edge => edge.data.type!=='bait-prey');
+
+            // assign parents to nodes
+            data.nodes.forEach(
+                node => node.data.parent = node.data.cluster_id.length ? node.data.cluster_id[0] : undefined
+            );
+            
+            // create parent nodes to represent the clusters
+            const clusterIds = [...new Set(clusters.map(cluster => cluster.cluster_id))]
+            const parentNodes = clusterIds.map(clusterId => {
+                return {'data': {'id': clusterId}};
+            });
+            
+            if (this.state.includeParentNodes) {
+                this.elements = [...parentNodes, ...data.nodes, ...edges];
+            } else {
+                this.elements = [...data.nodes, ...edges];
+            }
             this.setState({loaded: true, loadingError: false});
         },
         error => {
@@ -205,19 +272,27 @@ export default class MassSpecNetworkContainer extends Component {
                     <div className='w-100 flex flex-wrap items-end'>
                         <div className='pr2'>
                             <ButtonGroup 
-                                label='Options' 
-                                values={['val1', 'val2']}
-                                labels={['Option 1', 'Option 2']}
-                                activeValue={this.state.mode}
-                                onClick={value => this.setState({mode: value})}/>
+                                label='Layout' 
+                                values={['circle', 'concentric', 'cose', 'cise']}
+                                labels={['Circle', 'Concentric', 'CoSE', 'CiSE']}
+                                activeValue={this.state.layoutName}
+                                onClick={value => this.setState({layoutName: value})}
+                            />
+                        </div>
+                        <div className='pr2'>
+                        <ButtonGroup 
+                            label='Use compound nodes for clusters' 
+                            values={[true, false]}
+                            labels={['Yes', 'No']}
+                            activeValue={this.state.includeParentNodes}
+                            onClick={value => this.setState({includeParentNodes: value})}
+                        />
                         </div>
                         <div 
                             className='f6 simple-button' 
-                            onClick={() => {
-                                this.setState({resetPlotZoom: !this.state.resetPlotZoom})
-                                debugger;
-                            }}>
-                            {'Reset zoom'}
+                            onClick={() => {}}
+                        >
+                            {'Reset'}
                         </div>
                     </div>
                 </div>

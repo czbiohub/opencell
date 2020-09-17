@@ -293,6 +293,16 @@ class PulldownInteractions(PulldownResource):
 
     def get(self, cell_line_id):
 
+        # the protein groups in one or more heatmap clusters
+        clusters = pd.read_sql(
+            '''
+            select cluster_id, protein_group_id from mass_spec_cluster_heatmap heatmap
+            inner join mass_spec_hit hit on hit.id = heatmap.hit_id;
+            ''',
+            flask.current_app.Session.get_bind()
+        )
+        clusters = clusters.groupby(['cluster_id', 'protein_group_id']).first().reset_index()
+
         pulldown = self.get_pulldown(cell_line_id)
         direct_hits = pulldown.get_significant_hits()
         interacting_pulldowns = pulldown.get_interacting_pulldowns()
@@ -314,11 +324,11 @@ class PulldownInteractions(PulldownResource):
             nodes.append({
                 'id': node_id,
                 'uniprot_gene_names': [],
-                'opencell_target_names': pulldown.cell_line.crispr_design.target_name,
+                'opencell_target_names': [pulldown.cell_line.crispr_design.target_name],
                 'type': 'bait',
             })
 
-        # nodes that represent the hits in the target's pulldown
+        # create nodes to represent the hits in the target's pulldown
         for direct_hit in direct_hits:
             if bait_hit and bait_hit.protein_group.id == direct_hit.protein_group.id:
                 continue
@@ -327,7 +337,7 @@ class PulldownInteractions(PulldownResource):
             node['type'] = 'hit'
             nodes.append(node)
 
-        # nodes that represent pulldowns in which the target appears as a hit
+        # create nodes to represent the pulldowns in which the target appears as a hit
         for interacting_pulldown in interacting_pulldowns:
             interacting_bait_hit = interacting_pulldown.get_bait_hit(only_one=True)
 
@@ -343,9 +353,10 @@ class PulldownInteractions(PulldownResource):
             nodes.append(node)
 
         all_node_ids = [node['id'] for node in nodes]
-        edges = []
+        bait_node_id = [node['id'] for node in nodes if node['type'] == 'bait'][0]
 
         # generate the edges between direct nodes
+        edges = []
         for node in nodes:
 
             if node['type'] == 'bait':
@@ -375,9 +386,9 @@ class PulldownInteractions(PulldownResource):
                 # (e.g., for resorted targets)
                 node_pulldown = None
                 for design in designs:
-                    line = design.get_best_cell_line()
-                    if line:
-                        node_pulldown = line.get_best_pulldown()
+                    cell_line = design.get_best_cell_line()
+                    if cell_line:
+                        node_pulldown = cell_line.get_best_pulldown()
                         if node_pulldown:
                             break
 
@@ -391,7 +402,11 @@ class PulldownInteractions(PulldownResource):
                 indirect_node_id = indirect_hit.protein_group.id
 
                 # if the hit of the hit is not among the direct hits, we don't include it
-                if indirect_node_id not in all_node_ids or indirect_node_id == node['id']:
+                if (
+                    indirect_node_id not in all_node_ids
+                    or indirect_node_id == node['id']
+                    or indirect_node_id == bait_node_id
+                ):
                     continue
 
                 # create the edge between the two direct hits
@@ -403,7 +418,6 @@ class PulldownInteractions(PulldownResource):
                 })
 
         # create the edges between the bait and its interactors
-        bait_node_id = [node['id'] for node in nodes if node['type'] == 'bait'][0]
         for hit in direct_hits:
             node_id = hit.protein_group.id
             if node_id == bait_node_id:
@@ -415,6 +429,27 @@ class PulldownInteractions(PulldownResource):
                 'type': 'bait-prey',
             })
 
+        # append cluster_ids to the nodes
+        for node in nodes:
+            node['cluster_id'] = (
+                clusters.loc[clusters.protein_group_id == node['id']]
+                .cluster_id
+                .tolist()
+            )
+
+        # create the lists of cluster members required by the CiSE cytoscape layout
+        cluster_groups = (
+            clusters.loc[clusters.protein_group_id.isin(all_node_ids)]
+            .groupby('cluster_id')
+            .groups
+        )
+        cluster_defs = []
+        for cluster_id, cluster_index in cluster_groups.items():
+            cluster_defs.append({
+                'cluster_id': cluster_id,
+                'protein_group_ids': clusters.loc[cluster_index].protein_group_id.tolist(),
+            })
+
         # drop the pulldown and hit instances from the node dicts
         for node in nodes:
             node.pop('hit', None)
@@ -424,6 +459,7 @@ class PulldownInteractions(PulldownResource):
             'nodes': [{'data': node} for node in nodes],
             'edges': [{'data': edge} for edge in edges],
             'metadata': pulldown.as_dict(),
+            'clusters': cluster_defs,
         }
         return flask.jsonify(payload)
 

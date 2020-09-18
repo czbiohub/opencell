@@ -182,23 +182,23 @@ export default class MassSpecNetworkContainer extends Component {
             uniformNodeDimensions: true,
 
             // default 0.1
-            //nestingFactor: 0.1,
+            nestingFactor: 1,
 
             idealEdgeLength: 100,
 
             // divisor to compute edge forces
-            // large values yield stacked nodes
+            // very large values (e.g. 1000) yield stacked nodes
             // default 0.45
-            edgeElasticity: 999,
+            edgeElasticity: 0.1,
 
             // separation between nodes (this is specific to fcose)
-            // small values encourage stacked nodes
+            // small values (e.g. 1) encourage stacked nodes
             // default 75
-            nodeSeparation: 1,
+            nodeSeparation: 75,
 
             // default 4500
             // small values seem to encourage stacked nodes
-            nodeRepulsion: 100,
+            nodeRepulsion: 4500,
 
             // gravity: 1,
         };
@@ -206,12 +206,27 @@ export default class MassSpecNetworkContainer extends Component {
         this.coseBilkentLayout = {
             name: 'cose-bilkent',
 
+            // default 50
             idealEdgeLength: 100,
 
             // larger values yield tighter networks
-            edgeElasticity: 1,
+            // default 0.45
+            edgeElasticity: 0.1,
 
-            nodeRepulsion: 6000,
+            // default 4500
+            nodeRepulsion: 4500,
+
+            // default 0.1
+            // higher values yield better-separated compound nodes
+            nestingFactor: 1,
+
+            // default 0.25
+            gravity: 0.25,
+
+            gravityRangeCompound: 1.5,
+            gravityCompound: 1.0,
+            gravityRange: 3.8,
+
         };
 
         this.circleLayout = {

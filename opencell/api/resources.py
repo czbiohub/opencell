@@ -353,11 +353,26 @@ class PulldownInteractions(PulldownResource):
             nodes.append(node)
 
         all_node_ids = [node['id'] for node in nodes]
+
+        # dict of cluster_ids keyed by protein_group_id
+        # (hack: takes the first cluster_id when a protein group has more than one)
+        node_ids_to_cluster_ids = {}
+        for protein_group_id in all_node_ids:
+            _clusters = clusters.loc[clusters.protein_group_id == protein_group_id]
+            if not _clusters.shape[0]:
+                continue
+            node_ids_to_cluster_ids[protein_group_id] = _clusters.iloc[0].cluster_id
+
+
+        # the node id and cluster id of the bait node
         bait_node_id = [node['id'] for node in nodes if node['type'] == 'bait'][0]
+        bait_node_cluster_id = node_ids_to_cluster_ids.get(bait_node_id)
 
         # generate the edges between direct nodes
         edges = []
         for node in nodes:
+
+            node_cluster_id = node_ids_to_cluster_ids.get(node['id'])
 
             if node['type'] == 'bait':
                 continue
@@ -405,9 +420,15 @@ class PulldownInteractions(PulldownResource):
                 if (
                     indirect_node_id not in all_node_ids
                     or indirect_node_id == node['id']
-                    or indirect_node_id == bait_node_id
+                    # or indirect_node_id == bait_node_id
                 ):
                     continue
+
+                # if the edge is between nodes in the same cluster
+                intracluster_flag = bool(
+                    node_cluster_id is not None
+                    and node_cluster_id == node_ids_to_cluster_ids.get(indirect_node_id)
+                )
 
                 # create the edge between the two direct hits
                 edges.append({
@@ -415,18 +436,28 @@ class PulldownInteractions(PulldownResource):
                     'source': node['id'],
                     'target': indirect_node_id,
                     'type': 'prey-prey',
+                    'cluster_status': 'intracluster' if intracluster_flag else 'intercluster',
                 })
+
 
         # create the edges between the bait and its interactors
         for hit in direct_hits:
             node_id = hit.protein_group.id
             if node_id == bait_node_id:
                 continue
+
+            # if the edge is between nodes in the same cluster
+            intracluster_flag = bool(
+                bait_node_cluster_id is not None
+                and bait_node_cluster_id == node_ids_to_cluster_ids.get(node_id)
+            )
+
             edges.append({
                 'id': '%s-%s' % (bait_node_id, node_id),
                 'source': bait_node_id,
                 'target': node_id,
                 'type': 'bait-prey',
+                'cluster_status': 'intracluster' if intracluster_flag else 'intercluster',
             })
 
         # append cluster_ids to the nodes

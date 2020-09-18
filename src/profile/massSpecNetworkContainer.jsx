@@ -5,6 +5,8 @@ import chroma from 'chroma-js';
 
 import cytoscape from 'cytoscape';
 import cise from 'cytoscape-cise';
+import fcose from 'cytoscape-fcose';
+import coseBilkent from 'cytoscape-cose-bilkent';
 import CytoscapeComponent from 'react-cytoscapejs';
 import nodeHtmlLabel from 'cytoscape-node-html-label';
 
@@ -15,6 +17,8 @@ import 'tachyons';
 import './Profile.css';
 
 cytoscape.use(cise);
+cytoscape.use(fcose);
+cytoscape.use(coseBilkent);
 cytoscape.use(nodeHtmlLabel);
 
 
@@ -99,13 +103,14 @@ export default class MassSpecNetworkContainer extends Component {
                     'overlay-opacity': 0,
                 }
             },{
-                selector: "edge[type='prey-prey']",
+                selector: "edge[cluster_status='intracluster']",
                 style: {
-                    'line-style': "solid",
+                    //'line-color': "red",
                 }
             },{
-                selector: "edge[type='bait-prey']",
+                selector: "edge[cluster_status='intercluster']",
                 style: {
+                    //'line-color': "blue",
                     //'line-style': "dotted",
                     //visibility: 'hidden',
                 }
@@ -136,38 +141,109 @@ export default class MassSpecNetworkContainer extends Component {
 
         this.coseLayout = {
             name: 'cose',
-            padding: 30,
+
+            // multiplier for ideal edge length for 'nested' edges
+            // TODO: what are nested edges?
+            // small values (less than 1) yield overlapped nodes 
+            // 10 yields very large compound node rectangles
+            // default 1.2
+            nestingFactor: 1.0,
+
+            // default 32
+            idealEdgeLength: (edge) => edge._private.data.cluster_status==='intracluster' ? 100 : 30,
+
+            // extra space between components(nodes?) in non-compound graphs
+            // doesn't seem to have much of an effect
+            // default 40
+            componentSpacing: 40,
+
+            // smaller elasticity yields tighter networks
+            // note: this appears to be the inverse of the edgeElasticity
+            // in the fcose and cose-bilkent layouts
+            // default 32
+            edgeElasticity: edge => edge._private.data.cluster_status==='intracluster' ? 600 : 600,
+
+            // node repulsion multiplier for overlapping nodes
+            // default 4
             nodeOverlap: 4,
-            nestingFactor: 1,
-            initialTemp: 1000,
-            coolingFactor: 0.99,
-            minTemp: 1.0,
-            gravity: 1.0,
-            idealEdgeLength: 60,
-            edgeElasticity: 600, // smaller is tighter
+
+            // node repulsion multiplier for non-overlapping nodes
+            // default 2048
             nodeRepulsion: 4000,
-        }
+
+            // gravity force
+            // default is 1.0
+            gravity: 1.0,
+
+        };
+
+        this.fcoseLayout = {
+            name: 'fcose',
+            uniformNodeDimensions: true,
+
+            // default 0.1
+            //nestingFactor: 0.1,
+
+            idealEdgeLength: 100,
+
+            // divisor to compute edge forces
+            // large values yield stacked nodes
+            // default 0.45
+            edgeElasticity: 999,
+
+            // separation between nodes (this is specific to fcose)
+            // small values encourage stacked nodes
+            // default 75
+            nodeSeparation: 1,
+
+            // default 4500
+            // small values seem to encourage stacked nodes
+            nodeRepulsion: 100,
+
+            // gravity: 1,
+        };
+
+        this.coseBilkentLayout = {
+            name: 'cose-bilkent',
+
+            idealEdgeLength: 100,
+
+            // larger values yield tighter networks
+            edgeElasticity: 1,
+
+            nodeRepulsion: 6000,
+        };
 
         this.circleLayout = {
             name: 'circle',
             radius: 150,
             spacingFactor: 1.0
-        }
+        };
 
         this.concentricLayout = {
             name: 'concentric',
-
-        }
+        };
 
         this.ciseLayout = {
             name: 'cise',
             animate: false,
+
+            // separation between nodes in a cluster
+            // higher values increase simulation time
+            // default 12.5
             nodeSeparation: 10,
+
+            // inter-cluster edge length relative to intra-cluster edges 
+            // default 1.2
             idealInterClusterEdgeLengthCoefficient: 1.2,
+
             // higher spring coeffs give tighter clusters
+            // default 0.45
             springCoeff: 0.3,
+
+            // default 4500
             nodeRepulsion: 2000,
-        }
+        };
 
         this.getData = this.getData.bind(this);
         this.getLayout = this.getLayout.bind(this);
@@ -217,6 +293,8 @@ export default class MassSpecNetworkContainer extends Component {
         let layout;
         const layoutName = this.state.layoutName;
         if (layoutName==='cose') layout = this.coseLayout;
+        if (layoutName==='fcose') layout = this.fcoseLayout;
+        if (layoutName==='cosebilkent') layout = this.coseBilkentLayout;
         if (layoutName==='circle') layout = this.circleLayout;
         if (layoutName==='concentric') layout = this.concentricLayout;
         if (layoutName==='cise') layout = {...this.ciseLayout, clusters: this.clusterInfo};
@@ -229,7 +307,7 @@ export default class MassSpecNetworkContainer extends Component {
         d3.json(url).then(data => {
 
             // include only clusters with at least three nodes
-            const clusters = data.clusters.filter(cluster => cluster.protein_group_ids.length > 2);
+            const clusters = data.clusters.filter(cluster => cluster.protein_group_ids.length > 1);
             
             // lists of node ids in each cluster (required for the CiSE layout)
             this.clusterInfo = clusters.map(cluster => cluster.protein_group_ids);
@@ -273,8 +351,8 @@ export default class MassSpecNetworkContainer extends Component {
                         <div className='pr2'>
                             <ButtonGroup 
                                 label='Layout' 
-                                values={['circle', 'concentric', 'cose', 'cise']}
-                                labels={['Circle', 'Concentric', 'CoSE', 'CiSE']}
+                                values={['circle', 'concentric', 'cose', 'fcose', 'cosebilkent', 'cise']}
+                                labels={['Circle', 'Concentric', 'CoSE', 'fCoSE', 'CoSE-Bilkent', 'CiSE']}
                                 activeValue={this.state.layoutName}
                                 onClick={value => this.setState({layoutName: value})}
                             />

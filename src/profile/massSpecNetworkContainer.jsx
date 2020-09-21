@@ -56,9 +56,14 @@ export default class MassSpecNetworkContainer extends Component {
                     'shape': 'ellipse',
                     'background-opacity': .2,
                     'background-color': "#ffffa7",
-                    // 'border-color': '#999',
                     'border-opacity': 0,
                     'border-width': 0.5,
+                    // 'label': 'data(id)',
+                }
+            },{
+                selector: 'node[id="unclustered"]:parent',
+                style: {
+                    'background-opacity': 0,
                 }
             },{
                 selector: 'node',
@@ -71,13 +76,13 @@ export default class MassSpecNetworkContainer extends Component {
                     'overlay-opacity': 0, 
                 }
             },{
-                selector: "node[type='bait']",
+                selector: 'node[type="bait"]',
                 style: {
                     'background-color': '#51ade1',
                     'opacity': 1.0,
                 }
             },{
-                selector: "node[type='hit']",
+                selector: 'node[type="hit"]',
                 style: {
                     'background-color': '#ff827d',
                     'opacity': 1.0,
@@ -103,12 +108,12 @@ export default class MassSpecNetworkContainer extends Component {
                     'overlay-opacity': 0,
                 }
             },{
-                selector: "edge[cluster_status='intracluster']",
+                selector: 'edge[cluster_status="intracluster"]',
                 style: {
                     //'line-color': "red",
                 }
             },{
-                selector: "edge[cluster_status='intercluster']",
+                selector: 'edge[cluster_status="intercluster"]',
                 style: {
                     //'line-color': "blue",
                     //'line-style': "dotted",
@@ -127,6 +132,9 @@ export default class MassSpecNetworkContainer extends Component {
                 // the tpl function is used to set the label container's innerHTML property,
                 // and therefore must return a string of serialized HTML
                 tpl: d => {
+                    // parent nodes do not have gene names
+                    if (!d.uniprot_gene_names) return '<span></span>';
+
                     const names = d.uniprot_gene_names.map(name => {
                         const inOpencell = d.opencell_target_names.includes(name);
                         if (inOpencell) {
@@ -321,30 +329,35 @@ export default class MassSpecNetworkContainer extends Component {
         const url = `${settings.apiUrl}/lines/${this.props.cellLineId}/pulldown_interactions`;
         d3.json(url).then(data => {
 
-            // include only clusters with at least three nodes
+            // include only clusters with more than one node
             const clusters = data.clusters.filter(cluster => cluster.protein_group_ids.length > 1);
-            
-            // lists of node ids in each cluster (required for the CiSE layout)
+
+            // lists of the node ids in each cluster (required for the CiSE layout)
             this.clusterInfo = clusters.map(cluster => cluster.protein_group_ids);
 
-            // drop edges between the bait (since all nodes interact with the bait)
-            const edges = data.edges; //.filter(edge => edge.data.type!=='bait-prey');
+            // list of all cluster ids
+            const clusterIds = [...new Set(clusters.map(cluster => cluster.cluster_id))];
+            const unclusteredClusterId = 'unclustered';
+            clusterIds.push(unclusteredClusterId);
 
-            // assign parents to nodes
-            data.nodes.forEach(
-                node => node.data.parent = node.data.cluster_id.length ? node.data.cluster_id[0] : undefined
-            );
-            
-            // create parent nodes to represent the clusters
-            const clusterIds = [...new Set(clusters.map(cluster => cluster.cluster_id))]
+            // create parent nodes (id'd by clusterId) to represent the clusters
             const parentNodes = clusterIds.map(clusterId => {
                 return {'data': {'id': clusterId}};
             });
+
+            // assign parent nodes ids to each 'real' node
+            data.nodes.forEach(node => {
+                if (node.data.cluster_id.length && clusterIds.includes(node.data.cluster_id[0])) {
+                    node.data.parent = node.data.cluster_id[0]
+                } else {
+                    node.data.parent = unclusteredClusterId;
+                }
+            });
             
             if (this.state.includeParentNodes) {
-                this.elements = [...parentNodes, ...data.nodes, ...edges];
+                this.elements = [...parentNodes, ...data.nodes, ...data.edges];
             } else {
-                this.elements = [...data.nodes, ...edges];
+                this.elements = [...data.nodes, ...data.edges];
             }
             this.setState({loaded: true, loadingError: false});
         },

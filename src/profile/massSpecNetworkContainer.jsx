@@ -27,14 +27,11 @@ export default class MassSpecNetworkContainer extends Component {
     constructor (props) {
         super(props);
 
-        // this.cy = React.createRef();
-
         this.state = {
 
-            // placeholder for future plot mode
-            layoutName: 'cose',
+            layoutName: 'cosebilkent',
 
-            includeParentNodes: false,
+            includeParentNodes: true,
 
             // placeholder for resetting the visualization
             resetPlotZoom: false,
@@ -94,7 +91,7 @@ export default class MassSpecNetworkContainer extends Component {
                     'line-color': "#333",
 
                     // haystack without arrows
-                    opacity: 0.15,
+                    opacity: 0.10,
                     "curve-style": "haystack",
 
                     // bezier with arrows
@@ -108,6 +105,13 @@ export default class MassSpecNetworkContainer extends Component {
                     'overlay-opacity': 0,
                 }
             },{
+                selector: '.hovered-node-edge',
+                style: {
+                    'width': 0.5,
+                    'opacity': 0.9,
+                    'line-color': "#000",
+                },
+            },{
                 selector: 'edge[cluster_status="intracluster"]',
                 style: {
                     //'line-color': "red",
@@ -116,8 +120,6 @@ export default class MassSpecNetworkContainer extends Component {
                 selector: 'edge[cluster_status="intercluster"]',
                 style: {
                     //'line-color': "blue",
-                    //'line-style': "dotted",
-                    //visibility: 'hidden',
                 }
             }
         ];
@@ -290,11 +292,27 @@ export default class MassSpecNetworkContainer extends Component {
         }
         else if (this.cy && this.state.loaded) {
             try {
+
+                // center and lock the target's node (this does not seem to apply to the layout)
+                const targetNode = this.cy.filter('node[type="bait"]');
+                //targetNode.position({x: 250, y: 250}).lock();
+                if (targetNode.isChild()) {
+                    //targetNode.parent().lock();
+                }
+
+                const allNodes = this.cy.filter('node')
+                    .on('mouseover', event => {
+                        event.target.connectedEdges().addClass('hovered-node-edge');
+                    })
+                    .on('mouseout', event => {
+                        event.target.connectedEdges().removeClass('hovered-node-edge');
+                    });
+
                 this.cy.nodeHtmlLabel(this.nodeHtmlLabel);
                 const layout = this.cy.layout(this.getLayout());
                 layout.on('layoutstop', this.defineLabelEventHandlers);
                 layout.run();
-                //debugger;
+               //debugger;
             }
             catch (err) {
                 console.log(err);

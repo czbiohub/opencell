@@ -19,7 +19,11 @@ const config = {
 
         // prevent page reloads
         historyApiFallback: true
-    }
+    },
+
+    plugins: [
+        new webpack.DefinePlugin({API_URL: '`http://localhost:5000`'})
+    ]
 };
 
 module.exports = merge(common, config);

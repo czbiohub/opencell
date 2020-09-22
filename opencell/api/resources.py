@@ -96,6 +96,7 @@ class CellLines(Resource):
                 db.orm.joinedload(models.CellLine.facs_dataset),
                 db.orm.joinedload(models.CellLine.sequencing_dataset),
                 db.orm.joinedload(models.CellLine.annotation),
+                db.orm.joinedload(models.CellLine.pulldowns)
             )
             .filter(models.CellLine.id.in_([line.id for line in query.all()]))
             .all()
@@ -222,35 +223,26 @@ class MicroscopyFOVMetadata(CellLineResource):
 class PulldownResource(CellLineResource):
 
     @staticmethod
-    def get_pulldown(cell_line_id):
-        '''
-        Get the 'good' pulldown associated with the cell line
-        '''
-        line = (
-            flask.current_app.Session.query(models.CellLine)
-            .options(db.orm.joinedload(models.CellLine.pulldowns, innerjoin=True))
-            .filter(models.CellLine.id == cell_line_id)
+    def get_pulldown(pulldown_id):
+        pulldown = (
+            flask.current_app.Session.query(models.MassSpecPulldown)
+            .filter(models.MassSpecPulldown.id == pulldown_id)
             .one_or_none()
         )
-        if not line or not line.pulldowns:
-            return flask.abort(
-                404, 'There are no pulldowns associated with cell line %d' % cell_line_id
-            )
-        return line.get_best_pulldown()
-
+        if not pulldown:
+            return flask.abort(404, 'Pulldown %d does not exist' % pulldown_id)
+        return pulldown
 
 
 class PulldownHits(PulldownResource):
     '''
     The mass spec pulldown and its associated hits for a cell line
     '''
-    def get(self, cell_line_id):
+    def get(self, pulldown_id):
         Session = flask.current_app.Session
-        pulldown = self.get_pulldown(cell_line_id)
+        pulldown = self.get_pulldown(pulldown_id)
         if not pulldown.hits:
-            return flask.abort(
-                404, 'The pulldown for cell line %s does not have any hits' % cell_line_id
-            )
+            return flask.abort(404, 'Pulldown %s does not have any hits' % pulldown_id)
 
         significant_hits = pulldown.get_significant_hits()
 
@@ -291,7 +283,7 @@ class PulldownInteractions(PulldownResource):
         return node
 
     @cache.cached(timeout=3600, key_prefix=cache_key)
-    def get(self, cell_line_id):
+    def get(self, pulldown_id):
 
         # the protein groups in one or more heatmap clusters
         clusters = pd.read_sql(
@@ -303,7 +295,7 @@ class PulldownInteractions(PulldownResource):
         )
         clusters = clusters.groupby(['cluster_id', 'protein_group_id']).first().reset_index()
 
-        pulldown = self.get_pulldown(cell_line_id)
+        pulldown = self.get_pulldown(pulldown_id)
         direct_hits = pulldown.get_significant_hits()
         interacting_pulldowns = pulldown.get_interacting_pulldowns()
 
@@ -501,9 +493,9 @@ class PulldownClusters(PulldownResource):
 
     The cluster heatmap represents a
     '''
-    def get(self, cell_line_id):
+    def get(self, pulldown_id):
         Session = flask.current_app.Session
-        pulldown = self.get_pulldown(cell_line_id)
+        pulldown = self.get_pulldown(pulldown_id)
 
         # get the cluster_ids of all clusters in which the pulldown appears
         rows = (
@@ -516,9 +508,7 @@ class PulldownClusters(PulldownResource):
         cluster_ids = [row[0] for row in rows]
 
         if not cluster_ids:
-            return flask.abort(
-                404, 'The pulldown for cell line %s does not appear in any clusters' % cell_line_id
-            )
+            return flask.abort(404, 'Pulldown %s does not appear in any clusters' % pulldown_id)
 
         # for now, if there are multiple clusters, pick the first one
         cluster_id = cluster_ids[0]
@@ -733,7 +723,8 @@ class CellLineAnnotation(CellLineResource):
             db_utils.add_and_commit(
                 flask.current_app.Session,
                 annotation,
-                errors='raise')
+                errors='raise'
+            )
         except Exception as error:
             flask.abort(500, str(error))
 
@@ -790,6 +781,54 @@ class MicroscopyFOVAnnotation(Resource):
 
         try:
             db_utils.delete_and_commit(flask.current_app.Session, fov.annotation)
+        except Exception as error:
+            flask.abort(500, str(error))
+        return ('', 204)
+
+
+class PulldownNetwork(PulldownResource):
+    '''
+    Cached manually-edited cytoscape layout for a cell line
+    '''
+    def get(self, pulldown_id):
+        pulldown = self.get_pulldown(pulldown_id)
+        if pulldown.network is not None:
+            return flask.jsonify({
+                'elements': pulldown.network.elements,
+                'last_modified': pulldown.network.last_modified,
+            })
+        return flask.abort(
+            404, 'Pulldown %s does not have a cached cytoscape network' % pulldown_id
+        )
+
+    def put(self, pulldown_id):
+        data = flask.request.get_json()
+        pulldown = self.get_pulldown(pulldown_id)
+        network = pulldown.network
+        if network is None:
+            network = models.MassSpecPulldownNetwork(pulldown_id=pulldown_id)
+
+        network.elements = data.get('elements')
+        network.client_metadata = data.get('client_metadata')
+
+        try:
+            db_utils.add_and_commit(
+                flask.current_app.Session,
+                network,
+                errors='raise'
+            )
+        except Exception as error:
+            flask.abort(500, str(error))
+        return flask.jsonify(network.as_dict())
+
+    def delete(self, pulldown_id):
+        pulldown = self.get_pulldown(pulldown_id)
+        if pulldown.network is None:
+            return flask.abort(
+                404, 'Pulldown %s does not have a cached cytoscape network' % pulldown_id
+            )
+        try:
+            db_utils.delete_and_commit(flask.current_app.Session, pulldown.network)
         except Exception as error:
             flask.abort(500, str(error))
         return ('', 204)

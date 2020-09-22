@@ -49,13 +49,20 @@ def create_app(args):
     api.add_resource(resources.CellLines, '/lines')
     api.add_resource(resources.CellLine, '/lines/<int:cell_line_id>')
 
-    # cell-line-dependent datasets
+    # cell-line-related endpoints
     api.add_resource(resources.FACSDataset, '/lines/<int:cell_line_id>/facs')
     api.add_resource(resources.MicroscopyFOVMetadata, '/lines/<int:cell_line_id>/fovs')
-    api.add_resource(resources.PulldownHits, '/lines/<int:cell_line_id>/pulldown_hits')
-    api.add_resource(resources.PulldownClusters, '/lines/<int:cell_line_id>/pulldown_clusters')
-    api.add_resource(resources.PulldownInteractions, '/lines/<int:cell_line_id>/pulldown_interactions')
     api.add_resource(resources.CellLineAnnotation, '/lines/<int:cell_line_id>/annotation')
+
+    # pulldown-related endpoints
+    api.add_resource(resources.PulldownHits, '/pulldowns/<int:pulldown_id>/hits')
+    api.add_resource(resources.PulldownClusters, '/pulldowns/<int:pulldown_id>/clusters')
+    api.add_resource(
+        resources.PulldownInteractions, '/pulldowns/<int:pulldown_id>/interactions'
+    )
+    api.add_resource(
+        resources.PulldownNetwork, '/pulldowns/<int:pulldown_id>/network'
+    )
 
     # FOV and ROI image data (z-stacks and z-projections)
     api.add_resource(

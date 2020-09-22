@@ -72,19 +72,24 @@ def generate_cell_line_payload(cell_line, included_fields):
         'categories': cell_line.annotation.categories if cell_line.annotation else None
     }
 
+    # the id of the 'best' pulldown
+    pulldown = cell_line.get_best_pulldown()
+    pulldown_id = pulldown.id if pulldown else None
+
     payload = {
         'metadata': metadata,
         'scalars': scalars,
         'counts': counts,
         'annotation': annotation,
         'uniprot_metadata': uniprot_metadata,
+        'best_pulldown': {'id': pulldown_id}
     }
 
     # get the thumbnail of the annotated ROI from the 'best' FOV
     if 'best-fov' in included_fields:
         fov = cell_line.get_best_fov()
         if fov and fov.rois:
-            # hack: we assume there is only one ROI (the annotated ROI)
+            # hack: assume there is only one ROI (the annotated ROI)
             thumbnail = fov.rois[0].get_thumbnail('rgb')
             payload['best_fov'] = {
                 'thumbnails': thumbnail.as_dict() if thumbnail else None

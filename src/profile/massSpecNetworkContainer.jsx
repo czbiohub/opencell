@@ -273,7 +273,7 @@ export default class MassSpecNetworkContainer extends Component {
     }
 
     componentDidMount() {
-        if (this.props.cellLineId) {
+        if (this.props.pulldownId) {
             this.getData();
         }
     }
@@ -281,7 +281,7 @@ export default class MassSpecNetworkContainer extends Component {
     componentDidUpdate (prevProps, prevState) {
 
         if (
-            prevProps.cellLineId!==this.props.cellLineId || 
+            prevProps.pulldownId!==this.props.pulldownId || 
             this.state.includeParentNodes!==prevState.includeParentNodes
         ) {
             this.getData();
@@ -347,7 +347,7 @@ export default class MassSpecNetworkContainer extends Component {
 
     getData () {
         this.setState({loaded: false, loadingError: false});
-        const url = `${settings.apiUrl}/lines/${this.props.cellLineId}/pulldown_interactions`;
+        const url = `${settings.apiUrl}/pulldowns/${this.props.pulldownId}/interactions`;
         d3.json(url).then(data => {
 
             // include only clusters with more than one node

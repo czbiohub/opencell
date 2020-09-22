@@ -61,6 +61,7 @@ export default function Profile (props) {
 
     if (!cellLine) return null;
 
+    const pulldownId = cellLine.best_pulldown?.id;
     return (
         <div>
             {/* main container */}
@@ -72,6 +73,7 @@ export default function Profile (props) {
                     <Overview
                         cellLine={cellLine}
                         cellLineId={props.cellLineId}
+                        pulldownId={pulldownId}
                         onTargetSearch={props.onTargetSearch}
                         onCellLineSelect={props.setCellLineId}
                         showTargetAnnotator={props.showTargetAnnotator}
@@ -91,7 +93,6 @@ export default function Profile (props) {
 
             {allCellLines.length ? (null) : (<div className='loading-overlay'/>)}
         </div>
-
     );
 }
 

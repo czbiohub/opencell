@@ -40,11 +40,7 @@ export default class MassSpecNetworkContainer extends Component {
             loadingError: false,
         };
     
-        this.elements = [
-            {data: {id: 'a'}}, 
-            {data: {id : 'b'}}, 
-            {data: {source: 'a', target: 'b'}}
-        ];
+        this.elements = [];
 
         this.style = [
             {
@@ -144,7 +140,7 @@ export default class MassSpecNetworkContainer extends Component {
                         }
                         return `<span class=''>${name}</span>`
                     })
-                    return `<span>${names.join(', ')}</span>`;
+                    return `<div class='cy-node-label-container' id=${d.id}>${names.join(', ')}</div>`;
                 }
             }
         ];
@@ -300,13 +296,7 @@ export default class MassSpecNetworkContainer extends Component {
                     //targetNode.parent().lock();
                 }
 
-                const allNodes = this.cy.filter('node')
-                    .on('mouseover', event => {
-                        event.target.connectedEdges().addClass('hovered-node-edge');
-                    })
-                    .on('mouseout', event => {
-                        event.target.connectedEdges().removeClass('hovered-node-edge');
-                    });
+                const allNodes = this.cy.filter('node');
 
                 this.cy.nodeHtmlLabel(this.nodeHtmlLabel);
                 const layout = this.cy.layout(this.getLayout());
@@ -321,14 +311,27 @@ export default class MassSpecNetworkContainer extends Component {
 
     }
 
+
     defineLabelEventHandlers () {
+        const cy = this.cy;
         const changeTarget = this.props.changeTarget;
         const labels = d3.selectAll(".cy-node-label-in-opencell")
             .on("click", function () {
                 const targetName = d3.select(this).text();
                 changeTarget(targetName);
             });
+
+        d3.selectAll(".cy-node-label-container")
+            .on('mouseover', function (event) {
+                const nodeId = d3.select(this).attr("id");
+                cy.filter(`node[id="${nodeId}"]`).connectedEdges().addClass('hovered-node-edge');
+            })
+            .on('mouseout', function () {
+                const nodeId = d3.select(this).attr("id");
+                cy.filter(`node[id="${nodeId}"]`).connectedEdges().removeClass('hovered-node-edge');
+            });
     }
+
 
     getLayout () {
         let layout;

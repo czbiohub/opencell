@@ -12,8 +12,9 @@ import sqlalchemy.orm
 import sqlalchemy.ext.declarative
 
 from opencell import constants, file_utils
-from opencell.database import models, utils, uniprot_utils
+from opencell.api import settings
 from opencell.database import operations as ops
+from opencell.database import models, utils, uniprot_utils
 
 
 def parse_args():
@@ -21,23 +22,38 @@ def parse_args():
     '''
     parser = argparse.ArgumentParser()
 
-    # path to credentials JSON
-    parser.add_argument('--credentials', dest='credentials', required=True)
+    # deployment mode - one of 'dev', 'test', 'staging', 'prod'
+    parser.add_argument('--mode', dest='mode', required=True)
 
-    # the path to the directory of snapshot/cached opencell metadata
-    parser.add_argument('--data-dir', dest='data_dir')
+    # path to JSON file with database credentials
+    # (if provided, overrides the filepath defined in opencell.api.settings)
+    parser.add_argument('--credentials', dest='credentials', required=False)
+
+    # the filepath to a snapshot of a google sheet, for methods that need one
+    # (e.g. the 'da list' sheet, the pipeline-microscopy-master-key, or the resorted lines sheet)
+    parser.add_argument('--snapshot-filepath', dest='snapshot_filepath')
+
+    # plate_id is used by insert_plate_design and insert_electroporation
+    parser.add_argument('--plate-id', dest='plate_id')
+
+    # date is used by insert_electroporation
+    parser.add_argument('--date', dest='date')
 
     # the path to the directory of cached FACS results
     parser.add_argument('--facs-results-dir', dest='facs_results_dir')
 
-    # the filepath to a snapshot of the 'pipeline-microscopy-master-key' google sheet
-    parser.add_argument('--microscopy-master-key', dest='microscopy_master_key')
+    # optional sql command to execute
+    # (if provided, other options/commands are ignored)
+    parser.add_argument('--execute-sql', dest='sql_command', required=False)
 
     # CLI args whose presence in the command sets them to True
     action_arg_dests = [
         'update',
         'drop_all',
         'populate',
+        'insert_plate_design',
+        'insert_electroporation',
+        'insert_resorted_lines',
         'insert_facs',
         'insert_plate_microscopy_datasets',
         'insert_raw_pipeline_microscopy_datasets',
@@ -68,14 +84,25 @@ def maybe_drop_and_create(engine, drop=False):
 
 def populate(session, data_dir, errors='warn'):
     '''
-    Initialize and populate the opencell database
-    from a set of 'snapshot' CSVs of various google spreadsheets
+    Initialize and populate the opencell database,
+    using a set of 'snapshot' CSVs of various google spreadsheets
 
-    This inserts the plate designs, crispr designs, electroporations, and polyclonal lines
-    for Plates 1-19
+    This inserts the plate designs, crispr designs, and polyclonal lines
+    for Plates 1-19.
+
+    Note that this method has no ongoing use in production;
+    it was used during development and to initialize the original opencell database,
+    but is now used only to set up test databases.
+
+    To insert crispr designs for new plates into an existing prod database,
+    the `insert_plate_design` method should be used.
 
     errors : one of 'raise', 'warn', 'ignore'
     '''
+
+    # hard-coded paths to snapshots of google sheets
+    library_snapshot_filepath = os.path.join(data_dir, '2019-06-26_mNG11_HEK_library.csv')
+    electroporation_history_filepath = os.path.join(data_dir, '2019-06-24_electroporations.csv')
 
     # create the progenitor cell line used for Plates 1-19
     # (note the hard-coded progenitor cell line name)
@@ -87,10 +114,8 @@ def populate(session, data_dir, errors='warn'):
         create=True
     )
 
-    # create the plate and crispr designs
     print('Inserting crispr designs for plates 1-19')
-    library_snapshot = file_utils.load_library_snapshot(
-        os.path.join(data_dir, '2019-06-26_mNG11_HEK_library.csv'))
+    library_snapshot = file_utils.load_library_snapshot(library_snapshot_filepath)
 
     plate_ids = sorted(set(library_snapshot.plate_id))
     for plate_id in plate_ids:
@@ -104,10 +129,9 @@ def populate(session, data_dir, errors='warn'):
             session, plate_design, library_snapshot, drop_existing=False, errors=errors
         )
 
-    # create the electroporations and polyclonal lines
-    print('Inserting electroporations and polyclonal lines for plates 1-19')
+    print('Creating polyclonal lines for plates 1-19')
     electroporation_history = file_utils.load_electroporation_history(
-        os.path.join(data_dir, '2019-06-24_electroporations.csv')
+        electroporation_history_filepath
     )
 
     progenitor_line = ops.get_or_create_progenitor_cell_line(
@@ -115,7 +139,7 @@ def populate(session, data_dir, errors='warn'):
     )
 
     for _, row in electroporation_history.iterrows():
-        print('Inserting electroporation and cell lines for %s' % row.plate_id)
+        print('Creating polyclonal lines for %s' % row.plate_id)
         plate_design = ops.get_or_create_plate_design(session, row.plate_id)
         ops.create_polyclonal_lines(
             session,
@@ -126,15 +150,96 @@ def populate(session, data_dir, errors='warn'):
         )
 
 
-def insert_facs(session, facs_results_dir, errors='warn'):
+def insert_plate_design(session, plate_id, library_snapshot_filepath, errors='warn'):
     '''
-    Insert FACS results and histograms for each polyclonal cell line
+    Insert a new plate design and its crispr designs
+    This method is intended to update an existing opencell database when a new plate is created
     '''
 
+    # the 'library snapshot' is the 'da list' google sheet of all crispr designs
+    library_snapshot = file_utils.load_library_snapshot(library_snapshot_filepath)
+
+    print('Inserting crispr designs for plate %s' % plate_id)
+    plate_design = ops.get_or_create_plate_design(session, plate_id, create=True)
+    ops.create_crispr_designs(
+        session, plate_design, library_snapshot, drop_existing=False, errors=errors
+    )
+
+
+def insert_electroporation(session, plate_id, electroporation_date, errors='warn'):
+    '''
+    Create the polyclonal lines generated by electroporating and sorting a single plate
+    '''
+    print('Creating polyclonal lines for plate %s' % plate_id)
+
+    progenitor_line = ops.get_or_create_progenitor_cell_line(
+        session, constants.PARENTAL_LINE_NAME
+    )
+    plate_design = ops.get_or_create_plate_design(session, plate_id)
+    ops.create_polyclonal_lines(
+        session,
+        progenitor_line,
+        plate_design,
+        date=electroporation_date,
+        errors=errors
+    )
+
+
+def insert_resorted_lines(session, resorts_snapshot, errors='warn'):
+    '''
+    Insert resorted polyclonal cell lines
+    (that is, cell lines resorted once after the initial sort)
+
+    resorts_snapshot : snapshot of the google sheet of resorted lines,
+        with columns plate_id, pipeline_well_id, and resorting_date
+    '''
+
+    resorts_snapshot.dropna(how='any', axis=0, inplace=True)
+
+    # zero-pad the well_ids
+    resorts_snapshot['pipeline_well_id'] = resorts_snapshot.pipeline_well_id.apply(
+        utils.format_well_id
+    )
+
+    resorted_lines = []
+    for ind, row in resorts_snapshot.iterrows():
+        print('Inserting resorted cell line for (%s, %s)' % (row.plate_id, row.pipeline_well_id))
+
+        # get the original polyclonal line
+        line_ops = ops.PolyclonalLineOperations.from_plate_well(
+            session, row.plate_id, row.pipeline_well_id, sort_count=1
+        )
+
+        line = line_ops.line
+        if line.children:
+            print(
+                'Warning: This cell line already has descendents '
+                'so no resorted line will be created'
+            )
+            continue
+
+        # create the resorted line (that is, with sort_count set to 2)
+        resorted_line = models.CellLine(
+            parent_id=line.id,
+            crispr_design=line.crispr_design,
+            line_type='POLYCLONAL',
+            sort_date=row.resorting_date,
+            sort_count=2
+        )
+
+        # insert the line (will fail if the line exists)
+        utils.add_and_commit(session, resorted_line, errors='warn')
+
+
+def insert_facs(session, facs_results_dir, errors='warn'):
+    '''
+    Insert FACS results and histograms for the original polyclonal cell lines from Plates 1-19
+    '''
+
+    # hard-coded filenames of the cached FACS results
     results_filepath = os.path.join(facs_results_dir, '2019-07-16_all-facs-results.csv')
     histograms_filepath = os.path.join(facs_results_dir, '2019-07-16_all-dists.json')
 
-    # load the cached FACS results
     facs_properties = pd.read_csv(results_filepath)
     with open(histograms_filepath, 'r') as file:
         facs_histograms = json.load(file)
@@ -148,18 +253,17 @@ def insert_facs(session, facs_results_dir, errors='warn'):
     for _, row in facs_properties.iterrows():
         plate_id = row.plate_id
         well_id = utils.format_well_id(row.well_id)
-
-        # the polyclonal line
         try:
-            line_ops = ops.PolyclonalLineOperations.from_plate_well(session, plate_id, well_id)
+            line_ops = ops.PolyclonalLineOperations.from_plate_well(
+                session, plate_id, well_id, sort_count=1
+            )
         except ValueError:
             print('No polyclonal line for (%s, %s)' % (plate_id, well_id))
             continue
 
-        # the histograms (dict of 'x', 'y_sample', 'y_fitted_ref')
-        # note: keyed by unformatted well_id
+        # the histograms are dicts of 'x', 'y_sample', 'y_fitted_ref'
+        # (note row.well_id is an unformatted well_id)
         histograms = facs_histograms.get((row.plate_id, row.well_id))
-
         scalars = dict(row.drop(['plate_id', 'well_id']))
         line_ops.insert_facs_dataset(
             session, histograms=histograms, scalars=scalars, errors=errors
@@ -181,7 +285,7 @@ def insert_microscopy_datasets(
             if update:
                 print('Warning: updating existing entry for %s' % row.pml_id)
             else:
-                print('Warning: dataset %s already exists' % row.pml_id)
+                print('Warning: dataset %s already exists and will not be updated' % row.pml_id)
                 continue
         else:
             dataset = models.MicroscopyDataset(pml_id=row.pml_id)
@@ -385,25 +489,39 @@ def generate_protein_group_crispr_design_associations(Session):
 
 
 def main():
-    '''
 
-    Returns
-    -------
-
-    '''
     args = parse_args()
-    url = utils.url_from_credentials(args.credentials)
+    config = settings.get_config(args.mode)
+
+    url = utils.url_from_credentials(args.credentials or config.DB_CREDENTIALS_FILEPATH)
     engine = db.create_engine(url)
     session_factory = db.orm.sessionmaker(bind=engine)
     Session = db.orm.scoped_session(session_factory)
 
-    if args.drop_all:
-        maybe_drop_and_create(engine, drop=True)
-    else:
-        maybe_drop_and_create(engine, drop=False)
+    if args.sql_command:
+        print("Executing '%s'" % args.sql_command)
+        with engine.connect().execution_options(autocommit=True) as conn:
+            conn.execute(db.text(args.sql_command))
 
     if args.populate:
-        populate(Session, args.data_dir, errors='warn')
+        if args.drop_all:
+            maybe_drop_and_create(engine, drop=True)
+        else:
+            maybe_drop_and_create(engine, drop=False)
+        data_dir = os.path.join(config.PROJECT_ROOT, 'data')
+        populate(Session, data_dir, errors='warn')
+
+    if args.insert_plate_design:
+        insert_plate_design(Session, args.plate_id, args.snapshot_filepath, errors='warn')
+
+    if args.insert_electroporation:
+        insert_electroporation(
+            Session, plate_id=args.plate_id, electroporation_date=args.date, errors='warn'
+        )
+
+    if args.insert_resorted_lines:
+        platemap = pd.read_csv(args.snapshot_filepath)
+        insert_resorted_lines(Session, platemap)
 
     if args.insert_facs:
         insert_facs(Session, args.facs_results_dir, errors='warn')
@@ -412,7 +530,8 @@ def main():
     # (these are datasets up to PML0179)
     if args.insert_plate_microscopy_datasets:
         filepath = os.path.join(
-            args.data_dir,
+            config.PROJECT_ROOT,
+            'data',
             '2019-12-05_Pipeline-microscopy-master-key_PlateMicroscopy-MLs-raw.csv'
         )
         metadata = file_utils.load_legacy_microscopy_master_key(filepath)
@@ -427,12 +546,12 @@ def main():
     # insert pipeline microscopy datasets found in the 'raw-pipeline-microscopy' directory
     # (these datasets start at PML0196 and were acquired using the dragonfly-automation scripts)
     if args.insert_raw_pipeline_microscopy_datasets:
-        metadata = pd.read_csv(args.microscopy_master_key)
-        metadata.rename(columns={'id': 'pml_id'}, inplace=True)
-        metadata.dropna(how='any', subset=['pml_id', 'date'], axis=0, inplace=True)
+        pml_metadata = pd.read_csv(args.snapshot_filepath)
+        pml_metadata.rename(columns={'id': 'pml_id'}, inplace=True)
+        pml_metadata.dropna(how='any', subset=['pml_id', 'date'], axis=0, inplace=True)
         insert_microscopy_datasets(
             Session,
-            metadata,
+            pml_metadata,
             root_directory='raw_pipeline_microscopy',
             update=args.update,
             errors='warn'
@@ -450,7 +569,6 @@ def main():
     if args.generate_protein_group_associations:
         generate_protein_group_uniprot_metadata_associations(Session)
         generate_protein_group_crispr_design_associations(Session)
-
 
 
 if __name__ == '__main__':

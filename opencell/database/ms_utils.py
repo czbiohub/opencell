@@ -15,8 +15,8 @@ def find_mismatching_target_names(plates_df, hits_df):
 
     # get target names from plates_df
     plate_genes = set(plates_df['target_name'].values.tolist())
-
     return (hits_genes - plate_genes)
+
 
 def fdr_mismatching_target_names(plates_df, fdr_df):
     """
@@ -29,8 +29,8 @@ def fdr_mismatching_target_names(plates_df, fdr_df):
 
     # get target names from plates_df
     plate_genes = set(plates_df['target_name'].values.tolist())
-
     return (fdr_genes - plate_genes)
+
 
 def format_ms_plate(plate_id):
     """

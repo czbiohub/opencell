@@ -794,7 +794,7 @@ class PulldownNetwork(PulldownResource):
         pulldown = self.get_pulldown(pulldown_id)
         if pulldown.network is not None:
             return flask.jsonify({
-                'elements': pulldown.network.elements,
+                'cytoscape_json': pulldown.network.cytoscape_json,
                 'last_modified': pulldown.network.last_modified,
             })
         return flask.abort(
@@ -808,7 +808,7 @@ class PulldownNetwork(PulldownResource):
         if network is None:
             network = models.MassSpecPulldownNetwork(pulldown_id=pulldown_id)
 
-        network.elements = data.get('elements')
+        network.cytoscape_json = data.get('cytoscape_json')
         network.client_metadata = data.get('client_metadata')
 
         try:

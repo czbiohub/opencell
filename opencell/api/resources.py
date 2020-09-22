@@ -371,7 +371,7 @@ class PulldownInteractions(PulldownResource):
 
             # if the node represents a pulldown, we already have the list of indirect hits
             if node['type'] == 'pulldown':
-                indirect_hits = node['pulldown'].hits
+                indirect_hits = node['pulldown'].get_significant_hits()
 
             # if the node represents a direct hit in the target's pulldown,
             # we need to determine whether the hit corresponds to an opencell target

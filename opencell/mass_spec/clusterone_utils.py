@@ -11,6 +11,7 @@ import pval_calculation as pval
 from itertools import repeat
 import cluster_heatmap as ch
 from multiprocessing import Pool
+from cdlib import algorithms
 
 # sys.path.append('../../../')
 from opencell.database import ms_utils
@@ -89,7 +90,29 @@ def clusterone_haircut(clusterone, all_hits, target_col, prey_col):
     return clusterone
 
 
-def recursive_haircut(cluster, all_hits, target_col, prey_col):
+def mcl_haircut(first_mcl, all_hits, target_col, prey_col, edge='', edge_thresh=0):
+    """
+    Haircut clusterone members (removing single edge interactors)
+    """
+    all_hits = all_hits.copy()
+    first_mcl = first_mcl.copy()
+    members = first_mcl['gene_name']
+
+    multi_args = zip(members, repeat(all_hits), repeat(target_col), repeat(prey_col),
+        repeat(edge), repeat(edge_thresh))
+
+    # multi processing
+    p = Pool()
+    haircuts = p.starmap(recursive_haircut, multi_args)
+    p.close()
+    p.join()
+
+    first_mcl['haircut_members'] = haircuts
+
+    return first_mcl
+
+
+def recursive_haircut(cluster, all_hits, target_col, prey_col, edge='', edge_thresh=0):
     """
     Continue haircuts until there are no more single edges left
     """
@@ -100,13 +123,13 @@ def recursive_haircut(cluster, all_hits, target_col, prey_col):
 
     while orig_len - new_len > 0:
         orig_len = len(clipped)
-        clipped = haircut(clipped, all_hits, target_col, prey_col)
+        clipped = haircut(clipped, all_hits, target_col, prey_col, edge, edge_thresh)
         new_len = len(clipped)
 
     return clipped
 
 
-def haircut(cluster, all_hits, target_col, prey_col):
+def haircut(cluster, all_hits, target_col, prey_col, edge, edge_thresh):
     """
     child function of clusterone_haircut
     """
@@ -122,8 +145,118 @@ def haircut(cluster, all_hits, target_col, prey_col):
         members = set(membership[target_col].to_list() + membership[prey_col].to_list())
         if len(members) > 2:
             haircut_members.append(member)
+        elif edge:
+            if membership[edge].max() > edge_thresh:
+                haircut_members.append(member)
 
     return haircut_members
+
+
+def mcl_mcl(first_mcl, network_df, target_col, prey_col, first_thresh, mcl_thresh, mcl_inflation,
+        edge=''):
+    """
+    Performs secondary clustering from clusterone results generating a new
+    """
+    network_df = network_df.copy()
+    first_mcl = first_mcl.copy()
+
+    clusters = first_mcl['gene_name']
+
+    # fist clustering id
+    c_clusters = []
+    # Boolean for whether the cluster went thru second clustering
+    mcl = []
+    # New MCL cluster
+    m_clusters = []
+    for idx, cluster in enumerate(clusters):
+        # original clusterone cluster number
+        idx += 1
+
+        # If the clusterone cluster does not exceed minimum size for second clustering
+        # Return cluster with a haircut
+        if len(cluster) < first_thresh:
+            c_clusters.append(idx)
+            mcl.append(False)
+            m_clusters.append(cluster)
+
+        # go thru the MCL second cluster
+        else:
+            cluster_network = retrieve_cluster_df(
+                network_df, cluster, target_col, prey_col)
+            if not edge:
+                edge = None
+            # NetworkX transformation of pandas interactions to sparse matrix
+            c_graph = nx.convert_matrix.from_pandas_edgelist(
+                cluster_network, target_col, prey_col, edge_attr=edge)
+            nodes = list(c_graph.nodes)
+            c_mat = nx.to_scipy_sparse_matrix(c_graph)
+
+            # Run MCL with a given inflation parameter
+            result = mc.run_mcl(c_mat, inflation=mcl_inflation)
+            mcl_clusters = mc.get_clusters(result)
+            for mcl_cluster in mcl_clusters:
+                if len(mcl_cluster) >= mcl_thresh:
+                    mcl_nodes = [nodes[x] for x in mcl_cluster]
+                    c_clusters.append(idx)
+                    mcl.append(True)
+                    m_clusters.append(mcl_nodes)
+    mcl_df = pd.DataFrame()
+    mcl_df['first_cluster'] = c_clusters
+    mcl_df['second_clustering'] = mcl
+    mcl_df['MCL_cluster'] = m_clusters
+
+    return mcl_df
+
+
+def mcl_newman(first_mcl, network_df, target_col, prey_col, first_thresh):
+    """
+    Performs secondary clustering from clusterone results generating a new
+    """
+    network_df = network_df.copy()
+    first_mcl = first_mcl.copy()
+
+    clusters = first_mcl['gene_name']
+
+    # first clustering id
+    c_clusters = []
+    # Boolean for whether the cluster went thru second clustering
+    newman = []
+    # New newman cluster
+    m_clusters = []
+    for idx, cluster in enumerate(clusters):
+        # original clusterone cluster number
+        idx += 1
+
+        # If the clusterone cluster does not exceed minimum size for second clustering
+        # Return cluster with a haircut
+        if len(cluster) < first_thresh:
+            c_clusters.append(idx)
+            newman.append(False)
+            m_clusters.append(cluster)
+
+        # go thru the MCL second cluster
+        else:
+            cluster_network = retrieve_cluster_df(
+                network_df, cluster, target_col, prey_col)
+
+            # NetworkX transformation of pandas interactions to sparse matrix
+            c_graph = nx.convert_matrix.from_pandas_edgelist(
+                cluster_network, target_col, prey_col, edge_attr=None)
+
+            # Run MCL with a given inflation parameter
+            result = algorithms.eigenvector(c_graph)
+            newman_clusters = result.communities
+            for newman_cluster in newman_clusters:
+                c_clusters.append(idx)
+                newman.append(True)
+                m_clusters.append(newman_cluster)
+    newman_df = pd.DataFrame()
+    newman_df['super_cluster'] = c_clusters
+    newman_df['second_clustering'] = newman
+    newman_df['gene_names'] = m_clusters
+
+    return newman_df
+
 
 
 def clusterone_mcl(
@@ -189,7 +322,25 @@ def clusterone_mcl(
     return mcl_df
 
 
-def explode_cluster_groups(mcl_cluster):
+def explode_clusterone_groups(clusterone):
+    explode = clusterone.copy()
+    # explode.reset_index(inplace=True)
+    explode = explode[explode['Members_haircut'].apply(len) > 0]
+    explode.rename(columns={'Members_haircut': 'gene_names', 'Cluster': 'Clusterone_id'}, inplace=True)
+    explode = explode[['Clusterone_id', 'gene_names']]
+    explode = explode.explode('gene_names')
+
+    exploded = pd.DataFrame(
+        explode.groupby('gene_names')['Clusterone_id'].apply(list)).reset_index()
+    # exploded_clusterone = pd.DataFrame(
+    #     explode.groupby('gene_names')['clusterone_id'].apply(list)).reset_index()
+
+    # exploded = exploded.merge(exploded_clusterone, on='gene_names', how='left')
+
+    return exploded
+
+
+def explode_mcl_groups(mcl_cluster):
     """
     convert cluster grouping into cluster annotation by proteingroup.
     Useful for merges and database uploads
@@ -198,11 +349,15 @@ def explode_cluster_groups(mcl_cluster):
     explode = mcl_cluster.copy()
     explode.reset_index(inplace=True)
     explode.rename(columns={'index': 'mcl_cluster', 'MCL_cluster': 'gene_names'}, inplace=True)
-    explode.drop(columns=['clusterone_id', 'second_clustering'], inplace=True)
-
+    explode.drop(columns=['second_clustering'], inplace=True)
     explode = explode.explode('gene_names')
-    exploded = pd.DataFrame(explode.groupby('gene_names')['mcl_cluster'].apply(list))
-    exploded.reset_index(inplace=True)
+
+    exploded = pd.DataFrame(
+        explode.groupby('gene_names')['mcl_cluster'].apply(list)).reset_index()
+    # exploded_clusterone = pd.DataFrame(
+    #     explode.groupby('gene_names')['clusterone_id'].apply(list)).reset_index()
+
+    # exploded = exploded.merge(exploded_clusterone, on='gene_names', how='left')
 
     return exploded
 

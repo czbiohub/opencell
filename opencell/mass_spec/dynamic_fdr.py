@@ -38,9 +38,11 @@ def get_fdrs(pvals):
     for bait in baits:
         selects.append(pvals[bait])
     p = Pool()
-    fdr1_seeds = p.map(get_fdr1_seed, selects)
+    fdr1_seeds = p.starmap(get_fdr1_seed, zip(selects, baits))
     p.close()
     p.join()
+
+    print("FDR1 seed finished!")
 
     fdr1_full = [[3, seed] for seed in fdr1_seeds]
 
@@ -50,6 +52,8 @@ def get_fdrs(pvals):
     fdr5_seeds = p.starmap(get_fdr5_seed, fdr5_args)
     p.close()
     p.join()
+
+    print("FDR5 calculated!")
 
     fdr5_full = [[3, seed] for seed in fdr5_seeds]
 
@@ -89,7 +93,8 @@ def get_fdrs(pvals):
 
 
 
-def get_fdr1_seed(select):
+def get_fdr1_seed(select, bait):
+    # print(bait)
     neg_select = select[select['enrichment'] < 0]
     # neg_select = neg_select[neg_select['pvals'] < 15]
     # neg_select = neg_select[neg_select['enrichment'] > -4.5]

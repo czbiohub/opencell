@@ -358,7 +358,7 @@ def return_cluster_members(designation, cluster_list):
         return False
 
 
-def generate_mpl_matrix(stoichs, cluster_one, clusters, metric):
+def generate_mpl_matrix(stoichs, cluster_one, clusters, metric, sparse=False):
     """ generate cluster dendrogram from listed clusters """
 
     stoichs = stoichs.copy()
@@ -376,9 +376,13 @@ def generate_mpl_matrix(stoichs, cluster_one, clusters, metric):
     selected_stoichs.sort_values(
         by=metric, ascending=False, inplace=True)
     selected_stoichs.drop_duplicates(['target', 'prey'], inplace=True)
-    matrix = convert_to_sparse_matrix(selected_stoichs, metric=metric)
+    selected_stoichs = selected_stoichs[['target', 'prey', metric]]
+    if sparse:
+        matrix = convert_to_sparse_matrix(selected_stoichs, metric=metric)
 
-    return genes, selected_stoichs, matrix
+        return genes, selected_stoichs, matrix
+    else:
+        return genes, selected_stoichs
 
 
 def convert_to_sparse_matrix(double_df, metric='distance'):

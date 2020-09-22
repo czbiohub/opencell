@@ -158,11 +158,13 @@ def fdr_all_interactors(plates, root, date, fdr1, fdr5, dynamic=False,
     all_hits = all_hits.sort_values(by='target')
     all_hits['plate'] = all_hits['target'].apply(lambda x: x.split('_')[0])
     all_hits['target'] = all_hits['target'].apply(lambda x: x.split('_')[1])
+    all_hits['target'] = all_hits['target'].apply(lambda x: x.upper())
     if dynamic:
         fdrs = pd.concat(all_fdrs)
         fdrs.reset_index(inplace=True)
         fdrs['target'] = fdrs['bait'].apply(lambda x: x.split('_')[1])
         fdrs['plate'] = fdrs['bait'].apply(lambda x: x.split('_')[0])
+        fdrs['target'] = fdrs['target'].apply(lambda x: x.upper())
         fdrs.drop(columns=['bait'], inplace=True)
         all_hits = all_hits.merge(fdrs, on=['target', 'plate'], how='left')
 
@@ -516,7 +518,8 @@ def groupby_max(interactions, target_col, prey_col, edge_col):
     return interactions
 
 
-def convert_to_unique_interactions(dataset, target_col, prey_col, target_match=False):
+def convert_to_unique_interactions(dataset, target_col, prey_col, target_match=False,
+        get_edge=False, edge='pvals'):
     """
     convert bait/prey interactions to unique, directionless interactions using gene names
     """
@@ -524,6 +527,7 @@ def convert_to_unique_interactions(dataset, target_col, prey_col, target_match=F
 
     if not target_match:
         dataset = dataset[dataset[target_col] != dataset[prey_col]]
+    original = dataset.copy()
 
     # combine values from two columns to a list and sort alphabetically
     dataset = dataset[[target_col, prey_col]]
@@ -544,6 +548,18 @@ def convert_to_unique_interactions(dataset, target_col, prey_col, target_match=F
     interactions['prot_2'] = second
 
     interactions.drop_duplicates(inplace=True)
+
+    if get_edge:
+        vals = []
+        for i, row in interactions.iterrows():
+            prot_1 = row.prot_1
+            prot_2 = row.prot_2
+            prots = [prot_1, prot_2]
+            selection = original[
+                (original[target_col].isin(prots)) & original[prey_col].isin(prots)]
+            max_edge = selection[edge].max()
+            vals.append(max_edge)
+        interactions[edge] = vals
     interactions.reset_index(drop=True, inplace=True)
 
     return interactions

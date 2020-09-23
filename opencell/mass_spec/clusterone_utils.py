@@ -443,7 +443,7 @@ def cluster_matrix_to_sql_table(mcl, network, method='single', metric='cosine', 
     sql['row_index'] = rows_col
     sql['pulldown_plate_id'] = pull_plate_col
 
-    sql['subcluster_id'] = sql['subcluster_id'].astype('Int64')
+    # sql['subcluster_id'] = sql['subcluster_id'].astype('Int64')
     return sql
 
 

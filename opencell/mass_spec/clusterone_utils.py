@@ -378,7 +378,8 @@ def annotate_mcl_clusters(umap_df, mcl_df, gene_col, first_clust=True):
     return umap_df
 
 
-def cluster_matrix_to_sql_table(mcl, network, method='single', metric='cosine', edge='stoich'):
+def cluster_matrix_to_sql_table(mcl, network, method='single', metric='cosine', edge='stoich',
+        clustering='mcl_cluster', subcluster='subcluster'):
     """
     Transform the cluster output from MCL clustering into a sparse
     hierarchical matrix of interactions, and format into a SQL table
@@ -387,13 +388,14 @@ def cluster_matrix_to_sql_table(mcl, network, method='single', metric='cosine', 
     mcl = mcl.copy()
     network = network.copy()
 
-    mcl_explode = mcl.explode('mcl_cluster')
-    cluster_list = mcl_explode['mcl_cluster'].unique()
+    # mcl_explode = mcl.explode('mcl_cluster')
+    cluster_list = mcl[clustering].unique()
     cluster_list.sort()
 
 
     # lists to populate, will become dataframe columns
     cluster_col = []
+    subcluster_col = []
     cols_col = []
     rows_col = []
     targets_col = []
@@ -402,8 +404,9 @@ def cluster_matrix_to_sql_table(mcl, network, method='single', metric='cosine', 
 
     for cluster in cluster_list:
         # get cluster sub-matrix and network selection
-        _, selected_network, cluster_matrix = ch.generate_mpl_matrix(
-            network, mcl, clusters=[cluster], metric=edge)
+        _, _, cluster_matrix = ch.generate_mpl_matrix(
+            network, mcl, clusters=[cluster], cluster_col=clustering, metric=edge, sparse=True)
+
 
         # Get the hierarchical order of targets and preys
         bait_leaves = ch.bait_leaves(cluster_matrix, method=method, metric=metric)
@@ -412,23 +415,35 @@ def cluster_matrix_to_sql_table(mcl, network, method='single', metric='cosine', 
         # go thru each bait leaf and prey leaf and populate the list
         for col, bait in enumerate(bait_leaves):
             for row, prey in enumerate(prey_leaves):
-                selection = selected_network[
-                    (selected_network['target'] == bait) & (selected_network['prey'] == prey)]
+                selection = network[
+                    (network['target'] == bait) & (network['prey'] == prey)].sort_values(
+                    edge, ascending=False)
                 # if there is an interaction, add an entry
                 if selection.shape[0] > 0:
+                    # identify subcluster
+                    sub_bait = mcl[mcl['gene_names'] == bait][subcluster].item()
+                    sub_prey = mcl[mcl['gene_names'] == prey][subcluster].item()
+                    # subcluster_entry
+                    if sub_bait == sub_prey:
+                        subcluster_col.append(sub_bait)
+                    else:
+                        subcluster_col.append(None)
                     cluster_col.append(cluster)
                     cols_col.append(col)
                     rows_col.append(row)
                     targets_col.append(bait)
                     preys_col.append(prey)
-                    pull_plate_col.append(selection.plate.item())
+                    pull_plate_col.append(selection.plate.iloc[0])
     sql = pd.DataFrame()
     sql['cluster_id'] = cluster_col
+    sql['subcluster_id'] = subcluster_col
     sql['target_name'] = targets_col
     sql['prey'] = preys_col
     sql['col_index'] = cols_col
     sql['row_index'] = rows_col
     sql['pulldown_plate_id'] = pull_plate_col
+
+    sql['subcluster_id'] = sql['subcluster_id'].astype('Int64')
     return sql
 
 
@@ -486,27 +501,31 @@ def sql_table_add_hit_id(sql_table, pulldowns, url):
 
         # get the cellline_id, skip if preceding row had the same query
         if not (well_id == pwell_id) & (design_id == pdesign_id):
-            pull_cls = ms_ops.MassSpecPolyclonalOperations.from_plate_well(session, design_id, well_id)
+            pull_cls = ms_ops.MassSpecPolyclonalOperations.from_plate_well(
+                session, design_id, well_id, sort_count=1)
             cell_line_id = pull_cls.line.id
 
         query_hit = False
         # iterate through each gene name in protein group and query for the hit id
         # return all hits that contain part of the gene name
         for prey in preys:
-            hit = (
-                session.query(models.MassSpecHit)
-                .join(models.MassSpecPulldown)
-                .join(models.MassSpecProteinGroup)
-                .filter(or_(models.MassSpecHit.is_significant_hit,
-                    models.MassSpecHit.is_minor_hit))
-                .filter(models.MassSpecPulldown.cell_line_id == cell_line_id)
-                .filter(models.MassSpecPulldown.pulldown_plate_id == plate_id)
-                .filter(
-                    sqlalchemy.any_(
-                        models.MassSpecProteinGroup.gene_names) == prey)
-                .order_by(desc(models.MassSpecHit.pval))
-                .limit(1)
-                .one())
+            try:
+                hit = (
+                    session.query(models.MassSpecHit)
+                    .join(models.MassSpecPulldown)
+                    .join(models.MassSpecProteinGroup)
+                    .filter(or_(models.MassSpecHit.is_significant_hit,
+                        models.MassSpecHit.is_minor_hit))
+                    .filter(models.MassSpecPulldown.cell_line_id == cell_line_id)
+                    .filter(models.MassSpecPulldown.pulldown_plate_id == plate_id)
+                    .filter(
+                        sqlalchemy.any_(
+                            models.MassSpecProteinGroup.gene_names) == prey)
+                    .order_by(desc(models.MassSpecHit.pval))
+                    .limit(1)
+                    .one())
+            except Exception:
+                hit = None
             # if there is a matching hit, append hit id and gene names
             if hit:
                 hit_ids.append(hit.id)
@@ -516,15 +535,17 @@ def sql_table_add_hit_id(sql_table, pulldowns, url):
         # if there was no hit, append a null value
         if not query_hit:
             hit_ids.append(None)
-            print("Hit not Found!")
+            hit_gene_names.append(None)
+            print(" Hit not Found!")
 
         # save well id and design id for next iteration
         pwell_id = well_id
         pdesign_id = design_id
 
     sort_table['hit_id'] = hit_ids
+    sort_table['hit_id'] = sort_table['hit_id'].astype('Int64')
     sort_table['hit_gene_names'] = hit_gene_names
-    sort_table = sort_table.sort_values(['cluster', 'col_index', 'row_index'])
+    sort_table = sort_table.sort_values(['cluster_id', 'col_index', 'row_index'])
 
     return sort_table
 

@@ -314,28 +314,32 @@ def get_pvals_bagging(x, control_df):
 
     # keep bagging from leftover values after nan-drop until
     # original size is met
-    neg_con = np.random.choice(neg_con, size=orig_len)
+    if len(neg_con) < 9:
+        return [np.random.uniform(0, 0.2), np.random.uniform(-0.1, 0.1)]
 
-    mean = np.mean(neg_con)
-    std = np.std(neg_con)
+    else:
+        neg_con = np.random.choice(neg_con, size=orig_len)
+
+        mean = np.mean(neg_con)
+        std = np.std(neg_con)
 
 
-    sample = x[:-1]
+        sample = x[:-1]
 
-    sample = [mean if np.isnan(x) else x for x in sample]
+        sample = [mean if np.isnan(x) else x for x in sample]
 
 
-    # calculate pvals
-    pval = scipy.stats.ttest_ind(sample, neg_con,
-    nan_policy='omit')[1]
+        # calculate pvals
+        pval = scipy.stats.ttest_ind(sample, neg_con,
+        nan_policy='omit')[1]
 
-    # negative log of the pvals
-    pval = -1 * np.log10(pval)
+        # negative log of the pvals
+        pval = -1 * np.log10(pval)
 
-    # calculate enrichment
-    enrichment = (np.median(sample) - np.median(neg_con)) / std
+        # calculate enrichment
+        enrichment = (np.median(sample) - np.median(neg_con)) / std
 
-    return [pval, enrichment]
+        return [pval, enrichment]
 
 
 def calc_thresh(enrich, fc_var1, fc_var2):

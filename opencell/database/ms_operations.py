@@ -15,18 +15,32 @@ from opencell.database import ms_utils
 from opencell.imaging import processors
 
 
-def bulk_insert_cluster_heatmap(session, cluster_table, errors='warn'):
+def bulk_insert_cluster_heatmap(session, cluster_table, cluster_str, errors='warn'):
     """
     insert every row of cluster table
     """
     # a list of all clusters to add
     all_clusters = []
     for ind, row in cluster_table.iterrows():
+
+        # if there is no subcluster identification, input None
+        subcluster_id = None
+        if np.isfinite(row.subcluster_id):
+            subcluster_id = int(row.subcluster_id)
+
+        # if there is no core_complex identification, input None
+        core_complex_id = None
+        if np.isfinite(row.core_complex_id):
+            core_complex_id = int(row.core_complex_id)
+
         cluster = models.MassSpecClusterHeatmap(
             cluster_id=int(row.cluster_id),
+            subcluster_id = subcluster_id,
+            core_complex_id = core_complex_id,
             hit_id=int(row.hit_id),
             row_index=int(row.row_index),
-            col_index=int(row.col_index)
+            col_index=int(row.col_index),
+            analysis_type = cluster_str
         )
         all_clusters.append(cluster)
      # bulk save

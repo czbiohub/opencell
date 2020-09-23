@@ -7,56 +7,83 @@ import plotly.offline
 import plotly.graph_objects as go
 import plotly.figure_factory as ff
 from plotly.subplots import make_subplots
+import math
 
 
-def volcano_plot(v_df, bait, fcd1):
-    """plot the volcano plot of a given bait"""
-    v_df = v_df.copy()
+def volcano_plot(v_df, bait, plate, width=800, height=800):
+    # initiate dfs
+    sel_df = v_df.copy()
+    sel_df = v_df.set_index('prey')
 
-    # Specify the bait column
-    bait_vals = v_df[bait]
+    # start a subplot
+    fig = make_subplots(rows=1, cols=1)
+    i = 1
+
+    bait_vals = sel_df[(sel_df['target'] == bait) & (sel_df['plate'] == plate)]
+
+
     hits = bait_vals[bait_vals['hits']]
-    print("Number of Significant Hits: " + str(hits.shape[0]))
-    no_hits = bait_vals[~bait_vals['hits']]
+    # print("Number of Significant Hits: " + str(hits.shape[0]))
 
+    minor_hits = bait_vals[bait_vals['minor_hits']]
+    # print("Number of Minor Hits: " + str(minor_hits.shape[0]))
+
+    no_hits = bait_vals[(~bait_vals['hits']) | (~bait_vals['minor_hits'])]
+
+
+    # calculations for x axis min, max parameters
     xmax = hits['enrichment'].max() + 3
     if hits.shape[0] > 0:
         ymax = hits['pvals'].max() + 4
     else:
         ymax = 30
+
     # FCD plot calculation
+    fcd1 = bait_vals.iloc[0]['fdr1']
+    fcd2 = bait_vals.iloc[0]['fdr5']
+
+
     x1 = np.array(list(np.linspace(-12, -1 * fcd1[1] - 0.001, 200))
         + list(np.linspace(fcd1[1] + 0.001, 12, 200)))
     y1 = fcd1[0] / (abs(x1) - fcd1[1])
-    # x2 = np.array(list(np.linspace(-12, -1 * fcd2[1] - 0.001, 200))
-    #     + list(np.linspace(fcd2[1] + 0.001, 12, 200)))
-    # y2 = fcd2[0] / (abs(x2) - fcd2[1])
+    x2 = np.array(list(np.linspace(-12, -1 * fcd2[1] - 0.001, 200))
+        + list(np.linspace(fcd2[1] + 0.001, 12, 200)))
+    y2 = fcd2[0] / (abs(x2) - fcd2[1])
 
-
-    # Figure Generation
-    fig = go.Figure()
+    # add significant hits
     fig.add_trace(go.Scatter(x=hits['enrichment'], y=hits['pvals'],
         mode='markers+text', text=hits.index.tolist(), textposition='bottom right',
-        opacity=0.6, marker=dict(size=10)))
-    fig.update_traces(mode='markers+text', marker_line_width=2)
+        opacity=0.6, marker=dict(size=10, line=dict(width=2))), row=1, col=i)
+
+    # add minor hits
+    fig.add_trace(go.Scatter(x=minor_hits['enrichment'], y=minor_hits['pvals'],
+        mode='markers+text', text=minor_hits.index.tolist(), textposition='bottom right',
+        opacity=0.6, marker=dict(size=10, color='firebrick')), row=1, col=i)
+
+    # add non-significant hits
     fig.add_trace(go.Scatter(x=no_hits['enrichment'], y=no_hits['pvals'],
-        mode='markers', text=no_hits.index.tolist(), opacity=0.4, marker=dict(size=8)))
+        mode='markers', text=no_hits.index.tolist(), opacity=0.4,
+        marker=dict(size=8)), row=1, col=i)
 
     fig.add_trace(go.Scatter(x=x1, y=y1, mode='lines',
-        line=dict(color='royalblue', dash='dash')))
-    # fig.add_trace(go.Scatter(x=x2, y=y2, mode='lines',
-    #     line=dict(color='firebrick', dash='dash')))
+        line=dict(color='royalblue', dash='dash')), row=1, col=i)
+    fig.add_trace(go.Scatter(x=x2, y=y2, mode='lines',
+        line=dict(color='firebrick', dash='dash')), row=1, col=i)
+    # axis customization
+    fig.update_xaxes(title_text='Enrichment (log2)', row=1, col=i,
+        range=[-1 * xmax, xmax])
+    fig.update_yaxes(title_text='p-value (-log10)', row=1, col=i,
+        range=[-1, ymax])
 
+    # layout
     fig.update_layout(
+        width=width,
+        height=height,
         title={'text': bait,
             'x': 0.5,
-            'y': 0.95},
-            xaxis_title='Enrichment (log2)',
-            yaxis_title='P value (-log10)',
+            'y': 0.98},
             showlegend=False,
             margin={'l': 30, 'r': 30, 'b': 20, 't': 40})
-    fig.update_xaxes(range=[-1 * xmax, xmax])
-    fig.update_yaxes(range=[-1, ymax])
     fig.show()
 
 
@@ -181,69 +208,6 @@ def mult_volcano(v_df, baits):
     fig.show()
 
 
-def volcano_plot_two_fdrs(v_df, fdr_df, bait, width=800, height=800):
-    """plot the volcano plot of a given bait"""
-    v_df = v_df.copy()
-    v_df = v_df.set_index(('gene_names', 'gene_names'))
-    # Specify the bait column
-    bait_vals = v_df[bait]
-    hits = bait_vals[bait_vals['hits']]
-    print("Number of Significant Hits: " + str(hits.shape[0]))
-
-    minor_hits = bait_vals[bait_vals['minor_hits']]
-    print("Number of Minor Hits: " + str(minor_hits.shape[0]))
-
-    no_hits = bait_vals[(~bait_vals['hits']) | (~bait_vals['minor_hits'])]
-
-    fcd1 = fdr_df.loc[bait]['fdr1']
-    fcd2 = fdr_df.loc[bait]['fdr5']
-
-    xmax = hits['enrichment'].max() + 3
-    if hits.shape[0] > 0:
-        ymax = hits['pvals'].max() + 4
-    else:
-        ymax = 30
-    # FCD plot calculation
-    x1 = np.array(list(np.linspace(-12, -1 * fcd1[1] - 0.001, 200))
-        + list(np.linspace(fcd1[1] + 0.001, 12, 200)))
-    y1 = fcd1[0] / (abs(x1) - fcd1[1])
-    x2 = np.array(list(np.linspace(-12, -1 * fcd2[1] - 0.001, 200))
-        + list(np.linspace(fcd2[1] + 0.001, 12, 200)))
-    y2 = fcd2[0] / (abs(x2) - fcd2[1])
-
-
-    # Figure Generation
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=hits['enrichment'], y=hits['pvals'],
-        mode='markers+text', text=hits.index.tolist(), textposition='bottom right',
-        opacity=0.6, marker=dict(size=10, color='LightSkyBlue')))
-    fig.add_trace(go.Scatter(x=minor_hits['enrichment'], y=minor_hits['pvals'],
-        mode='markers+text', text=minor_hits.index.tolist(), textposition='bottom right',
-        opacity=0.6, marker=dict(size=10, color='firebrick')))
-    fig.update_traces(mode='markers+text', marker_line_width=1)
-
-
-    fig.add_trace(go.Scatter(x=no_hits['enrichment'], y=no_hits['pvals'],
-        mode='markers', text=no_hits.index.tolist(), opacity=0.4, marker=dict(size=8, color='grey')))
-
-    fig.add_trace(go.Scatter(x=x1, y=y1, mode='lines',
-        line=dict(color='royalblue', dash='dash')))
-    fig.add_trace(go.Scatter(x=x2, y=y2, mode='lines',
-        line=dict(color='firebrick', dash='dash')))
-
-    fig.update_layout(
-        {'width': width, 'height': height},
-        title={'text': bait,
-            'x': 0.5,
-            'y': 0.9},
-            xaxis_title='Enrichment (log2)',
-            yaxis_title='P value (-log10)',
-            showlegend=False)
-
-    fig.update_xaxes(range=[-1 * xmax, xmax])
-    fig.update_yaxes(range=[-1, ymax])
-    fig.show()
-    return fig
 
 
 def calc_thresh(enrich, fc_var1, fc_var2):
@@ -309,29 +273,44 @@ def all_hits_two_fdrs(pval_df, fdr1, fdr2):
     return pval_df
 
 
-def comparison_volcano_temp(v_df, v2_df, bait, plate):
+def comparison_volcano_temp(v_df, bait, width=800, height=400):
     """plot volcano plots from two analyses for qualitative comparisons"""
 
     # initiate dfs
-    v_df = v_df.copy()
-    v_df = v_df.set_index('prey')
-    v2_df = v2_df.copy()
-    v2_df = v2_df.set_index('prey')
-    v_dfs = [v_df, v2_df]
+    sel_df = v_df.copy()
+    sel_df = v_df.set_index('prey')
 
+    plates = list(set(sel_df[sel_df['target'] == bait]['plate'].to_list()))
+    plates.sort()
+    num_plates = len(plates)
+
+    subplot_titles = [bait + ' ' + plate for plate in plates]
 
     # start a subplot
-    fig = make_subplots(rows=1, cols=2)
-    for i in [1, 2]:
-        sel_df = v_dfs[i-1]
+    fig = make_subplots(rows=math.ceil(num_plates/2), cols=2,
+        subplot_titles=subplot_titles, vertical_spacing=0.125)
+    # layout
+    fig.update_layout(
+        # width=1000,
+        # height=600,
+        width=width,
+        height=height * math.ceil(num_plates/2),
+        showlegend=False,
+        margin={'l': 30, 'r': 30, 'b': 20, 't': 40})
+
+    hit_counts = []
+    minor_hit_counts = []
+    for i, plate in enumerate(plates):
         bait_vals = sel_df[(sel_df['target'] == bait) & (sel_df['plate'] == plate)]
 
 
         hits = bait_vals[bait_vals['hits']]
-        print("Number of Significant Hits: " + str(hits.shape[0]))
+        hit_counts.append(hits.shape[0])
+        # print("Number of Significant Hits: " + str(hits.shape[0]))
 
         minor_hits = bait_vals[bait_vals['minor_hits']]
-        print("Number of Minor Hits: " + str(minor_hits.shape[0]))
+        # print("Number of Minor Hits: " + str(minor_hits.shape[0]))
+        minor_hit_counts.append(minor_hits.shape[0])
 
         no_hits = bait_vals[(~bait_vals['hits']) | (~bait_vals['minor_hits'])]
 
@@ -355,40 +334,43 @@ def comparison_volcano_temp(v_df, v2_df, bait, plate):
             + list(np.linspace(fcd2[1] + 0.001, 12, 200)))
         y2 = fcd2[0] / (abs(x2) - fcd2[1])
 
+
+        row_num = math.ceil((i + 1) / 2)
+        if (i + 1) % 2 == 1:
+            col_num = 1
+        else:
+            col_num = 2
         # add significant hits
         fig.add_trace(go.Scatter(x=hits['enrichment'], y=hits['pvals'],
             mode='markers+text', text=hits.index.tolist(), textposition='bottom right',
-            opacity=0.6, marker=dict(size=10, line=dict(width=2))), row=1, col=i)
+            opacity=0.6, marker=dict(size=10, line=dict(width=2)),
+            name="Significant hits: " + str(hits.shape[0])), row=row_num, col=col_num)
 
         # add minor hits
         fig.add_trace(go.Scatter(x=minor_hits['enrichment'], y=minor_hits['pvals'],
             mode='markers+text', text=minor_hits.index.tolist(), textposition='bottom right',
-            opacity=0.6, marker=dict(size=10, color='firebrick')), row=1, col=i)
+            opacity=0.6, marker=dict(size=10, color='firebrick'),
+            name="Minor hits: " + str(minor_hits.shape[0])), row=row_num, col=col_num)
 
         # add non-significant hits
         fig.add_trace(go.Scatter(x=no_hits['enrichment'], y=no_hits['pvals'],
             mode='markers', text=no_hits.index.tolist(), opacity=0.4,
-            marker=dict(size=8)), row=1, col=i)
+            marker=dict(size=8)), row=row_num, col=col_num)
 
         fig.add_trace(go.Scatter(x=x1, y=y1, mode='lines',
-            line=dict(color='royalblue', dash='dash')), row=1, col=i)
+            line=dict(color='royalblue', dash='dash')), row=row_num, col=col_num)
         fig.add_trace(go.Scatter(x=x2, y=y2, mode='lines',
-            line=dict(color='firebrick', dash='dash')), row=1, col=i)
+            line=dict(color='firebrick', dash='dash')), row=row_num, col=col_num)
         # axis customization
-        fig.update_xaxes(title_text='Enrichment (log2)', row=1, col=i,
+        fig.update_xaxes(title_text='Enrichment (log2)', row=row_num, col=col_num,
             range=[-1 * xmax, xmax])
-        fig.update_yaxes(title_text='p-value (-log10)', row=1, col=i,
+        fig.update_yaxes(title_text='p-value (-log10)', row=row_num, col=col_num,
             range=[-1, ymax])
 
-    # layout
-    fig.update_layout(
-        # width=1000,
-        # height=600,
-        width=800,
-        height=400,
-        title={'text': bait,
-            'x': 0.5,
-            'y': 0.98},
-            showlegend=False,
-            margin={'l': 30, 'r': 30, 'b': 20, 't': 40})
+
     fig.show()
+    counts = pd.DataFrame()
+    counts['plate'] = plates
+    counts['major_hits'] = hit_counts
+    counts['minor_hits'] = minor_hit_counts
+    return counts

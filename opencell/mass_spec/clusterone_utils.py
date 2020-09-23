@@ -11,8 +11,9 @@ import pval_calculation as pval
 from itertools import repeat
 import cluster_heatmap as ch
 from multiprocessing import Pool
+from cdlib import algorithms
 
-
+# sys.path.append('../../../')
 from opencell.database import ms_utils
 from opencell.database import ms_operations as ms_ops
 from opencell.database import models, utils
@@ -89,7 +90,29 @@ def clusterone_haircut(clusterone, all_hits, target_col, prey_col):
     return clusterone
 
 
-def recursive_haircut(cluster, all_hits, target_col, prey_col):
+def mcl_haircut(first_mcl, all_hits, target_col, prey_col, edge='', edge_thresh=0):
+    """
+    Haircut clusterone members (removing single edge interactors)
+    """
+    all_hits = all_hits.copy()
+    first_mcl = first_mcl.copy()
+    members = first_mcl['gene_name']
+
+    multi_args = zip(members, repeat(all_hits), repeat(target_col), repeat(prey_col),
+        repeat(edge), repeat(edge_thresh))
+
+    # multi processing
+    p = Pool()
+    haircuts = p.starmap(recursive_haircut, multi_args)
+    p.close()
+    p.join()
+
+    first_mcl['haircut_members'] = haircuts
+
+    return first_mcl
+
+
+def recursive_haircut(cluster, all_hits, target_col, prey_col, edge='', edge_thresh=0):
     """
     Continue haircuts until there are no more single edges left
     """
@@ -100,13 +123,13 @@ def recursive_haircut(cluster, all_hits, target_col, prey_col):
 
     while orig_len - new_len > 0:
         orig_len = len(clipped)
-        clipped = haircut(clipped, all_hits, target_col, prey_col)
+        clipped = haircut(clipped, all_hits, target_col, prey_col, edge, edge_thresh)
         new_len = len(clipped)
 
     return clipped
 
 
-def haircut(cluster, all_hits, target_col, prey_col):
+def haircut(cluster, all_hits, target_col, prey_col, edge, edge_thresh):
     """
     child function of clusterone_haircut
     """
@@ -122,8 +145,118 @@ def haircut(cluster, all_hits, target_col, prey_col):
         members = set(membership[target_col].to_list() + membership[prey_col].to_list())
         if len(members) > 2:
             haircut_members.append(member)
+        elif edge:
+            if membership[edge].max() > edge_thresh:
+                haircut_members.append(member)
 
     return haircut_members
+
+
+def mcl_mcl(first_mcl, network_df, target_col, prey_col, first_thresh, mcl_thresh, mcl_inflation,
+        edge=''):
+    """
+    Performs secondary clustering from clusterone results generating a new
+    """
+    network_df = network_df.copy()
+    first_mcl = first_mcl.copy()
+
+    clusters = first_mcl['gene_name']
+
+    # fist clustering id
+    c_clusters = []
+    # Boolean for whether the cluster went thru second clustering
+    mcl = []
+    # New MCL cluster
+    m_clusters = []
+    for idx, cluster in enumerate(clusters):
+        # original clusterone cluster number
+        idx += 1
+
+        # If the clusterone cluster does not exceed minimum size for second clustering
+        # Return cluster with a haircut
+        if len(cluster) < first_thresh:
+            c_clusters.append(idx)
+            mcl.append(False)
+            m_clusters.append(cluster)
+
+        # go thru the MCL second cluster
+        else:
+            cluster_network = retrieve_cluster_df(
+                network_df, cluster, target_col, prey_col)
+            if not edge:
+                edge = None
+            # NetworkX transformation of pandas interactions to sparse matrix
+            c_graph = nx.convert_matrix.from_pandas_edgelist(
+                cluster_network, target_col, prey_col, edge_attr=edge)
+            nodes = list(c_graph.nodes)
+            c_mat = nx.to_scipy_sparse_matrix(c_graph)
+
+            # Run MCL with a given inflation parameter
+            result = mc.run_mcl(c_mat, inflation=mcl_inflation)
+            mcl_clusters = mc.get_clusters(result)
+            for mcl_cluster in mcl_clusters:
+                if len(mcl_cluster) >= mcl_thresh:
+                    mcl_nodes = [nodes[x] for x in mcl_cluster]
+                    c_clusters.append(idx)
+                    mcl.append(True)
+                    m_clusters.append(mcl_nodes)
+    mcl_df = pd.DataFrame()
+    mcl_df['first_cluster'] = c_clusters
+    mcl_df['second_clustering'] = mcl
+    mcl_df['MCL_cluster'] = m_clusters
+
+    return mcl_df
+
+
+def mcl_newman(first_mcl, network_df, target_col, prey_col, first_thresh):
+    """
+    Performs secondary clustering from clusterone results generating a new
+    """
+    network_df = network_df.copy()
+    first_mcl = first_mcl.copy()
+
+    clusters = first_mcl['gene_name']
+
+    # first clustering id
+    c_clusters = []
+    # Boolean for whether the cluster went thru second clustering
+    newman = []
+    # New newman cluster
+    m_clusters = []
+    for idx, cluster in enumerate(clusters):
+        # original clusterone cluster number
+        idx += 1
+
+        # If the clusterone cluster does not exceed minimum size for second clustering
+        # Return cluster with a haircut
+        if len(cluster) < first_thresh:
+            c_clusters.append(idx)
+            newman.append(False)
+            m_clusters.append(cluster)
+
+        # go thru the MCL second cluster
+        else:
+            cluster_network = retrieve_cluster_df(
+                network_df, cluster, target_col, prey_col)
+
+            # NetworkX transformation of pandas interactions to sparse matrix
+            c_graph = nx.convert_matrix.from_pandas_edgelist(
+                cluster_network, target_col, prey_col, edge_attr=None)
+
+            # Run MCL with a given inflation parameter
+            result = algorithms.eigenvector(c_graph)
+            newman_clusters = result.communities
+            for newman_cluster in newman_clusters:
+                c_clusters.append(idx)
+                newman.append(True)
+                m_clusters.append(newman_cluster)
+    newman_df = pd.DataFrame()
+    newman_df['super_cluster'] = c_clusters
+    newman_df['second_clustering'] = newman
+    newman_df['gene_names'] = m_clusters
+
+    return newman_df
+
 
 
 def clusterone_mcl(
@@ -189,7 +322,25 @@ def clusterone_mcl(
     return mcl_df
 
 
-def explode_cluster_groups(mcl_cluster):
+def explode_clusterone_groups(clusterone):
+    explode = clusterone.copy()
+    # explode.reset_index(inplace=True)
+    explode = explode[explode['Members_haircut'].apply(len) > 0]
+    explode.rename(columns={'Members_haircut': 'gene_names', 'Cluster': 'Clusterone_id'}, inplace=True)
+    explode = explode[['Clusterone_id', 'gene_names']]
+    explode = explode.explode('gene_names')
+
+    exploded = pd.DataFrame(
+        explode.groupby('gene_names')['Clusterone_id'].apply(list)).reset_index()
+    # exploded_clusterone = pd.DataFrame(
+    #     explode.groupby('gene_names')['clusterone_id'].apply(list)).reset_index()
+
+    # exploded = exploded.merge(exploded_clusterone, on='gene_names', how='left')
+
+    return exploded
+
+
+def explode_mcl_groups(mcl_cluster):
     """
     convert cluster grouping into cluster annotation by proteingroup.
     Useful for merges and database uploads
@@ -198,11 +349,15 @@ def explode_cluster_groups(mcl_cluster):
     explode = mcl_cluster.copy()
     explode.reset_index(inplace=True)
     explode.rename(columns={'index': 'mcl_cluster', 'MCL_cluster': 'gene_names'}, inplace=True)
-    explode.drop(columns=['clusterone_id', 'second_clustering'], inplace=True)
-
+    explode.drop(columns=['second_clustering'], inplace=True)
     explode = explode.explode('gene_names')
-    exploded = pd.DataFrame(explode.groupby('gene_names')['mcl_cluster'].apply(list))
-    exploded.reset_index(inplace=True)
+
+    exploded = pd.DataFrame(
+        explode.groupby('gene_names')['mcl_cluster'].apply(list)).reset_index()
+    # exploded_clusterone = pd.DataFrame(
+    #     explode.groupby('gene_names')['clusterone_id'].apply(list)).reset_index()
+
+    # exploded = exploded.merge(exploded_clusterone, on='gene_names', how='left')
 
     return exploded
 
@@ -223,7 +378,8 @@ def annotate_mcl_clusters(umap_df, mcl_df, gene_col, first_clust=True):
     return umap_df
 
 
-def cluster_matrix_to_sql_table(mcl, network, method='single', metric='cosine', edge='stoich'):
+def cluster_matrix_to_sql_table(mcl, network, method='single', metric='cosine', edge='stoich',
+        clustering='mcl_cluster', subcluster='subcluster'):
     """
     Transform the cluster output from MCL clustering into a sparse
     hierarchical matrix of interactions, and format into a SQL table
@@ -232,13 +388,14 @@ def cluster_matrix_to_sql_table(mcl, network, method='single', metric='cosine', 
     mcl = mcl.copy()
     network = network.copy()
 
-    mcl_explode = mcl.explode('mcl_cluster')
-    cluster_list = mcl_explode['mcl_cluster'].unique()
+    # mcl_explode = mcl.explode('mcl_cluster')
+    cluster_list = mcl[clustering].unique()
     cluster_list.sort()
 
 
     # lists to populate, will become dataframe columns
     cluster_col = []
+    subcluster_col = []
     cols_col = []
     rows_col = []
     targets_col = []
@@ -247,8 +404,9 @@ def cluster_matrix_to_sql_table(mcl, network, method='single', metric='cosine', 
 
     for cluster in cluster_list:
         # get cluster sub-matrix and network selection
-        _, selected_network, cluster_matrix = ch.generate_mpl_matrix(
-            network, mcl, clusters=[cluster], metric=edge)
+        _, _, cluster_matrix = ch.generate_mpl_matrix(
+            network, mcl, clusters=[cluster], cluster_col=clustering, metric=edge, sparse=True)
+
 
         # Get the hierarchical order of targets and preys
         bait_leaves = ch.bait_leaves(cluster_matrix, method=method, metric=metric)
@@ -257,23 +415,35 @@ def cluster_matrix_to_sql_table(mcl, network, method='single', metric='cosine', 
         # go thru each bait leaf and prey leaf and populate the list
         for col, bait in enumerate(bait_leaves):
             for row, prey in enumerate(prey_leaves):
-                selection = selected_network[
-                    (selected_network['target'] == bait) & (selected_network['prey'] == prey)]
+                selection = network[
+                    (network['target'] == bait) & (network['prey'] == prey)].sort_values(
+                    edge, ascending=False)
                 # if there is an interaction, add an entry
                 if selection.shape[0] > 0:
+                    # identify subcluster
+                    sub_bait = mcl[mcl['gene_names'] == bait][subcluster].item()
+                    sub_prey = mcl[mcl['gene_names'] == prey][subcluster].item()
+                    # subcluster_entry
+                    if sub_bait == sub_prey:
+                        subcluster_col.append(sub_bait)
+                    else:
+                        subcluster_col.append(None)
                     cluster_col.append(cluster)
                     cols_col.append(col)
                     rows_col.append(row)
                     targets_col.append(bait)
                     preys_col.append(prey)
-                    pull_plate_col.append(selection.plate.item())
+                    pull_plate_col.append(selection.plate.iloc[0])
     sql = pd.DataFrame()
     sql['cluster_id'] = cluster_col
+    sql['subcluster_id'] = subcluster_col
     sql['target_name'] = targets_col
     sql['prey'] = preys_col
     sql['col_index'] = cols_col
     sql['row_index'] = rows_col
     sql['pulldown_plate_id'] = pull_plate_col
+
+    # sql['subcluster_id'] = sql['subcluster_id'].astype('Int64')
     return sql
 
 
@@ -331,27 +501,31 @@ def sql_table_add_hit_id(sql_table, pulldowns, url):
 
         # get the cellline_id, skip if preceding row had the same query
         if not (well_id == pwell_id) & (design_id == pdesign_id):
-            pull_cls = ms_ops.MassSpecPolyclonalOperations.from_plate_well(session, design_id, well_id)
+            pull_cls = ms_ops.MassSpecPolyclonalOperations.from_plate_well(
+                session, design_id, well_id, sort_count=1)
             cell_line_id = pull_cls.line.id
 
         query_hit = False
         # iterate through each gene name in protein group and query for the hit id
         # return all hits that contain part of the gene name
         for prey in preys:
-            hit = (
-                session.query(models.MassSpecHit)
-                .join(models.MassSpecPulldown)
-                .join(models.MassSpecProteinGroup)
-                .filter(or_(models.MassSpecHit.is_significant_hit,
-                    models.MassSpecHit.is_minor_hit))
-                .filter(models.MassSpecPulldown.cell_line_id == cell_line_id)
-                .filter(models.MassSpecPulldown.pulldown_plate_id == plate_id)
-                .filter(
-                    sqlalchemy.any_(
-                        models.MassSpecProteinGroup.gene_names) == prey)
-                .order_by(desc(models.MassSpecHit.pval))
-                .limit(1)
-                .one())
+            try:
+                hit = (
+                    session.query(models.MassSpecHit)
+                    .join(models.MassSpecPulldown)
+                    .join(models.MassSpecProteinGroup)
+                    .filter(or_(models.MassSpecHit.is_significant_hit,
+                        models.MassSpecHit.is_minor_hit))
+                    .filter(models.MassSpecPulldown.cell_line_id == cell_line_id)
+                    .filter(models.MassSpecPulldown.pulldown_plate_id == plate_id)
+                    .filter(
+                        sqlalchemy.any_(
+                            models.MassSpecProteinGroup.gene_names) == prey)
+                    .order_by(desc(models.MassSpecHit.pval))
+                    .limit(1)
+                    .one())
+            except Exception:
+                hit = None
             # if there is a matching hit, append hit id and gene names
             if hit:
                 hit_ids.append(hit.id)
@@ -361,14 +535,85 @@ def sql_table_add_hit_id(sql_table, pulldowns, url):
         # if there was no hit, append a null value
         if not query_hit:
             hit_ids.append(None)
-            print("Hit not Found!")
+            hit_gene_names.append(None)
+            print(" Hit not Found!")
 
         # save well id and design id for next iteration
         pwell_id = well_id
         pdesign_id = design_id
 
     sort_table['hit_id'] = hit_ids
+    sort_table['hit_id'] = sort_table['hit_id'].astype('Int64')
     sort_table['hit_gene_names'] = hit_gene_names
-    sort_table = sort_table.sort_values(['cluster', 'col_index', 'row_index'])
+    sort_table = sort_table.sort_values(['cluster_id', 'col_index', 'row_index'])
 
     return sort_table
+
+
+def poor_annotation_preys(network, annot, annot_score, target_col, prey_col):
+    """
+    Using a network of unique interactions, include preys that are poorly annotated
+    """
+
+    annot = annot[annot['Annotation'] >= annot_score]
+    network = network.copy()
+
+    network_genes = set(network[target_col].to_list() + network[prey_col].to_list())
+    annot['OC_prey'] = annot['Gene names'].apply(
+        lambda x: list(set(x).intersection(network_genes))
+    )
+    annot['OC_prey'] = annot['OC_prey'].apply(lambda x: ' '.join(x) if x else None)
+    annot = annot.sort_values(['OC_prey', 'Annotation'])
+
+    annot = annot[annot['OC_prey'].apply(lambda x: True if x else False)]
+
+    return annot
+
+
+def poor_annotation_prey_cluster(clusters, annot):
+    """
+    Use output from explode_cluster_group to append cluster information
+    """
+
+    clusters = clusters.copy()
+    annot = annot.copy()
+
+    annot.merge(clusters.rename(columns={'gene_names': 'OC_prey'}), how='left')
+
+    return annot
+
+
+def poor_annotation_prey_interactors(annot, network, target_col, prey_col):
+    """
+    Append a list of all interactors by the poorly annotated preys
+    """
+    annot = annot.copy()
+    network = network.copy()
+
+    annot['OC_prey_interactors'] = annot['OC_prey'].apply(
+        aux_poor_interactors, args=[network, target_col, prey_col])
+
+    annot['interactor_count'] = annot['OC_prey_interactors'].apply(len)
+
+    return annot
+
+
+def aux_poor_interactors(prey, network, target_col, prey_col):
+    """
+    aux function for poor_annotation_prey_interactors
+    """
+    network = network.copy()
+    interactors = []
+
+    # left side
+    left = network[network[target_col] == prey]
+    if left.shape[0] > 0:
+        interactors += left[prey_col].to_list()
+
+    # right side
+    right = network[network[prey_col] == prey]
+
+    if right.shape[0] > 0:
+        interactors += right[target_col].to_list()
+
+    return interactors

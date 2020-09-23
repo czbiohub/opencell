@@ -998,3 +998,6 @@ class MassSpecClusterHeatmap(Base):
 
     # many cluster rows to one mass spec hit
     hit = db.orm.relationship("MassSpecHit", uselist=False)
+
+    # The cluster heatmap needs to have a unique set of cluster_id, row and col index
+    __table_args__ = (db.UniqueConstraint(cluster_id, row_index, col_index, analysis_type),)

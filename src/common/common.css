@@ -6,7 +6,7 @@ html {
 }
 
 .body {
-    font-family: "avenir";
+    font-family: "Nunito Sans", sans-serif;
 	color: #333;
 	line-height: 1.15;
 }
@@ -70,7 +70,7 @@ button:focus {
 
 /* --------------------- custom div-based buttons --------------------- */
 .simple-button {
-    font-family: Helvetica;
+    /* font-family: Helvetica; */
     display: inline-block;
 	width: auto;
     cursor: pointer;
@@ -114,7 +114,7 @@ label.bp3-label {
 
 .bp3-button-custom {
 	/* font-family should match that of .simple-button in profile.css */
-	font-family: Helvetica;  
+	/* font-family: Helvetica;   */
 	border-radius: 5px;
 	background-image: none !important;
 	box-shadow: none !important;

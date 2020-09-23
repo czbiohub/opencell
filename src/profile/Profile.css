@@ -1,9 +1,9 @@
 
 .navbar-opencell-title {
-    font-family: "Helvetica Neue";
-    font-size: 40px;
-    font-weight: 100;
-    letter-spacing: 2px;
+    font-family: "Lato", sans-serif;
+    font-size: 44px;
+    font-weight: 200;
+    letter-spacing: 1px;
 }
 
 .navbar-search-textbox {
@@ -20,7 +20,7 @@
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-start;
-    font-family: "Helvetica Neue";
+    font-family: "Lato";
 }
 
 .clm-target-name {
@@ -29,8 +29,8 @@
 }
 
 .clm-protein-description {
-    font-size: 22px;
-    font-weight: 200;
+    font-size: 20px;
+    font-weight: 300;
 }
 
 .clm-item {
@@ -53,7 +53,7 @@
 
 .metadata-item-label {
     color: #aaa;
-    font-family: "Avenir";
+    font-family: "Nunito Sans";
 }
 
 .overflow-hidden {

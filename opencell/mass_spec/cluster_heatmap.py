@@ -53,6 +53,8 @@ def bait_leaves(matrix_df, method='average', metric='euclidean'):
 
     # Transpose to get linkages of baits
     matrix_df = matrix_df.T
+    if matrix_df.shape[0] < 2:
+        return matrix_df.index.to_list()
 
     bait_linkage = linkage(matrix_df, method=method, metric=metric, optimal_ordering=True)
 
@@ -72,6 +74,8 @@ def prey_leaves(matrix_df, method='average', metric='euclidean'):
 
     matrix_df = matrix_df.copy()
 
+    if matrix_df.shape[0] < 2:
+        return matrix_df.index.to_list()
 
     prey_linkage = linkage(matrix_df, method=method, metric=metric, optimal_ordering=True)
 
@@ -351,6 +355,8 @@ def return_cluster_members(designation, cluster_list):
     """
     aux function for generate_mpl_matrix
     """
+    if type(designation) == int:
+        designation = [designation]
     intersection = set(designation).intersection(set(cluster_list))
     if len(intersection) > 0:
         return True
@@ -358,14 +364,15 @@ def return_cluster_members(designation, cluster_list):
         return False
 
 
-def generate_mpl_matrix(stoichs, cluster_one, clusters, metric):
+def generate_mpl_matrix(stoichs, cluster_one, clusters, metric, cluster_col='mcl_cluster',
+        sparse=False):
     """ generate cluster dendrogram from listed clusters """
 
     stoichs = stoichs.copy()
     cluster_one = cluster_one.copy()
 
     # retrieve specified clusters
-    cluster_one = cluster_one[cluster_one['mcl_cluster'].apply(
+    cluster_one = cluster_one[cluster_one[cluster_col].apply(
         return_cluster_members, args=[clusters])]
 
     genes = cluster_one['gene_names'].to_list()
@@ -376,9 +383,13 @@ def generate_mpl_matrix(stoichs, cluster_one, clusters, metric):
     selected_stoichs.sort_values(
         by=metric, ascending=False, inplace=True)
     selected_stoichs.drop_duplicates(['target', 'prey'], inplace=True)
-    matrix = convert_to_sparse_matrix(selected_stoichs, metric=metric)
+    selected_stoichs = selected_stoichs[['target', 'prey', metric]]
+    if sparse:
+        matrix = convert_to_sparse_matrix(selected_stoichs, metric=metric)
 
-    return genes, selected_stoichs, matrix
+        return genes, selected_stoichs, matrix
+    else:
+        return genes, selected_stoichs
 
 
 def convert_to_sparse_matrix(double_df, metric='distance'):

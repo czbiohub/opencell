@@ -518,21 +518,20 @@ def pulldown_summary(plate, renamed, transformed, rep_re, pep_re):
     intensities = pd.DataFrame(intensity_df.sum(axis=0)).rename(columns={0:
         'total intensity'})
     intensities.index.rename('bait', inplace=True)
+    bait_list = intensities.index.to_list()
     intensities['total intensity'] = intensities['total intensity'].apply(np.log2)
     # import the peptides table to get total peptides identified for bait
     peptides = pd.read_csv(plate + 'peptides.txt', sep='\t', header=0,
         low_memory=False)
     pep_cols = list(peptides)
     pep_ids = [x for x in pep_cols if 'Identification type' in x]
-    new_ids = pys.new_col_names(pep_ids, [pep_re], [''])
-
 
     peptides = peptides[pep_ids]
-    peptides = pys.rename_cols(peptides, pep_ids, new_ids)
+    peptides = pys.rename_cols(peptides, pep_ids, bait_list)
 
     # Calculate total peptides identified by MSMS
     ms_counts = pd.DataFrame()
-    for col in new_ids:
+    for col in bait_list:
         try:
             ms_counts[col] = [peptides[col].value_counts()['By MS/MS']]
         except Exception:

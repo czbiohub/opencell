@@ -2,8 +2,7 @@ import * as d3 from 'd3';
 import React, { Component } from 'react';
 
 import classNames from 'classnames';
-import { Button, Radio, RadioGroup, MenuItem, Checkbox } from "@blueprintjs/core";
-import { Select } from "@blueprintjs/select";
+import { Button, Checkbox } from "@blueprintjs/core";
 
 import 'tachyons';
 import 'react-table/react-table.css';
@@ -18,31 +17,6 @@ import CellLineMetadata from './cellLineMetadata.jsx';
 import '../common/common.css';
 import '../profile/Profile.css';
 import './fovAnnotator.css';
-
-
-async function putData(url, data) {
-    const response = await fetch(url, {
-        method: 'PUT',
-        mode: 'cors',
-        cache: 'no-cache',
-        credentials: 'same-origin',
-        headers: {'Content-Type': 'application/json'},
-        referrerPolicy: 'no-referrer',
-        body: JSON.stringify(data),
-    });
-    return await response;
-}
-
-async function deleteData(url) {
-    const response = await fetch(url, {
-        method: 'DELETE',
-        mode: 'cors',
-        cache: 'no-cache',
-        credentials: 'same-origin',
-        referrerPolicy: 'no-referrer',
-    });
-    return await response;
-}
 
 
 function Thumbnail (props) {
@@ -274,7 +248,7 @@ export default class FovAnnotator extends Component {
             data.roi_position_left = this.state.pixelRoiLeft;
         }
 
-        putData(`${settings.apiUrl}/fovs/${this.state.fovId}/annotation`, data)
+        utils.putData(`${settings.apiUrl}/fovs/${this.state.fovId}/annotation`, data)
             .then(response => {
                 console.log(response.json());
                 if (!response.ok) throw new Error('Error submitting FOV annotation');
@@ -293,7 +267,7 @@ export default class FovAnnotator extends Component {
             submissionStatus: ''
         });
 
-        deleteData(`${settings.apiUrl}/fovs/${this.state.fovId}/annotation`)
+        utils.deleteData(`${settings.apiUrl}/fovs/${this.state.fovId}/annotation`)
             .then(response => {
                 console.log(response);
                 if (!response.ok) throw new Error('Error deleting FOV annotation');

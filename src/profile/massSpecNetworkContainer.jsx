@@ -1,6 +1,7 @@
 
 import * as d3 from 'd3';
 import React, { Component } from 'react';
+import { Button, Checkbox } from "@blueprintjs/core";
 import chroma from 'chroma-js';
 
 import cytoscape from 'cytoscape';
@@ -12,6 +13,7 @@ import nodeHtmlLabel from 'cytoscape-node-html-label';
 
 import ButtonGroup from './buttonGroup.jsx';
 import settings from '../common/settings.js';
+import * as utils from '../common/utils.js';
 
 import 'tachyons';
 import './Profile.css';
@@ -32,6 +34,8 @@ export default class MassSpecNetworkContainer extends Component {
             layoutName: 'cosebilkent',
 
             includeParentNodes: true,
+
+            showSavedNetwork: false,
 
             // placeholder for resetting the visualization
             resetPlotZoom: false,
@@ -267,8 +271,14 @@ export default class MassSpecNetworkContainer extends Component {
         };
 
         this.getData = this.getData.bind(this);
+        this.getNetworkElements = this.getNetworkElements.bind(this);
+        this.getSavedNetwork = this.getSavedNetwork.bind(this);
+
         this.getLayout = this.getLayout.bind(this);
         this.defineLabelEventHandlers = this.defineLabelEventHandlers.bind(this);
+
+        this.saveNetwork = this.saveNetwork.bind(this);
+        this.deleteSavedNetwork = this.deleteSavedNetwork.bind(this);
 
     }
 
@@ -280,35 +290,84 @@ export default class MassSpecNetworkContainer extends Component {
 
     componentDidUpdate (prevProps, prevState) {
 
+        // load the network data
         if (
             prevProps.pulldownId!==this.props.pulldownId || 
-            this.state.includeParentNodes!==prevState.includeParentNodes
+            this.state.includeParentNodes!==prevState.includeParentNodes ||
+            this.state.showSavedNetwork!==prevState.showSavedNetwork
         ) {
-            this.getData();
+            this.getData();    
         }
+
         else if (this.cy && this.state.loaded) {
             try {
 
-                // center and lock the target's node (this does not seem to apply to the layout)
-                const targetNode = this.cy.filter('node[type="bait"]');
-                //targetNode.position({x: 250, y: 250}).lock();
-                if (targetNode.isChild()) {
-                    //targetNode.parent().lock();
-                }
-
-                const allNodes = this.cy.filter('node');
+                // attempt to center and lock the target's node (this does not seem to apply to the layout)
+                // const targetNode = this.cy.filter('node[type="bait"]');
+                // targetNode.position({x: 250, y: 250}).lock();
+                // if (targetNode.isChild()) {
+                //     targetNode.parent().lock();
+                // }
 
                 this.cy.nodeHtmlLabel(this.nodeHtmlLabel);
-                const layout = this.cy.layout(this.getLayout());
-                layout.on('layoutstop', this.defineLabelEventHandlers);
-                layout.run();
-               //debugger;
+
+                // run the layout if the elements were loaded from scratch
+                if (!this.state.showSavedNetwork) {
+                    const layout = this.cy.layout(this.getLayout());
+                    layout.on('layoutstop', this.defineLabelEventHandlers);
+                    layout.run();
+
+                // only fit the graph to the container if the layout was loaded from
+                } else {
+                    // TODO: this does not work - label event handlers aren'tdefined
+                    this.cy.ready(this.defineLabelEventHandlers);
+                    this.cy.fit();
+                }
             }
             catch (err) {
                 console.log(err);
             }
         }
+    }
 
+    getData () {
+        if (this.state.showSavedNetwork) {
+            this.getSavedNetwork();
+        } else {
+            this.getNetworkElements();
+        }
+    }
+
+    saveNetwork () {
+        // save the network state
+
+        const data = {
+            cytoscape_json: this.cy.json(),
+            client_metadata: {last_modified: (new Date()).toString()}
+        };
+
+        this.setState({deletionStatus: ''});
+        utils.putData(`${settings.apiUrl}/pulldowns/${this.props.pulldownId}/network`, data)
+            .then(response => {
+                console.log(response.json());
+                if (!response.ok) throw new Error('Error saving cytoscape layout');
+                this.setState({submissionStatus: 'success', showSavedNetwork: true});
+            })
+            .catch(error => this.setState({submissionStatus: 'danger'}));
+    }
+
+
+    deleteSavedNetwork () {
+        // delete the saved network (if any)
+
+        this.setState({submissionStatus: ''});
+        utils.deleteData(`${settings.apiUrl}/pulldowns/${this.props.pulldownId}/network`)
+            .then(response => {
+                console.log(response);
+                if (!response.ok) throw new Error('Error deleting saved layout');
+                this.setState({deletionStatus: 'success'});
+            })
+            .catch(error => this.setState({deletionStatus: 'danger'}));
     }
 
 
@@ -345,26 +404,30 @@ export default class MassSpecNetworkContainer extends Component {
         return layout;
     }
 
-    getData () {
-        this.setState({loaded: false, loadingError: false});
+
+    getNetworkElements () {
+        // load the elements (nodes and edges) from the /interactions endpoint
+
+        this.setState({
+            loaded: false, 
+            loadingError: false,
+            submissionStatus: '',
+            deletionStatus: ''
+        });
+    
         const url = `${settings.apiUrl}/pulldowns/${this.props.pulldownId}/interactions`;
         d3.json(url).then(data => {
 
             // include only clusters with more than one node
             const clusters = data.clusters.filter(cluster => cluster.protein_group_ids.length > 1);
-
-            // lists of the node ids in each cluster (required for the CiSE layout)
-            this.clusterInfo = clusters.map(cluster => cluster.protein_group_ids);
-
-            // list of all cluster ids
             const clusterIds = [...new Set(clusters.map(cluster => cluster.cluster_id))];
+            
+            // add a placeholder id for the cluster of unclustered nodes
             const unclusteredClusterId = 'unclustered';
             clusterIds.push(unclusteredClusterId);
 
             // create parent nodes (id'd by clusterId) to represent the clusters
-            const parentNodes = clusterIds.map(clusterId => {
-                return {'data': {'id': clusterId}};
-            });
+            const parentNodes = clusterIds.map(clusterId => ({'data': {'id': clusterId}}));
 
             // assign parent nodes ids to each 'real' node
             data.nodes.forEach(node => {
@@ -375,11 +438,40 @@ export default class MassSpecNetworkContainer extends Component {
                 }
             });
             
+            let elements = [...data.nodes, ...data.edges];
             if (this.state.includeParentNodes) {
-                this.elements = [...parentNodes, ...data.nodes, ...data.edges];
-            } else {
-                this.elements = [...data.nodes, ...data.edges];
+                elements = [...parentNodes, ...elements];
             }
+
+            // lists of the node ids in each cluster (required for the CiSE layout)
+            this.clusterInfo = clusters.map(cluster => cluster.protein_group_ids);
+
+            this.elements = elements;
+            this.setState({loaded: true, loadingError: false});
+        },
+        error => {
+            this.elements = [];
+            this.setState({loaded: true, loadingError: true});
+        });
+    }
+
+
+    getSavedNetwork () {
+        // load a previously-saved network (nodes and edges and their positions) 
+
+        this.setState({
+            loaded: false, 
+            loadingError: false,
+            submissionStatus: '',
+            deletionStatus: ''
+        });
+
+        const url = `${settings.apiUrl}/pulldowns/${this.props.pulldownId}/network`;
+        d3.json(url).then(data => {
+            this.elements = [
+                ...data.cytoscape_json.elements.nodes,
+                ...data.cytoscape_json.elements.edges
+            ];
             this.setState({loaded: true, loadingError: false});
         },
         error => {
@@ -393,11 +485,11 @@ export default class MassSpecNetworkContainer extends Component {
         return (
             <div>
                 {/* display controls */}
-                <div className="flex pt3 pb2">
+                <div className="flex pb2">
 
                     {/* Top row - scatterplot controls */}
                     <div className='w-100 flex flex-wrap items-end'>
-                        <div className='pr2'>
+                        <div className='pt2 pr2'>
                             <ButtonGroup 
                                 label='Layout' 
                                 values={['circle', 'concentric', 'cose', 'fcose', 'cosebilkent', 'cise']}
@@ -406,38 +498,59 @@ export default class MassSpecNetworkContainer extends Component {
                                 onClick={value => this.setState({layoutName: value})}
                             />
                         </div>
-                        <div className='pr2'>
-                        <ButtonGroup 
-                            label='Use compound nodes for clusters' 
-                            values={[true, false]}
-                            labels={['Yes', 'No']}
-                            activeValue={this.state.includeParentNodes}
-                            onClick={value => this.setState({includeParentNodes: value})}
-                        />
+                        <div className='pt2 pr2'>
+                            <ButtonGroup 
+                                label='Use compound nodes' 
+                                values={[true, false]}
+                                labels={['Yes', 'No']}
+                                activeValue={this.state.includeParentNodes}
+                                onClick={value => this.setState({includeParentNodes: value})}
+                            />
                         </div>
-                        <div 
-                            className='f6 simple-button' 
-                            onClick={() => {}}
-                        >
+                        <div className='pt2 pr2'>
+                            <ButtonGroup 
+                                label='Show saved network' 
+                                values={[true, false]}
+                                labels={['Yes', 'No']}
+                                activeValue={this.state.showSavedNetwork}
+                                onClick={value => this.setState({showSavedNetwork: value})}
+                            />
+                        </div>
+                        <div className='f6 simple-button' onClick={() => {}}>
                             {'Reset'}
                         </div>
                     </div>
                 </div>
 
-                <div className="w-100 cluster-heatmap-container">
+                <div className="w-100 cytoscape-container">
                     {this.state.loaded ? (
                         <CytoscapeComponent
                             style={{width: '500px', height: '500px'}}
                             elements={this.elements}
                             stylesheet={this.style}
-                            zoom={1}
                             minZoom={0.5}
-                            maxZoom={3}
+                            maxZoom={3.0}
+                            zoom={1.0}
                             cy={cy => {this.cy = cy}}
                         />
                     ) : (
                         null
                     )}
+                </div>
+
+                <div className='w-100 flex'>
+                    <Button
+                        text={'Save network'}
+                        className={'ma2 bp3-button'}
+                        onClick={() => this.saveNetwork()}
+                        intent={this.state.submissionStatus || 'none'}
+                    />
+                    <Button
+                        text={'Delete saved network'}
+                        className={'ma2 bp3-button'}
+                        onClick={() => this.deleteSavedNetwork()}
+                        intent={this.state.deletionStatus || 'none'}
+                    />
                 </div>
             </div>
 

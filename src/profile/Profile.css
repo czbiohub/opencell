@@ -214,6 +214,11 @@
 
 
 /* --------------------- cytoscape network --------------------- */
+.cytoscape-container {
+    width: 500px;
+    height: 500px;
+}
+
 .cy-node-label-container {
     font-size: 8px;
     cursor: default;

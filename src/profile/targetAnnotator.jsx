@@ -6,6 +6,7 @@ import {Checkbox, Button} from '@blueprintjs/core';
 import 'tachyons';
 import "@blueprintjs/core/lib/css/blueprint.css";
 
+import * as utils from '../common/utils.js';
 import settings from '../common/settings.js';
 import '../common/common.css';
 import './Profile.css';
@@ -29,20 +30,6 @@ const qcLabels = [
     'Cross-contamination', 'Re-sort',
     'Interesting', 'Pretty', 'Mitotic cells'
 ];
-
-
-async function putData(url, data) {
-    const response = await fetch(url, {
-        method: 'PUT',
-        mode: 'cors',
-        cache: 'no-cache',
-        credentials: 'same-origin',
-        headers: {'Content-Type': 'application/json'},
-        referrerPolicy: 'no-referrer',
-        body: JSON.stringify(data),
-    });
-    return await response;
-}
 
 
 function CheckboxGroup (props) {
@@ -132,7 +119,7 @@ export default class TargetAnnotator extends Component {
             }
         };
 
-        putData(`${settings.apiUrl}/lines/${this.props.cellLineId}/annotation`, data)
+        utils.putData(`${settings.apiUrl}/lines/${this.props.cellLineId}/annotation`, data)
             .then(response => {
                 console.log(response);
                 if (!response.ok) throw new Error('Error submitting annotation');

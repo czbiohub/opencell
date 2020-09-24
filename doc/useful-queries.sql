@@ -1,7 +1,5 @@
 -- force drop all connections
-SELECT pg_terminate_backend(pid)
-FROM pg_stat_activity
-WHERE datname = 'opencelldb';
+SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'opencelldb';
 
 
 -- cell line metadata

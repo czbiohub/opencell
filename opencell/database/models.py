@@ -1128,8 +1128,7 @@ class MassSpecClusterHeatmap(Base):
     core_complex_id = db.Column(db.Integer, nullable=True)
 
     # hit id that the heatmap coordinate refers to in target-prey match
-    hit_id = db.Column(
-        db.Integer, db.ForeignKey('mass_spec_hit.id'), nullable=False)
+    hit_id = db.Column(db.Integer, db.ForeignKey('mass_spec_hit.id'), nullable=False)
 
     # row index of the heat map
     row_index = db.Column(db.Integer, nullable=False)
@@ -1141,7 +1140,7 @@ class MassSpecClusterHeatmap(Base):
     analysis_type = db.Column(db.String, nullable=False)
 
     # many cluster rows to one mass spec hit
-    hit = db.orm.relationship("MassSpecHit", uselist=False)
+    hit = db.orm.relationship('MassSpecHit', uselist=False)
 
     # The cluster heatmap needs to have a unique set of cluster_id, row and col index
     __table_args__ = (db.UniqueConstraint(cluster_id, row_index, col_index),)

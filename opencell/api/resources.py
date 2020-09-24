@@ -285,15 +285,29 @@ class PulldownInteractions(PulldownResource):
     @cache.cached(timeout=3600, key_prefix=cache_key)
     def get(self, pulldown_id):
 
-        # the protein groups in one or more heatmap clusters
+        args = flask.request.args
+        clustering_type = args.get('clustering_type')
+
+        # 'original' clustering
+        if clustering_type == 'original':
+            analysis_type = 'clusterone_d05_o01_mcl_i7_haircut'
+
+        # clustering from 2020-09-24 with subclusters and core complexes
+        if clustering_type == 'new':
+            analysis_type = (
+                'primary:mcl_i2.0_haircut:keepcore_subcluster:newman_eigen_corecomplex:newman_eigen'
+            )
+
         clusters = pd.read_sql(
-            '''
-            select cluster_id, protein_group_id from mass_spec_cluster_heatmap heatmap
-            inner join mass_spec_hit hit on hit.id = heatmap.hit_id;
+            f'''
+            select protein_group_id, cluster_id, subcluster_id, core_complex_id
+            from mass_spec_cluster_heatmap heatmap
+            inner join mass_spec_hit hit on hit.id = heatmap.hit_id
+            where analysis_type = '{analysis_type}'
             ''',
             flask.current_app.Session.get_bind()
         )
-        clusters = clusters.groupby(['cluster_id', 'protein_group_id']).first().reset_index()
+        clusters = clusters.groupby(['protein_group_id']).first().reset_index()
 
         pulldown = self.get_pulldown(pulldown_id)
         direct_hits = pulldown.get_significant_hits()
@@ -304,21 +318,19 @@ class PulldownInteractions(PulldownResource):
 
         # create a node to represent the target
         bait_hit = pulldown.get_bait_hit(only_one=True)
+        bait_node = {'type': 'bait', 'pulldown': pulldown}
         if bait_hit:
-            node = self.protein_group_to_node(bait_hit.protein_group)
-            node['type'] = 'bait'
-            nodes.append(node)
+            bait_node.update(self.protein_group_to_node(bait_hit.protein_group))
 
-        # if the target does not appear in the pulldown as a hit,
-        # manually construct a node to represent it
+        # if the target does not appear in its own pulldown as a hit,
+        # manually fill in the attributes populated by self.protein_group_to_node
         else:
-            node_id = 'bait-placeholder'
-            nodes.append({
-                'id': node_id,
+            bait_node.update({
+                'id': 'bait-placeholder',
                 'uniprot_gene_names': [],
                 'opencell_target_names': [pulldown.cell_line.crispr_design.target_name],
-                'type': 'bait',
             })
+        nodes.append(bait_node)
 
         # create nodes to represent the hits in the target's pulldown
         for direct_hit in direct_hits:
@@ -346,7 +358,8 @@ class PulldownInteractions(PulldownResource):
 
         all_node_ids = [node['id'] for node in nodes]
 
-        # dict of cluster_ids keyed by protein_group_id
+        # create dict of cluster_ids keyed by protein_group_id
+        # (used only to determine whether edges are inter- or intra-cluster)
         # (hack: takes the first cluster_id when a protein group has more than one)
         node_ids_to_cluster_ids = {}
         for protein_group_id in all_node_ids:
@@ -355,19 +368,14 @@ class PulldownInteractions(PulldownResource):
                 continue
             node_ids_to_cluster_ids[protein_group_id] = _clusters.iloc[0].cluster_id
 
-
         # the node id and cluster id of the bait node
-        bait_node_id = [node['id'] for node in nodes if node['type'] == 'bait'][0]
-        bait_node_cluster_id = node_ids_to_cluster_ids.get(bait_node_id)
+        # bait_node_id = [node['id'] for node in nodes if node['type'] == 'bait'][0]
 
         # generate the edges between direct nodes
         edges = []
         for node in nodes:
-
-            node_cluster_id = node_ids_to_cluster_ids.get(node['id'])
-
             if node['type'] == 'bait':
-                continue
+                indirect_hits = direct_hits
 
             # if the node represents a pulldown, we already have the list of indirect hits
             if node['type'] == 'pulldown':
@@ -389,7 +397,7 @@ class PulldownInteractions(PulldownResource):
                 # if the hit does correspond to an opencell target,
                 # find the best cell line corresponding to the hit's protein group
                 # note that this is complicated because there may be more than one crispr design
-                # for a given protein group, and because there may be more than one cell line per design
+                # for a protein group, and because there may be more than one cell line per design
                 # (e.g., for resorted targets)
                 node_pulldown = None
                 for design in designs:
@@ -405,72 +413,78 @@ class PulldownInteractions(PulldownResource):
             if not indirect_hits:
                 continue
 
+            node_cluster_id = node_ids_to_cluster_ids.get(node['id'])
             for indirect_hit in indirect_hits:
                 indirect_node_id = indirect_hit.protein_group.id
 
-                # if the hit of the hit is not among the direct hits, we don't include it
-                if (
-                    indirect_node_id not in all_node_ids
-                    or indirect_node_id == node['id']
-                    # or indirect_node_id == bait_node_id
-                ):
+                # if the hit of the node is not among the nodes, we don't need to create an edge
+                if indirect_node_id not in all_node_ids or indirect_node_id == node['id']:
                     continue
 
                 # if the edge is between nodes in the same cluster
-                intracluster_flag = bool(
+                edge_type = 'intercluster'
+                if (
                     node_cluster_id is not None
                     and node_cluster_id == node_ids_to_cluster_ids.get(indirect_node_id)
-                )
+                ):
+                    edge_type = 'intracluster'
 
-                # create the edge between the two direct hits
+                # create the edge between the two direct interactors
                 edges.append({
                     'id': '%s-%s' % (node['id'], indirect_node_id),
                     'source': node['id'],
                     'target': indirect_node_id,
-                    'type': 'prey-prey',
-                    'cluster_status': 'intracluster' if intracluster_flag else 'intercluster',
+                    'type': edge_type,
                 })
 
-
-        # create the edges between the bait and its interactors
-        for hit in direct_hits:
-            node_id = hit.protein_group.id
-            if node_id == bait_node_id:
-                continue
-
-            # if the edge is between nodes in the same cluster
-            intracluster_flag = bool(
-                bait_node_cluster_id is not None
-                and bait_node_cluster_id == node_ids_to_cluster_ids.get(node_id)
+        # all clusters in which more than one node appears
+        clusters = clusters.loc[clusters.protein_group_id.isin(all_node_ids)]
+        cluster_sizes = clusters.groupby('cluster_id').count().reset_index()
+        clusters = clusters.loc[
+            clusters.cluster_id.isin(
+                cluster_sizes.loc[cluster_sizes.protein_group_id > 1].cluster_id.values
             )
+        ]
 
-            edges.append({
-                'id': '%s-%s' % (bait_node_id, node_id),
-                'source': bait_node_id,
-                'target': node_id,
-                'type': 'bait-prey',
-                'cluster_status': 'intracluster' if intracluster_flag else 'intercluster',
-            })
-
-        # append cluster_ids to the nodes
+        # append cluster ids and parent node ids
         for node in nodes:
-            node['cluster_id'] = (
-                clusters.loc[clusters.protein_group_id == node['id']]
-                .cluster_id
-                .tolist()
-            )
+            row = clusters.loc[clusters.protein_group_id == node['id']]
+            if len(row):
+                row = row.iloc[0]
+                node['cluster_id'] = int(row.cluster_id) if not pd.isna(row.cluster_id) else None
+                node['subcluster_id'] = (
+                    int(row.subcluster_id) if not pd.isna(row.subcluster_id) else None
+                )
+
+            if node.get('subcluster_id'):
+                node['parent'] = '%s-%s' % (node.get('cluster_id'), node.get('subcluster_id'))
+            elif node.get('cluster_id'):
+                node['parent'] = '%s' % node.get('cluster_id')
+
+        # create the parent nodes for clusters
+        cluster_ids = [node['cluster_id'] for node in nodes if node.get('cluster_id') is not None]
+        parent_nodes = [{'id': '%s' % cluster_id} for cluster_id in list(set(cluster_ids))]
+
+        # create the parent nodes for subclusters
+        for node in nodes:
+            if node.get('subcluster_id') is None:
+                continue
+            parent_node_id = node.get('parent')
+            if parent_node_id in [node['id'] for node in parent_nodes]:
+                continue
+            parent_nodes.append({'id': parent_node_id, 'parent': node['cluster_id']})
 
         # create the lists of cluster members required by the CiSE cytoscape layout
-        cluster_groups = (
-            clusters.loc[clusters.protein_group_id.isin(all_node_ids)]
-            .groupby('cluster_id')
-            .groups
-        )
         cluster_defs = []
+        cluster_groups = clusters.groupby('cluster_id').groups
         for cluster_id, cluster_index in cluster_groups.items():
+            _clusters = clusters.loc[cluster_index]
             cluster_defs.append({
-                'cluster_id': cluster_id,
-                'protein_group_ids': clusters.loc[cluster_index].protein_group_id.tolist(),
+                'cluster_id': int(cluster_id),
+                'subcluster_ids': [
+                    int(_id) for _id in _clusters.subcluster_id.unique() if not pd.isna(_id)
+                ],
+                'protein_group_ids': _clusters.protein_group_id.tolist(),
             })
 
         # drop the pulldown and hit instances from the node dicts
@@ -479,6 +493,7 @@ class PulldownInteractions(PulldownResource):
             node.pop('pulldown', None)
 
         payload = {
+            'parent_nodes': [{'data': node} for node in parent_nodes],
             'nodes': [{'data': node} for node in nodes],
             'edges': [{'data': edge} for edge in edges],
             'metadata': pulldown.as_dict(),

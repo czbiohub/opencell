@@ -37,6 +37,8 @@ export default class MassSpecNetworkContainer extends Component {
 
             showSavedNetwork: false,
 
+            clusteringType: 'new',
+
             // placeholder for resetting the visualization
             resetPlotZoom: false,
 
@@ -48,21 +50,6 @@ export default class MassSpecNetworkContainer extends Component {
 
         this.style = [
             {
-                selector: ':parent',
-                style: {
-                    'shape': 'ellipse',
-                    'background-opacity': .2,
-                    'background-color': "#ffffa7",
-                    'border-opacity': 0,
-                    'border-width': 0.5,
-                    // 'label': 'data(id)',
-                }
-            },{
-                selector: 'node[id="unclustered"]:parent',
-                style: {
-                    'background-opacity': 0,
-                }
-            },{
                 selector: 'node',
                 style: {
                     height: 5,
@@ -71,6 +58,35 @@ export default class MassSpecNetworkContainer extends Component {
                     // turn off the overlay when the node is clicked
                     'overlay-padding': '0px',
                     'overlay-opacity': 0, 
+                }
+            },{
+                selector: 'node:parent',
+                style: {
+                    //'label': 'data(id)',
+                }
+            },{
+                selector: 'node[type="cluster"]:parent',
+                style: {
+                    'background-opacity': 0.2,
+                    'background-color': "#999",
+                    'border-opacity': 0,
+                    'border-width': 0.5,
+                }
+            },{
+                selector: 'node[type="subcluster"]:parent',
+                style: {
+                    'background-color': "#4096d4",
+                    'background-opacity': 0.1,
+                    'border-opacity': 0,
+                }
+            },{
+                selector: 'node[id="unclustered"]:parent',
+                style: {
+                    'border-color': "#aaa",
+                    'border-width': 2,
+                    'border-opacity': 0.5,
+                    'background-opacity': 0,
+
                 }
             },{
                 selector: 'node[type="bait"]',
@@ -160,7 +176,7 @@ export default class MassSpecNetworkContainer extends Component {
             nestingFactor: 1.0,
 
             // default 32
-            idealEdgeLength: (edge) => edge._private.data.cluster_status==='intracluster' ? 100 : 30,
+            idealEdgeLength: 100,
 
             // extra space between components(nodes?) in non-compound graphs
             // doesn't seem to have much of an effect
@@ -171,7 +187,7 @@ export default class MassSpecNetworkContainer extends Component {
             // note: this appears to be the inverse of the edgeElasticity
             // in the fcose and cose-bilkent layouts
             // default 32
-            edgeElasticity: edge => edge._private.data.cluster_status==='intracluster' ? 600 : 600,
+            edgeElasticity: 600,
 
             // node repulsion multiplier for overlapping nodes
             // default 4
@@ -217,24 +233,24 @@ export default class MassSpecNetworkContainer extends Component {
             name: 'cose-bilkent',
 
             // default 50
-            idealEdgeLength: 100,
+            idealEdgeLength: 20,
 
             // larger values yield tighter networks
             // default 0.45
-            edgeElasticity: 0.1,
+            edgeElasticity: 1,
 
             // default 4500
-            nodeRepulsion: 4500,
+            nodeRepulsion: 4000,
 
             // default 0.1
             // higher values yield better-separated compound nodes
-            nestingFactor: 1,
+            nestingFactor: 2,
 
             // default 0.25
             gravity: 0.25,
 
             gravityRangeCompound: 1.5,
-            gravityCompound: 1.0,
+            gravityCompound: 0.25,
             gravityRange: 3.8,
 
         };
@@ -294,7 +310,8 @@ export default class MassSpecNetworkContainer extends Component {
         if (
             prevProps.pulldownId!==this.props.pulldownId || 
             this.state.includeParentNodes!==prevState.includeParentNodes ||
-            this.state.showSavedNetwork!==prevState.showSavedNetwork
+            this.state.showSavedNetwork!==prevState.showSavedNetwork ||
+            this.state.clusteringType!==prevState.clusteringType
         ) {
             this.getData();    
         }
@@ -415,7 +432,7 @@ export default class MassSpecNetworkContainer extends Component {
             deletionStatus: ''
         });
     
-        const url = `${settings.apiUrl}/pulldowns/${this.props.pulldownId}/interactions`;
+        const url = `${settings.apiUrl}/pulldowns/${this.props.pulldownId}/interactions?clustering_type=${this.state.clusteringType}`;
         d3.json(url).then(data => {
 
             // include only clusters with more than one node
@@ -426,18 +443,20 @@ export default class MassSpecNetworkContainer extends Component {
             const unclusteredClusterId = 'unclustered';
             clusterIds.push(unclusteredClusterId);
 
-            // create parent nodes (id'd by clusterId) to represent the clusters
-            const parentNodes = clusterIds.map(clusterId => ({'data': {'id': clusterId}}));
-
-            // assign parent nodes ids to each 'real' node
-            data.nodes.forEach(node => {
-                if (node.data.cluster_id.length && clusterIds.includes(node.data.cluster_id[0])) {
-                    node.data.parent = node.data.cluster_id[0]
-                } else {
-                    node.data.parent = unclusteredClusterId;
-                }
+            // create a parent node for the unclustered cluster
+            const parentNodes = data.parent_nodes;
+            parentNodes.push({data: {id: unclusteredClusterId}});
+            
+            // assign types to the parent nodes
+            parentNodes.forEach(node => {
+                node.data.type = node.data.parent ? 'subcluster' : 'cluster'
             });
             
+            // assign parent node id to the unclustered nodes
+            data.nodes.forEach(node => {
+                if (!node.data.parent) node.data.parent = unclusteredClusterId;
+            });
+        
             let elements = [...data.nodes, ...data.edges];
             if (this.state.includeParentNodes) {
                 elements = [...parentNodes, ...elements];
@@ -496,6 +515,15 @@ export default class MassSpecNetworkContainer extends Component {
                                 labels={['Circle', 'Concentric', 'CoSE', 'fCoSE', 'CoSE-Bilkent', 'CiSE']}
                                 activeValue={this.state.layoutName}
                                 onClick={value => this.setState({layoutName: value})}
+                            />
+                        </div>
+                        <div className='pt2 pr2'>
+                            <ButtonGroup 
+                                label='Clustering type' 
+                                values={['original', 'new']}
+                                labels={['Original', 'New']}
+                                activeValue={this.state.clusteringType}
+                                onClick={value => this.setState({clusteringType: value})}
                             />
                         </div>
                         <div className='pt2 pr2'>

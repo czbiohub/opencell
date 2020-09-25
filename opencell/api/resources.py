@@ -286,17 +286,23 @@ class PulldownInteractions(PulldownResource):
     def get(self, pulldown_id):
 
         args = flask.request.args
-        clustering_type = args.get('clustering_type')
+        analysis_type = args.get('analysis_type')
+        subcluster_type = args.get('subcluster_type')
 
         # 'original' clustering
-        if clustering_type == 'original':
+        if analysis_type == 'original':
             analysis_type = 'clusterone_d05_o01_mcl_i7_haircut'
 
         # clustering from 2020-09-24 with subclusters and core complexes
-        if clustering_type == 'new':
+        if analysis_type == 'new':
             analysis_type = (
                 'primary:mcl_i2.0_haircut:keepcore_subcluster:newman_eigen_corecomplex:newman_eigen'
             )
+
+        if subcluster_type == 'subclusters':
+            subcluster_id_column = 'subcluster_id'
+        if subcluster_type == 'core-complexes':
+            subcluster_id_column = 'core_complex_id'
 
         clusters = pd.read_sql(
             f'''
@@ -307,6 +313,8 @@ class PulldownInteractions(PulldownResource):
             ''',
             flask.current_app.Session.get_bind()
         )
+
+        # cluster memberships are the same for all hits with the same protein group (by design)
         clusters = clusters.groupby(['protein_group_id']).first().reset_index()
 
         pulldown = self.get_pulldown(pulldown_id)
@@ -453,7 +461,7 @@ class PulldownInteractions(PulldownResource):
                 row = row.iloc[0]
                 node['cluster_id'] = int(row.cluster_id) if not pd.isna(row.cluster_id) else None
                 node['subcluster_id'] = (
-                    int(row.subcluster_id) if not pd.isna(row.subcluster_id) else None
+                    int(row[subcluster_id_column]) if not pd.isna(row[subcluster_id_column]) else None
                 )
 
             if node.get('subcluster_id'):
@@ -482,7 +490,7 @@ class PulldownInteractions(PulldownResource):
             cluster_defs.append({
                 'cluster_id': int(cluster_id),
                 'subcluster_ids': [
-                    int(_id) for _id in _clusters.subcluster_id.unique() if not pd.isna(_id)
+                    int(_id) for _id in _clusters[subcluster_id_column].unique() if not pd.isna(_id)
                 ],
                 'protein_group_ids': _clusters.protein_group_id.tolist(),
             })

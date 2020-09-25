@@ -37,7 +37,9 @@ export default class MassSpecNetworkContainer extends Component {
 
             showSavedNetwork: false,
 
-            clusteringType: 'new',
+            clusteringAnalysisType: 'new',
+
+            subclusterType: 'subclusters',
 
             // placeholder for resetting the visualization
             resetPlotZoom: false,
@@ -80,13 +82,12 @@ export default class MassSpecNetworkContainer extends Component {
                     'border-opacity': 0,
                 }
             },{
-                selector: 'node[id="unclustered"]:parent',
+                selector: 'node[id="unclustered"]:parent,node[type="unsubclustered"]:parent',
                 style: {
                     'border-color': "#aaa",
                     'border-width': 2,
                     'border-opacity': 0.5,
                     'background-opacity': 0,
-
                 }
             },{
                 selector: 'node[type="bait"]',
@@ -311,7 +312,8 @@ export default class MassSpecNetworkContainer extends Component {
             prevProps.pulldownId!==this.props.pulldownId || 
             this.state.includeParentNodes!==prevState.includeParentNodes ||
             this.state.showSavedNetwork!==prevState.showSavedNetwork ||
-            this.state.clusteringType!==prevState.clusteringType
+            this.state.clusteringAnalysisType!==prevState.clusteringAnalysisType ||
+            this.state.subclusterType!==prevState.subclusterType
         ) {
             this.getData();    
         }
@@ -432,34 +434,65 @@ export default class MassSpecNetworkContainer extends Component {
             deletionStatus: ''
         });
     
-        const url = `${settings.apiUrl}/pulldowns/${this.props.pulldownId}/interactions?clustering_type=${this.state.clusteringType}`;
+        const url = (
+            `${settings.apiUrl}/pulldowns/${this.props.pulldownId}/interactions?` +
+            `analysis_type=${this.state.clusteringAnalysisType}&` +
+            `subcluster_type=${this.state.subclusterType}`
+        );
+    
         d3.json(url).then(data => {
 
             // include only clusters with more than one node
             const clusters = data.clusters.filter(cluster => cluster.protein_group_ids.length > 1);
             const clusterIds = [...new Set(clusters.map(cluster => cluster.cluster_id))];
-            
-            // add a placeholder id for the cluster of unclustered nodes
-            const unclusteredClusterId = 'unclustered';
-            clusterIds.push(unclusteredClusterId);
 
-            // create a parent node for the unclustered cluster
             const parentNodes = data.parent_nodes;
-            parentNodes.push({data: {id: unclusteredClusterId}});
-            
+
             // assign types to the parent nodes
             parentNodes.forEach(node => {
                 node.data.type = node.data.parent ? 'subcluster' : 'cluster'
             });
+
+            // the ids of the parent nodes that correspond to clusters
+            const clusterParentNodeIds = parentNodes
+                .filter(node => node.data.type==='cluster')
+                .map(node => node.data.id);
             
-            // assign parent node id to the unclustered nodes
+            // create parent nodes for the un-subclustered nodes in each cluster
+            const unsubclusteredParentNodes = [];
             data.nodes.forEach(node => {
-                if (!node.data.parent) node.data.parent = unclusteredClusterId;
+        
+                // if the node is in a real subcluster, we don't need to do anything
+                if (!clusterParentNodeIds.includes(node.data.parent)) return;
+
+                const clusterId = node.data.parent;
+                const newId = `${clusterId}-'unclustered`;
+                node.data.parent = newId;
+
+                // if a parent node for this cluster already exists, don't create it
+                if (unsubclusteredParentNodes.map(node => node.data.id).includes(newId)) return;
+
+                unsubclusteredParentNodes.push({
+                    data: {
+                        id: newId, 
+                        parent: clusterId, 
+                        type: 'unsubclustered',
+                    }
+                });
+            });
+
+            // create a parent node for the unclustered nodes
+            const unclusteredParentNodeId = 'unclustered';
+            const unclusteredParentNode = {data: {id: unclusteredParentNodeId}};
+            
+            // make this node the parent of the unclustered nodes
+            data.nodes.forEach(node => {
+                if (!node.data.parent) node.data.parent = unclusteredParentNodeId;
             });
         
             let elements = [...data.nodes, ...data.edges];
             if (this.state.includeParentNodes) {
-                elements = [...parentNodes, ...elements];
+                elements = [...parentNodes, unclusteredParentNode, ...unsubclusteredParentNodes, ...elements];
             }
 
             // lists of the node ids in each cluster (required for the CiSE layout)
@@ -522,8 +555,17 @@ export default class MassSpecNetworkContainer extends Component {
                                 label='Clustering type' 
                                 values={['original', 'new']}
                                 labels={['Original', 'New']}
-                                activeValue={this.state.clusteringType}
-                                onClick={value => this.setState({clusteringType: value})}
+                                activeValue={this.state.clusteringAnalysisType}
+                                onClick={value => this.setState({clusteringAnalysisType: value})}
+                            />
+                        </div>
+                        <div className='pt2 pr2'>
+                            <ButtonGroup 
+                                label='Subcluster type' 
+                                values={['core-complexes', 'subclusters']}
+                                labels={['Core complexes', 'Subclusters']}
+                                activeValue={this.state.subclusterType}
+                                onClick={value => this.setState({subclusterType: value})}
                             />
                         </div>
                         <div className='pt2 pr2'>
@@ -556,7 +598,7 @@ export default class MassSpecNetworkContainer extends Component {
                             style={{width: '500px', height: '500px'}}
                             elements={this.elements}
                             stylesheet={this.style}
-                            minZoom={0.5}
+                            minZoom={0.1}
                             maxZoom={3.0}
                             zoom={1.0}
                             cy={cy => {this.cy = cy}}

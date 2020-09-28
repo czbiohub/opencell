@@ -382,6 +382,8 @@ class PulldownInteractions(PulldownResource):
         # generate the edges between direct nodes
         edges = []
         for node in nodes:
+            indirect_hits = None
+
             if node['type'] == 'bait':
                 indirect_hits = direct_hits
 
@@ -400,7 +402,7 @@ class PulldownInteractions(PulldownResource):
                 # we do not need to generate edges between the hit and the other hits
                 num_distinct_designs = len(set([d.uniprot_id for d in designs]))
                 if not designs or num_distinct_designs > 1:
-                    indirect_hits = None
+                    continue
 
                 # if the hit does correspond to an opencell target,
                 # find the best cell line corresponding to the hit's protein group
@@ -413,12 +415,8 @@ class PulldownInteractions(PulldownResource):
                     if cell_line:
                         node_pulldown = cell_line.get_best_pulldown()
                         if node_pulldown:
+                            indirect_hits = node_pulldown.get_significant_hits(eagerload=False)
                             break
-
-                # the hit's target's hits
-                indirect_hits = None
-                if node_pulldown:
-                    indirect_hits = node_pulldown.get_significant_hits(eagerload=False)
 
             if not indirect_hits:
                 continue

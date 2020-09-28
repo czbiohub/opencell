@@ -902,41 +902,51 @@ class MassSpecPulldown(Base):
         return self.cell_line.crispr_design.target_name
 
 
-    def get_significant_hits(self):
+    def get_significant_hits(self, eagerload=True):
         '''
         Retrieve the significant hits and eager-load their protein groups
         and the protein groups' crispr designs and uniprot metadata
         '''
-        significant_hits = (
+        query = (
             db.orm.object_session(self).query(MassSpecHit)
-            .options(
-                db.orm.joinedload(MassSpecHit.protein_group, innerjoin=True)
-                    .joinedload(MassSpecProteinGroup.crispr_designs),
-                db.orm.joinedload(MassSpecHit.protein_group, innerjoin=True)
-                    .joinedload(MassSpecProteinGroup.uniprot_metadata),
-            )
+            .options(db.orm.joinedload(MassSpecHit.protein_group, innerjoin=True))
             .filter(MassSpecHit.pulldown_id == self.id)
             .filter(db.or_(
                 MassSpecHit.is_minor_hit == True,  # noqa
                 MassSpecHit.is_significant_hit == True  # noqa
             ))
-            .all()
         )
+
+        if eagerload:
+            query = query.options(
+                db.orm.joinedload(MassSpecHit.protein_group, innerjoin=True)
+                    .joinedload(MassSpecProteinGroup.crispr_designs),
+                db.orm.joinedload(MassSpecHit.protein_group, innerjoin=True)
+                    .joinedload(MassSpecProteinGroup.uniprot_metadata),
+            )
+
+        significant_hits = query.all()
         return significant_hits
 
 
     def get_bait_hit(self, only_one=False):
         '''
-        Get the hit that corresponds to the pulldown's target/bait
+        Get the hit(s) that corresponds to the pulldown's target/bait
         Returns none if the bait does not appear among the hits
-        Assumes that the hits have been eager-loaded
         '''
-        bait_hits = []
-        for hit in self.hits:
-            if hit.is_significant_hit or hit.is_minor_hit:
-                design_ids = [design.id for design in hit.protein_group.crispr_designs]
-                if self.cell_line.crispr_design.id in design_ids:
-                    bait_hits.append(hit)
+        bait_hits = (
+            db.orm.object_session(self).query(MassSpecHit)
+            .join(MassSpecProteinGroup)
+            .join(ProteinGroupCrisprDesignAssociation)
+            .join(CrisprDesign)
+            .filter(MassSpecHit.pulldown_id == self.id)
+            .filter(db.or_(
+                MassSpecHit.is_minor_hit == True,  # noqa
+                MassSpecHit.is_significant_hit == True  # noqa
+            ))
+            .filter(CrisprDesign.id == self.cell_line.crispr_design.id)
+            .all()
+        )
 
         if not bait_hits:
             return None
@@ -945,6 +955,7 @@ class MassSpecPulldown(Base):
             # return the hit with the greatest enrichment
             bait_hits = sorted(bait_hits, key=lambda hit: -hit.enrichment)
             return bait_hits[0]
+
         return bait_hits
 
 
@@ -954,8 +965,8 @@ class MassSpecPulldown(Base):
         interacting_pulldowns = (
             db.orm.object_session(self).query(MassSpecPulldown).join(MassSpecHit)
             .filter(db.or_(
-                MassSpecPulldown.manual_display_flag == None,
-                MassSpecPulldown.manual_display_flag == True
+                MassSpecPulldown.manual_display_flag == None,  # noqa
+                MassSpecPulldown.manual_display_flag == True  # noqa
             ))
             .filter(MassSpecPulldown.id != self.id)
             .filter(
@@ -967,10 +978,6 @@ class MassSpecPulldown(Base):
                 MassSpecHit.is_minor_hit == True,  # noqa
                 MassSpecHit.is_significant_hit == True  # noqa
             ))
-            .options(
-                db.orm.joinedload(MassSpecPulldown.hits, innerjoin=True)
-                .joinedload(MassSpecHit.protein_group, innerjoin=True)
-            )
             .all()
         )
         return interacting_pulldowns

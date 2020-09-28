@@ -14,6 +14,9 @@ import nodeHtmlLabel from 'cytoscape-node-html-label';
 import ButtonGroup from './buttonGroup.jsx';
 import settings from '../common/settings.js';
 import * as utils from '../common/utils.js';
+import networkLayouts from './massSpecNetworkLayouts.js';
+import networkStylesheet from './massSpecNetworkStylesheet.js';
+
 
 import 'tachyons';
 import './Profile.css';
@@ -31,14 +34,16 @@ export default class MassSpecNetworkContainer extends Component {
 
         this.state = {
 
-            layoutName: 'cosebilkent',
+            layoutName: 'coseb',
 
             includeParentNodes: true,
 
             showSavedNetwork: false,
 
+            // 'original' or 'new'
             clusteringAnalysisType: 'new',
 
+            // 'subclusters' or 'core-complexes'
             subclusterType: 'subclusters',
 
             // placeholder for resetting the visualization
@@ -49,97 +54,6 @@ export default class MassSpecNetworkContainer extends Component {
         };
     
         this.elements = [];
-
-        this.style = [
-            {
-                selector: 'node',
-                style: {
-                    height: 5,
-                    width: 5,
-                    'background-color': '#555',
-                    // turn off the overlay when the node is clicked
-                    'overlay-padding': '0px',
-                    'overlay-opacity': 0, 
-                }
-            },{
-                selector: 'node:parent',
-                style: {
-                    //'label': 'data(id)',
-                }
-            },{
-                selector: 'node[type="cluster"]:parent',
-                style: {
-                    'background-opacity': 0.2,
-                    'background-color': "#999",
-                    'border-opacity': 0,
-                    'border-width': 0.5,
-                }
-            },{
-                selector: 'node[type="subcluster"]:parent',
-                style: {
-                    'background-color': "#4096d4",
-                    'background-opacity': 0.1,
-                    'border-opacity': 0,
-                }
-            },{
-                selector: 'node[id="unclustered"]:parent,node[type="unsubclustered"]:parent',
-                style: {
-                    'border-color': "#aaa",
-                    'border-width': 2,
-                    'border-opacity': 0.5,
-                    'background-opacity': 0,
-                }
-            },{
-                selector: 'node[type="bait"]',
-                style: {
-                    'background-color': '#51ade1',
-                    'opacity': 1.0,
-                }
-            },{
-                selector: 'node[type="hit"]',
-                style: {
-                    'background-color': '#ff827d',
-                    'opacity': 1.0,
-                }
-            },{
-                selector: 'edge',
-                style: {
-                    width: 0.5,
-                    'line-color': "#333",
-
-                    // haystack without arrows
-                    opacity: 0.10,
-                    "curve-style": "haystack",
-
-                    // bezier with arrows
-                    // opacity: 0.5,
-                    // "curve-style": "bezier",
-                    // "target-arrow-shape": "triangle-backcurve",
-                    // "arrow-scale": 0.5,
-                    // "target-arrow-color": "#333",
-
-                    // this turns off overlay and disables clicking/dragging the edges
-                    'overlay-opacity': 0,
-                }
-            },{
-                selector: '.hovered-node-edge',
-                style: {
-                    'width': 0.5,
-                    'opacity': 0.9,
-                    'line-color': "#000",
-                },
-            },{
-                selector: 'edge[cluster_status="intracluster"]',
-                style: {
-                    //'line-color': "red",
-                }
-            },{
-                selector: 'edge[cluster_status="intercluster"]',
-                style: {
-                    //'line-color': "blue",
-                }
-            }
-        ];
 
         this.nodeHtmlLabel = [
             {
@@ -166,137 +80,13 @@ export default class MassSpecNetworkContainer extends Component {
             }
         ];
 
-        this.coseLayout = {
-            name: 'cose',
-
-            // multiplier for ideal edge length for 'nested' edges
-            // TODO: what are nested edges?
-            // small values (less than 1) yield overlapped nodes 
-            // 10 yields very large compound node rectangles
-            // default 1.2
-            nestingFactor: 1.0,
-
-            // default 32
-            idealEdgeLength: 100,
-
-            // extra space between components(nodes?) in non-compound graphs
-            // doesn't seem to have much of an effect
-            // default 40
-            componentSpacing: 40,
-
-            // smaller elasticity yields tighter networks
-            // note: this appears to be the inverse of the edgeElasticity
-            // in the fcose and cose-bilkent layouts
-            // default 32
-            edgeElasticity: 600,
-
-            // node repulsion multiplier for overlapping nodes
-            // default 4
-            nodeOverlap: 4,
-
-            // node repulsion multiplier for non-overlapping nodes
-            // default 2048
-            nodeRepulsion: 4000,
-
-            // gravity force
-            // default is 1.0
-            gravity: 1.0,
-
-        };
-
-        this.fcoseLayout = {
-            name: 'fcose',
-            uniformNodeDimensions: true,
-
-            // default 0.1
-            nestingFactor: 1,
-
-            idealEdgeLength: 100,
-
-            // divisor to compute edge forces
-            // very large values (e.g. 1000) yield stacked nodes
-            // default 0.45
-            edgeElasticity: 0.1,
-
-            // separation between nodes (this is specific to fcose)
-            // small values (e.g. 1) encourage stacked nodes
-            // default 75
-            nodeSeparation: 75,
-
-            // default 4500
-            // small values seem to encourage stacked nodes
-            nodeRepulsion: 4500,
-
-            // gravity: 1,
-        };
-
-        this.coseBilkentLayout = {
-            name: 'cose-bilkent',
-
-            // default 50
-            idealEdgeLength: 20,
-
-            // larger values yield tighter networks
-            // default 0.45
-            edgeElasticity: 1,
-
-            // default 4500
-            nodeRepulsion: 4000,
-
-            // default 0.1
-            // higher values yield better-separated compound nodes
-            nestingFactor: 2,
-
-            // default 0.25
-            gravity: 0.25,
-
-            gravityRangeCompound: 1.5,
-            gravityCompound: 0.25,
-            gravityRange: 3.8,
-
-        };
-
-        this.circleLayout = {
-            name: 'circle',
-            radius: 150,
-            spacingFactor: 1.0
-        };
-
-        this.concentricLayout = {
-            name: 'concentric',
-        };
-
-        this.ciseLayout = {
-            name: 'cise',
-            animate: false,
-
-            // separation between nodes in a cluster
-            // higher values increase simulation time
-            // default 12.5
-            nodeSeparation: 10,
-
-            // inter-cluster edge length relative to intra-cluster edges 
-            // default 1.2
-            idealInterClusterEdgeLengthCoefficient: 1.2,
-
-            // higher spring coeffs give tighter clusters
-            // default 0.45
-            springCoeff: 0.3,
-
-            // default 4500
-            nodeRepulsion: 2000,
-        };
-
         this.getData = this.getData.bind(this);
-        this.getNetworkElements = this.getNetworkElements.bind(this);
-        this.getSavedNetwork = this.getSavedNetwork.bind(this);
-
         this.getLayout = this.getLayout.bind(this);
-        this.defineLabelEventHandlers = this.defineLabelEventHandlers.bind(this);
-
+        this.getSavedNetwork = this.getSavedNetwork.bind(this);
+        this.getNetworkElements = this.getNetworkElements.bind(this);
         this.saveNetwork = this.saveNetwork.bind(this);
         this.deleteSavedNetwork = this.deleteSavedNetwork.bind(this);
-
+        this.defineLabelEventHandlers = this.defineLabelEventHandlers.bind(this);
     }
 
     componentDidMount() {
@@ -358,13 +148,10 @@ export default class MassSpecNetworkContainer extends Component {
     }
 
     saveNetwork () {
-        // save the network state
-
         const data = {
             cytoscape_json: this.cy.json(),
             client_metadata: {last_modified: (new Date()).toString()}
         };
-
         this.setState({deletionStatus: ''});
         utils.putData(`${settings.apiUrl}/pulldowns/${this.props.pulldownId}/network`, data)
             .then(response => {
@@ -377,8 +164,6 @@ export default class MassSpecNetworkContainer extends Component {
 
 
     deleteSavedNetwork () {
-        // delete the saved network (if any)
-
         this.setState({submissionStatus: ''});
         utils.deleteData(`${settings.apiUrl}/pulldowns/${this.props.pulldownId}/network`)
             .then(response => {
@@ -398,7 +183,6 @@ export default class MassSpecNetworkContainer extends Component {
                 const targetName = d3.select(this).text();
                 changeTarget(targetName);
             });
-
         d3.selectAll(".cy-node-label-container")
             .on('mouseover', function (event) {
                 const nodeId = d3.select(this).attr("id");
@@ -412,14 +196,8 @@ export default class MassSpecNetworkContainer extends Component {
 
 
     getLayout () {
-        let layout;
-        const layoutName = this.state.layoutName;
-        if (layoutName==='cose') layout = this.coseLayout;
-        if (layoutName==='fcose') layout = this.fcoseLayout;
-        if (layoutName==='cosebilkent') layout = this.coseBilkentLayout;
-        if (layoutName==='circle') layout = this.circleLayout;
-        if (layoutName==='concentric') layout = this.concentricLayout;
-        if (layoutName==='cise') layout = {...this.ciseLayout, clusters: this.clusterInfo};
+        let layout = networkLayouts[this.state.layoutName];
+        if (this.state.layoutName==='cise') layout = {...layout, clusters: this.clusterInfo};
         return layout;
     }
 
@@ -445,10 +223,9 @@ export default class MassSpecNetworkContainer extends Component {
             // include only clusters with more than one node
             const clusters = data.clusters.filter(cluster => cluster.protein_group_ids.length > 1);
             const clusterIds = [...new Set(clusters.map(cluster => cluster.cluster_id))];
-
             const parentNodes = data.parent_nodes;
 
-            // assign types to the parent nodes
+            // whether each parent node represents a cluster or subcluster
             parentNodes.forEach(node => {
                 node.data.type = node.data.parent ? 'subcluster' : 'cluster'
             });
@@ -471,7 +248,6 @@ export default class MassSpecNetworkContainer extends Component {
 
                 // if a parent node for this cluster already exists, don't create it
                 if (unsubclusteredParentNodes.map(node => node.data.id).includes(newId)) return;
-
                 unsubclusteredParentNodes.push({
                     data: {
                         id: newId, 
@@ -495,7 +271,7 @@ export default class MassSpecNetworkContainer extends Component {
                 elements = [...parentNodes, unclusteredParentNode, ...unsubclusteredParentNodes, ...elements];
             }
 
-            // lists of the node ids in each cluster (required for the CiSE layout)
+            // lists of the node ids in each cluster (only required for the CiSE layout)
             this.clusterInfo = clusters.map(cluster => cluster.protein_group_ids);
 
             this.elements = elements;
@@ -509,15 +285,12 @@ export default class MassSpecNetworkContainer extends Component {
 
 
     getSavedNetwork () {
-        // load a previously-saved network (nodes and edges and their positions) 
-
         this.setState({
             loaded: false, 
             loadingError: false,
             submissionStatus: '',
             deletionStatus: ''
         });
-
         const url = `${settings.apiUrl}/pulldowns/${this.props.pulldownId}/network`;
         d3.json(url).then(data => {
             this.elements = [
@@ -544,7 +317,7 @@ export default class MassSpecNetworkContainer extends Component {
                         <div className='pt2 pr2'>
                             <ButtonGroup 
                                 label='Layout' 
-                                values={['circle', 'concentric', 'cose', 'fcose', 'cosebilkent', 'cise']}
+                                values={['circle', 'concentric', 'cose', 'fcose', 'coseb', 'cise']}
                                 labels={['Circle', 'Concentric', 'CoSE', 'fCoSE', 'CoSE-Bilkent', 'CiSE']}
                                 activeValue={this.state.layoutName}
                                 onClick={value => this.setState({layoutName: value})}
@@ -597,7 +370,7 @@ export default class MassSpecNetworkContainer extends Component {
                         <CytoscapeComponent
                             style={{width: '500px', height: '500px'}}
                             elements={this.elements}
-                            stylesheet={this.style}
+                            stylesheet={networkStylesheet}
                             minZoom={0.1}
                             maxZoom={3.0}
                             zoom={1.0}

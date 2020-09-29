@@ -65,7 +65,7 @@ export default class MassSpecPlotContainer extends Component {
                 <div className="w-100 scatterplot-container" style={{marginLeft: -20}}>
                     <MassSpecScatterPlot
                         mode={this.state.plotMode}
-                        cellLineId={this.props.cellLineId}
+                        pulldownId={this.props.pulldownId}
                         changeTarget={this.props.changeTarget}
                         showCaptions={this.state.showPlotCaptions}
                         resetZoom={this.state.resetPlotZoom}

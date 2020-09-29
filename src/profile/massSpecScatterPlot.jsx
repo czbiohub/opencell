@@ -127,7 +127,7 @@ export default class MassSpecScatterPlot extends Component {
 
     componentDidMount() {
         this.createScatterPlot();
-        if (this.props.cellLineId) {
+        if (this.props.pulldownId) {
             this.constructData();
             this.updateScatterPlot();
         }
@@ -135,7 +135,7 @@ export default class MassSpecScatterPlot extends Component {
 
 
     componentDidUpdate (prevProps) {
-        if (prevProps.cellLineId!==this.props.cellLineId) {
+        if (prevProps.pulldownId!==this.props.pulldownId) {
             this.constructData();
             this.resetZoom();
         }
@@ -156,7 +156,7 @@ export default class MassSpecScatterPlot extends Component {
         // fetch the pulldown metadata and the hits from the backend
 
         this.setState({loaded: false});
-        const url = `${settings.apiUrl}/lines/${this.props.cellLineId}/pulldown_hits`;
+        const url = `${settings.apiUrl}/pulldowns/${this.props.pulldownId}/hits`;
         d3.json(url).then(data => {
 
             let sigHits = data.significant_hits;

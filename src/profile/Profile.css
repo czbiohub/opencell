@@ -1,10 +1,9 @@
 
-
 .navbar-opencell-title {
-    font-family: "Helvetica Neue";
-    font-size: 40px;
-    font-weight: 100;
-    letter-spacing: 2px;
+    font-family: "Lato", sans-serif;
+    font-size: 44px;
+    font-weight: 200;
+    letter-spacing: 1px;
 }
 
 .navbar-search-textbox {
@@ -16,12 +15,12 @@
 }
 
 
-
+/* --------------------- cell line and FOV metadata --------------------- */
 .clm-container {
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-start;
-    font-family: "Helvetica Neue";
+    font-family: "Lato";
 }
 
 .clm-target-name {
@@ -30,8 +29,8 @@
 }
 
 .clm-protein-description {
-    font-size: 22px;
-    font-weight: 200;
+    font-size: 20px;
+    font-weight: 300;
 }
 
 .clm-item {
@@ -39,7 +38,6 @@
 }
 
 /* .clm-item:last-child { border: none; } */
-
 
 .metadata-item {
     margin-right: 25px;
@@ -55,7 +53,7 @@
 
 .metadata-item-label {
     color: #aaa;
-    font-family: "Avenir";
+    font-family: "Nunito Sans";
 }
 
 .overflow-hidden {
@@ -65,7 +63,7 @@
 }
 
 
-
+/* --------------------- ROI thumbnails --------------------- */
 .roi-thumbnail-container {
     cursor: pointer;
     text-align: center;
@@ -92,7 +90,7 @@
     font-size: 12px;
 }
 
-/* this class corresponds to the select menu item container */
+/* the menu-item container of the ROI select component */
 .roi-select-menu-container {
     min-width: auto;
     display: flex;
@@ -101,45 +99,6 @@
     border-radius: 3px;
     color: #182026;
 }
-
-
-/* 
-Default style for input placeholder text
-note that pseudo-elements can't be listed, so these blocks are duplicates
-*/
-
-/* firefox 19+ */
-::-moz-placeholder { 
-    color: rgb(154, 154, 154);
-    font-size: 14px;
-    font-weight: normal;
-    text-transform: none;
-}
-
-/* Firefox 18- */
-:-moz-placeholder { 
-    color: rgb(154, 154, 154);
-    font-size: 14px;
-    font-weight: normal;
-    text-transform: none;
-}
-
-/* chrome, opera, safari */
-::-webkit-input-placeholder {
-    color: rgb(154, 154, 154);
-    font-size: 14px;
-    font-weight: normal;
-    text-transform: none;
-}
-
- /* IE 10+ */
- :-ms-input-placeholder {
-    color: rgb(154, 154, 154);
-    font-size: 14px;
-    font-weight: normal;
-    text-transform: none;
-}
-
 
 /* the header for each main panel/section */
 .section-header {
@@ -185,8 +144,7 @@ note that pseudo-elements can't be listed, so these blocks are duplicates
 }
 
 
-
-/* --------------------- Volcano plot --------------------- */
+/* --------------------- volcano scatterplot --------------------- */
 
 .scatterplot-container .tick line {
     stroke: #ddd;
@@ -243,16 +201,9 @@ note that pseudo-elements can't be listed, so these blocks are duplicates
     line-height: 1.33;
 }
 
-/* expression and facs plot containers should have the same margins
-in order for the plots to be vertically aligned */
-.expression-plot-container, 
-.facs-plot-container {
-    margin-left: -10px;
-    margin-right: 10px;
-    margin-top: 10px;
-}
 
 
+/* --------------------- cluster heatmaps --------------------- */
 .cluster-heatmap-container .tick text {
     cursor: pointer;
 }
@@ -261,7 +212,38 @@ in order for the plots to be vertically aligned */
     color: gray;
 }
 
+
+/* --------------------- cytoscape network --------------------- */
+.cytoscape-container {
+    width: 500px;
+    height: 500px;
+}
+
+.cy-node-label-container {
+    font-size: 8px;
+    cursor: default;
+}
+
+.cy-node-label-in-opencell {
+    /* background-color: #1490bd20; */
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.cy-node-label-in-opencell:hover {
+    color: #666;
+}
+
 /* --------------------- expression scatterplot and FACS plot --------------------- */
+
+/* the plot containers should have the same margins
+in order for the plots to be vertically aligned */
+.expression-plot-container, 
+.facs-plot-container {
+    margin-left: -10px;
+    margin-right: 10px;
+    margin-top: 10px;
+}
 
 .facs-plot-container .tick path, 
 .facs-plot-container .axis line,
@@ -315,3 +297,39 @@ in order for the plots to be vertically aligned */
     text-align: center;
 }
 
+
+/* 
+Hacks to set the default style for input placeholder text
+note that pseudo-elements can't be listed, so these blocks are duplicates
+*/
+/* firefox 19+ */
+::-moz-placeholder { 
+    color: rgb(154, 154, 154);
+    font-size: 14px;
+    font-weight: normal;
+    text-transform: none;
+}
+
+/* Firefox 18- */
+:-moz-placeholder { 
+    color: rgb(154, 154, 154);
+    font-size: 14px;
+    font-weight: normal;
+    text-transform: none;
+}
+
+/* chrome, opera, safari */
+::-webkit-input-placeholder {
+    color: rgb(154, 154, 154);
+    font-size: 14px;
+    font-weight: normal;
+    text-transform: none;
+}
+
+ /* IE 10+ */
+ :-ms-input-placeholder {
+    color: rgb(154, 154, 154);
+    font-size: 14px;
+    font-weight: normal;
+    text-transform: none;
+}

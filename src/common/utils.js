@@ -3,6 +3,32 @@ import * as d3 from 'd3';
 import settings from './settings.js';
 
 
+export async function putData(url, data) {
+    const response = await fetch(url, {
+        method: 'PUT',
+        mode: 'cors',
+        cache: 'no-cache',
+        credentials: 'same-origin',
+        headers: {'Content-Type': 'application/json'},
+        referrerPolicy: 'no-referrer',
+        body: JSON.stringify(data),
+    });
+    return await response;
+}
+
+
+export async function deleteData(url) {
+    const response = await fetch(url, {
+        method: 'DELETE',
+        mode: 'cors',
+        cache: 'no-cache',
+        credentials: 'same-origin',
+        referrerPolicy: 'no-referrer',
+    });
+    return await response;
+}
+
+
 export function loadAnnotatedFovs (cellLineId, onLoad) {
 
     // retrieve the FOV metadata

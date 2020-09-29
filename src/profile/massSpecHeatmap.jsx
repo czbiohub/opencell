@@ -45,14 +45,14 @@ export default class MassSpecHeatmap extends Component {
 
     componentDidMount() {
         this.createHeatmap();
-        if (this.props.cellLineId) {
+        if (this.props.pulldownId) {
             this.getData();
             this.updateHeatmap();
         }
     }
 
     componentDidUpdate (prevProps) {
-        if (prevProps.cellLineId!==this.props.cellLineId) {
+        if (prevProps.pulldownId!==this.props.pulldownId) {
             this.getData();
         }
         this.updateHeatmap();
@@ -61,7 +61,7 @@ export default class MassSpecHeatmap extends Component {
 
     getData () {
         this.setState({loaded: false, loadingError: false});
-        const url = `${settings.apiUrl}/lines/${this.props.cellLineId}/pulldown_clusters`;
+        const url = `${settings.apiUrl}/pulldowns/${this.props.pulldownId}/clusters`;
         d3.json(url).then(data => {
             this.rows = data.rows;
             this.columns = data.columns;

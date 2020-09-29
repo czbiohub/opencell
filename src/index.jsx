@@ -72,11 +72,7 @@ function useTargetSearch (setCellLineId) {
     // retrieve a cellLineId from the target name query 
     useEffect(() => {
         if (!targetName || !doSearch) return;
-
-        // hack to get the correct lines for CLTA and BCAP31 (the positive controls)
-        let plateId = ['clta', 'bcap31'].includes(targetName) ? 'P0001' : '';
-
-        d3.json(`${settings.apiUrl}/lines?target=${targetName}&plate=${plateId}`).then(lines => {
+        d3.json(`${settings.apiUrl}/lines?target_name=${targetName}`).then(lines => {
             for (const line of lines) {
                 if (line) {
                     setCellLineId(line.metadata.cell_line_id, true);

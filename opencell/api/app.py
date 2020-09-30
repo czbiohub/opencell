@@ -42,12 +42,18 @@ def create_app(args):
     cache.init_app(app)
     api = Api()
 
+    # search by gene name, ENSG ID, etc
+    api.add_resource(resources.Search, '/search/<string:search_string>/')
+
     # plate designs
     api.add_resource(resources.Plate, '/plates/<string:plate_id>/')
 
     # cell line metadata
     api.add_resource(resources.CellLines, '/lines')
     api.add_resource(resources.CellLine, '/lines/<int:cell_line_id>')
+
+    # interactor/prey metadata
+    api.add_resource(resources.Interactor, '/interactors/<string:ensg_id>')
 
     # cell-line-related endpoints
     api.add_resource(resources.FACSDataset, '/lines/<int:cell_line_id>/facs')

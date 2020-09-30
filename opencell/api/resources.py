@@ -12,7 +12,7 @@ from flask_restful import Resource, reqparse
 from opencell.imaging import utils
 from opencell.api import payloads
 from opencell.api.cache import cache
-from opencell.database import models, operations
+from opencell.database import models, operations, uniprot_utils
 from opencell.database import utils as db_utils
 from opencell.imaging.processors import FOVProcessor
 
@@ -24,6 +24,44 @@ def cache_key():
         (k, v) for k in sorted(args) for v in sorted(args.getlist(k))
     ])
     return key
+
+
+class Search(Resource):
+    def get(self, search_string):
+
+        payload = {}
+        search_string = search_string.upper()
+
+        # search for opencell targets
+        query = (
+            flask.current_app.Session.query(models.CellLine).join(models.CellLine.crispr_design)
+            .filter(db.func.upper(models.CrisprDesign.target_name) == search_string)
+        )
+
+        # hack for the positive controls
+        if search_string.lower() in ['CLTA', 'BCAP31']:
+            query = query.filter(models.CrisprDesign.plate_design_id == 'P0001')
+
+        targets = query.all()
+        if targets:
+            payload['oc_id'] = 'OPCT%06d' % targets[0].id
+
+        # search the gene names column in the uniprot metadata table
+        uniprot_metadata = pd.read_sql(
+            f'''
+            select ensg_id from (
+                select *, string_to_array(gene_names, ' ') as gene_names_array
+                from uniprot_metadata
+            ) tmp
+            where '{search_string}' = any(gene_names_array)
+            ''',
+            flask.current_app.Session.get_bind()
+        )
+        if len(uniprot_metadata):
+            payload['ensg_ids'] = list(set([row.ensg_id for _, row in uniprot_metadata.iterrows()]))
+
+        return flask.jsonify(payload)
+
 
 
 class Plate(Resource):
@@ -152,6 +190,68 @@ class CellLine(CellLineResource):
             return error
         payload = payloads.generate_cell_line_payload(line, optional_fields)
         return flask.jsonify(payload)
+
+
+class Interactor(Resource):
+
+    def get(self, ensg_id):
+
+        payload = {}
+
+        uniprot_metadata = (
+            flask.current_app.Session.query(models.UniprotMetadata)
+            .filter(models.UniprotMetadata.ensg_id == ensg_id)
+            .all()
+        )
+        if not uniprot_metadata:
+            return flask.abort(404, 'There is no uniprot metadata for ENSG ID %s' % ensg_id)
+
+        # all of the uniprot_ids associated with this ensg_id
+        uniprot_ids = [row.uniprot_id for row in uniprot_metadata]
+
+        # TODO: better way to pick the best uniprot entry from which to construct the metadata
+        # (that is, the gene names and function annotation)
+        uniprot_metadata = uniprot_metadata[0]
+
+        payload['uniprot_metadata'] = {
+            'uniprot_id': uniprot_metadata.uniprot_id,
+            'gene_names': uniprot_metadata.gene_names.split(' '),
+            'protein_name': uniprot_utils.prettify_uniprot_protein_name(
+                uniprot_metadata.protein_names
+            ),
+            'annotation': uniprot_utils.prettify_uniprot_annotation(
+                uniprot_metadata.annotation
+            ),
+        }
+
+        # get the opencell targets in whose pulldowns this interactor appears as a hit
+        interacting_pulldowns = (
+            flask.current_app.Session.query(models.MassSpecPulldown)
+            .join(models.MassSpecHit)
+            .join(models.MassSpecProteinGroup)
+            .join(models.ProteinGroupUniprotMetadataAssociation)
+            .filter(db.or_(
+                models.MassSpecPulldown.manual_display_flag == None,  # noqa
+                models.MassSpecPulldown.manual_display_flag == True  # noqa
+            ))
+            .filter(
+                models.ProteinGroupUniprotMetadataAssociation.uniprot_id.in_(uniprot_ids)
+            )
+            .filter(db.or_(
+                models.MassSpecHit.is_minor_hit == True,  # noqa
+                models.MassSpecHit.is_significant_hit == True  # noqa
+            ))
+            .all()
+        )
+
+        payload['cell_lines'] = [
+            payloads.generate_cell_line_payload(pulldown.cell_line, included_fields=[])
+            for pulldown in interacting_pulldowns
+        ]
+
+        return flask.jsonify(payload)
+
+
 
 
 class FACSDataset(CellLineResource):

@@ -43,10 +43,10 @@ def create_app(args):
     api = Api()
 
     # search by gene name, ENSG ID, etc
-    api.add_resource(resources.Search, '/search/<string:search_string>/')
+    api.add_resource(resources.Search, '/search/<string:search_string>')
 
     # plate designs
-    api.add_resource(resources.Plate, '/plates/<string:plate_id>/')
+    api.add_resource(resources.Plate, '/plates/<string:plate_id>')
 
     # cell line metadata
     api.add_resource(resources.CellLines, '/lines')

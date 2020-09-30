@@ -213,6 +213,7 @@ class Interactor(Resource):
         # (that is, the gene names and function annotation)
         uniprot_metadata = uniprot_metadata[0]
 
+        # HACK: this is copied from the cell_line payload
         payload['uniprot_metadata'] = {
             'uniprot_id': uniprot_metadata.uniprot_id,
             'gene_names': uniprot_metadata.gene_names.split(' '),
@@ -222,6 +223,12 @@ class Interactor(Resource):
             'annotation': uniprot_utils.prettify_uniprot_annotation(
                 uniprot_metadata.annotation
             ),
+        }
+
+        payload['metadata'] = {
+            'ensg_id': ensg_id,
+            'uniprot_ids': uniprot_ids,
+            'target_name': payload['uniprot_metadata']['gene_names'][0]
         }
 
         # get the opencell targets in whose pulldowns this interactor appears as a hit
@@ -244,7 +251,7 @@ class Interactor(Resource):
             .all()
         )
 
-        payload['cell_lines'] = [
+        payload['interacting_cell_lines'] = [
             payloads.generate_cell_line_payload(pulldown.cell_line, included_fields=[])
             for pulldown in interacting_pulldowns
         ]

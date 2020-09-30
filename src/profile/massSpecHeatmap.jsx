@@ -185,14 +185,14 @@ export default class MassSpecHeatmap extends Component {
         this.svg.select("#y-axis").call(this.yAxis.scale(this.yScale));
 
         // rotate x-axis tick labels and make them clickable
-        const changeTarget = this.props.changeTarget;
+        const handleGeneNameSearch = this.props.handleGeneNameSearch;
         this.svg.select("#x-axis")
             .selectAll("text")
             .attr("transform", "rotate(-45)")
             .style("text-anchor", "end")
             .on("click", function (d) {
                 const targetName = d3.select(this).text();
-                changeTarget(targetName);
+                handleGeneNameSearch(targetName);
             });
     }
 

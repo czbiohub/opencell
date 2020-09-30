@@ -302,7 +302,7 @@ export default class FovAnnotator extends Component {
 
                     {/* left panel: FOV metadata */}
                     <div className="w-20 pr3">
-                        <CellLineMetadata cellLine={this.props.cellLine}/>
+                        <CellLineMetadata data={this.props.cellLine}/>
 
                         <SectionHeader title='FOV metadata'/>
                         <MetadataContainer

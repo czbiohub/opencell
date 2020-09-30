@@ -33,7 +33,7 @@ import '../common/common.css';
 import './Profile.css';
 
 
-export default function Profile (props) {
+export default function TargetProfile (props) {
 
     const [allCellLines, setAllCellLines] = useState([]);
 
@@ -74,7 +74,7 @@ export default function Profile (props) {
                         cellLine={cellLine}
                         cellLineId={props.cellLineId}
                         pulldownId={pulldownId}
-                        onTargetSearch={props.onTargetSearch}
+                        handleGeneNameSearch={props.handleGeneNameSearch}
                         onCellLineSelect={props.setCellLineId}
                         showTargetAnnotator={props.showTargetAnnotator}
                     />

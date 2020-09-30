@@ -144,6 +144,10 @@ export default class MassSpecScatterPlot extends Component {
         this.updateScatterPlot();
     }
 
+    componentWillUnmount () {
+        d3.selectAll(".d3-tip").remove();
+    }
+
 
     resetZoom () {
         // reset the pan/zoom transform
@@ -535,7 +539,9 @@ export default class MassSpecScatterPlot extends Component {
                   .classed("scatter-dot-hover", false);
                 _this.tip.hide(d, this);
              })
-            .on('click', d => this.props.changeTarget(d.opencell_target_names[0]));
+            .on('click', d => {
+                this.props.handleGeneNameSearch(d.opencell_target_names[0] || d.uniprot_gene_names[0])
+            });
 
         // bind data - filter for only significant hits
         const captions = this.g.selectAll('.scatter-caption')

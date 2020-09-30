@@ -7,7 +7,7 @@ import { MetadataItem } from './common.jsx';
 export default function CellLineMetadata (props) {
 
     // metadata items to display in the header
-    const layout = [
+    let cellLineLayout = [
         {
             id: 'target_family',
             width: 49,
@@ -38,6 +38,10 @@ export default function CellLineMetadata (props) {
         }
     ];
 
+    // TODO: define metadata items for interactors
+    const interactorLayout = [];
+
+    const layout = props.isInteractor ? interactorLayout : cellLineLayout;
     const items = layout.map(item => {
         const def = cellLineMetadataDefinitions.filter(def => def.id===item.id)[0];
         return (
@@ -48,7 +52,7 @@ export default function CellLineMetadata (props) {
             >
                 <MetadataItem
                     scale={4}
-                    value={def.accessor(props.cellLine)}
+                    value={def.accessor(props.data)}
                     label={def.Header}
                     units={def.units}
                 />
@@ -57,17 +61,16 @@ export default function CellLineMetadata (props) {
     });
 
     return (
-
         <div className="flex-wrap items-center pt3 pb3 clm-container">
 
             {/* protein name */}
             <div className="w-100 blue clm-target-name">
-                {props.cellLine.metadata?.target_name}
+                {props.data.metadata?.target_name}
             </div>
 
             {/* protein descriptoin */}
             <div className="w-100 pb3 clm-protein-description overflow-hidden">
-                {props.cellLine.uniprot_metadata?.protein_name}
+                {props.data.uniprot_metadata?.protein_name}
             </div>
 
             {/* target metadata items */}

@@ -18,7 +18,8 @@ import './common/common.css';
 
 import Navbar from './common/navbar.jsx';
 import Dashboard from './dashboard/Dashboard';
-import Profile from './profile/Profile.jsx';
+import TargetProfile from './profile/targetProfile.jsx';
+import InteractorProfile from './profile/interactorProfile.jsx';
 import Gallery from './gallery/Gallery.jsx';
 import FOVOverview from './microscopy/FOVOverview.jsx';
 import settings from './common/settings.js';
@@ -46,7 +47,7 @@ function useCellLineId () {
             let page = match?.params.page || 'profile';
 
             //if we are on a target-non-specific page, redirect to the profile page
-            const targetNonSpecificPages = ['gallery', 'dashboard', 'microscopy'];
+            const targetNonSpecificPages = ['gallery', 'dashboard', 'microscopy', 'interactor'];
             page = targetNonSpecificPages.includes(page) ? 'profile' : page;
 
             console.log(`Pushing to history: /${page}/${newCellLineId}`);
@@ -60,38 +61,40 @@ function useCellLineId () {
 }
 
 
-function useTargetSearch (setCellLineId) {
+function useGeneNameSearch (setCellLineId) {
     // returns a callback to execute when the user hits enter in a target search textbox,
     // which needs to both update the search query if it has changed and also call setCellLineId
     // even if the search has not changed, in order to run the page redirection in setCellLineId
     // (e.g., to redirect from /gallery to /profile even if the search, and cellLineId, is unchanged)
     
+    let history = useHistory();
     const [doSearch, setDoSearch] = useState(false);
-    const [targetName, setTargetName] = useState();
+    const [geneName, setGeneName] = useState();
 
     // retrieve a cellLineId from the target name query 
     useEffect(() => {
-        if (!targetName || !doSearch) return;
-        d3.json(`${settings.apiUrl}/lines?target_name=${targetName}`).then(lines => {
-            for (const line of lines) {
-                if (line) {
-                    setCellLineId(line.metadata.cell_line_id, true);
-                    setDoSearch(false);
-                    break;
-                }
+        if (!geneName || !doSearch) return;
+        d3.json(`${settings.apiUrl}/search/${geneName}`).then(result => {
+            if (result.oc_id) {
+                setCellLineId(result.oc_id.replace('OPCT', ''));
+            } else if (result.ensg_ids) {
+                history.push(`/interactor/${result.ensg_ids[0]}`);
+            } else {
+                // TODO: popup warning that no results were found
             }
+            setDoSearch(false);            
         });
     }, [doSearch]);
 
-    const onTargetSearch = (query) => { setTargetName(query); setDoSearch(true); };
-    return onTargetSearch;
+    const handleGeneNameSearch = (query) => { setGeneName(query); setDoSearch(true); };
+    return handleGeneNameSearch;
 }
 
 
 function App() {
 
     const [cellLineId, setCellLineId] = useCellLineId();
-    const onTargetSearch = useTargetSearch(setCellLineId);
+    const handleGeneNameSearch = useGeneNameSearch(setCellLineId);
 
     // handle the back button
     const history = useHistory();
@@ -107,8 +110,9 @@ function App() {
 
     return (
         <div>
-            <Navbar onTargetSearch={onTargetSearch}/>
+            <Navbar handleGeneNameSearch={handleGeneNameSearch}/>
             <Switch>
+
                 <Route path="/" exact={true}>
                     <div>This is the homepage</div>
                 </Route>
@@ -116,11 +120,11 @@ function App() {
                 <Route 
                     path={"/profile/:cellLineId"}
                     render={props => (
-                        <Profile 
+                        <TargetProfile 
                             {...props} 
                             cellLineId={cellLineId} 
                             setCellLineId={setCellLineId}
-                            onTargetSearch={onTargetSearch} 
+                            handleGeneNameSearch={handleGeneNameSearch} 
                         />
                     )}
                 />
@@ -128,7 +132,7 @@ function App() {
                 <Route 
                     path={"/fovs/:cellLineId"}
                     render={props => (
-                        <Profile 
+                        <TargetProfile 
                             {...props} 
                             cellLineId={cellLineId} 
                             setCellLineId={setCellLineId}
@@ -140,11 +144,22 @@ function App() {
                 <Route 
                     path={"/annotations/:cellLineId"}
                     render={props => (
-                        <Profile 
+                        <TargetProfile 
                             {...props} 
                             cellLineId={cellLineId} 
                             setCellLineId={setCellLineId} 
                             showTargetAnnotator
+                        />
+                    )}
+                />
+
+                <Route 
+                    path={"/interactor/:ensgId"}
+                    render={props => (
+                        <InteractorProfile 
+                            {...props} 
+                            setCellLineId={setCellLineId}
+                            handleGeneNameSearch={handleGeneNameSearch} 
                         />
                     )}
                 />

@@ -177,11 +177,11 @@ export default class MassSpecNetworkContainer extends Component {
 
     defineLabelEventHandlers () {
         const cy = this.cy;
-        const changeTarget = this.props.changeTarget;
+        const handleGeneNameSearch = this.props.handleGeneNameSearch;
         const labels = d3.selectAll(".cy-node-label-in-opencell")
             .on("click", function () {
                 const targetName = d3.select(this).text();
-                changeTarget(targetName);
+                handleGeneNameSearch(targetName);
             });
         d3.selectAll(".cy-node-label-container")
             .on('mouseover', function (event) {

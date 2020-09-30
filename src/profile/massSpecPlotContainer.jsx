@@ -66,7 +66,7 @@ export default class MassSpecPlotContainer extends Component {
                     <MassSpecScatterPlot
                         mode={this.state.plotMode}
                         pulldownId={this.props.pulldownId}
-                        changeTarget={this.props.changeTarget}
+                        handleGeneNameSearch={this.props.handleGeneNameSearch}
                         showCaptions={this.state.showPlotCaptions}
                         resetZoom={this.state.resetPlotZoom}
                         colorMode={this.state.plotColorMode}

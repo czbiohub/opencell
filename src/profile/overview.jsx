@@ -49,7 +49,7 @@ export default class Overview extends Component {
                     {/* Left column - about box and expression and facs plots*/}
                     <div className="pl2 pr4 pt0" style={{width: '350px'}}>
 
-                        <CellLineMetadata cellLine={this.props.cellLine}/>
+                        <CellLineMetadata data={this.props.cellLine}/>
 
                         {/* 'About' textbox */}
                         <div className='pb4'>
@@ -102,14 +102,14 @@ export default class Overview extends Component {
                                 <SectionHeader title='Protein interactions'/>
                                 <MassSpecPlotContainer
                                     pulldownId={this.props.pulldownId}
-                                    changeTarget={this.props.onTargetSearch}
+                                    handleGeneNameSearch={this.props.handleGeneNameSearch}
                                 />
                             </div>
                             <div>
                                 <SectionHeader title='Interaction network'/>
                                 <MassSpecNetworkContainer
                                     pulldownId={this.props.pulldownId}
-                                    changeTarget={this.props.onTargetSearch}
+                                    handleGeneNameSearch={this.props.handleGeneNameSearch}
                                 />
                             </div>
                             </div>

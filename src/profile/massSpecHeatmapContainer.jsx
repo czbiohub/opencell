@@ -50,7 +50,7 @@ export default class MassSpecHeatmapContainer extends Component {
                 <div className="w-100 cluster-heatmap-container">
                     <MassSpecHeatmap
                         cellLineId={this.props.cellLineId}
-                        changeTarget={this.props.changeTarget}
+                        handleGeneNameSearch={this.props.handleGeneNameSearch}
                         resetZoom={this.state.resetPlotZoom}
                         colorMode={this.state.plotColorMode}
                     />

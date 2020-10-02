@@ -116,7 +116,7 @@ def test_create_polyclonal_lines(session):
     # check that we inserted the correct number of lines
     lines = session.query(models.CellLine).filter(models.CellLine.line_type == 'POLYCLONAL').all()
     assert len(lines) == 96*2
-    assert lines[0].progenitor_cell_line.name == constants.PARENTAL_LINE_NAME
+    assert lines[0].parent.name == constants.PARENTAL_LINE_NAME
 
     # check that the lines have the correct plate_id
     plate_ids = [line.crispr_design.plate_design_id for line in lines]

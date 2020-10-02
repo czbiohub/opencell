@@ -50,6 +50,7 @@ def parse_args():
     action_arg_dests = [
         'update',
         'drop_all',
+        'create_all',
         'populate',
         'insert_plate_design',
         'insert_electroporation',
@@ -70,16 +71,6 @@ def parse_args():
 
     args = parser.parse_args()
     return args
-
-
-def maybe_drop_and_create(engine, drop=False):
-
-    if drop:
-        print('Dropping all tables')
-        models.Base.metadata.drop_all(engine)
-
-    print('Creating all tables')
-    models.Base.metadata.create_all(engine)
 
 
 def populate(session, data_dir, errors='warn'):
@@ -497,6 +488,9 @@ def main():
     session_factory = db.orm.sessionmaker(bind=engine)
     Session = db.orm.scoped_session(session_factory)
 
+    if args.create_all:
+        models.Base.metadata.create_all(engine)
+
     if args.sql_command:
         print("Executing '%s'" % args.sql_command)
         with engine.connect().execution_options(autocommit=True) as conn:
@@ -504,9 +498,8 @@ def main():
 
     if args.populate:
         if args.drop_all:
-            maybe_drop_and_create(engine, drop=True)
-        else:
-            maybe_drop_and_create(engine, drop=False)
+            models.Base.metadata.drop_all(engine)
+        models.Base.metadata.create_all(engine)
         data_dir = os.path.join(config.PROJECT_ROOT, 'data')
         populate(Session, data_dir, errors='warn')
 

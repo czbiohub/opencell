@@ -12,6 +12,7 @@ create-test-db:
 	-e POSTGRES_PASSWORD=password \
 	-e POSTGRES_DB=opencelldb-test \
 	-p 5433:5432 \
+	-v $(PWD):/home/opencell:rw \
 	postgres;
 
 start-test-db:
@@ -19,6 +20,13 @@ start-test-db:
 
 drop-test-db:
 	docker rm --force $(TEST_DB_CONTAINER_NAME);
+
+# create a populated test database from a truncated database dump (without FOVs or MS data)
+restore-test-db:
+	docker exec -it $(TEST_DB_CONTAINER_NAME) \
+	pg_restore -U postgres -d opencelldb-test \
+	/home/opencell/tests/data/dumps/2020-09-23-opencelldb-prod-dump-wo-fovs-wo-ms;
+	docker network connect opencell $(TEST_DB_CONTAINER_NAME);
 
 test:
 	pytest -v

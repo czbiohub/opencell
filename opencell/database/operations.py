@@ -160,18 +160,28 @@ def create_polyclonal_lines(
 def insert_uniprot_metadata_from_id(session, uniprot_id, errors='warn'):
     '''
     Retrieve and insert Uniprot metadata for a given uniprot_id
-    '''
-    retrieved_metadata = uniprot_utils.query_uniprotkb(
-        query=uniprot_id, only_reviewed=False, limit=1
-    )
 
-    # this is subtle: sometimes, a result is retrieved,
-    # but its uniprot_id does not match the query uniprot_id
-    if retrieved_metadata is None or retrieved_metadata.iloc[0].uniprot_id != uniprot_id:
-        print('Warning: no metadata found for uniprot_id %s' % uniprot_id)
+    Note that we set limit=10 because the correct result for the query uniprot_id
+    is sometimes not the top (i.e., first) result from the uniprotkb query
+    '''
+    metadata = uniprot_utils.query_uniprotkb(query=uniprot_id, only_reviewed=False, limit=10)
+    if metadata is None:
+        print('Warning: no UniprotKB results were found for uniprot_id %s' % uniprot_id)
         return
 
-    uniprot_metadata = models.UniprotMetadata(**retrieved_metadata.iloc[0])
+    # filter out results corresponding to other uniprot_ids
+    # (this is necessary because we use limit=10 above, and because, sometimes,
+    # one or more results are retrieved, but none of them actually match the query uniprot_id)
+    metadata = metadata.loc[metadata.uniprot_id == uniprot_id]
+    if not len(metadata):
+        print(
+            'Warning: UniprotKB results were retrieved for uniprot_id %s '
+            'but none have the correct uniprot_id'
+            % uniprot_id
+        )
+        return
+
+    uniprot_metadata = models.UniprotMetadata(**metadata.iloc[0])
     utils.add_and_commit(session, uniprot_metadata, errors=errors)
 
 
@@ -255,13 +265,21 @@ def insert_ensg_id(session, uniprot_id):
         print('Warning: no uniprot metadata found for uniprot_id %s' % uniprot_id)
         return
 
-    # NOTE: I manually switch to map_uniprot_to_ensg_using_uniprot here after trying mygene,
-    # because there are, rarely, ids that are not in mygene but are in Uniprot's mapper API
+    # try to look up the ensg_id using mygene
     try:
         ensg_id = uniprot_utils.map_uniprot_to_ensg_using_mygene(uniprot_id)
     except Exception:
-        print('Uncaught error for uniprot_id %s' % uniprot_id)
+        print('Uncaught error in mygene API query for uniprot_id %s' % uniprot_id)
         return
+
+    # if mygene didn't work, try using the uniprot mapper API
+    # (because there are, rarely, ids that are not in mygene but are in the Uniprot mapper API)
+    if ensg_id is None:
+        try:
+            ensg_id = uniprot_utils.map_uniprot_to_ensg_using_uniprot(uniprot_id)
+        except Exception:
+            print('Uncaught error in uniprot mapper query for uniprot_id %s' % uniprot_id)
+            return
 
     if ensg_id is None:
         print('Warning: no ENSG ID found for uniprot_id %s' % uniprot_id)

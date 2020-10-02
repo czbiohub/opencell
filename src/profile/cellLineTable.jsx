@@ -4,7 +4,7 @@ import ReactTable from 'react-table';
 import {cellLineMetadataDefinitions} from './metadataDefinitions.js';
 
 // append gene_name to metadataDefinitions 
-const columnDefs = [
+let columnDefs = [
     {   
         id: 'gene_name',
         Header: 'Gene name',
@@ -13,6 +13,8 @@ const columnDefs = [
     ...cellLineMetadataDefinitions,
 ];
 
+const hiddenColumnDefIds = ['facs_intensity', 'facs_area', ];
+columnDefs = columnDefs.filter(def => !hiddenColumnDefIds.includes(def.id));
 
 export default class CellLineTable extends Component {
 

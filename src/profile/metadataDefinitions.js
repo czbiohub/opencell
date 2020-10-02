@@ -89,9 +89,9 @@ const cellLineMetadataDefinitions = [
         Header: 'No GFP',
         units: '',
     },{
-        id: 'heterogeneous_gfp',
-        accessor: row => String(row.annotation.categories?.includes('heterogeneous_gfp')),
-        Header: 'Het GFP',
+        id: 'low_gfp',
+        accessor: row => String(row.annotation.categories?.includes('low_gfp')),
+        Header: 'Low GFP',
         units: '',
     },{
         id: 're_sort',
@@ -105,7 +105,7 @@ const cellLineMetadataDefinitions = [
         units: '',
     },{
         id: 'num_annoted_fovs',
-        accessor: row => row.counts.num_fovs_annotated,
+        accessor: row => row.counts.num_annotated_fovs,
         Header: 'Num annotated FOVs',
         units: '',
     }

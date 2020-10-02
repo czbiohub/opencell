@@ -39,7 +39,7 @@ class Search(Resource):
         )
 
         # hack for the positive controls
-        if search_string.lower() in ['CLTA', 'BCAP31']:
+        if search_string in ['CLTA', 'BCAP31']:
             query = query.filter(models.CrisprDesign.plate_design_id == 'P0001')
 
         targets = query.all()
@@ -91,8 +91,6 @@ class CellLines(Resource):
 
         args = flask.request.args
         plate_id = args.get('plate_id')
-        target_like = args.get('target_like')
-        target_name = args.get('target_name')
 
         included_fields = args.get('fields')
         included_fields = included_fields.split(',') if included_fields else []
@@ -100,32 +98,10 @@ class CellLines(Resource):
         cell_line_ids = args.get('ids')
         cell_line_ids = [int(_id) for _id in cell_line_ids.split(',')] if cell_line_ids else []
 
-        query = Session.query(models.CellLine).join(models.CellLine.crispr_design)
-
-        # search for an exact match to the target_name
-        # TODO: filter for 'good' crispr designs when there's more than one for a target name
-        if target_name:
-            query = query.filter(
-                db.func.lower(models.CrisprDesign.target_name) == target_name.lower()
-            )
-
-            # hack for the positive controls
-            if target_name.lower() in ['clta', 'bcap31']:
-                query = query.filter(models.CrisprDesign.plate_design_id == 'P0001')
-
-        # filter by plate_id and target_like
-        else:
-            if plate_id:
-                query = query.filter(models.CrisprDesign.plate_design_id == plate_id)
-            if target_like:
-                query = query.filter(
-                    db.func.lower(models.CrisprDesign.target_name).startswith(target_like.lower())
-                )
-            if cell_line_ids:
-                query = query.filter(models.CellLine.id.in_(cell_line_ids))
-
-        lines = (
+        # cell line query with the eager-loading required by generate_cell_line_payload
+        query = (
             Session.query(models.CellLine)
+            .join(models.CellLine.crispr_design)
             .options(
                 (
                     db.orm.joinedload(models.CellLine.crispr_design, innerjoin=True)
@@ -136,12 +112,17 @@ class CellLines(Resource):
                 db.orm.joinedload(models.CellLine.annotation),
                 db.orm.joinedload(models.CellLine.pulldowns)
             )
-            .filter(models.CellLine.id.in_([line.id for line in query.all()]))
-            .all()
         )
 
-        # TODO: pass the FOV counts to the cell_line_payload method if they are needed
-        _ = (
+        if plate_id:
+            query = query.filter(models.CrisprDesign.plate_design_id == plate_id)
+        if cell_line_ids:
+            query = query.filter(models.CellLine.id.in_(cell_line_ids))
+
+        lines = query.all()
+
+        # a separate query for counting FOVs and annotated FOVs per cell line
+        fov_counts = (
             Session.query(
                 models.CellLine.id,
                 db.func.count(models.MicroscopyFOV.id).label('num_fovs'),
@@ -149,13 +130,18 @@ class CellLines(Resource):
             )
             .outerjoin(models.CellLine.fovs)
             .outerjoin(models.MicroscopyFOV.annotation)
+            .filter(models.CellLine.id.in_([line.id for line in lines]))
             .group_by(models.CellLine.id)
             .all()
         )
+        fov_counts = pd.DataFrame(data=fov_counts)
 
-        payload = [
-            payloads.generate_cell_line_payload(line, included_fields) for line in lines
-        ]
+        payload = []
+        for line in lines:
+            fov_count = fov_counts.loc[fov_counts.id == line.id].iloc[0]
+            payload.append(
+                payloads.generate_cell_line_payload(line, included_fields, fov_count=fov_count)
+            )
         return flask.jsonify(payload)
 
 

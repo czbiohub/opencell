@@ -35,12 +35,12 @@ def bulk_insert_cluster_heatmap(session, cluster_table, cluster_str, errors='war
 
         cluster = models.MassSpecClusterHeatmap(
             cluster_id=int(row.cluster_id),
-            subcluster_id = subcluster_id,
-            core_complex_id = core_complex_id,
+            subcluster_id=subcluster_id,
+            core_complex_id=core_complex_id,
             hit_id=int(row.hit_id),
             row_index=int(row.row_index),
             col_index=int(row.col_index),
-            analysis_type = cluster_str
+            analysis_type=cluster_str
         )
         all_clusters.append(cluster)
 

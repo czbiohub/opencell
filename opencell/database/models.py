@@ -920,9 +920,9 @@ class MassSpecPulldown(Base):
         if eagerload:
             query = query.options(
                 db.orm.joinedload(MassSpecHit.protein_group, innerjoin=True)
-                    .joinedload(MassSpecProteinGroup.crispr_designs),
+                .joinedload(MassSpecProteinGroup.crispr_designs),
                 db.orm.joinedload(MassSpecHit.protein_group, innerjoin=True)
-                    .joinedload(MassSpecProteinGroup.uniprot_metadata),
+                .joinedload(MassSpecProteinGroup.uniprot_metadata),
             )
 
         significant_hits = query.all()
@@ -1108,8 +1108,8 @@ class MassSpecHit(Base):
             "<MassSpecHit(bait=%s, pval=%0.2f, enrichment=%0.2f, gene_names=[%s])>"
             % (
                 self.pulldown.get_target_name(),
-                self.pval,
-                self.enrichment,
+                float(self.pval),
+                float(self.enrichment),
                 ', '.join(self.protein_group.gene_names)
             )
         )

@@ -428,7 +428,7 @@ class PulldownInteractions(PulldownResource):
         else:
             bait_node.update({
                 'id': 'bait-placeholder',
-                'uniprot_gene_names': [],
+                'uniprot_gene_names': [pulldown.cell_line.crispr_design.target_name],
                 'opencell_target_names': [pulldown.cell_line.crispr_design.target_name],
             })
         nodes.append(bait_node)

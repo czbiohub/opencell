@@ -97,9 +97,9 @@ export default class MassSpecNetworkContainer extends Component {
 
     componentDidUpdate (prevProps, prevState) {
 
-        // load the network data
+        // if we need to load the network data again
         if (
-            prevProps.pulldownId!==this.props.pulldownId || 
+            this.props.pulldownId!==prevProps.pulldownId || 
             this.state.includeParentNodes!==prevState.includeParentNodes ||
             this.state.showSavedNetwork!==prevState.showSavedNetwork ||
             this.state.clusteringAnalysisType!==prevState.clusteringAnalysisType ||
@@ -108,9 +108,14 @@ export default class MassSpecNetworkContainer extends Component {
             this.getData();    
         }
 
-        else if (this.cy && this.state.loaded) {
+        // run the layout only if state.loaded has switched from false to true,
+        // or if the layoutName has changed
+        else if (
+            this.cy && 
+            (this.state.loaded && !prevState.loaded) ||
+            this.state.layoutName!==prevState.layoutName
+        ) {
             try {
-
                 // attempt to center and lock the target's node (this does not seem to apply to the layout)
                 // const targetNode = this.cy.filter('node[type="bait"]');
                 // targetNode.position({x: 250, y: 250}).lock();
@@ -118,20 +123,27 @@ export default class MassSpecNetworkContainer extends Component {
                 //     targetNode.parent().lock();
                 // }
 
+                // remove any unconnected nodes (other than parent nodes)
+                // note: these correspond to nodes that represent pulldowns in which
+                // the target appeared with a protein group different from the one with which
+                // it appeared in its own pulldown
+                this.cy.nodes(':childless').difference(this.cy.edges().connectedNodes()).remove();
+
                 this.cy.nodeHtmlLabel(this.nodeHtmlLabel);
 
-                // run the layout if the elements were loaded from scratch
+                // run the layout only if the elements were loaded from scratch
                 if (!this.state.showSavedNetwork) {
-                    const layout = this.cy.layout(this.getLayout());
-                    layout.on('layoutstop', this.defineLabelEventHandlers);
-                    layout.run();
-
-                // only fit the graph to the container if the layout was loaded from
-                } else {
-                    // TODO: this does not work - label event handlers aren'tdefined
-                    this.cy.ready(this.defineLabelEventHandlers);
-                    this.cy.fit();
+                    const layout = this.cy.layout({animate: false, ...this.getLayout()});
+                    // console.log('Running layout');
+                    layout.run();  
                 }
+
+                // call defineLabelEventHandlers using an event that is always triggered,
+                // whether the network was loaded from scratch or from a saved layout
+                this.cy.on('render', this.defineLabelEventHandlers);
+
+                // cy.fit is necessary if the network was loaded from a saved layout
+                this.cy.fit();
             }
             catch (err) {
                 console.log(err);
@@ -140,6 +152,19 @@ export default class MassSpecNetworkContainer extends Component {
     }
 
     getData () {
+
+        this.elements = [];
+        if (this.cy) {
+            this.cy.destroy();
+        }
+
+        this.setState({
+            loaded: false, 
+            loadingError: false,
+            submissionStatus: '',
+            deletionStatus: ''
+        });
+
         if (this.state.showSavedNetwork) {
             this.getSavedNetwork();
         } else {
@@ -209,19 +234,12 @@ export default class MassSpecNetworkContainer extends Component {
     getNetworkElements () {
         // load the elements (nodes and edges) from the /interactions endpoint
 
-        this.setState({
-            loaded: false, 
-            loadingError: false,
-            submissionStatus: '',
-            deletionStatus: ''
-        });
-    
         const url = (
             `${settings.apiUrl}/pulldowns/${this.props.pulldownId}/interactions?` +
             `analysis_type=${this.state.clusteringAnalysisType}&` +
             `subcluster_type=${this.state.subclusterType}`
         );
-    
+
         d3.json(url).then(data => {
 
             // include only clusters with more than one node
@@ -289,12 +307,6 @@ export default class MassSpecNetworkContainer extends Component {
 
 
     getSavedNetwork () {
-        this.setState({
-            loaded: false, 
-            loadingError: false,
-            submissionStatus: '',
-            deletionStatus: ''
-        });
         const url = `${settings.apiUrl}/pulldowns/${this.props.pulldownId}/network`;
         d3.json(url).then(data => {
             this.elements = [
@@ -312,7 +324,16 @@ export default class MassSpecNetworkContainer extends Component {
 
     render () {
         return (
-            <div>
+            <div className='relative'>
+
+                {!this.state.loaded ? 
+                    (
+                        <div className='f2 tc loading-overlay'>
+                            {this.state.loadingError ? 'No data' : 'Loading...'}
+                        </div>
+                    ) : (null)
+                }
+
                 {/* display controls */}
                 <div className="flex pb2">
 

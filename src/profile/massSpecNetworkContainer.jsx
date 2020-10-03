@@ -44,7 +44,7 @@ export default class MassSpecNetworkContainer extends Component {
             clusteringAnalysisType: 'new',
 
             // 'subclusters' or 'core-complexes'
-            subclusterType: 'subclusters',
+            subclusterType: 'core-complexes',
 
             // placeholder for resetting the visualization
             resetPlotZoom: false,
@@ -71,9 +71,9 @@ export default class MassSpecNetworkContainer extends Component {
                     const names = d.uniprot_gene_names.map(name => {
                         const inOpencell = d.opencell_target_names.includes(name);
                         if (inOpencell) {
-                            return `<span class='cy-node-label-in-opencell'>${name}</span>`
+                            return `<span class='cy-node-label cy-node-label-in-opencell'>${name}</span>`
                         }
-                        return `<span class=''>${name}</span>`
+                        return `<span class='cy-node-label'>${name}</span>`
                     })
                     return `<div class='cy-node-label-container' id=${d.id}>${names.join(', ')}</div>`;
                 }
@@ -178,11 +178,15 @@ export default class MassSpecNetworkContainer extends Component {
     defineLabelEventHandlers () {
         const cy = this.cy;
         const handleGeneNameSearch = this.props.handleGeneNameSearch;
-        const labels = d3.selectAll(".cy-node-label-in-opencell")
+
+        const labels = d3.selectAll(".cy-node-label")
             .on("click", function () {
-                const targetName = d3.select(this).text();
-                handleGeneNameSearch(targetName);
+                const geneName = d3.select(this).text();
+                handleGeneNameSearch(geneName);
             });
+
+        //console.log(labels._groups);
+        
         d3.selectAll(".cy-node-label-container")
             .on('mouseover', function (event) {
                 const nodeId = d3.select(this).attr("id");
@@ -359,8 +363,8 @@ export default class MassSpecNetworkContainer extends Component {
                                 onClick={value => this.setState({showSavedNetwork: value})}
                             />
                         </div>
-                        <div className='f6 simple-button' onClick={() => {}}>
-                            {'Reset'}
+                        <div className='f6 simple-button' onClick={() => {this.cy.fit()}}>
+                            {'Reset zoom'}
                         </div>
                     </div>
                 </div>
@@ -368,7 +372,7 @@ export default class MassSpecNetworkContainer extends Component {
                 <div className="w-100 cytoscape-container">
                     {this.state.loaded ? (
                         <CytoscapeComponent
-                            style={{width: '500px', height: '500px'}}
+                            style={{width: '600px', height: '500px'}}
                             elements={this.elements}
                             stylesheet={networkStylesheet}
                             minZoom={0.1}

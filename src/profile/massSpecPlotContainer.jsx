@@ -62,7 +62,7 @@ export default class MassSpecPlotContainer extends Component {
 
                 {/* volcano plot
                 the hack-ish absolute margins here are to better align the svg itself*/}
-                <div className="w-100 scatterplot-container" style={{marginLeft: -20}}>
+                <div className="w-100 pl4 pr5 scatterplot-container" style={{marginLeft: -20}}>
                     <MassSpecScatterPlot
                         mode={this.state.plotMode}
                         pulldownId={this.props.pulldownId}

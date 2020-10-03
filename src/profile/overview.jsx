@@ -72,6 +72,7 @@ export default class Overview extends Component {
 
                     {/* Center column - sliceViewer and volumeViewer */}
                     {/* note the hard-coded width (because the ROIs are always 600px */}
+                    
                     <div className="pt3 pl0 pr3" style={{width: '620px'}}>
                         <SectionHeader title='Fluorescence microscopy'/>
                         <ViewerContainer
@@ -87,7 +88,7 @@ export default class Overview extends Component {
                     </div>
 
                     {/* Right column - annotations or volcano plot */}
-                    <div className="pa3" style={{width: '600px'}}>
+                    <div className="pa3" style={{width: '675px'}}>
                         {this.props.showTargetAnnotator ? (
                             <div>
                                 <SectionHeader title='Annotations'/>    
@@ -99,15 +100,16 @@ export default class Overview extends Component {
                         ) : (
                             <div>
                             <div>
-                                <SectionHeader title='Protein interactions'/>
-                                <MassSpecPlotContainer
+                                <SectionHeader title='Interaction network'/>
+                                <MassSpecNetworkContainer
                                     pulldownId={this.props.pulldownId}
                                     handleGeneNameSearch={this.props.handleGeneNameSearch}
                                 />
+                                
                             </div>
-                            <div>
-                                <SectionHeader title='Interaction network'/>
-                                <MassSpecNetworkContainer
+                            <div className='pt3'>
+                                <SectionHeader title='Protein interactions'/>
+                                <MassSpecPlotContainer
                                     pulldownId={this.props.pulldownId}
                                     handleGeneNameSearch={this.props.handleGeneNameSearch}
                                 />

@@ -24,7 +24,7 @@ export default class MassSpecScatterPlot extends Component {
         this.hits = [];
 
         this.plotProps = {
-            aspectRatio: .8,
+            aspectRatio: .7,
             padLeft: 40,
             padRight: 10,
             padTop: 10,
@@ -33,7 +33,7 @@ export default class MassSpecScatterPlot extends Component {
             dotAlpha: .3,
             dotRadius: 5,
             xAxisLabelOffset: 5,
-            yAxisLabelOffset: 15,
+            yAxisLabelOffset: 10,
         };
 
         this.pvalueAccessor = d => parseFloat(d.pval);

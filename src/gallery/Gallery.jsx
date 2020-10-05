@@ -261,7 +261,7 @@ class Gallery extends Component {
                         });
                     }}
                     onThumbnailCaptionClick={metadata => {
-                        window.open(`http://${window.location.host}/profile/${metadata.cell_line_id}`);
+                        window.open(`http://${window.location.host}/target/${metadata.cell_line_id}`);
                     }}
                 />
             );

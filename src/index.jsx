@@ -27,7 +27,7 @@ import settings from './common/settings.js';
 
 function useCellLineId () {
     // manages the current cellLineId, which is both an app-level piece of state
-    // and is included in the URL of the 'profile', 'fovs', and 'annotations' pages
+    // and is included in the URL of the 'target', 'fovs', and 'annotations' pages
 
     let history = useHistory();
     let match = useRouteMatch('/:page');
@@ -44,11 +44,11 @@ function useCellLineId () {
         if (push) {
 
             // if we are on the home page, redirect to the profile page
-            let page = match?.params.page || 'profile';
+            let page = match?.params.page || 'target';
 
             //if we are on a target-non-specific page, redirect to the profile page
             const targetNonSpecificPages = ['gallery', 'dashboard', 'microscopy', 'interactor'];
-            page = targetNonSpecificPages.includes(page) ? 'profile' : page;
+            page = targetNonSpecificPages.includes(page) ? 'target' : page;
 
             console.log(`Pushing to history: /${page}/${newCellLineId}`);
             history.push(`/${page}/${newCellLineId}`);
@@ -118,7 +118,7 @@ function App() {
                 </Route>
 
                 <Route 
-                    path={"/profile/:cellLineId"}
+                    path={"/target/:cellLineId"}
                     render={props => (
                         <TargetProfile 
                             {...props} 
@@ -164,7 +164,7 @@ function App() {
                     )}
                 />
 
-                <Route path="/profile"></Route>
+                <Route path="/target"></Route>
                 <Route path="/gallery" component={Gallery}/>
                 <Route path="/dashboard" component={Dashboard}/>
 

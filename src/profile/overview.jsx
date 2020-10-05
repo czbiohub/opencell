@@ -29,7 +29,11 @@ export default class Overview extends Component {
     componentDidMount () {
         //console.log(`Overview mounted with cellLineId ${this.props.cellLineId}`);
         if (this.props.cellLineId) {
-            loadAnnotatedFovs(this.props.cellLineId, fovState => this.setState({...fovState}));
+            loadAnnotatedFovs(
+                this.props.cellLineId, 
+                fovState => this.setState({...fovState}),
+                error => this.setState({fovs: [], rois: []})
+            );
         }
     }
 
@@ -37,7 +41,11 @@ export default class Overview extends Component {
     componentDidUpdate (prevProps) {
         //console.log(`Overview updated with cellLineId ${this.props.cellLineId}`);
         if (prevProps.cellLineId===this.props.cellLineId) return;
-        loadAnnotatedFovs(this.props.cellLineId, fovState => this.setState({...fovState}));
+        loadAnnotatedFovs(
+            this.props.cellLineId, 
+            fovState => this.setState({...fovState}),
+            error => this.setState({fovs: [], rois: []})
+        );
     }
 
 

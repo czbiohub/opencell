@@ -60,7 +60,7 @@ export default class MultiSelectContainer extends Component {
                 key={item.name}
                 label={null}
                 onClick={handleClick}
-                text={`${item.name} (${item.num})`}
+                text={`${item.label} (${item.num})`}
                 shouldDismissPopover={false}
             />
         );
@@ -84,7 +84,7 @@ export default class MultiSelectContainer extends Component {
                 itemPredicate={(query, item) => {
                     return item.name && item.name.toLowerCase().startsWith(query.toLowerCase());
                 }}
-                tagRenderer={item => <span className="f5">{item.name}</span>}
+                tagRenderer={item => <span className="f5">{item.label}</span>}
                 tagInputProps={{
                     tagProps: {minimal: true},
                     rightElement: clearButton,

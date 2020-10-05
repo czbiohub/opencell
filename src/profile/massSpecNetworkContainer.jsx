@@ -326,13 +326,8 @@ export default class MassSpecNetworkContainer extends Component {
         return (
             <div className='relative'>
 
-                {!this.state.loaded ? 
-                    (
-                        <div className='f2 tc loading-overlay'>
-                            {this.state.loadingError ? 'No data' : 'Loading...'}
-                        </div>
-                    ) : (null)
-                }
+                {this.state.loadingError ? <div className='f2 tc loading-overlay'>No data</div> : (null)}
+                {!this.state.loaded ? <div className='f2 tc loading-overlay'>Loading...</div> : (null)}
 
                 {/* display controls */}
                 <div className="flex pb2">

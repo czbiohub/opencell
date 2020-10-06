@@ -37,18 +37,24 @@
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
+
 /* .clm-item:last-child { border: none; } */
 
-.metadata-item {
-    margin-right: 25px;
-    max-width: 200px;
+.clm-item a {
+    text-decoration: underline;
+    color: #333;
 }
 
-.metadata-item abbr {
+.clm-item abbr {
     text-decoration: none;
     line-height: 1em;
     margin-left: 2px;
     font-size: 14px;
+}
+
+.metadata-item {
+    margin-right: 25px;
+    max-width: 200px;
 }
 
 .metadata-item-label {

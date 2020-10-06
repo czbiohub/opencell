@@ -6,15 +6,9 @@ import { MetadataItem } from './common.jsx';
 
 export default function CellLineMetadata (props) {
 
-    // metadata items to display in the header
-    let cellLineLayout = [
+    // metadata items to display in the header for opencell targets
+    let targetLayout = [
         {
-            id: 'target_family',
-            width: 49,
-        },{
-            id: 'uniprot_id',
-            width: 30,
-        },{
             id: 'target_terminus',
             width: 24,
         },{
@@ -28,21 +22,54 @@ export default function CellLineMetadata (props) {
             width: 24,
         },{
             id: 'plate_id',
-            width: 24,
+            width: 33,
         },{
             id: 'well_id',
-            width: 24,
+            width: 33,
         },{
             id: 'sort_count',
-            width: 24,
+            width: 33,
         }
     ];
 
-    // TODO: define metadata items for interactors
+    // TODO: metadata items for interactors
     const interactorLayout = [];
 
-    const layout = props.isInteractor ? interactorLayout : cellLineLayout;
-    const items = layout.map(item => {
+    // links (the same for both targets and interactors)
+    const linkLayout = [
+        {
+            id: 'ensg',
+            defId: 'ensg_id',
+            width: 30,
+            label: 'Ensembl',
+            url: id => `https://uswest.ensembl.org/Homo_sapiens/Gene/Summary?g=${id}`,
+        },{
+            id: 'uniprot',
+            defId: 'uniprot_id',
+            width: 30,
+            label: 'Uniprot',
+            url: id => `https://www.uniprot.org/uniprot/${id}`,
+        },{
+            id: 'hpa',
+            defId: 'ensg_id',
+            width: 30,
+            label: 'HPA',
+            url: id => `https://www.proteinatlas.org/${id}`,
+        },
+    ];
+
+    const linkItems = linkLayout.map(item => {
+        const def = cellLineMetadataDefinitions.filter(def => def.id===item.defId)[0];
+        const value = def.accessor(props.data);
+        return (
+            <div key={item.id} className='pt2 pb2 clm-item' style={{flex: '1 1 30%'}}>
+                <a href={item.url(value)} target='_blank'>{item.label}</a>
+           </div>
+        );
+    });
+
+    const layout = props.isInteractor ? interactorLayout : targetLayout;
+    const metadataItems = layout.map(item => {
         const def = cellLineMetadataDefinitions.filter(def => def.id===item.id)[0];
         return (
             <div 
@@ -60,6 +87,7 @@ export default function CellLineMetadata (props) {
         );
     });
 
+
     return (
         <div className="flex-wrap items-center pt3 pb3 clm-container">
 
@@ -69,12 +97,12 @@ export default function CellLineMetadata (props) {
             </div>
 
             {/* protein descriptoin */}
-            <div className="w-100 pb3 clm-protein-description overflow-hidden">
+            <div className="w-100 clm-protein-description">
                 {props.data.uniprot_metadata?.protein_name}
             </div>
 
-            {/* target metadata items */}
-            {items}
+            {linkItems}
+            {metadataItems}
         </div>
     );
 }

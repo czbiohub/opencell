@@ -10,7 +10,6 @@ const cellLineMetadataDefinitions = [
         id: 'protein_name',
         accessor: row => row.uniprot_metadata?.protein_name,
         Header: 'Protein name',
-        units: null,
     },{
         id: 'target_family',
         accessor: row => {
@@ -18,31 +17,30 @@ const cellLineMetadataDefinitions = [
             return value ? value.charAt(0).toUpperCase() + value.slice(1) : null;
         },
         Header: 'Family',
-        units: '',
     },{
         id: 'target_terminus',
         accessor: row => row.metadata?.target_terminus,
         Header: 'Terminus',
-        units: null,
     },{
         id: 'uniprot_id',
         accessor: row => row.uniprot_metadata?.uniprot_id,
         Header: 'Uniprot ID'
     },{
+        id: 'ensg_id',
+        accessor: row => row.metadata?.ensg_id,
+        Header: 'ENSG ID'
+    },{
         id: 'plate_id',
         accessor: row => parseInt(row.metadata?.plate_id?.slice(1)),
         Header: 'Plate',
-        units: null,
     },{
         id: 'well_id',
         accessor: row => row.metadata?.well_id,
         Header: 'Well',
-        units: null,
     },{
         id: 'sort_count',
         accessor: row => row.metadata?.sort_count,
         Header: 'Sort count',
-        units: null,
     },{
         id: 'hek_tpm',
         accessor: row => Math.round(row.metadata?.hek_tpm),
@@ -72,42 +70,34 @@ const cellLineMetadataDefinitions = [
         id: 'facs_grade',
         accessor: row => facsGrades[`${row.metadata?.plate_id}-${row.metadata?.well_id}`],
         Header: 'FACS',
-        units: '',
     },{
         id: 'publication_ready',
         accessor: row => String(row.annotation.categories?.includes('publication_ready')),
         Header: 'Pub ready',
-        units: '',
     },{
         id: 're_image',
         accessor: row => String(row.annotation.categories?.includes('re_image')),
         Header: 'Re-image',
-        units: '',
     },{
         id: 'no_gfp',
         accessor: row => String(row.annotation.categories?.includes('no_gfp')),
         Header: 'No GFP',
-        units: '',
     },{
         id: 'low_gfp',
         accessor: row => String(row.annotation.categories?.includes('low_gfp')),
         Header: 'Low GFP',
-        units: '',
     },{
         id: 're_sort',
         accessor: row => String(row.annotation.categories?.includes('salvageable_re_sort')),
         Header: 'Salvageable re-sort',
-        units: '',
     },{
         id: 'num_fovs',
         accessor: row => row.counts.num_fovs,
         Header: 'Num FOVs',
-        units: '',
     },{
         id: 'num_annoted_fovs',
         accessor: row => row.counts.num_annotated_fovs,
         Header: 'Num annotated FOVs',
-        units: '',
     }
 ];
 
@@ -127,12 +117,10 @@ const fovMetadataDefinitions = [
         id: 'max_intensity',
         Header: 'Max intensity',
         accessor: fov => fov.metadata?.max_intensity_488,
-        units: '',
     },{
         id: 'score',
         Header: 'Score',
         accessor: fov => fov.metadata?.score?.toFixed(2) || 'NA',
-        units: '',
     },{
         id: 'step_size',
         Header: 'Step size',
@@ -147,12 +135,10 @@ const fovMetadataDefinitions = [
         id: 'pml_id',
         Header: 'Dataset ID',
         accessor: fov => fov.metadata?.pml_id,
-        units: '',
     },{
         id: 'fov_id',
         Header: 'FOV ID',
         accessor: fov => fov.metadata?.id,
-        units: '',
     }
 ];
 

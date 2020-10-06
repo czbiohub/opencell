@@ -32,6 +32,7 @@ def generate_cell_line_payload(cell_line, included_fields, fov_count=None):
         'target_family': design.target_family,
         'target_terminus': design.target_terminus.value[0],
         'transcript_id': design.transcript_id,
+        'ensg_id': design.uniprot_metadata.ensg_id,
         'hek_tpm': design.hek_tpm,
     }
 

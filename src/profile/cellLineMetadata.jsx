@@ -63,7 +63,7 @@ export default function CellLineMetadata (props) {
         const def = cellLineMetadataDefinitions.filter(def => def.id===item.defId)[0];
         const value = def.accessor(props.data);
         return (
-            <div key={item.id} className='pt2 pb2 clm-item' style={{flex: '1 1 30%'}}>
+            <div key={item.id} className='pt2 pb2 clm-item' style={{flex: `1 1 ${item.width}%`}}>
                 <a href={item.url(value)} target='_blank'>{item.label}</a>
            </div>
         );

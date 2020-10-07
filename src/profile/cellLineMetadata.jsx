@@ -1,10 +1,11 @@
-import React, {Component} from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {cellLineMetadataDefinitions} from './metadataDefinitions.js';
 import { MetadataItem } from './common.jsx';
-
+import settings from '../common/settings.js';
 
 
 export default function CellLineMetadata (props) {
+    const modeContext = useContext(settings.ModeContext);
 
     // metadata items to display in the header for opencell targets
     let targetLayout = [
@@ -102,7 +103,7 @@ export default function CellLineMetadata (props) {
             </div>
 
             {linkItems}
-            {metadataItems}
+            {modeContext==='private' ? metadataItems : null}
         </div>
     );
 }

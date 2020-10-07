@@ -52,6 +52,7 @@ function roiItemRenderer (roi, props) {
 
 
 export default class ViewerContainer extends Component {
+    static contextType = settings.ModeContext;
 
     constructor (props) {
         super(props);

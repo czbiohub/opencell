@@ -14,8 +14,8 @@ import CellLineMetadata from './cellLineMetadata.jsx';
 import MassSpecNetworkContainer from './massSpecNetworkContainer.jsx';
 
 
-export default class Overview extends Component {
-
+export default class TargetProfileOverview extends Component {
+    static contextType = settings.ModeContext;
     constructor (props) {
         super(props);
         this.state = {
@@ -28,15 +28,13 @@ export default class Overview extends Component {
 
     componentDidMount () {
         //console.log(`Overview mounted with cellLineId ${this.props.cellLineId}`);
-        if (this.props.cellLineId) {
-            loadAnnotatedFovs(
-                this.props.cellLineId, 
-                fovState => this.setState({...fovState}),
-                error => this.setState({fovs: [], rois: []})
-            );
-        }
+        if (!this.props.cellLineId) return;
+        loadAnnotatedFovs(
+            this.props.cellLineId, 
+            fovState => this.setState({...fovState}),
+            error => this.setState({fovs: [], rois: []})
+        );
     }
-
 
     componentDidUpdate (prevProps) {
         //console.log(`Overview updated with cellLineId ${this.props.cellLineId}`);
@@ -47,7 +45,6 @@ export default class Overview extends Component {
             error => this.setState({fovs: [], rois: []})
         );
     }
-
 
     render () {
         return (
@@ -74,8 +71,13 @@ export default class Overview extends Component {
                         </div>
 
                         {/* FACS plot */}
-                        <SectionHeader title='FACS histograms'/>
-                        <FacsPlotContainer cellLineId={this.props.cellLineId}/>
+                        {this.context==='private' ? (
+                            <div>
+                                <SectionHeader title='FACS histograms'/>
+                                <FacsPlotContainer cellLineId={this.props.cellLineId}/>
+                            </div>
+                        ) : null}
+
                     </div>
 
                     {/* Center column - sliceViewer and volumeViewer */}
@@ -89,7 +91,7 @@ export default class Overview extends Component {
                             rois={this.state.rois}
                             fovId={this.state.fovId}
                             roiId={this.state.roiId}
-                            showMetadata={true}
+                            showMetadata={this.context==='private'}
                             isLowGfp={this.props.cellLine.annotation?.categories?.includes('low_gfp')}
                             changeRoi={(roiId, fovId) => this.setState({roiId, fovId})}
                         />

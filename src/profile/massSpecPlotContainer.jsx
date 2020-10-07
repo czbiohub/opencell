@@ -4,12 +4,15 @@ import chroma from 'chroma-js';
 
 import ButtonGroup from './buttonGroup.jsx';
 import MassSpecScatterPlot from './massSpecScatterPlot.jsx';
+import settings from '../common/settings.js';
 
 import 'tachyons';
 import './Profile.css';
 
 
 export default class MassSpecPlotContainer extends Component {
+
+    static contextType = settings.ModeContext;
 
     constructor (props) {
         super(props);

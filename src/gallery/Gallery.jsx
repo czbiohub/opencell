@@ -152,6 +152,7 @@ function Thumbnail (props) {
 
 
 class Gallery extends Component {
+    static contextType = settings.ModeContext;
 
     constructor (props) {
         super(props);
@@ -273,35 +274,39 @@ class Gallery extends Component {
             overlay = <div className='f2 tc'>No targets found</div>;
         }
 
+        const privateMultiSelectContainers = [
+            <div className="pa3 w-25">
+                <div className="f4">{"QC annotations"}</div>
+                <MultiSelectContainer
+                    items={qcCategories}
+                    selectedItems={this.state.qcCategories}
+                    updateSelectedItems={items => this.updateCategories('qcCategories', items)}
+                />
+            </div>,
+            <div className="pa3 w-25">
+                <div className="f4">{"Gene families"}</div>
+                <MultiSelectContainer
+                    items={families}
+                    selectedItems={this.state.families}
+                    updateSelectedItems={items => this.updateCategories('families', items)}
+                />
+            </div>
+        ];
+
         return (
             <div>
                 <div className="pa4 w-100">
 
                     <div className="flex" style={{alignItems: 'flex-start'}}>
-                        <div className="pa3 w-25">
-                            <div className="f4">{"Localization"}</div>
+                        <div className="pa3 w-33">
+                            <div className="f4">{"Select localization annotations"}</div>
                             <MultiSelectContainer
                                 items={localizationCategories}
                                 selectedItems={this.state.localizationCategories}
                                 updateSelectedItems={items => this.updateCategories('localizationCategories', items)}
                             />
                         </div>
-                        <div className="pa3 w-25">
-                            <div className="f4">{"QC"}</div>
-                            <MultiSelectContainer
-                                items={qcCategories}
-                                selectedItems={this.state.qcCategories}
-                                updateSelectedItems={items => this.updateCategories('qcCategories', items)}
-                            />
-                        </div>
-                        <div className="pa3 w-25">
-                            <div className="f4">{"Families"}</div>
-                            <MultiSelectContainer
-                                items={families}
-                                selectedItems={this.state.families}
-                                updateSelectedItems={items => this.updateCategories('families', items)}
-                            />
-                        </div>
+                        {this.context==='private' ? privateMultiSelectContainers : null}
                         <div className='pt4'>
                             <div className='f4 simple-button' onClick={() => {this.setState({reload: true})}}>
                             {'Load'}

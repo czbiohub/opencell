@@ -1,5 +1,5 @@
 import * as d3 from 'd3';
-import React, { useState, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import ReactDOM from 'react-dom';
 
 import {
@@ -49,9 +49,10 @@ function useCellLineId () {
             //if we are on a target-non-specific page, redirect to the profile page
             const targetNonSpecificPages = ['gallery', 'dashboard', 'microscopy', 'interactor'];
             page = targetNonSpecificPages.includes(page) ? 'target' : page;
-
-            console.log(`Pushing to history: /${page}/${newCellLineId}`);
-            history.push(`/${page}/${newCellLineId}`);
+            
+            const newUrl = `/${page}/${newCellLineId}${history.location.search}`;
+            console.log(`Pushing to history: ${newUrl}`);
+            history.push(newUrl);
         }
 
         console.log(`setCellLineId changing id from ${cellLineId} to ${newCellLineId}`);
@@ -70,15 +71,17 @@ function useGeneNameSearch (setCellLineId) {
     let history = useHistory();
     const [doSearch, setDoSearch] = useState(false);
     const [geneName, setGeneName] = useState();
+    const modeContext = useContext(settings.ModeContext);
 
     // retrieve a cellLineId from the target name query 
     useEffect(() => {
         if (!geneName || !doSearch) return;
-        d3.json(`${settings.apiUrl}/search/${geneName}`).then(result => {
+        const url = `${settings.apiUrl}/search/${geneName}?publication_ready=${modeContext==='public'}`; 
+        d3.json(url).then(result => {
             if (result.oc_id) {
                 setCellLineId(result.oc_id.replace('OPCT', ''));
             } else if (result.ensg_ids) {
-                history.push(`/interactor/${result.ensg_ids[0]}`);
+                history.push(`/interactor/${result.ensg_ids[0]}${history.location.search}`);
             } else {
                 // TODO: popup warning that no results were found
             }
@@ -92,6 +95,7 @@ function useGeneNameSearch (setCellLineId) {
 
 
 function App() {
+    const modeContext = useContext(settings.ModeContext);
 
     const [cellLineId, setCellLineId] = useCellLineId();
     const handleGeneNameSearch = useGeneNameSearch(setCellLineId);
@@ -107,6 +111,54 @@ function App() {
         }
     }, []);
 
+    const publicCellLineRoutes = [
+        <Route 
+            path={"/target/:cellLineId"}
+            render={props => (
+                <TargetProfile 
+                    {...props} 
+                    cellLineId={cellLineId} 
+                    setCellLineId={setCellLineId}
+                    handleGeneNameSearch={handleGeneNameSearch} 
+                />
+            )}
+        />,
+        <Route 
+            path={"/interactor/:ensgId"}
+            render={props => (
+                <InteractorProfile 
+                    {...props} 
+                    setCellLineId={setCellLineId}
+                    handleGeneNameSearch={handleGeneNameSearch} 
+                />
+            )}
+        />
+    ];
+
+    const privateCellLineRoutes = [
+        <Route 
+            path={"/fovs/:cellLineId"}
+            render={props => (
+                <TargetProfile 
+                    {...props} 
+                    cellLineId={cellLineId} 
+                    setCellLineId={setCellLineId}
+                    showFovAnnotator
+                />
+            )}
+        />,
+        <Route 
+            path={"/annotations/:cellLineId"}
+            render={props => (
+                <TargetProfile 
+                    {...props} 
+                    cellLineId={cellLineId} 
+                    setCellLineId={setCellLineId} 
+                    showTargetAnnotator
+                />
+            )}
+        />
+    ];
 
     return (
         <div>
@@ -117,59 +169,15 @@ function App() {
                     <div>This is the homepage</div>
                 </Route>
 
-                <Route 
-                    path={"/target/:cellLineId"}
-                    render={props => (
-                        <TargetProfile 
-                            {...props} 
-                            cellLineId={cellLineId} 
-                            setCellLineId={setCellLineId}
-                            handleGeneNameSearch={handleGeneNameSearch} 
-                        />
-                    )}
-                />
-
-                <Route 
-                    path={"/fovs/:cellLineId"}
-                    render={props => (
-                        <TargetProfile 
-                            {...props} 
-                            cellLineId={cellLineId} 
-                            setCellLineId={setCellLineId}
-                            showFovAnnotator
-                        />
-                    )}
-                />
-
-                <Route 
-                    path={"/annotations/:cellLineId"}
-                    render={props => (
-                        <TargetProfile 
-                            {...props} 
-                            cellLineId={cellLineId} 
-                            setCellLineId={setCellLineId} 
-                            showTargetAnnotator
-                        />
-                    )}
-                />
-
-                <Route 
-                    path={"/interactor/:ensgId"}
-                    render={props => (
-                        <InteractorProfile 
-                            {...props} 
-                            setCellLineId={setCellLineId}
-                            handleGeneNameSearch={handleGeneNameSearch} 
-                        />
-                    )}
-                />
+                {publicCellLineRoutes}
+                {modeContext==='private' ? privateCellLineRoutes : null}
 
                 <Route path="/target"></Route>
                 <Route path="/gallery" component={Gallery}/>
                 <Route path="/dashboard" component={Dashboard}/>
 
                 {/* TODO: fix this - FOVOverview needs a plateId prop */}
-                <Route path="/microscopy" component={FOVOverview}/>,
+                {/* <Route path="/microscopy" component={FOVOverview}/>, */}
 
                 <Route>
                     <div className="f2 pa3 w-100 ma">Page not found</div>
@@ -179,8 +187,15 @@ function App() {
     )
 }
 
+const urlParams = new URLSearchParams(window.location.search);
+const modeContextValue = urlParams.get('mode') || 'public';
+
 ReactDOM.render(
-    <BrowserRouter><App/></BrowserRouter>, 
+    <BrowserRouter>
+        <settings.ModeContext.Provider value={modeContextValue}>
+            <App/>
+        </settings.ModeContext.Provider>
+    </BrowserRouter>, 
     document.getElementById('root')
 );
 

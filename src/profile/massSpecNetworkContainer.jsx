@@ -28,6 +28,7 @@ cytoscape.use(nodeHtmlLabel);
 
 
 export default class MassSpecNetworkContainer extends Component {
+    static contextType = settings.ModeContext;
 
     constructor (props) {
         super(props);
@@ -323,6 +324,13 @@ export default class MassSpecNetworkContainer extends Component {
 
 
     render () {
+
+        const allLayoutNames = ['circle', 'concentric', 'cose', 'fcose', 'coseb', 'cise'];
+        const allLayoutLabels = ['Circle', 'Concentric', 'CoSE', 'fCoSE', 'CoSE-Bilkent', 'CiSE'];
+        
+        const layoutNames = this.context==='public' ? ['fcose', 'coseb'] : allLayoutNames;
+        const layoutLabels = this.context==='public' ? ['fCoSE', 'CoSE-Bilkent'] : allLayoutLabels;
+
         return (
             <div className='relative'>
 
@@ -330,58 +338,61 @@ export default class MassSpecNetworkContainer extends Component {
                 {!this.state.loaded ? <div className='f2 tc loading-overlay'>Loading...</div> : (null)}
 
                 {/* display controls */}
-                <div className="flex pb2">
+                <div className="pt2 flex items-end pb2">
 
                     {/* Top row - scatterplot controls */}
-                    <div className='w-100 flex flex-wrap items-end'>
-                        <div className='pt2 pr2'>
-                            <ButtonGroup 
-                                label='Layout' 
-                                values={['circle', 'concentric', 'cose', 'fcose', 'coseb', 'cise']}
-                                labels={['Circle', 'Concentric', 'CoSE', 'fCoSE', 'CoSE-Bilkent', 'CiSE']}
-                                activeValue={this.state.layoutName}
-                                onClick={value => this.setState({layoutName: value})}
-                            />
+                    {(this.context==='private') ? (
+                        <div className='w-100 flex flex-wrap items-end'>
+                            <div className='pt2 pr2'>
+                                <ButtonGroup 
+                                    label='Layout' 
+                                    values={layoutNames}
+                                    labels={layoutLabels}
+                                    activeValue={this.state.layoutName}
+                                    onClick={value => this.setState({layoutName: value})}
+                                />
+                            </div>
+                            <div className='pt2 pr2'>
+                                <ButtonGroup 
+                                    label='Clustering type' 
+                                    values={['original', 'new']}
+                                    labels={['Original', 'New']}
+                                    activeValue={this.state.clusteringAnalysisType}
+                                    onClick={value => this.setState({clusteringAnalysisType: value})}
+                                />
+                            </div>
+                            <div className='pt2 pr2'>
+                                <ButtonGroup 
+                                    label='Subcluster type' 
+                                    values={['core-complexes', 'subclusters']}
+                                    labels={['Core complexes', 'Subclusters']}
+                                    activeValue={this.state.subclusterType}
+                                    onClick={value => this.setState({subclusterType: value})}
+                                />
+                            </div>
+                            <div className='pt2 pr2'>
+                                <ButtonGroup 
+                                    label='Use compound nodes' 
+                                    values={[true, false]}
+                                    labels={['Yes', 'No']}
+                                    activeValue={this.state.includeParentNodes}
+                                    onClick={value => this.setState({includeParentNodes: value})}
+                                />
+                            </div>
+                            <div className='pt2 pr2'>
+                                <ButtonGroup 
+                                    label='Show saved network' 
+                                    values={[true, false]}
+                                    labels={['Yes', 'No']}
+                                    activeValue={this.state.showSavedNetwork}
+                                    onClick={value => this.setState({showSavedNetwork: value})}
+                                />
+                            </div>
                         </div>
-                        <div className='pt2 pr2'>
-                            <ButtonGroup 
-                                label='Clustering type' 
-                                values={['original', 'new']}
-                                labels={['Original', 'New']}
-                                activeValue={this.state.clusteringAnalysisType}
-                                onClick={value => this.setState({clusteringAnalysisType: value})}
-                            />
-                        </div>
-                        <div className='pt2 pr2'>
-                            <ButtonGroup 
-                                label='Subcluster type' 
-                                values={['core-complexes', 'subclusters']}
-                                labels={['Core complexes', 'Subclusters']}
-                                activeValue={this.state.subclusterType}
-                                onClick={value => this.setState({subclusterType: value})}
-                            />
-                        </div>
-                        <div className='pt2 pr2'>
-                            <ButtonGroup 
-                                label='Use compound nodes' 
-                                values={[true, false]}
-                                labels={['Yes', 'No']}
-                                activeValue={this.state.includeParentNodes}
-                                onClick={value => this.setState({includeParentNodes: value})}
-                            />
-                        </div>
-                        <div className='pt2 pr2'>
-                            <ButtonGroup 
-                                label='Show saved network' 
-                                values={[true, false]}
-                                labels={['Yes', 'No']}
-                                activeValue={this.state.showSavedNetwork}
-                                onClick={value => this.setState({showSavedNetwork: value})}
-                            />
-                        </div>
-                        <div className='f6 simple-button' onClick={() => {this.cy.fit()}}>
-                            {'Reset zoom'}
-                        </div>
+                    ) : null}
+
+                    <div className='f6 simple-button' onClick={() => {this.cy.fit()}}>
+                        {'Reset zoom'}
                     </div>
                 </div>
 
@@ -400,7 +411,8 @@ export default class MassSpecNetworkContainer extends Component {
                         null
                     )}
                 </div>
-
+                
+                {this.context==='private' ? (
                 <div className='w-100 flex'>
                     <Button
                         text={'Save network'}
@@ -415,6 +427,8 @@ export default class MassSpecNetworkContainer extends Component {
                         intent={this.state.deletionStatus || 'none'}
                     />
                 </div>
+                ) : null}
+
             </div>
 
         );

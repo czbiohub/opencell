@@ -31,12 +31,19 @@ class Search(Resource):
 
         payload = {}
         search_string = search_string.upper()
+        publication_ready_only = flask.request.args.get('publication_ready') == 'true'
 
         # search for opencell targets
         query = (
             flask.current_app.Session.query(models.CellLine).join(models.CellLine.crispr_design)
             .filter(db.func.upper(models.CrisprDesign.target_name) == search_string)
         )
+
+        if publication_ready_only:
+            cell_line_ids = operations.get_lines_by_annotation(
+                engine=flask.current_app.Session.get_bind(), annotation='publication_ready'
+            )
+            query = query.filter(models.CellLine.id.in_(cell_line_ids))
 
         # hack for the positive controls
         if search_string in ['CLTA', 'BCAP31']:
@@ -91,12 +98,18 @@ class CellLines(Resource):
 
         args = flask.request.args
         plate_id = args.get('plate_id')
+        publication_ready_only = args.get('publication_ready') == 'true'
 
         included_fields = args.get('fields')
         included_fields = included_fields.split(',') if included_fields else []
 
         cell_line_ids = args.get('ids')
         cell_line_ids = [int(_id) for _id in cell_line_ids.split(',')] if cell_line_ids else []
+
+        if publication_ready_only:
+            cell_line_ids = operations.get_lines_by_annotation(
+                engine=flask.current_app.Session.get_bind(), annotation='publication_ready'
+            )
 
         # cell line query with the eager-loading required by generate_cell_line_payload
         query = (

@@ -157,6 +157,23 @@ def create_polyclonal_lines(
     utils.add_and_commit(session, cell_lines, errors=errors)
 
 
+def get_lines_by_annotation(engine, annotation):
+    '''
+    Get the ids of all cell lines with a particular manual annotation category
+    '''
+    result = pd.read_sql(
+        f'''
+        select cell_line_id from(
+            select cell_line_id, json_array_elements_text(categories::json) as cat
+            from cell_line_annotation
+        ) tmp
+        where cat = '{annotation}'
+        ''',
+        engine
+    )
+    return result.cell_line_id.tolist()
+
+
 def insert_uniprot_metadata_from_id(session, uniprot_id, errors='warn'):
     '''
     Retrieve and insert Uniprot metadata for a given uniprot_id

@@ -129,6 +129,24 @@ def recursive_haircut(cluster, all_hits, target_col, prey_col, edge='', edge_thr
     return clipped
 
 
+def clean_up_first_mcl(mcl_stoi, grouped=False):
+    mcl_stoi = mcl_stoi.copy()
+    mcl_stoi.drop(columns=['selected', 'shared name'], inplace=True)
+    mcl_stoi.reset_index(drop=True, inplace=True)
+    mcl_stoi.rename(columns={'__mclCluster': 'mcl_cluster', 'name': 'gene_name'}, inplace=True)
+    mcl_stoi.sort_values(['mcl_cluster', 'gene_name'], inplace=True)
+    mcl_stoi = mcl_stoi[mcl_stoi['mcl_cluster'].apply(lambda x: np.isfinite(x))]
+
+    count = mcl_stoi.groupby('mcl_cluster').count()
+    clusters = count[count['gene_name'] > 2].index.to_list()
+    mcl_stoi = mcl_stoi[mcl_stoi['mcl_cluster'].isin(clusters)]
+    mcl_stoi.reset_index(drop=True, inplace=True)
+    if grouped:
+        mcl_stoi = pd.DataFrame(
+            mcl_stoi.groupby('mcl_cluster')['gene_name'].apply(list)).reset_index()
+    return mcl_stoi
+
+
 def haircut(cluster, all_hits, target_col, prey_col, edge, edge_thresh):
     """
     child function of clusterone_haircut
@@ -226,10 +244,12 @@ def mcl_newman(first_mcl, network_df, target_col, prey_col, first_thresh):
     for idx, cluster in enumerate(clusters):
         # original clusterone cluster number
         idx += 1
+        cluster_network = retrieve_cluster_df(
+            network_df, cluster, target_col, prey_col)
 
         # If the clusterone cluster does not exceed minimum size for second clustering
         # Return cluster with a haircut
-        if len(cluster) < first_thresh:
+        if (len(cluster) < first_thresh) or (cluster_network.shape[0] < 3):
             c_clusters.append(idx)
             newman.append(False)
             m_clusters.append(cluster)
@@ -238,6 +258,7 @@ def mcl_newman(first_mcl, network_df, target_col, prey_col, first_thresh):
         else:
             cluster_network = retrieve_cluster_df(
                 network_df, cluster, target_col, prey_col)
+
 
             # NetworkX transformation of pandas interactions to sparse matrix
             c_graph = nx.convert_matrix.from_pandas_edgelist(

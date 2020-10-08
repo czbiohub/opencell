@@ -43,6 +43,7 @@ def compute_stoich_df(m_imputed, seq_df, rnaseq, pvals, pull_uni,
     pg_mapping = protein_group_meta(divided, metadata)
 
     final_stoi, association = divide_by_bait(divided, pull_uni, pg_mapping)
+
     # remove median headings
     col_names = list(final_stoi)
     med_RE = ['median ']
@@ -60,6 +61,7 @@ def compute_stoich_df(m_imputed, seq_df, rnaseq, pvals, pull_uni,
         'Fasta headers'], inplace=True)
 
 
+
     baits = list(set(pvals.columns.get_level_values(0).tolist()))
 
     # Append abundance stoichiometries
@@ -73,7 +75,6 @@ def compute_stoich_df(m_imputed, seq_df, rnaseq, pvals, pull_uni,
         key = re.search(target_re, bait).groups()[0]
         if key in association.keys():
             match_pids = association[key]
-
 
             target_row = tpm_vals[tpm_vals['protein_ids'].apply(
                 lambda x: x in match_pids)]
@@ -101,7 +102,7 @@ def compute_stoich_df(m_imputed, seq_df, rnaseq, pvals, pull_uni,
     pvals.update(interaction_stoi, join='left')
 
     pvals.sort_index(inplace=True, axis=1)
-    return pvals
+    return pvals, pg_mapping
 
 
 
@@ -209,6 +210,7 @@ def divide_by_bait(divided_df, pull_uni, pg_mapping, intensity_re=r'P(\d{3})_(.*
     pg_mapping = pg_mapping.copy()
 
     divided_df = divided_df.copy()
+    divided_df['Protein IDs'] = divided_df['Protein IDs'].astype(str)
     cols = list(divided_df)
     association = {}
 
@@ -237,6 +239,8 @@ def divide_by_bait(divided_df, pull_uni, pg_mapping, intensity_re=r'P(\d{3})_(.*
 
             if uni_row.shape[0] > 0:
                 uni_row = uni_row.iloc[0]
+
+
                 ensg = uni_row.ensg_id
 
                 # get protein ID of the ensg

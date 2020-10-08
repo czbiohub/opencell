@@ -65,7 +65,8 @@ def insert_pulldown_plate(session, row, errors='warn'):
         .one_or_none()
     )
     if plate:
-        utils.delete_and_commit(session, plate)
+        # utils.delete_and_commit(session, plate)
+        return
 
     plate = models.MassSpecPulldownPlate(
         id=row.id,
@@ -90,7 +91,8 @@ def insert_protein_group(session, row, errors='warn'):
         .one_or_none()
     )
     if existing_group:
-        utils.delete_and_commit(session, existing_group)
+        return
+        # utils.delete_and_commit(session, existing_group)
 
     if row.gene_names:
         gene_names = row.gene_names.split(';')
@@ -155,11 +157,11 @@ class MassSpecPulldownOperations:
 
 
     @classmethod
-    def from_target(cls, session, target, pulldown_df, sort_count):
+    def from_target(cls, session, target, pulldown_df):
         '''
         Get a pulldown from a target name, given a pulldown dataframe and a sort_count
         '''
-        pulldown_plate_id, target_name = target.split('_')
+        pulldown_plate_id, target_name = target.split('_', 1)
         pulldown_plate_id = ms_utils.format_ms_plate(pulldown_plate_id)
 
         # get the pulldown for this plate_id and target_name
@@ -167,10 +169,33 @@ class MassSpecPulldownOperations:
             (pulldown_df['pulldown_plate_id'] == pulldown_plate_id) &
             (pulldown_df['target_name'] == target_name)
         ]
+        try:
+            plate_design_id, well_id, sort_count = (
+                pulldown_row.design_id.item(), 
+                pulldown_row.well_id.item(), 
+                pulldown_row.sort_count.item()
+            )
+        except Exception:
+            print(target)
+            return None
+        return cls.from_ids(session, plate_design_id, well_id, sort_count, pulldown_plate_id)
 
-        plate_design_id, well_id = pulldown_row.design_id.item(), pulldown_row.well_id.item()
-        return cls.from_ids(session, plate_design_id, well_id, pulldown_plate_id, sort_count)
+    def update_to_resorted_line(self, session, plate_design_id, well_id, new_sort_count):
+        """
+        pulldown data from old sorts of a cell line should be migrated to the
+        most recently sorted line. This method updates the cell_line_id of the
+        pulldown to the pre-queried cell line
+        """
+        # get the cell_line_id
+        pull_cls = MassSpecPolyclonalOperations.from_plate_well(
+            session, plate_design_id, well_id, new_sort_count
+        )
+        # new cell_line id
+        new_cell_line_id = pull_cls.line.id
 
+        self.cell_line_id = new_cell_line_id
+
+        session.commit()
 
     def bulk_insert_hits(self, session, target_hits, errors='warn'):
         """
@@ -263,7 +288,6 @@ class MassSpecPulldownOperations:
             enrichment=row.enrichment,
             is_significant_hit=row.hits,
             is_minor_hit=row.minor_hits,
-            is_imputed=row.imputed,
             interaction_stoich=row.interaction_stoi,
             abundance_stoich=row.abundance_stoi
         )

@@ -43,6 +43,7 @@ def get_plate_interactors(pvals, metrics=['pvals'], just_hits=False):
     Return a dataframe that has all hits or interactions in 3-column (target, prey, metric) format
     """
 
+    protein_ids = pvals.index.to_list()
     pvals = pvals.copy()
 
     pvals.set_index(('gene_names', 'gene_names'), inplace=True)
@@ -54,6 +55,9 @@ def get_plate_interactors(pvals, metrics=['pvals'], just_hits=False):
     # Get all hits and minor hits along with the metric data
     for target in targets:
         target_pvs = pvals[target]
+        target_pvs['protein_ids'] = protein_ids
+
+        # return target_pvs
         # just_hits bool will return all hits, else it will only return interactors
         if just_hits:
             hits = target_pvs
@@ -64,18 +68,19 @@ def get_plate_interactors(pvals, metrics=['pvals'], just_hits=False):
             hits.reset_index(inplace=True)
 
 
-        # expand where there are multiple entries in gene names
-        multiples = hits[hits['gene_names'].map(lambda x: ';' in x)]
-        multiples_idxs = multiples.index.to_list()
+        # # expand where there are multiple entries in gene names
+        # multiples = hits[hits['gene_names'].map(lambda x: ';' in x)]
+        # multiples_idxs = multiples.index.to_list()
 
-        for multiple in multiples_idxs:
-            copy_row = hits.iloc[multiple]
-            genes = copy_row['gene_names'].split(';')
-            for gene in genes:
-                add_row = copy_row.copy()
-                add_row['gene_names'] = gene
-                hits = hits.append(add_row, ignore_index=True)
-            hits.drop(multiple, inplace=True)
+        # for multiple in multiples_idxs:
+        #     copy_row = hits.iloc[multiple]
+        #     genes = copy_row['gene_names'].split(';')
+        #     for gene in genes:
+        #         add_row = copy_row.copy()
+        #         add_row['gene_names'] = gene
+        #         hits = hits.append(add_row, ignore_index=True)
+        #     hits.drop(multiple, inplace=True)
+
         hits['target'] = target.upper()
         hits.rename(columns={'gene_names': 'prey'}, inplace=True)
         hits.reset_index(drop=True, inplace=True)
@@ -118,8 +123,8 @@ def get_all_interactors(plates, root, date, metrics=['pvals'], name='_pval_and_s
     all_hits = all_hits.sort_values(by='target')
 
     # separate out the plate and target information from plate_target format
-    all_hits['plate'] = all_hits['target'].apply(lambda x: x.split('_')[0])
-    all_hits['target'] = all_hits['target'].apply(lambda x: x.split('_')[1])
+    all_hits['plate'] = all_hits['target'].apply(lambda x: x.split('_', 1)[0])
+    all_hits['target'] = all_hits['target'].apply(lambda x: x.split('_', 1)[1])
 
     return all_hits
 
@@ -156,14 +161,14 @@ def fdr_all_interactors(plates, root, date, fdr1, fdr5, dynamic=False,
     selected_cols = ['target', 'prey', 'hits', 'minor_hits'] + metric
     all_hits = all_hits[selected_cols]
     all_hits = all_hits.sort_values(by='target')
-    all_hits['plate'] = all_hits['target'].apply(lambda x: x.split('_')[0])
-    all_hits['target'] = all_hits['target'].apply(lambda x: x.split('_')[1])
+    all_hits['plate'] = all_hits['target'].apply(lambda x: x.split('_', 1)[0])
+    all_hits['target'] = all_hits['target'].apply(lambda x: x.split('_', 1)[1])
     all_hits['target'] = all_hits['target'].apply(lambda x: x.upper())
     if dynamic:
         fdrs = pd.concat(all_fdrs)
         fdrs.reset_index(inplace=True)
-        fdrs['target'] = fdrs['bait'].apply(lambda x: x.split('_')[1])
-        fdrs['plate'] = fdrs['bait'].apply(lambda x: x.split('_')[0])
+        fdrs['target'] = fdrs['bait'].apply(lambda x: x.split('_', 1)[1])
+        fdrs['plate'] = fdrs['bait'].apply(lambda x: x.split('_', 1)[0])
         fdrs['target'] = fdrs['target'].apply(lambda x: x.upper())
         fdrs.drop(columns=['bait'], inplace=True)
         all_hits = all_hits.merge(fdrs, on=['target', 'plate'], how='left')

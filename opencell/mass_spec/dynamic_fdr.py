@@ -85,6 +85,8 @@ def get_fdrs(pvals):
         pvals[(bait, 'minor_hits')] = np.where(
             ((bait_pval < first_thresh) & (bait_pval > second_thresh)), True, False)
 
+        pvals[(bait, 'fdr1')] = [fdr1] * pvals.shape[0]
+        pvals[(bait, 'fdr5')] = [fdr5] * pvals.shape[0]
 
 
     pvals.sort_index(axis=1, inplace=True)

@@ -170,8 +170,11 @@ class MassSpecPulldownOperations:
             (pulldown_df['target_name'] == target_name)
         ]
         try:
-            plate_design_id, well_id, sort_count = \
-                pulldown_row.design_id.item(), pulldown_row.well_id.item(), pulldown_row.sort_count.item()
+            plate_design_id, well_id, sort_count = (
+                pulldown_row.design_id.item(), 
+                pulldown_row.well_id.item(), 
+                pulldown_row.sort_count.item()
+            )
         except Exception:
             print(target)
             return None

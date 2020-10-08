@@ -4,12 +4,15 @@ import chroma from 'chroma-js';
 
 import ButtonGroup from './buttonGroup.jsx';
 import MassSpecScatterPlot from './massSpecScatterPlot.jsx';
+import settings from '../common/settings.js';
 
 import 'tachyons';
 import './Profile.css';
 
 
 export default class MassSpecPlotContainer extends Component {
+
+    static contextType = settings.ModeContext;
 
     constructor (props) {
         super(props);
@@ -62,11 +65,11 @@ export default class MassSpecPlotContainer extends Component {
 
                 {/* volcano plot
                 the hack-ish absolute margins here are to better align the svg itself*/}
-                <div className="w-100 scatterplot-container" style={{marginLeft: -20}}>
+                <div className="w-100 pl4 pr5 scatterplot-container" style={{marginLeft: -20}}>
                     <MassSpecScatterPlot
                         mode={this.state.plotMode}
                         pulldownId={this.props.pulldownId}
-                        changeTarget={this.props.changeTarget}
+                        handleGeneNameSearch={this.props.handleGeneNameSearch}
                         showCaptions={this.state.showPlotCaptions}
                         resetZoom={this.state.resetPlotZoom}
                         colorMode={this.state.plotColorMode}

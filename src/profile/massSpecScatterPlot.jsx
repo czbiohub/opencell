@@ -24,7 +24,7 @@ export default class MassSpecScatterPlot extends Component {
         this.hits = [];
 
         this.plotProps = {
-            aspectRatio: .8,
+            aspectRatio: .7,
             padLeft: 40,
             padRight: 10,
             padTop: 10,
@@ -33,7 +33,7 @@ export default class MassSpecScatterPlot extends Component {
             dotAlpha: .3,
             dotRadius: 5,
             xAxisLabelOffset: 5,
-            yAxisLabelOffset: 15,
+            yAxisLabelOffset: 10,
         };
 
         this.pvalueAccessor = d => parseFloat(d.pval);
@@ -142,6 +142,10 @@ export default class MassSpecScatterPlot extends Component {
         if (prevProps.resetZoom!==this.props.resetZoom) this.resetZoom();
         if (prevProps.mode!==this.props.mode) this.resetZoom();
         this.updateScatterPlot();
+    }
+
+    componentWillUnmount () {
+        d3.selectAll(".d3-tip").remove();
     }
 
 
@@ -535,7 +539,9 @@ export default class MassSpecScatterPlot extends Component {
                   .classed("scatter-dot-hover", false);
                 _this.tip.hide(d, this);
              })
-            .on('click', d => this.props.changeTarget(d.opencell_target_names[0]));
+            .on('click', d => {
+                this.props.handleGeneNameSearch(d.opencell_target_names[0] || d.uniprot_gene_names[0])
+            });
 
         // bind data - filter for only significant hits
         const captions = this.g.selectAll('.scatter-caption')

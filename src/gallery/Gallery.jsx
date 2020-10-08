@@ -20,30 +20,30 @@ import './gallery.css';
 
 
 const localizationCategories = [
-    {'name': 'cytoplasmic', 'num': 630},
-    {'name': 'nuclear', 'num': 594},
-    {'name': 'vesicles', 'num': 350},
     {'name': 'membrane', 'num': 192},
-    {'name': 'chromatin', 'num': 149},
-    {'name': 'textured', 'num': 127},
-    {'name': 'er', 'num': 125},
-    {'name': 'small_aggregates', 'num': 112},
-    {'name': 'nuclear_punctae', 'num': 110},
-    {'name': 'nucleus_cytoplasm_variation', 'num': 92},
+    {'name': 'vesicles', 'num': 350},
+    {'name': 'er', 'num': 125, 'label': 'ER'},
     {'name': 'golgi', 'num': 90},
-    {'name': 'diffuse', 'num': 82},
-    {'name': 'nucleolus_gc', 'num': 73},
-    {'name': 'cytoskeleton', 'num': 52},
-    {'name': 'cell_contact', 'num': 50},
-    {'name': 'centrosome', 'num': 45},
-    {'name': 'nuclear_membrane', 'num': 44},
-    {'name': 'nucleolus_fc_dfc', 'num': 32},
-    {'name': 'big_aggregates', 'num': 30},
-    {'name': 'nucleolus', 'num': 30},
-    {'name': 'nucleolar_ring', 'num': 17},
     {'name': 'mitochondria', 'num': 14},
-    {'name': 'mitotic_cells', 'num': 7},
+    {'name': 'centrosome', 'num': 45},
+    {'name': 'cytoskeleton', 'num': 52},
+    {'name': 'chromatin', 'num': 149},
+    {'name': 'nuclear', 'num': 594},
+    {'name': 'nuclear_membrane', 'num': 44},
+    {'name': 'nucleolus', 'num': 30},
+    {'name': 'nucleolus_gc', 'num': 73, 'label': 'Nucleolus - GC'},
+    {'name': 'nucleolus_fc_dfc', 'num': 32, 'label': 'Nucleolus - FC/DFC'},
+    {'name': 'nucleolar_ring', 'num': 17},
+    {'name': 'nuclear_punctae', 'num': 110},
+    {'name': 'nucleus_cytoplasm_variation', 'num': 92, 'label': 'Nucleus-cytoplasm variation'},
+    {'name': 'small_aggregates', 'num': 112},
+    {'name': 'big_aggregates', 'num': 30},
+    {'name': 'cell_contact', 'num': 50},
     {'name': 'cilia', 'num': 4},
+    {'name': 'diffuse', 'num': 82},
+    {'name': 'textured', 'num': 127},
+    {'name': 'cytoplasmic', 'num': 630},
+    {'name': 'mitotic_cells', 'num': 7},
 ];
 
 
@@ -87,6 +87,15 @@ const families = [
     {'name': 'Peter Tuhl', 'num': 25},
     {'name': 'centrosome', 'num': 23},
 ];
+
+
+function generateCategoryLabels (categories) {
+    // make capitalized labels from the category names
+    categories.forEach(category => {
+        let label = category.name.replace(/_/g, ' ');
+        category.label = category.label ? category.label : label.charAt(0).toUpperCase() + label.slice(1);
+    });
+}
 
 
 const proteinNameDef = cellLineMetadataDefinitions.filter(def => def.id === 'protein_name')[0];
@@ -143,11 +152,15 @@ function Thumbnail (props) {
 
 
 class Gallery extends Component {
+    static contextType = settings.ModeContext;
 
     constructor (props) {
         super(props);
-        this.urlParams = new URLSearchParams(window.location.search);
 
+        generateCategoryLabels(localizationCategories);
+        generateCategoryLabels(qcCategories);
+        generateCategoryLabels(families);
+        
         this.state = {
             loaded: false,
             qcCategories: qcCategories.filter(item => item.name === 'publication_ready'),
@@ -226,16 +239,14 @@ class Gallery extends Component {
             this.setState({reload: false});
             this.loadData();
         }
-
         if (prevState.cellLineId!==this.state.cellLineId) {
             utils.loadAnnotatedFovs(this.state.cellLineId, fovState => this.setState({...fovState}));    
         }
     }
 
     updateCategories(categoryType, categories) {
-        this.setState({[categoryType]: categories, reload: true});
+        this.setState({[categoryType]: categories});
     }
-
 
     render () {
 
@@ -251,49 +262,64 @@ class Gallery extends Component {
                         });
                     }}
                     onThumbnailCaptionClick={metadata => {
-                        window.open(`http://opencell.czbiohub.org/profile?target=${metadata.target_name}`);
+                        window.open(`http://${window.location.host}/target/${metadata.cell_line_id}`);
                     }}
                 />
             );
         });
 
+        let overlay = null;
+        if (!this.state.loaded) overlay = <div className='f2 tc loading-overlay'>Loading...</div>;
+        if (this.state.loaded && !this.state.selectedCellLines.length) {
+            overlay = <div className='f2 tc'>No targets found</div>;
+        }
+
+        const privateMultiSelectContainers = [
+            <div className="pa3 w-25">
+                <div className="f4">{"QC annotations"}</div>
+                <MultiSelectContainer
+                    items={qcCategories}
+                    selectedItems={this.state.qcCategories}
+                    updateSelectedItems={items => this.updateCategories('qcCategories', items)}
+                />
+            </div>,
+            <div className="pa3 w-25">
+                <div className="f4">{"Gene families"}</div>
+                <MultiSelectContainer
+                    items={families}
+                    selectedItems={this.state.families}
+                    updateSelectedItems={items => this.updateCategories('families', items)}
+                />
+            </div>
+        ];
+
         return (
             <div>
                 <div className="pa4 w-100">
 
-                    <div className="flex">
-                        <div className="pa3 w-30">
-                            <div className="f4">{"Localization annotations"}</div>
+                    <div className="flex" style={{alignItems: 'flex-start'}}>
+                        <div className="pa3 w-33">
+                            <div className="f4">{"Select localization annotations"}</div>
                             <MultiSelectContainer
                                 items={localizationCategories}
                                 selectedItems={this.state.localizationCategories}
                                 updateSelectedItems={items => this.updateCategories('localizationCategories', items)}
                             />
                         </div>
-                        <div className="pa3 w-30">
-                            <div className="f4">{"QC annotations"}</div>
-                            <MultiSelectContainer
-                                items={qcCategories}
-                                selectedItems={this.state.qcCategories}
-                                updateSelectedItems={items => this.updateCategories('qcCategories', items)}
-                            />
+                        {this.context==='private' ? privateMultiSelectContainers : null}
+                        <div className='pt4'>
+                            <div className='f4 simple-button' onClick={() => {this.setState({reload: true})}}>
+                            {'Load'}
+                            </div>
                         </div>
-                        <div className="pa3 w-30">
-                            <div className="f4">{"Target families"}</div>
-                            <MultiSelectContainer
-                                items={families}
-                                selectedItems={this.state.families}
-                                updateSelectedItems={items => this.updateCategories('families', items)}
-                            />
-                        </div>
-
                     </div>
 
                     <div className='pa3 thumbnail-grid-container'>{thumbnails}</div>
 
                 </div>
-    
-                {this.state.loaded ? null : <div className='loading-overlay'/>}
+
+                {overlay}
+
                 {this.state.showLightbox ? (
                     <Lightbox
                         hideLightbox={() => this.setState({showLightbox: false})}

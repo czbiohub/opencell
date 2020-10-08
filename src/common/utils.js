@@ -29,7 +29,7 @@ export async function deleteData(url) {
 }
 
 
-export function loadAnnotatedFovs (cellLineId, onLoad) {
+export function loadAnnotatedFovs (cellLineId, onLoad, onError) {
 
     // retrieve the FOV metadata
     const url = `${settings.apiUrl}/lines/${cellLineId}/fovs?fields=rois&onlyannotated=true`
@@ -45,7 +45,9 @@ export function loadAnnotatedFovs (cellLineId, onLoad) {
             fovId: rois[0]?.fov_id, 
         };
         onLoad(fovState);
-    });
+    },
+    error => onError(error)
+    );
 }
 
 

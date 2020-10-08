@@ -1,23 +1,11 @@
 
 import * as d3 from 'd3';
-import React, { useState, useEffect, useLayoutEffect } from 'react';
-import ReactDOM from 'react-dom';
-
-import {
-    BrowserRouter,
-    Switch,
-    Route,
-    Redirect,
-    useHistory, 
-    useLocation, 
-    useParams, 
-    useRouteMatch
- } from "react-router-dom";
+import React, { useState, useEffect, useContext } from 'react';
 
 import { Button, Radio, RadioGroup, MenuItem } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
 
-import Overview from './overview.jsx';
+import TargetProfileOverview from './targetProfileOverview.jsx';
 import FovAnnotator from './fovAnnotator.jsx';
 import CellLineTable from './cellLineTable.jsx';
 import { SectionHeader } from './common.jsx';
@@ -33,15 +21,14 @@ import '../common/common.css';
 import './Profile.css';
 
 
-export default function Profile (props) {
-
+export default function TargetProfile (props) {
+    const modeContext = useContext(settings.ModeContext);
     const [allCellLines, setAllCellLines] = useState([]);
 
     // load the metadata for all cell lines
     useEffect(() => {
-        d3.json(`${settings.apiUrl}/lines`).then(lines => {
-            setAllCellLines(lines);  
-        });
+        const url = `${settings.apiUrl}/lines?publication_ready=${modeContext==='public'}`;
+        d3.json(url).then(lines => setAllCellLines(lines));
     }, [])
 
     // update the cellLineId when the user clicks the back or forward buttons
@@ -66,29 +53,28 @@ export default function Profile (props) {
         <div>
             {/* main container */}
             <div className="pl3 pr3" style={{width: '2000px'}}>
-
                 {props.showFovAnnotator ? (
                     <FovAnnotator cellLineId={props.cellLineId} cellLine={cellLine}/>
                 ) : (
-                    <Overview
+                    <TargetProfileOverview
                         cellLine={cellLine}
                         cellLineId={props.cellLineId}
                         pulldownId={pulldownId}
-                        onTargetSearch={props.onTargetSearch}
+                        handleGeneNameSearch={props.handleGeneNameSearch}
                         onCellLineSelect={props.setCellLineId}
                         showTargetAnnotator={props.showTargetAnnotator}
                     />
                 )}
+            </div>
 
-                {/* table of all targets */}
-                <div className="w-100 pl2 pt2 pb2">
-                    <SectionHeader title='All cell lines'/>
-                    <CellLineTable 
-                        cellLines={allCellLines}
-                        cellLineId={props.cellLineId}
-                        onCellLineSelect={props.setCellLineId}
-                    />
-                </div>
+            {/* table of all targets */}
+            <div className="w-100 pl2 pt2 pb2">
+                <SectionHeader title='All OpenCell targets'/>
+                <CellLineTable 
+                    cellLines={allCellLines}
+                    cellLineId={props.cellLineId}
+                    onCellLineSelect={props.setCellLineId}
+                />
             </div>
 
             {allCellLines.length ? (null) : (<div className='loading-overlay'/>)}

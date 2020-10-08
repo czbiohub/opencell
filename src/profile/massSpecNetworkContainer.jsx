@@ -28,6 +28,7 @@ cytoscape.use(nodeHtmlLabel);
 
 
 export default class MassSpecNetworkContainer extends Component {
+    static contextType = settings.ModeContext;
 
     constructor (props) {
         super(props);
@@ -44,7 +45,7 @@ export default class MassSpecNetworkContainer extends Component {
             clusteringAnalysisType: 'new',
 
             // 'subclusters' or 'core-complexes'
-            subclusterType: 'subclusters',
+            subclusterType: 'core-complexes',
 
             // placeholder for resetting the visualization
             resetPlotZoom: false,
@@ -71,9 +72,9 @@ export default class MassSpecNetworkContainer extends Component {
                     const names = d.uniprot_gene_names.map(name => {
                         const inOpencell = d.opencell_target_names.includes(name);
                         if (inOpencell) {
-                            return `<span class='cy-node-label-in-opencell'>${name}</span>`
+                            return `<span class='cy-node-label cy-node-label-in-opencell'>${name}</span>`
                         }
-                        return `<span class=''>${name}</span>`
+                        return `<span class='cy-node-label'>${name}</span>`
                     })
                     return `<div class='cy-node-label-container' id=${d.id}>${names.join(', ')}</div>`;
                 }
@@ -97,9 +98,9 @@ export default class MassSpecNetworkContainer extends Component {
 
     componentDidUpdate (prevProps, prevState) {
 
-        // load the network data
+        // if we need to load the network data again
         if (
-            prevProps.pulldownId!==this.props.pulldownId || 
+            this.props.pulldownId!==prevProps.pulldownId || 
             this.state.includeParentNodes!==prevState.includeParentNodes ||
             this.state.showSavedNetwork!==prevState.showSavedNetwork ||
             this.state.clusteringAnalysisType!==prevState.clusteringAnalysisType ||
@@ -108,9 +109,14 @@ export default class MassSpecNetworkContainer extends Component {
             this.getData();    
         }
 
-        else if (this.cy && this.state.loaded) {
+        // run the layout only if state.loaded has switched from false to true,
+        // or if the layoutName has changed
+        else if (
+            this.cy && 
+            (this.state.loaded && !prevState.loaded) ||
+            this.state.layoutName!==prevState.layoutName
+        ) {
             try {
-
                 // attempt to center and lock the target's node (this does not seem to apply to the layout)
                 // const targetNode = this.cy.filter('node[type="bait"]');
                 // targetNode.position({x: 250, y: 250}).lock();
@@ -118,20 +124,27 @@ export default class MassSpecNetworkContainer extends Component {
                 //     targetNode.parent().lock();
                 // }
 
+                // remove any unconnected nodes (other than parent nodes)
+                // note: these correspond to nodes that represent pulldowns in which
+                // the target appeared with a protein group different from the one with which
+                // it appeared in its own pulldown
+                this.cy.nodes(':childless').difference(this.cy.edges().connectedNodes()).remove();
+
                 this.cy.nodeHtmlLabel(this.nodeHtmlLabel);
 
-                // run the layout if the elements were loaded from scratch
+                // run the layout only if the elements were loaded from scratch
                 if (!this.state.showSavedNetwork) {
-                    const layout = this.cy.layout(this.getLayout());
-                    layout.on('layoutstop', this.defineLabelEventHandlers);
-                    layout.run();
-
-                // only fit the graph to the container if the layout was loaded from
-                } else {
-                    // TODO: this does not work - label event handlers aren'tdefined
-                    this.cy.ready(this.defineLabelEventHandlers);
-                    this.cy.fit();
+                    const layout = this.cy.layout({animate: false, ...this.getLayout()});
+                    // console.log('Running layout');
+                    layout.run();  
                 }
+
+                // call defineLabelEventHandlers using an event that is always triggered,
+                // whether the network was loaded from scratch or from a saved layout
+                this.cy.on('render', this.defineLabelEventHandlers);
+
+                // cy.fit is necessary if the network was loaded from a saved layout
+                this.cy.fit();
             }
             catch (err) {
                 console.log(err);
@@ -140,6 +153,19 @@ export default class MassSpecNetworkContainer extends Component {
     }
 
     getData () {
+
+        this.elements = [];
+        if (this.cy) {
+            this.cy.destroy();
+        }
+
+        this.setState({
+            loaded: false, 
+            loadingError: false,
+            submissionStatus: '',
+            deletionStatus: ''
+        });
+
         if (this.state.showSavedNetwork) {
             this.getSavedNetwork();
         } else {
@@ -177,12 +203,16 @@ export default class MassSpecNetworkContainer extends Component {
 
     defineLabelEventHandlers () {
         const cy = this.cy;
-        const changeTarget = this.props.changeTarget;
-        const labels = d3.selectAll(".cy-node-label-in-opencell")
+        const handleGeneNameSearch = this.props.handleGeneNameSearch;
+
+        const labels = d3.selectAll(".cy-node-label")
             .on("click", function () {
-                const targetName = d3.select(this).text();
-                changeTarget(targetName);
+                const geneName = d3.select(this).text();
+                handleGeneNameSearch(geneName);
             });
+
+        //console.log(labels._groups);
+        
         d3.selectAll(".cy-node-label-container")
             .on('mouseover', function (event) {
                 const nodeId = d3.select(this).attr("id");
@@ -205,19 +235,12 @@ export default class MassSpecNetworkContainer extends Component {
     getNetworkElements () {
         // load the elements (nodes and edges) from the /interactions endpoint
 
-        this.setState({
-            loaded: false, 
-            loadingError: false,
-            submissionStatus: '',
-            deletionStatus: ''
-        });
-    
         const url = (
             `${settings.apiUrl}/pulldowns/${this.props.pulldownId}/interactions?` +
             `analysis_type=${this.state.clusteringAnalysisType}&` +
             `subcluster_type=${this.state.subclusterType}`
         );
-    
+
         d3.json(url).then(data => {
 
             // include only clusters with more than one node
@@ -285,12 +308,6 @@ export default class MassSpecNetworkContainer extends Component {
 
 
     getSavedNetwork () {
-        this.setState({
-            loaded: false, 
-            loadingError: false,
-            submissionStatus: '',
-            deletionStatus: ''
-        });
         const url = `${settings.apiUrl}/pulldowns/${this.props.pulldownId}/network`;
         d3.json(url).then(data => {
             this.elements = [
@@ -307,68 +324,82 @@ export default class MassSpecNetworkContainer extends Component {
 
 
     render () {
+
+        const allLayoutNames = ['circle', 'concentric', 'cose', 'fcose', 'coseb', 'cise'];
+        const allLayoutLabels = ['Circle', 'Concentric', 'CoSE', 'fCoSE', 'CoSE-Bilkent', 'CiSE'];
+        
+        const layoutNames = this.context==='public' ? ['fcose', 'coseb'] : allLayoutNames;
+        const layoutLabels = this.context==='public' ? ['fCoSE', 'CoSE-Bilkent'] : allLayoutLabels;
+
         return (
-            <div>
+            <div className='relative'>
+
+                {this.state.loadingError ? <div className='f2 tc loading-overlay'>No data</div> : (null)}
+                {!this.state.loaded ? <div className='f2 tc loading-overlay'>Loading...</div> : (null)}
+
                 {/* display controls */}
-                <div className="flex pb2">
+                <div className="pt2 flex items-end pb2">
 
                     {/* Top row - scatterplot controls */}
-                    <div className='w-100 flex flex-wrap items-end'>
-                        <div className='pt2 pr2'>
-                            <ButtonGroup 
-                                label='Layout' 
-                                values={['circle', 'concentric', 'cose', 'fcose', 'coseb', 'cise']}
-                                labels={['Circle', 'Concentric', 'CoSE', 'fCoSE', 'CoSE-Bilkent', 'CiSE']}
-                                activeValue={this.state.layoutName}
-                                onClick={value => this.setState({layoutName: value})}
-                            />
+                    {(this.context==='private') ? (
+                        <div className='w-100 flex flex-wrap items-end'>
+                            <div className='pt2 pr2'>
+                                <ButtonGroup 
+                                    label='Layout' 
+                                    values={layoutNames}
+                                    labels={layoutLabels}
+                                    activeValue={this.state.layoutName}
+                                    onClick={value => this.setState({layoutName: value})}
+                                />
+                            </div>
+                            <div className='pt2 pr2'>
+                                <ButtonGroup 
+                                    label='Clustering type' 
+                                    values={['original', 'new']}
+                                    labels={['Original', 'New']}
+                                    activeValue={this.state.clusteringAnalysisType}
+                                    onClick={value => this.setState({clusteringAnalysisType: value})}
+                                />
+                            </div>
+                            <div className='pt2 pr2'>
+                                <ButtonGroup 
+                                    label='Subcluster type' 
+                                    values={['core-complexes', 'subclusters']}
+                                    labels={['Core complexes', 'Subclusters']}
+                                    activeValue={this.state.subclusterType}
+                                    onClick={value => this.setState({subclusterType: value})}
+                                />
+                            </div>
+                            <div className='pt2 pr2'>
+                                <ButtonGroup 
+                                    label='Use compound nodes' 
+                                    values={[true, false]}
+                                    labels={['Yes', 'No']}
+                                    activeValue={this.state.includeParentNodes}
+                                    onClick={value => this.setState({includeParentNodes: value})}
+                                />
+                            </div>
+                            <div className='pt2 pr2'>
+                                <ButtonGroup 
+                                    label='Show saved network' 
+                                    values={[true, false]}
+                                    labels={['Yes', 'No']}
+                                    activeValue={this.state.showSavedNetwork}
+                                    onClick={value => this.setState({showSavedNetwork: value})}
+                                />
+                            </div>
                         </div>
-                        <div className='pt2 pr2'>
-                            <ButtonGroup 
-                                label='Clustering type' 
-                                values={['original', 'new']}
-                                labels={['Original', 'New']}
-                                activeValue={this.state.clusteringAnalysisType}
-                                onClick={value => this.setState({clusteringAnalysisType: value})}
-                            />
-                        </div>
-                        <div className='pt2 pr2'>
-                            <ButtonGroup 
-                                label='Subcluster type' 
-                                values={['core-complexes', 'subclusters']}
-                                labels={['Core complexes', 'Subclusters']}
-                                activeValue={this.state.subclusterType}
-                                onClick={value => this.setState({subclusterType: value})}
-                            />
-                        </div>
-                        <div className='pt2 pr2'>
-                            <ButtonGroup 
-                                label='Use compound nodes' 
-                                values={[true, false]}
-                                labels={['Yes', 'No']}
-                                activeValue={this.state.includeParentNodes}
-                                onClick={value => this.setState({includeParentNodes: value})}
-                            />
-                        </div>
-                        <div className='pt2 pr2'>
-                            <ButtonGroup 
-                                label='Show saved network' 
-                                values={[true, false]}
-                                labels={['Yes', 'No']}
-                                activeValue={this.state.showSavedNetwork}
-                                onClick={value => this.setState({showSavedNetwork: value})}
-                            />
-                        </div>
-                        <div className='f6 simple-button' onClick={() => {}}>
-                            {'Reset'}
-                        </div>
+                    ) : null}
+
+                    <div className='f6 simple-button' onClick={() => {this.cy.fit()}}>
+                        {'Reset zoom'}
                     </div>
                 </div>
 
                 <div className="w-100 cytoscape-container">
                     {this.state.loaded ? (
                         <CytoscapeComponent
-                            style={{width: '500px', height: '500px'}}
+                            style={{width: '600px', height: '500px'}}
                             elements={this.elements}
                             stylesheet={networkStylesheet}
                             minZoom={0.1}
@@ -380,7 +411,8 @@ export default class MassSpecNetworkContainer extends Component {
                         null
                     )}
                 </div>
-
+                
+                {this.context==='private' ? (
                 <div className='w-100 flex'>
                     <Button
                         text={'Save network'}
@@ -395,6 +427,8 @@ export default class MassSpecNetworkContainer extends Component {
                         intent={this.state.deletionStatus || 'none'}
                     />
                 </div>
+                ) : null}
+
             </div>
 
         );

@@ -229,13 +229,13 @@ export default class VolumeViewer extends Component {
 
         const colormaps = {
             viridis: new THREE.TextureLoader().load(
-                'threejs-textures/cm_viridis.png', this.renderVolume
+                '/assets/threejs-textures/cm_viridis.png', this.renderVolume
             ),
             blue: new THREE.TextureLoader().load(
-                'threejs-textures/cm_blue_a_v2.png', this.renderVolume
+                '/assets/threejs-textures/cm_blue_a_v2.png', this.renderVolume
             ),
             gray: new THREE.TextureLoader().load(
-                'threejs-textures/cm_gray_a.png', this.renderVolume
+                '/assets/threejs-textures/cm_gray_a.png', this.renderVolume
             )
         };
 

@@ -111,7 +111,7 @@ export default class FovAnnotator extends Component {
         this.changeFov = this.changeFov.bind(this);
         this.onFOVClick = this.onFOVClick.bind(this);
         this.updateFovScale = this.updateFovScale.bind(this);
-        this.toggleDiscardedCategory = this.toggleDiscardedCategory.bind(this);
+        this.toggleCategory = this.toggleCategory.bind(this);
 
         // the hard-coded size of the ROI in real/raw pixels
         this.roiSize = 600;
@@ -156,11 +156,10 @@ export default class FovAnnotator extends Component {
     }
 
 
-    toggleDiscardedCategory () {
-        let categories = [];
-        const category = 'discarded';
-        if (this.state.categories.includes(category)) {
-            categories = categories.filter(value => value !== category);
+    toggleCategory (category) {
+        let categories = this.state.categories;
+        if (categories.includes(category)) {
+            categories = categories.filter(value => value!==category);
         } else {
             categories.push(category);
         }
@@ -302,7 +301,7 @@ export default class FovAnnotator extends Component {
 
                     {/* left panel: FOV metadata */}
                     <div className="w-20 pr3">
-                        <CellLineMetadata cellLine={this.props.cellLine}/>
+                        <CellLineMetadata data={this.props.cellLine}/>
 
                         <SectionHeader title='FOV metadata'/>
                         <MetadataContainer
@@ -367,7 +366,7 @@ export default class FovAnnotator extends Component {
                     </div>
 
                     {/* FOV annotation submission and clear buttons */}
-                    <div className="pt3 pl4 w-20 flex" style={{flexDirection: 'column'}}>
+                    <div className="pt3 pl4 w-25 flex" style={{flexDirection: 'column'}}>
                         <Button
                             text={'Remove new ROI'}
                             className={'ma2 bp3-button'}
@@ -386,9 +385,15 @@ export default class FovAnnotator extends Component {
                         />
                         <Checkbox
                             className='pt2 ml2'
-                            label='Flag this FOV as discarded'
+                            label='Discard this FOV'
                             checked={this.state.categories.includes('discarded')}
-                            onChange={this.toggleDiscardedCategory}
+                            onChange={() => this.toggleCategory('discarded')}
+                        />
+                        <Checkbox
+                            className='pt2 ml2'
+                            label='Include this FOV in the public dataset'
+                            checked={this.state.categories.includes('public')}
+                            onChange={() => this.toggleCategory('public')}
                         />
                         <Button
                             text={'Submit changes'}
@@ -398,7 +403,7 @@ export default class FovAnnotator extends Component {
                         />                       
                         <Button
                             text={'Delete entire annotation'}
-                            className={'ma2 mt5 bp3-button'}
+                            className={'ma2 mt3 bp3-button'}
                             onClick={event => this.onClear()}
                             intent={this.state.deletionStatus || 'none'}
                         /> 

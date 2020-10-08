@@ -46,9 +46,8 @@ const config = {
         // note that the `to` path is relative to the output path defined in the prod config
         new CopyPlugin({
             patterns: [
-                {from: 'static/logos', to: 'profile/logos'},
-                {from: 'static/threejs-textures', to: 'profile/threejs-textures'},
-                {from: 'static/threejs-textures', to: 'gallery/threejs-textures'}
+                {from: 'static/logos', to: 'assets/logos'},
+                {from: 'static/threejs-textures', to: 'assets/threejs-textures'},
             ]
         })
     ]

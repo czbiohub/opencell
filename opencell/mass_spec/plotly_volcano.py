@@ -279,8 +279,9 @@ def comparison_volcano_temp(v_df, bait, width=800, height=400):
     # initiate dfs
     sel_df = v_df.copy()
     sel_df = v_df.set_index('prey')
+    plates = list(set(sel_df[
+        sel_df['target'].apply(lambda x: x.split('_')[0]) == bait]['plate'].to_list()))
 
-    plates = list(set(sel_df[sel_df['target'] == bait]['plate'].to_list()))
     plates.sort()
     num_plates = len(plates)
 
@@ -301,7 +302,8 @@ def comparison_volcano_temp(v_df, bait, width=800, height=400):
     hit_counts = []
     minor_hit_counts = []
     for i, plate in enumerate(plates):
-        bait_vals = sel_df[(sel_df['target'] == bait) & (sel_df['plate'] == plate)]
+        bait_vals = sel_df[
+            (sel_df['target'].apply(lambda x: x.split('_')[0]) == bait) & (sel_df['plate'] == plate)]
 
 
         hits = bait_vals[bait_vals['hits']]

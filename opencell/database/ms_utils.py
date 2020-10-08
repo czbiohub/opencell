@@ -11,7 +11,7 @@ def find_mismatching_target_names(plates_df, hits_df):
     """
 
     # get target names from hits_df
-    hits_genes = set([x[0].split('_')[1] for x in list(hits_df) if 'P0' in x[0]])
+    hits_genes = set([x[0].split('_', 1)[1] for x in list(hits_df) if 'P0' in x[0]])
 
     # get target names from plates_df
     plate_genes = set(plates_df['target_name'].values.tolist())
@@ -25,7 +25,7 @@ def fdr_mismatching_target_names(plates_df, fdr_df):
     """
 
     # get target names from hits_df
-    fdr_genes = set([x.split('_')[1] for x in fdr_df.index.to_list() if 'P0' in x])
+    fdr_genes = set([x.split('_', 1)[1] for x in fdr_df.index.to_list() if 'P0' in x])
 
     # get target names from plates_df
     plate_genes = set(plates_df['target_name'].values.tolist())
@@ -75,7 +75,7 @@ def reformat_pulldown_table(pulldown_df):
 
     # drop replicate and pulldown_well_id from abridged, and drop replicates
     abridged.drop(
-        columns=['replicate', 'pulldown_well_id', 'note_on_prep'],
+        columns=['replicate', 'pulldown_well_id'],
         inplace=True
     )
     abridged = abridged.dropna(how='any', subset=['design_id'])

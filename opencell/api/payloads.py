@@ -69,8 +69,12 @@ def generate_cell_line_payload(cell_line, included_fields, fov_count=None):
     counts = fov_count.to_dict() if fov_count is not None else {}
 
     # all of the manual annotation categories
+    categories = cell_line.annotation.categories if cell_line.annotation else []
     annotation = {
-        'categories': cell_line.annotation.categories if cell_line.annotation else None
+        'categories': categories or None,
+        'has_graded_annotations': bool(np.any([
+            re.match('.*_[1,2,3]$', cat) is not None for cat in categories
+        ]))
     }
 
     # the id of the 'best' pulldown

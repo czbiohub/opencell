@@ -5,6 +5,7 @@ import { Button, Checkbox } from "@blueprintjs/core";
 import chroma from 'chroma-js';
 
 import cytoscape from 'cytoscape';
+import cola from 'cytoscape-cola';
 import cise from 'cytoscape-cise';
 import fcose from 'cytoscape-fcose';
 import coseBilkent from 'cytoscape-cose-bilkent';
@@ -325,8 +326,8 @@ export default class MassSpecNetworkContainer extends Component {
 
     render () {
 
-        const allLayoutNames = ['circle', 'concentric', 'cose', 'fcose', 'coseb', 'cise'];
-        const allLayoutLabels = ['Circle', 'Concentric', 'CoSE', 'fCoSE', 'CoSE-Bilkent', 'CiSE'];
+        const allLayoutNames = ['cola', 'cose', 'fcose', 'coseb', 'cise'];
+        const allLayoutLabels = ['Cola', 'CoSE', 'fCoSE', 'CoSE-Bilkent', 'CiSE'];
         
         const layoutNames = this.context==='public' ? ['fcose', 'coseb'] : allLayoutNames;
         const layoutLabels = this.context==='public' ? ['fCoSE', 'CoSE-Bilkent'] : allLayoutLabels;

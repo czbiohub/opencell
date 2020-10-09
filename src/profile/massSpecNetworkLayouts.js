@@ -1,4 +1,72 @@
 
+const colaLayout = {
+    name: 'cola',
+
+    // whether to show the layout as it's running
+    animate: true, 
+
+    // number of ticks per frame; higher is faster but more jerky
+    refresh: 1, 
+
+    // max length in ms to run the layout
+    maxSimulationTime: 4000, 
+
+    // so you can't drag nodes during layout
+    ungrabifyWhileSimulating: false, 
+
+    // on every layout reposition of nodes, fit the viewport
+    fit: true, 
+
+    // padding around the simulation
+    padding: 5, 
+
+    // constrain layout bounds; { x1, y1, x2, y2 } or { x1, y1, w, h }
+    boundingBox: undefined, 
+
+    // whether labels should be included in determining the space used by a node
+    nodeDimensionsIncludeLabels: false, 
+
+    // positioning options
+    // use random node positions at beginning of layout
+    randomize: false, 
+
+    // if true, prevents overlap of node bounding boxes
+    avoidOverlap: true, 
+
+    // if true, avoids disconnected components from overlapping
+    handleDisconnected: true, 
+
+    // when the alpha value (system energy) falls below this value, the layout stops
+    convergenceThreshold: 0.01, 
+
+    // // extra spacing around nodes
+    // nodeSpacing: function( node ){ return 10; }, 
+
+    // use DAG/tree flow layout if specified, e.g. { axis: 'y', minSeparation: 30 }
+    flow: undefined, 
+
+    // relative alignment constraints on nodes, e.g. {
+    // vertical: [[{node: node1, offset: 0}, {node: node2, offset: 5}]], 
+    // horizontal: [[{node: node3}, {node: node4}], [{node: node5}, {node: node6}]]}
+    alignment: undefined, 
+
+    // list of inequality constraints for the gap between the nodes
+    // e.g. [{"axis":"y", "left":node1, "right":node2, "gap":25}]
+    gapInequalities: undefined, 
+
+    // different methods of specifying edge length
+    // each can be a constant numerical value or a function like `function( edge ){ return 2; }`
+    // sets edge length directly in simulation
+    edgeLength: undefined, 
+
+    // symmetric diff edge length in simulation
+    edgeSymDiffLength: undefined,
+
+    // jaccard edge length in simulation
+    edgeJaccardLength: undefined, 
+};
+
+
 const coseLayout = {
     name: 'cose',
 
@@ -127,6 +195,7 @@ const ciseLayout = {
 
 
 export default {
+    cola: colaLayout,
     cose: coseLayout,
     fcose: fcoseLayout,
     coseb: coseBilkentLayout,

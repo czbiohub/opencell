@@ -18,14 +18,37 @@ import * as utils from '../common/utils.js';
 import networkLayouts from './massSpecNetworkLayouts.js';
 import networkStylesheet from './massSpecNetworkStylesheet.js';
 
-
 import 'tachyons';
 import './Profile.css';
 
+cytoscape.use(cola);
 cytoscape.use(cise);
 cytoscape.use(fcose);
 cytoscape.use(coseBilkent);
 cytoscape.use(nodeHtmlLabel);
+
+
+function tplFactory(customClassName) {
+    // returns the tpl function that is used by the nodeHtmlLabel cytoscape plugin
+    // to generate the node label container's innerHTML property
+    // (and therefore must return a string of serialized HTML)
+    // this tpl function takes the data object associated with a node as its only argument
+
+    return d => {
+    
+        // parent nodes, which do not have gene names, should be unlabeled
+        if (!d.uniprot_gene_names) return '<span></span>';
+
+        const names = d.uniprot_gene_names.map(name => {
+            const inOpencell = d.opencell_target_names.includes(name);
+            if (inOpencell) {
+                return `<span class='cy-node-label cy-node-label-in-opencell'>${name}</span>`
+            }
+            return `<span class='cy-node-label'>${name}</span>`
+        })
+        return `<div class='cy-node-label-container ${customClassName}' id=${d.id}>${names.join(', ')}</div>`;
+    }
+}
 
 
 export default class MassSpecNetworkContainer extends Component {
@@ -57,29 +80,21 @@ export default class MassSpecNetworkContainer extends Component {
     
         this.elements = [];
 
+        const commonNodeLabelProps = {valign: 'center', valignBox: 'center'};
         this.nodeHtmlLabel = [
             {
-                query: 'node',
-                cssClass: 'cy-node-label-container',
-                valign: 'top',
-                valignBox: 'top',
-
-                // the tpl function is used to set the label container's innerHTML property,
-                // and therefore must return a string of serialized HTML
-                tpl: d => {
-                    // parent nodes do not have gene names
-                    if (!d.uniprot_gene_names) return '<span></span>';
-
-                    const names = d.uniprot_gene_names.map(name => {
-                        const inOpencell = d.opencell_target_names.includes(name);
-                        if (inOpencell) {
-                            return `<span class='cy-node-label cy-node-label-in-opencell'>${name}</span>`
-                        }
-                        return `<span class='cy-node-label'>${name}</span>`
-                    })
-                    return `<div class='cy-node-label-container' id=${d.id}>${names.join(', ')}</div>`;
-                }
-            }
+                query: 'node[type="hit"]',
+                tpl: tplFactory('cy-hit-node-label-container'),
+                ...commonNodeLabelProps
+            },{
+                query: 'node[type="bait"]',
+                tpl: tplFactory('cy-bait-node-label-container'),
+                ...commonNodeLabelProps
+            },{
+                query: 'node[type="pulldown"]',
+                tpl: tplFactory('cy-pulldown-node-label-container'),
+                ...commonNodeLabelProps
+            },
         ];
 
         this.getData = this.getData.bind(this);

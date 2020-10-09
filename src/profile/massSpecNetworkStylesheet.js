@@ -3,8 +3,8 @@ const networkStylesheet = [
     {
         selector: 'node',
         style: {
-            height: 5,
-            width: 5,
+            height: 33,
+            width: 33,
             'background-color': '#555',
 
             // this turns off the overlay when the node is clicked
@@ -44,13 +44,18 @@ const networkStylesheet = [
         selector: 'node[type="bait"]',
         style: {
             'background-color': '#51ade1',
-            'opacity': 1.0,
+            'opacity': 0,
         }
     },{
         selector: 'node[type="hit"]',
         style: {
             'background-color': '#ff827d',
-            'opacity': 1.0,
+            'opacity': 0,
+        }
+    },{
+        selector: 'node[type="pulldown"]',
+        style: {
+            'opacity': 0,
         }
     },{
         selector: 'edge',

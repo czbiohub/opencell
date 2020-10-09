@@ -31,24 +31,28 @@ export default function Navbar (props) {
         <div>
         {/* 'space-between' left- and right-justifies the two children divs */}
         <div 
-            className="flex items-center w-100 pr3 pl3 pt1 pb1" 
-            style={{justifyContent: 'space-between', backgroundColor: "#eee"}}
+            className="flex items-center w-100 pr3 pl3" 
+            style={{
+                justifyContent: 'space-between', 
+                backgroundColor: "#eee",
+                minWidth: 1400,
+            }}
         >
             {/* left-side content */}
             <div className="flex items-center">
-                <div style={{flex: '1 1 60px'}}>
+                <div style={{flex: '1 1 100%', marginBottom: '-4px'}}>
                     <img 
-                        width={60} 
-                        height={60} 
+                        width={785} 
+                        height={50} 
                         style={{mixBlendMode: 'darken'}}
-                        src='/assets/logos/opencell_logo.png' 
+                        src='/assets/logos/oc_banner_transparent.png' 
                     />
                 </div>
                 <div className="pl3 blue navbar-opencell-title">OpenCell</div>
             </div>
 
             {/* right-justified content */}
-            <div className='flex items-center' style={{}}>
+            <div className='flex items-center'>
                 {publicNavbarLinks}
                 {modeContext==='private' ? privateNavbarLinks : null}
                 <div className='pl3'>

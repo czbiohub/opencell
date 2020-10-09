@@ -52,7 +52,7 @@ export default class TargetProfileOverview extends Component {
                 <div className="flex" style={{minWidth: '1600px'}}>
 
                     {/* Left column - about box and expression and facs plots*/}
-                    <div className="pl2 pr4 pt0" style={{width: '350px'}}>
+                    <div className="pl3 pr4" style={{width: '350px'}}>
 
                         <CellLineMetadata data={this.props.cellLine}/>
 
@@ -83,7 +83,7 @@ export default class TargetProfileOverview extends Component {
                     {/* Center column - sliceViewer and volumeViewer */}
                     {/* note the hard-coded width (because the ROIs are always 600px */}
                     
-                    <div className="pt3 pl0 pr3" style={{width: '620px'}}>
+                    <div className="pt4" style={{width: '620px'}}>
                         <SectionHeader title='Fluorescence microscopy'/>
                         <ViewerContainer
                             cellLineId={this.props.cellLineId}
@@ -98,7 +98,7 @@ export default class TargetProfileOverview extends Component {
                     </div>
 
                     {/* Right column - annotations or volcano plot */}
-                    <div className="pa3" style={{width: '675px'}}>
+                    <div className="pt4 pl4 pr4" style={{width: '675px'}}>
                         {this.props.showTargetAnnotator ? (
                             <div>
                                 <SectionHeader title='Annotations'/>    

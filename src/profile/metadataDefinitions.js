@@ -98,6 +98,10 @@ const cellLineMetadataDefinitions = [
         id: 'num_annoted_fovs',
         accessor: row => row.counts.num_annotated_fovs,
         Header: 'Num annotated FOVs',
+    },{
+        id: 'graded_annotations',
+        accessor: row => String(row.annotation.has_graded_annotations),
+        Header: 'Graded annotations',
     }
 ];
 

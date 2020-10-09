@@ -10,7 +10,7 @@ import 'tachyons';
 import './Profile.css';
 
 
-export default class MassSpecPlotContainer extends Component {
+export default class MassSpecScatterPlotContainer extends Component {
 
     static contextType = settings.ModeContext;
 

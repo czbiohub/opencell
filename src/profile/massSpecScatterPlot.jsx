@@ -24,7 +24,7 @@ export default class MassSpecScatterPlot extends Component {
         this.hits = [];
 
         this.plotProps = {
-            aspectRatio: .7,
+            aspectRatio: .9,
             padLeft: 40,
             padRight: 10,
             padTop: 10,

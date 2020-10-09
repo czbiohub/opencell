@@ -354,7 +354,7 @@ export default class MassSpecNetworkContainer extends Component {
                 {!this.state.loaded ? <div className='f2 tc loading-overlay'>Loading...</div> : (null)}
 
                 {/* display controls */}
-                <div className="pt2 flex items-end pb2">
+                <div className="flex items-end pb2">
 
                     {/* Top row - scatterplot controls */}
                     {(this.context==='private') ? (
@@ -415,7 +415,7 @@ export default class MassSpecNetworkContainer extends Component {
                 <div className="w-100 cytoscape-container">
                     {this.state.loaded ? (
                         <CytoscapeComponent
-                            style={{width: '600px', height: '500px'}}
+                            style={{width: '700px', height: '600px'}}
                             elements={this.elements}
                             stylesheet={networkStylesheet}
                             minZoom={0.1}
@@ -429,7 +429,7 @@ export default class MassSpecNetworkContainer extends Component {
                 </div>
                 
                 {this.context==='private' ? (
-                <div className='w-100 flex'>
+                <div className='pt5 w-100 flex'>
                     <Button
                         text={'Save network'}
                         className={'ma2 bp3-button'}

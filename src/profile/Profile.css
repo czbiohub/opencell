@@ -111,6 +111,10 @@
     color: #333;
 }
 
+.section-header-active {
+    border-bottom: 3px solid #555;
+}
+
 
 /* --------------------- custom sliders --------------------- */
 .slider-label {
@@ -221,8 +225,8 @@
 
 /* --------------------- cytoscape network --------------------- */
 .cytoscape-container {
-    width: 600px;
-    height: 500px;
+    width: 700px;
+    height: 600px;
 }
 
 .cy-node-label-container {

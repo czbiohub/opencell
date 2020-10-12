@@ -22,7 +22,8 @@ const config = {
     },
 
     plugins: [
-        new webpack.DefinePlugin({API_URL: '`http://localhost:5000`'})
+        new webpack.DefinePlugin({API_URL: JSON.stringify('http://localhost:5000')}),
+        new webpack.DefinePlugin({DEFAULT_APP_MODE: JSON.stringify('private')})
     ]
 };
 

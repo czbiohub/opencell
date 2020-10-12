@@ -187,12 +187,15 @@ function App() {
     )
 }
 
+let appMode = settings.defaultAppMode;
+
+// only allow setting the appMode from the URL if the defaultAppMode is 'private'
 const urlParams = new URLSearchParams(window.location.search);
-const modeContextValue = urlParams.get('mode') || 'public';
+if (appMode==='private') appMode = urlParams.get('mode') || appMode;
 
 ReactDOM.render(
     <BrowserRouter>
-        <settings.ModeContext.Provider value={modeContextValue}>
+        <settings.ModeContext.Provider value={appMode}>
             <App/>
         </settings.ModeContext.Provider>
     </BrowserRouter>, 

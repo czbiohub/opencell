@@ -7,6 +7,7 @@ const zSliceSize = 600;
 const numZSlices = 27;
 
 let apiUrl = API_URL;
+let defaultAppMode = DEFAULT_APP_MODE;
 
 const ModeContext = React.createContext();
 
@@ -15,4 +16,5 @@ export default {
     numZSlices,
     apiUrl,
     ModeContext,
+    defaultAppMode
 }

@@ -65,9 +65,6 @@ export default class MassSpecNetworkContainer extends Component {
 
             showSavedNetwork: false,
 
-            // 'original' or 'new'
-            clusteringAnalysisType: 'new',
-
             // 'subclusters' or 'core-complexes'
             subclusterType: 'core-complexes',
 
@@ -253,7 +250,6 @@ export default class MassSpecNetworkContainer extends Component {
 
         const url = (
             `${settings.apiUrl}/pulldowns/${this.props.pulldownId}/interactions?` +
-            `analysis_type=${this.state.clusteringAnalysisType}&` +
             `subcluster_type=${this.state.subclusterType}`
         );
 
@@ -370,11 +366,11 @@ export default class MassSpecNetworkContainer extends Component {
                             </div>
                             <div className='pt2 pr2'>
                                 <ButtonGroup 
-                                    label='Clustering type' 
-                                    values={['original', 'new']}
-                                    labels={['Original', 'New']}
-                                    activeValue={this.state.clusteringAnalysisType}
-                                    onClick={value => this.setState({clusteringAnalysisType: value})}
+                                    label='Use compound nodes' 
+                                    values={[true, false]}
+                                    labels={['Yes', 'No']}
+                                    activeValue={this.state.includeParentNodes}
+                                    onClick={value => this.setState({includeParentNodes: value})}
                                 />
                             </div>
                             <div className='pt2 pr2'>
@@ -384,15 +380,6 @@ export default class MassSpecNetworkContainer extends Component {
                                     labels={['Core complexes', 'Subclusters']}
                                     activeValue={this.state.subclusterType}
                                     onClick={value => this.setState({subclusterType: value})}
-                                />
-                            </div>
-                            <div className='pt2 pr2'>
-                                <ButtonGroup 
-                                    label='Use compound nodes' 
-                                    values={[true, false]}
-                                    labels={['Yes', 'No']}
-                                    activeValue={this.state.includeParentNodes}
-                                    onClick={value => this.setState({includeParentNodes: value})}
                                 />
                             </div>
                             <div className='pt2 pr2'>

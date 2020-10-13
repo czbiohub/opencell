@@ -50,7 +50,7 @@ class DevConfig(Config):
     OPENCELL_MICROSCOPY_DIR = '/Volumes/ml_group/opencell-microscopy/'
 
     CORS_ORIGINS = [
-        'http://localhost', 'http://localhost:8080',
+        'http://localhost:8080',
     ]
 
 
@@ -114,6 +114,9 @@ class RemoteProdConfig(Config):
     PLATE_MICROSCOPY_CACHE_DIR = '/Volumes/ml_group/opencell-microscopy/cache/'
     RAW_PIPELINE_MICROSCOPY_DIR = '/Volumes/ml_group/raw-pipeline-microscopy/'
     OPENCELL_MICROSCOPY_DIR = '/Volumes/ml_group/opencell-microscopy/'
+    CORS_ORIGINS = [
+        'http://localhost:8080',
+    ]
 
 
 class AWSConfig(Config):

@@ -390,20 +390,13 @@ class PulldownInteractions(PulldownResource):
 
     @cache.cached(timeout=3600, key_prefix=cache_key)
     def get(self, pulldown_id):
-
         args = flask.request.args
-        analysis_type = args.get('analysis_type')
         subcluster_type = args.get('subcluster_type')
 
-        # 'original' clustering
-        if analysis_type == 'original':
-            analysis_type = 'clusterone_d05_o01_mcl_i7_haircut'
-
-        # clustering from 2020-09-24 with subclusters and core complexes
-        if analysis_type == 'new':
-            analysis_type = (
-                'primary:mcl_i2.0_haircut:keepcore_subcluster:newman_eigen_corecomplex:newman_eigen'
-            )
+        # this is a human-readable analysis type/description from Kibeom
+        analysis_type = (
+            'primary:mcl_i3.0_haircut:keepcore_subcluster:newman_eigen_corecomplex:newman_eigen'
+        )
 
         if subcluster_type == 'subclusters':
             subcluster_id_column = 'subcluster_id'

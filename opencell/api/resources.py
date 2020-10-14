@@ -50,8 +50,10 @@ class Search(Resource):
             query = query.filter(models.CrisprDesign.plate_design_id == 'P0001')
 
         targets = query.all()
+
+        # use a zero-padded 11-digit number to match ENSG ID format
         if targets:
-            payload['oc_id'] = 'OPCT%06d' % targets[0].id
+            payload['oc_ids'] = ['OPCT%011d' % target.id for target in targets]
 
         # search the gene names column in the uniprot metadata table
         uniprot_metadata = pd.read_sql(

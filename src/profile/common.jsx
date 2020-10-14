@@ -1,11 +1,16 @@
 import React, { Component } from 'react';
 import classNames from 'classnames';
+import { H5, Icon, Popover } from "@blueprintjs/core";
 
 
 function SectionHeader (props) {
     return (
-        <div className="bb b--black-10">
-            <div className="f3 section-header">{props.title}</div>
+        <div className="flex items-center bb b--black-10">
+            <div className="pr2 f3 section-header">{props.title}</div>
+            <Popover>
+                <Icon icon='info-sign' iconSize={14} color="#aaa"/>
+                {props.popoverContent}
+            </Popover>
         </div>
     );
 }

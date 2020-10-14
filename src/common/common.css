@@ -67,6 +67,10 @@ button:focus {
     flex: 0 0 auto;
 }
 
+.popover-container {
+    max-width: 500px;
+}
+
 
 /* --------------------- custom div-based buttons --------------------- */
 .simple-button {

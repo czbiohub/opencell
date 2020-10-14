@@ -12,7 +12,7 @@ import settings from '../common/settings.js';
 import * as utils from '../common/utils.js';
 import { SectionHeader, MetadataContainer } from './common.jsx';
 import {fovMetadataDefinitions} from './metadataDefinitions.js';
-import CellLineMetadata from './cellLineMetadata.jsx';
+import { CellLineMetadata, ExternalLinks } from './cellLineMetadata.jsx';
 
 import '../common/common.css';
 import '../profile/Profile.css';

@@ -10,6 +10,7 @@ import MassSpecNetworkContainer from './massSpecNetworkContainer.jsx';
 import TargetAnnotator from './targetAnnotator.jsx';
 import { SectionHeader } from './common.jsx';
 import settings from '../common/settings.js';
+import popoverContents from '../common/popoverContents.jsx';
 import { loadAnnotatedFovs } from '../common/utils.js';
 import { CellLineMetadata, ExternalLinks } from './cellLineMetadata.jsx';
 
@@ -59,7 +60,7 @@ export default class TargetProfileOverview extends Component {
 
                         {/* 'About' textbox */}
                         <div>
-                            <SectionHeader title='About this protein'/>
+                            <SectionHeader title='About this protein' popoverContent={popoverContents.aboutHeader}/>
                             <div className='pt2 about-this-protein-container'>
                                 <p>{this.props.cellLine.uniprot_metadata?.annotation}</p>
                             </div>
@@ -68,7 +69,7 @@ export default class TargetProfileOverview extends Component {
                         <ExternalLinks data={this.props.cellLine}/>
 
                         {/* expression scatterplot*/}
-                        <SectionHeader title='Expression level'/>
+                        <SectionHeader title='Expression level' popoverContent={popoverContents.expressionLevelHeader}/>
                         <div className="w-100 pb3 expression-plot-container">
                             <ExpressionPlot targetName={this.props.cellLine.metadata.target_name}/>
                         </div>
@@ -87,7 +88,10 @@ export default class TargetProfileOverview extends Component {
                     {/* note the hard-coded width (because the ROIs are always 600px */}
                     
                     <div className="pt4" style={{width: '620px'}}>
-                        <SectionHeader title='Fluorescence microscopy'/>
+                        <SectionHeader 
+                            title='Fluorescence microscopy' 
+                            popoverContent={popoverContents.microscopyHeader}
+                        />
                         <ViewerContainer
                             cellLineId={this.props.cellLineId}
                             fovs={this.state.fovs}

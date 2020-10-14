@@ -24,7 +24,7 @@ import 'tachyons';
 import 'react-table/react-table.css';
 import "@blueprintjs/core/lib/css/blueprint.css";
 
-import CellLineMetadata from './cellLineMetadata.jsx';
+import { CellLineMetadata, ExternalLinks } from './cellLineMetadata.jsx';
 import settings from '../common/settings.js';
 import * as utils from '../common/utils.js';
 
@@ -61,6 +61,8 @@ export default function InteractorProfile (props) {
                             <p>{data.uniprot_metadata?.annotation}</p>
                         </div>
                     </div>
+                    
+                    <ExternalLinks data={data}/>
                 </div>
 
                 {/* table of all interacting targets */}

@@ -74,16 +74,18 @@ function useGeneNameSearch (setCellLineId) {
     const modeContext = useContext(settings.ModeContext);
 
     // retrieve a cellLineId from the target name query 
+    // HACK: if there's more than one matching ensg_id or oc_id, we arbitrarily pick one
     useEffect(() => {
         if (!geneName || !doSearch) return;
         const url = `${settings.apiUrl}/search/${geneName}?publication_ready=${modeContext==='public'}`; 
         d3.json(url).then(result => {
-            if (result.oc_id) {
-                setCellLineId(result.oc_id.replace('OPCT', ''));
+            if (result.oc_ids) {
+                setCellLineId(result.oc_ids[0].replace('OPCT', ''));
             } else if (result.ensg_ids) {
                 history.push(`/interactor/${result.ensg_ids[0]}${history.location.search}`);
             } else {
                 // TODO: popup warning that no results were found
+                console.log(`No search results for gene name "${geneName}"`);
             }
             setDoSearch(false);            
         });

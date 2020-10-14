@@ -67,7 +67,7 @@ export default class TargetProfileOverview extends Component {
 
                         {/* expression scatterplot*/}
                         <SectionHeader title='Expression level'/>
-                        <div className="fl w-100 pb3 expression-plot-container">
+                        <div className="w-100 pb3 expression-plot-container">
                             <ExpressionPlot targetName={this.props.cellLine.metadata.target_name}/>
                         </div>
 

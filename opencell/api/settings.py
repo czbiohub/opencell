@@ -17,6 +17,8 @@ def get_config(mode):
         config = RemoteProdConfig
     elif mode == 'aws':
         config = AWSConfig
+    else:
+        raise ValueError('Invalid value %s for mode' % mode)
     return config
 
 

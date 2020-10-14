@@ -13,7 +13,7 @@ html {
 
 a {
     font-size: 1rem;
-    color: inherit;
+    color: #333;
     text-decoration: none;
 }
 
@@ -23,7 +23,7 @@ a:hover, a:visited:hover {
 }
 
 a:visited {
-    color: inherit;
+    color: #333;
     text-decoration: none;
 }
 

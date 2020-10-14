@@ -4,7 +4,7 @@ import { MetadataItem } from './common.jsx';
 import settings from '../common/settings.js';
 
 
-export default function CellLineMetadata (props) {
+export function CellLineMetadata (props) {
     const modeContext = useContext(settings.ModeContext);
 
     // metadata items to display in the header for opencell targets
@@ -36,6 +36,46 @@ export default function CellLineMetadata (props) {
     // TODO: metadata items for interactors
     const interactorLayout = [];
 
+    const layout = props.isInteractor ? interactorLayout : targetLayout;
+    const metadataItems = layout.map(item => {
+        const def = cellLineMetadataDefinitions.filter(def => def.id===item.id)[0];
+        return (
+            <div 
+                key={def.id} 
+                className='pr2 pt2 pb2 clm-item overflow-hidden' 
+                style={{flex: `1 1 ${item.width}%`}}
+            >
+                <MetadataItem
+                    scale={4}
+                    value={def.accessor(props.data)}
+                    label={def.Header}
+                    units={def.units}
+                />
+            </div>
+        );
+    });
+
+    return (
+        <div className="flex-wrap items-center pt3 pb3 clm-container">
+
+            {/* protein name */}
+            <div className="w-100 blue clm-target-name">
+                {props.data.metadata?.target_name}
+            </div>
+
+            {/* protein descriptoin */}
+            <div className="w-100 clm-protein-description">
+                {props.data.uniprot_metadata?.protein_name}
+            </div>
+
+            {modeContext==='private' ? metadataItems : null}
+        </div>
+    );
+}
+
+
+export function ExternalLinks (props) {
+
     // links (the same for both targets and interactors)
     const linkLayout = [
         {
@@ -63,47 +103,15 @@ export default function CellLineMetadata (props) {
         const def = cellLineMetadataDefinitions.filter(def => def.id===item.defId)[0];
         const value = def.accessor(props.data);
         return (
-            <div key={item.id} className='pt2 pb2 clm-item' style={{flex: `1 1 ${item.width}%`}}>
+            <div key={item.id} className='tc' style={{flex: `1 1 ${item.width}%`}}>
                 <a href={item.url(value)} target='_blank'>{item.label}</a>
-           </div>
-        );
-    });
-
-    const layout = props.isInteractor ? interactorLayout : targetLayout;
-    const metadataItems = layout.map(item => {
-        const def = cellLineMetadataDefinitions.filter(def => def.id===item.id)[0];
-        return (
-            <div 
-                key={def.id} 
-                className='pr2 pt2 pb2 clm-item overflow-hidden' 
-                style={{flex: `1 1 ${item.width}%`}}
-            >
-                <MetadataItem
-                    scale={4}
-                    value={def.accessor(props.data)}
-                    label={def.Header}
-                    units={def.units}
-                />
             </div>
         );
     });
-
 
     return (
-        <div className="flex-wrap items-center pt3 pb3 clm-container">
-
-            {/* protein name */}
-            <div className="w-100 blue clm-target-name">
-                {props.data.metadata?.target_name}
-            </div>
-
-            {/* protein descriptoin */}
-            <div className="w-100 clm-protein-description">
-                {props.data.uniprot_metadata?.protein_name}
-            </div>
-
+        <div className="flex items-center pt3 pb3">
             {linkItems}
-            {modeContext==='private' ? metadataItems : null}
         </div>
     );
 }

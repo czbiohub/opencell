@@ -11,7 +11,7 @@ import TargetAnnotator from './targetAnnotator.jsx';
 import { SectionHeader } from './common.jsx';
 import settings from '../common/settings.js';
 import { loadAnnotatedFovs } from '../common/utils.js';
-import CellLineMetadata from './cellLineMetadata.jsx';
+import { CellLineMetadata, ExternalLinks } from './cellLineMetadata.jsx';
 
 
 export default class TargetProfileOverview extends Component {
@@ -58,12 +58,14 @@ export default class TargetProfileOverview extends Component {
                         <CellLineMetadata data={this.props.cellLine}/>
 
                         {/* 'About' textbox */}
-                        <div className='pb4'>
+                        <div>
                             <SectionHeader title='About this protein'/>
                             <div className='pt2 about-this-protein-container'>
                                 <p>{this.props.cellLine.uniprot_metadata?.annotation}</p>
                             </div>
                         </div>
+
+                        <ExternalLinks data={this.props.cellLine}/>
 
                         {/* expression scatterplot*/}
                         <SectionHeader title='Expression level'/>

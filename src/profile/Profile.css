@@ -37,14 +37,6 @@
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-
-/* .clm-item:last-child { border: none; } */
-
-.clm-item a {
-    text-decoration: underline;
-    color: #333;
-}
-
 .clm-item abbr {
     text-decoration: none;
     line-height: 1em;
@@ -206,7 +198,8 @@
 }
 
 .about-this-protein-container {
-    height: 150px;
+    height: auto;
+    max-height: 150px;
     overflow: auto;
     line-height: 1.33;
 }

@@ -143,21 +143,19 @@ export default class MassSpecNetworkContainer extends Component {
                 // it appeared in its own pulldown
                 this.cy.nodes(':childless').difference(this.cy.edges().connectedNodes()).remove();
 
-                this.cy.nodeHtmlLabel(this.nodeHtmlLabel);
+                this.cy.nodeHtmlLabel(this.nodeHtmlLabel, {enablePointerEvents: true});
 
                 // run the layout only if the elements were loaded from scratch
                 if (!this.state.showSavedNetwork) {
-                    const layout = this.cy.layout({animate: false, ...this.getLayout()});
-                    // console.log('Running layout');
+                    const layout = this.cy.layout({animate: true, ...this.getLayout()});
+                    layout.on('layoutstop', this.defineLabelEventHandlers);
                     layout.run();  
+
+                // the layout was loaded from a saved layout
+                } else {
+                    this.cy.one('render', this.defineLabelEventHandlers);
+                    this.cy.fit();    
                 }
-
-                // call defineLabelEventHandlers using an event that is always triggered,
-                // whether the network was loaded from scratch or from a saved layout
-                this.cy.on('render', this.defineLabelEventHandlers);
-
-                // cy.fit is necessary if the network was loaded from a saved layout
-                this.cy.fit();
             }
             catch (err) {
                 console.log(err);
@@ -215,25 +213,29 @@ export default class MassSpecNetworkContainer extends Component {
 
 
     defineLabelEventHandlers () {
+
         const cy = this.cy;
         const handleGeneNameSearch = this.props.handleGeneNameSearch;
-
-        const labels = d3.selectAll(".cy-node-label")
+    
+        cy.nodes(':childless')
+            .on('mouseover', event => {
+                event.target.connectedEdges().addClass('hovered-node-edge');
+            })
+            .on('mouseout', event => {
+                event.target.connectedEdges().removeClass('hovered-node-edge');
+            })
+            .on('click', event => {
+                const geneName = event.target.data().uniprot_gene_names[0];
+                console.log(geneName);
+                handleGeneNameSearch(geneName);
+            });
+    
+        // TODO: this is redundant with the onClick handlers defined on the nodes themselves,
+        // (assuming that the nodes are wider than the labels)
+        d3.selectAll(".cy-node-label")
             .on("click", function () {
                 const geneName = d3.select(this).text();
                 handleGeneNameSearch(geneName);
-            });
-
-        //console.log(labels._groups);
-        
-        d3.selectAll(".cy-node-label-container")
-            .on('mouseover', function (event) {
-                const nodeId = d3.select(this).attr("id");
-                cy.filter(`node[id="${nodeId}"]`).connectedEdges().addClass('hovered-node-edge');
-            })
-            .on('mouseout', function () {
-                const nodeId = d3.select(this).attr("id");
-                cy.filter(`node[id="${nodeId}"]`).connectedEdges().removeClass('hovered-node-edge');
             });
     }
 

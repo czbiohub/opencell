@@ -233,19 +233,19 @@
     padding: 2px;
     border-radius: 3px;
     font-size: 6px;
-    color: white;
+    color: #111;
     cursor: default;
 }
 
 /* these colors must match the node background colors in massSpecNetworkStylesheet.js */
 .cy-bait-node-label-container {
-    background-color: #51ADE1;
+    background-color: #95ccec;
 }
 .cy-hit-node-label-container {
-    background-color: #FF827D;
+    background-color: #fcbab8;
 }
 .cy-pulldown-node-label-container {
-    background-color: #555555;
+    background-color: #c2c8cc;
 }
 
 .cy-node-label-in-opencell {

@@ -16,46 +16,55 @@ const networkStylesheet = [
         style: {
             // compound node labels (for debugging)
             //'label': 'data(id)',
+            'shape': 'round-rectangle',
         }
     },{
+        // compound nodes for clusters
         selector: 'node[type="cluster"]:parent',
         style: {
+            'shape': 'round-rectangle',
+            'background-color': "#ccc",
             'background-opacity': 0.2,
-            'background-color': "#999",
             'border-opacity': 0,
-            'border-width': 0.5,
+            'border-width': 0,
         }
     },{
+        // compound nodes for subclusters (always within a cluster compound node)
         selector: 'node[type="subcluster"]:parent',
         style: {
-            'background-color': "#4096d4",
-            'background-opacity': 0.1,
-            'border-opacity': 0,
+            'shape': 'round-rectangle',
+            'background-color': "#ccc",
+            'background-opacity': 0,
+            'border-color': "#999",
+            'border-width': 1.0,
+            'border-opacity': 0.7,
         }
     },{
+        // compound nodes of un-clustered and un-subclustered nodes 
         selector: 'node[id="unclustered"]:parent,node[type="unsubclustered"]:parent',
         style: {
-            'border-color': "#aaa",
-            'border-width': 2,
-            'border-opacity': 0.5,
+            'shape': 'round-rectangle',
+            'border-color': "#ccc",
+            'border-width': 1,
+            'border-opacity': 0,
             'background-opacity': 0,
         }
     },{
         selector: 'node[type="bait"]',
         style: {
             'background-color': '#51ade1',
-            'opacity': 0,
+            'opacity': 0.0,
         }
     },{
         selector: 'node[type="hit"]',
         style: {
             'background-color': '#ff827d',
-            'opacity': 0,
+            'opacity': 0.0,
         }
     },{
         selector: 'node[type="pulldown"]',
         style: {
-            'opacity': 0,
+            'opacity': 0.0,
         }
     },{
         selector: 'edge',
@@ -76,6 +85,7 @@ const networkStylesheet = [
 
             // this turns off overlay and disables clicking/dragging the edges
             'overlay-opacity': 0,
+            'overlay-padding': '0px',
         }
     },{
         selector: '.hovered-node-edge',

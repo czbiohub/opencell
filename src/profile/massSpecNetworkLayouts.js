@@ -2,14 +2,11 @@
 const colaLayout = {
     name: 'cola',
 
-    // whether to show the layout as it's running
-    animate: true, 
-
     // number of ticks per frame; higher is faster but more jerky
     refresh: 1, 
 
     // max length in ms to run the layout
-    maxSimulationTime: 4000, 
+    maxSimulationTime: 2000, 
 
     // so you can't drag nodes during layout
     ungrabifyWhileSimulating: false, 
@@ -26,10 +23,6 @@ const colaLayout = {
     // whether labels should be included in determining the space used by a node
     nodeDimensionsIncludeLabels: false, 
 
-    // positioning options
-    // use random node positions at beginning of layout
-    randomize: false, 
-
     // if true, prevents overlap of node bounding boxes
     avoidOverlap: true, 
 
@@ -39,8 +32,13 @@ const colaLayout = {
     // when the alpha value (system energy) falls below this value, the layout stops
     convergenceThreshold: 0.01, 
 
-    // // extra spacing around nodes
-    // nodeSpacing: function( node ){ return 10; }, 
+    // extra spacing around nodes (default 10)
+    // for node width 30 and height 10, this should be a minimum of 3
+    nodeSpacing: 10,
+
+    // edgeLength can be a constant or a function
+    // (a range of 10 - 200 works well for node sizes around 10-30)
+    edgeLength: undefined, 
 
     // use DAG/tree flow layout if specified, e.g. { axis: 'y', minSeparation: 30 }
     flow: undefined, 
@@ -53,11 +51,6 @@ const colaLayout = {
     // list of inequality constraints for the gap between the nodes
     // e.g. [{"axis":"y", "left":node1, "right":node2, "gap":25}]
     gapInequalities: undefined, 
-
-    // different methods of specifying edge length
-    // each can be a constant numerical value or a function like `function( edge ){ return 2; }`
-    // sets edge length directly in simulation
-    edgeLength: undefined, 
 
     // symmetric diff edge length in simulation
     edgeSymDiffLength: undefined,
@@ -129,7 +122,7 @@ const fcoseLayout = {
     // small values seem to encourage stacked nodes
     nodeRepulsion: 4500,
 
-    // gravity: 1,
+    gravity: 1,
 };
 
 
@@ -137,14 +130,14 @@ const coseBilkentLayout = {
     name: 'cose-bilkent',
 
     // default 50
-    idealEdgeLength: 20,
+    idealEdgeLength: 30,
 
     // larger values yield tighter networks
     // default 0.45
-    edgeElasticity: 1,
+    edgeElasticity: .5,
 
     // default 4500
-    nodeRepulsion: 4000,
+    nodeRepulsion: 4500,
 
     // default 0.1
     // higher values yield better-separated compound nodes
@@ -154,7 +147,7 @@ const coseBilkentLayout = {
     gravity: 0.25,
 
     gravityRangeCompound: 1.5,
-    gravityCompound: 0.25,
+    gravityCompound: 1.0,
     gravityRange: 3.8,
 
 };

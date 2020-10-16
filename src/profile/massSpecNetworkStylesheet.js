@@ -3,8 +3,9 @@ const networkStylesheet = [
     {
         selector: 'node',
         style: {
-            height: 33,
-            width: 33,
+            // use wide nodes to prevent node labels from overlapping in the cola layout
+            height: 10,
+            width: 30,
             'background-color': '#555',
 
             // this turns off the overlay when the node is clicked

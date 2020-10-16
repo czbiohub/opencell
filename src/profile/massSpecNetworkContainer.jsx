@@ -147,7 +147,7 @@ export default class MassSpecNetworkContainer extends Component {
 
                 // run the layout only if the elements were loaded from scratch
                 if (!this.state.showSavedNetwork) {
-                    const layout = this.cy.layout({animate: true, ...this.getLayout()});
+                    const layout = this.cy.layout({animate: true, randomize: true, ...this.getLayout()});
                     layout.on('layoutstop', this.defineLabelEventHandlers);
                     layout.run();  
 
@@ -213,10 +213,15 @@ export default class MassSpecNetworkContainer extends Component {
 
 
     defineLabelEventHandlers () {
+        console.log('defineLabelEventHandlers');
 
         const cy = this.cy;
         const handleGeneNameSearch = this.props.handleGeneNameSearch;
-    
+        
+        // fit the layout, just in case
+        cy.fit();
+
+        // define event handlers for the 'real' (non-compound) nodes
         cy.nodes(':childless')
             .on('mouseover', event => {
                 event.target.connectedEdges().addClass('hovered-node-edge');
@@ -229,8 +234,9 @@ export default class MassSpecNetworkContainer extends Component {
                 console.log(geneName);
                 handleGeneNameSearch(geneName);
             });
-    
-        // TODO: this is redundant with the onClick handlers defined on the nodes themselves,
+        
+        // define onclick event handlers for the node labels
+        // TODO: this is redundant with the onClick handlers defined on the nodes themselves
         // (assuming that the nodes are wider than the labels)
         d3.selectAll(".cy-node-label")
             .on("click", function () {
@@ -339,8 +345,8 @@ export default class MassSpecNetworkContainer extends Component {
 
     render () {
 
-        const allLayoutNames = ['cola', 'cose', 'fcose', 'coseb', 'cise'];
-        const allLayoutLabels = ['Cola', 'CoSE', 'fCoSE', 'CoSE-Bilkent', 'CiSE'];
+        const allLayoutNames = ['cola', 'fcose', 'coseb'];
+        const allLayoutLabels = ['Cola', 'fCoSE', 'CoSE-Bilkent'];
         
         const layoutNames = this.context==='public' ? ['fcose', 'coseb'] : allLayoutNames;
         const layoutLabels = this.context==='public' ? ['fCoSE', 'CoSE-Bilkent'] : allLayoutLabels;

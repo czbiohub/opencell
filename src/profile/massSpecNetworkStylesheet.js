@@ -25,7 +25,7 @@ const networkStylesheet = [
         style: {
             'shape': 'round-rectangle',
             'background-color': "#ccc",
-            'background-opacity': 0.2,
+            'background-opacity': 0.15,
             'border-opacity': 0,
             'border-width': 0,
         }

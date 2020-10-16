@@ -228,7 +228,7 @@
     font-size: 6px;
     color: rgb(0, 0, 0);
     cursor: default;
-    background-color: #bcc0c2;
+    background-color: #ccc;
 }
 
 /* these colors must match the node background colors in massSpecNetworkStylesheet.js */

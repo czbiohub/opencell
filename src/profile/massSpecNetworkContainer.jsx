@@ -77,7 +77,11 @@ export default class MassSpecNetworkContainer extends Component {
     
         this.elements = [];
 
-        const commonNodeLabelProps = {valign: 'center', valignBox: 'center'};
+        const commonNodeLabelProps = {
+            valign: 'center', 
+            valignBox: 'center',
+            cssClass: 'node-html-label-container'
+        };
         this.nodeHtmlLabel = [
             {
                 query: 'node[type="hit"]',
@@ -130,19 +134,16 @@ export default class MassSpecNetworkContainer extends Component {
             this.state.layoutName!==prevState.layoutName
         ) {
             try {
-                // attempt to center and lock the target's node (this does not seem to apply to the layout)
-                // const targetNode = this.cy.filter('node[type="bait"]');
-                // targetNode.position({x: 250, y: 250}).lock();
-                // if (targetNode.isChild()) {
-                //     targetNode.parent().lock();
-                // }
-
-                // remove any unconnected nodes (other than parent nodes)
-                // note: these correspond to nodes that represent pulldowns in which
+                // remove any unconnected nodes (other than parent/compound nodes)
+                // (these correspond to nodes that represent pulldowns in which
                 // the target appeared with a protein group different from the one with which
-                // it appeared in its own pulldown
+                // it appeared in its own pulldown)
                 this.cy.nodes(':childless').difference(this.cy.edges().connectedNodes()).remove();
 
+                // remove any existing html node labels
+                d3.selectAll('.node-html-label-container').remove();
+
+                // create the node html labels
                 this.cy.nodeHtmlLabel(this.nodeHtmlLabel, {enablePointerEvents: true});
 
                 // run the layout only if the elements were loaded from scratch
@@ -213,7 +214,6 @@ export default class MassSpecNetworkContainer extends Component {
 
 
     defineLabelEventHandlers () {
-        console.log('defineLabelEventHandlers');
 
         const cy = this.cy;
         const handleGeneNameSearch = this.props.handleGeneNameSearch;
@@ -230,8 +230,8 @@ export default class MassSpecNetworkContainer extends Component {
                 event.target.connectedEdges().removeClass('hovered-node-edge');
             })
             .on('click', event => {
+                console.log('Node clicked');
                 const geneName = event.target.data().uniprot_gene_names[0];
-                console.log(geneName);
                 handleGeneNameSearch(geneName);
             });
         
@@ -240,6 +240,7 @@ export default class MassSpecNetworkContainer extends Component {
         // (assuming that the nodes are wider than the labels)
         d3.selectAll(".cy-node-label")
             .on("click", function () {
+                console.log('Node label clicked');
                 const geneName = d3.select(this).text();
                 handleGeneNameSearch(geneName);
             });

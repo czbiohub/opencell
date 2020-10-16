@@ -78,6 +78,7 @@ function useGeneNameSearch (setCellLineId) {
     useEffect(() => {
         if (!geneName || !doSearch) return;
         const url = `${settings.apiUrl}/search/${geneName}?publication_ready=${modeContext==='public'}`; 
+        console.log(`Search url: ${url}`);
         d3.json(url).then(result => {
             if (result.oc_ids) {
                 setCellLineId(result.oc_ids[0].replace('OPCT', ''));

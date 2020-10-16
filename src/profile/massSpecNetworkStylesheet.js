@@ -53,8 +53,10 @@ const networkStylesheet = [
     },{
         selector: 'node[type="bait"]',
         style: {
-            'background-color': '#51ade1',
-            'opacity': 0.0,
+            'background-color': '#a5d2ec',
+            'opacity': 0,
+            height: 30,
+            width: 30,
         }
     },{
         selector: 'node[type="hit"]',

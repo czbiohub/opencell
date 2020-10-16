@@ -228,7 +228,8 @@
     font-size: 6px;
     color: rgb(0, 0, 0);
     cursor: default;
-    background-color: #ccc;
+    background-color: #d8d8d8;
+    border: 0.5px solid #888;
 }
 
 /* these colors must match the node background colors in massSpecNetworkStylesheet.js */
@@ -236,6 +237,7 @@
     padding: 3px;
     font-size: 8px;
     background-color: #a5d2ec;
+    border: 0.5px solid #55839e;
 }
 .cy-hit-node-label-container {
     /* background-color: #fec8c6; */

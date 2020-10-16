@@ -183,7 +183,9 @@ class CellLineResource(Resource):
 
 
 class CellLine(CellLineResource):
-
+    '''
+    The cell line metadata for a single cell line
+    '''
     def get(self, cell_line_id):
         line = self.get_cell_line(cell_line_id)
         optional_fields, error = self.parse_listlike_arg('fields', allowed_values=['best-fov'])
@@ -194,7 +196,9 @@ class CellLine(CellLineResource):
 
 
 class Interactor(Resource):
-
+    '''
+    The metadata and the list of interacting opencell targets for an ensg_id
+    '''
     def get(self, ensg_id):
 
         payload = {}
@@ -252,13 +256,13 @@ class Interactor(Resource):
             .all()
         )
 
+        # the metadata for the interacting opencell targets
         payload['interacting_cell_lines'] = [
             payloads.generate_cell_line_payload(pulldown.cell_line, included_fields=[])
             for pulldown in interacting_pulldowns
         ]
 
         return flask.jsonify(payload)
-
 
 
 
@@ -393,30 +397,6 @@ class PulldownInteractions(PulldownResource):
     @cache.cached(timeout=3600, key_prefix=cache_key)
     def get(self, pulldown_id):
         args = flask.request.args
-        subcluster_type = args.get('subcluster_type')
-
-        # this is a human-readable analysis type/description from Kibeom
-        analysis_type = (
-            'primary:mcl_i3.0_haircut:keepcore_subcluster:mcl_hybrid_stoichs_2.0'
-        )
-
-        if subcluster_type == 'subclusters':
-            subcluster_id_column = 'subcluster_id'
-        if subcluster_type == 'core-complexes':
-            subcluster_id_column = 'core_complex_id'
-
-        clusters = pd.read_sql(
-            f'''
-            select protein_group_id, cluster_id, subcluster_id, core_complex_id
-            from mass_spec_cluster_heatmap heatmap
-            inner join mass_spec_hit hit on hit.id = heatmap.hit_id
-            where analysis_type = '{analysis_type}'
-            ''',
-            flask.current_app.Session.get_bind()
-        )
-
-        # cluster memberships are the same for all hits with the same protein group (by design)
-        clusters = clusters.groupby(['protein_group_id']).first().reset_index()
 
         pulldown = self.get_pulldown(pulldown_id)
         direct_hits = pulldown.get_significant_hits()
@@ -467,19 +447,6 @@ class PulldownInteractions(PulldownResource):
 
         all_node_ids = [node['id'] for node in nodes]
 
-        # create dict of cluster_ids keyed by protein_group_id
-        # (used only to determine whether edges are inter- or intra-cluster)
-        # (hack: takes the first cluster_id when a protein group has more than one)
-        node_ids_to_cluster_ids = {}
-        for protein_group_id in all_node_ids:
-            _clusters = clusters.loc[clusters.protein_group_id == protein_group_id]
-            if not _clusters.shape[0]:
-                continue
-            node_ids_to_cluster_ids[protein_group_id] = _clusters.iloc[0].cluster_id
-
-        # the node id and cluster id of the bait node
-        # bait_node_id = [node['id'] for node in nodes if node['type'] == 'bait'][0]
-
         # generate the edges between direct nodes
         edges = []
         for node in nodes:
@@ -522,7 +489,6 @@ class PulldownInteractions(PulldownResource):
             if not indirect_hits:
                 continue
 
-            node_cluster_id = node_ids_to_cluster_ids.get(node['id'])
             for indirect_hit in indirect_hits:
                 indirect_node_id = indirect_hit.protein_group.id
 
@@ -530,21 +496,32 @@ class PulldownInteractions(PulldownResource):
                 if indirect_node_id not in all_node_ids or indirect_node_id == node['id']:
                     continue
 
-                # if the edge is between nodes in the same cluster
-                edge_type = 'intercluster'
-                if (
-                    node_cluster_id is not None
-                    and node_cluster_id == node_ids_to_cluster_ids.get(indirect_node_id)
-                ):
-                    edge_type = 'intracluster'
-
                 # create the edge between the two direct interactors
                 edges.append({
                     'id': '%s-%s' % (node['id'], indirect_node_id),
                     'source': node['id'],
                     'target': indirect_node_id,
-                    'type': edge_type,
                 })
+
+        # drop the pulldown and hit instances from the node dicts
+        for node in nodes:
+            node.pop('hit', None)
+            node.pop('pulldown', None)
+
+
+        analysis_type = flask.current_app.config.get('MS_CLUSTERING_TYPE')
+        clusters = pd.read_sql(
+            f'''
+            select protein_group_id, cluster_id, subcluster_id, core_complex_id
+            from mass_spec_cluster_heatmap heatmap
+            inner join mass_spec_hit hit on hit.id = heatmap.hit_id
+            where analysis_type = '{analysis_type}'
+            ''',
+            flask.current_app.Session.get_bind()
+        )
+
+        # cluster memberships are the same for all hits with the same protein group (by design)
+        clusters = clusters.groupby(['protein_group_id']).first().reset_index()
 
         # all clusters in which more than one node appears
         clusters = clusters.loc[clusters.protein_group_id.isin(all_node_ids)]
@@ -555,18 +532,28 @@ class PulldownInteractions(PulldownResource):
             )
         ]
 
-        # append cluster ids and parent node ids
+        # the type of subclustering that will be represented by the compound nodes
+        subcluster_id_name = 'core_complex_id'
+        subcluster_type = args.get('subcluster_type')
+        if subcluster_type == 'subclusters':
+            subcluster_id_name = 'subcluster_id'
+
+        # append cluster, subcluster, and parent node ids to the nodes
         for node in nodes:
             row = clusters.loc[clusters.protein_group_id == node['id']]
             if len(row):
                 row = row.iloc[0]
                 node['cluster_id'] = int(row.cluster_id) if not pd.isna(row.cluster_id) else None
                 node['subcluster_id'] = (
-                    int(row[subcluster_id_column]) if not pd.isna(row[subcluster_id_column]) else None
+                    int(row[subcluster_id_name]) if not pd.isna(row[subcluster_id_name]) else None
                 )
 
+            # if the node is in a subcluster, its parent should be the subcluster compound node
             if node.get('subcluster_id'):
                 node['parent'] = '%s-%s' % (node.get('cluster_id'), node.get('subcluster_id'))
+
+            # if the node is in a cluster but not a subcluster,
+            # its parent should be the cluster compound node itself
             elif node.get('cluster_id'):
                 node['parent'] = '%s' % node.get('cluster_id')
 
@@ -583,30 +570,11 @@ class PulldownInteractions(PulldownResource):
                 continue
             parent_nodes.append({'id': parent_node_id, 'parent': node['cluster_id']})
 
-        # create the lists of cluster members required by the CiSE cytoscape layout
-        cluster_defs = []
-        cluster_groups = clusters.groupby('cluster_id').groups
-        for cluster_id, cluster_index in cluster_groups.items():
-            _clusters = clusters.loc[cluster_index]
-            cluster_defs.append({
-                'cluster_id': int(cluster_id),
-                'subcluster_ids': [
-                    int(_id) for _id in _clusters[subcluster_id_column].unique() if not pd.isna(_id)
-                ],
-                'protein_group_ids': _clusters.protein_group_id.tolist(),
-            })
-
-        # drop the pulldown and hit instances from the node dicts
-        for node in nodes:
-            node.pop('hit', None)
-            node.pop('pulldown', None)
-
         payload = {
             'parent_nodes': [{'data': node} for node in parent_nodes],
             'nodes': [{'data': node} for node in nodes],
             'edges': [{'data': edge} for edge in edges],
             'metadata': pulldown.as_dict(),
-            'clusters': cluster_defs,
         }
         return flask.jsonify(payload)
 

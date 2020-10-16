@@ -73,6 +73,9 @@ export default class MassSpecNetworkContainer extends Component {
 
             loaded: false,
             loadingError: false,
+
+            colaEdgeLength: 10,
+            colaNodeSpacing: 10,
         };
     
         this.elements = [];
@@ -104,6 +107,8 @@ export default class MassSpecNetworkContainer extends Component {
         this.getNetworkElements = this.getNetworkElements.bind(this);
         this.saveNetwork = this.saveNetwork.bind(this);
         this.deleteSavedNetwork = this.deleteSavedNetwork.bind(this);
+
+        this.initializeNetwork = this.initializeNetwork.bind(this);
         this.defineLabelEventHandlers = this.defineLabelEventHandlers.bind(this);
     }
 
@@ -123,65 +128,65 @@ export default class MassSpecNetworkContainer extends Component {
             this.state.clusteringAnalysisType!==prevState.clusteringAnalysisType ||
             this.state.subclusterType!==prevState.subclusterType
         ) {
-            this.getData();    
+            this.getData(); 
+            return;   
         }
 
-        // run the layout only if state.loaded has switched from false to true,
-        // or if the layoutName has changed
-        else if (
-            this.cy && 
-            (this.state.loaded && !prevState.loaded) ||
-            this.state.layoutName!==prevState.layoutName
-        ) {
-            try {
-                // remove any unconnected nodes (other than parent/compound nodes)
-                // (these correspond to nodes that represent pulldowns in which
-                // the target appeared with a protein group different from the one with which
-                // it appeared in its own pulldown)
-                this.cy.nodes(':childless').difference(this.cy.edges().connectedNodes()).remove();
+        if (!this.cy) return;
 
-                // remove any existing html node labels
-                d3.selectAll('.node-html-label-container').remove();
-
-                // create the node html labels
-                this.cy.nodeHtmlLabel(this.nodeHtmlLabel, {enablePointerEvents: true});
-
-                // run the layout only if the elements were loaded from scratch
-                if (!this.state.showSavedNetwork) {
-                    const layout = this.cy.layout({animate: true, randomize: true, ...this.getLayout()});
-                    layout.on('layoutstop', this.defineLabelEventHandlers);
-                    layout.run();  
-
-                // the layout was loaded from a saved layout
-                } else {
-                    this.cy.one('render', this.defineLabelEventHandlers);
-                    this.cy.fit();    
-                }
-            }
-            catch (err) {
-                console.log(err);
-            }
+        // initialize the network if state.loaded has switched from false to true,
+        // or if the layout name has changed
+        if((this.state.loaded && !prevState.loaded) || this.state.layoutName!==prevState.layoutName) {
+            this.initializeNetwork();
         }
     }
 
     getData () {
-
         this.elements = [];
         if (this.cy) {
             this.cy.destroy();
         }
-
         this.setState({
             loaded: false, 
             loadingError: false,
             submissionStatus: '',
             deletionStatus: ''
         });
-
         if (this.state.showSavedNetwork) {
             this.getSavedNetwork();
         } else {
             this.getNetworkElements();
+        }
+    }
+
+    initializeNetwork () {
+        try {
+            // remove any unconnected nodes (other than parent/compound nodes)
+            // (these correspond to nodes that represent pulldowns in which
+            // the target appeared with a protein group different from the one with which
+            // it appeared in its own pulldown)
+            this.cy.nodes(':childless').difference(this.cy.edges().connectedNodes()).remove();
+
+            // remove any existing html node labels
+            d3.selectAll('.node-html-label-container').remove();
+
+            // create the node html labels
+            this.cy.nodeHtmlLabel(this.nodeHtmlLabel, {enablePointerEvents: true});
+
+            // run the layout only if the elements were loaded from scratch
+            if (!this.state.showSavedNetwork) {
+                const layout = this.cy.layout({animate: true, randomize: true, ...this.getLayout()});
+                layout.on('layoutstop', this.defineLabelEventHandlers);
+                layout.run();  
+
+            // if the layout was loaded from a saved layout
+            } else {
+                this.cy.one('render', this.defineLabelEventHandlers);
+                this.cy.fit();    
+            }
+        }
+        catch (err) {
+            console.log(err);
         }
     }
 
@@ -250,6 +255,10 @@ export default class MassSpecNetworkContainer extends Component {
     getLayout () {
         let layout = networkLayouts[this.state.layoutName];
         if (this.state.layoutName==='cise') layout = {...layout, clusters: this.clusterInfo};
+        if (this.state.layoutName==='cola') {
+            layout.edgeLength = this.state.colaEdgeLength;
+            layout.nodeSpacing = this.state.colaNodeSpacing;
+        }
         return layout;
     }
 
@@ -359,7 +368,7 @@ export default class MassSpecNetworkContainer extends Component {
                 {!this.state.loaded ? <div className='f2 tc loading-overlay'>Loading...</div> : (null)}
 
                 {/* display controls */}
-                <div className="flex items-end pb2">
+                <div className="pb2">
 
                     {/* Top row - scatterplot controls */}
                     {(this.context==='private') ? (
@@ -400,11 +409,32 @@ export default class MassSpecNetworkContainer extends Component {
                                     onClick={value => this.setState({showSavedNetwork: value})}
                                 />
                             </div>
+                            <div className='pt2 pr2'>
+                                <ButtonGroup 
+                                    label='Cola edge length' 
+                                    values={[10, 50, 100, 200]}
+                                    activeValue={this.state.colaEdgeLength}
+                                    onClick={value => this.setState({colaEdgeLength: value})}
+                                />
+                            </div>
+                            <div className='pt2 pr2'>
+                                <ButtonGroup 
+                                    label='Cola node spacing' 
+                                    values={[1, 5, 10, 20]}
+                                    activeValue={this.state.colaNodeSpacing}
+                                    onClick={value => this.setState({colaNodeSpacing: value})}
+                                />
+                            </div>
                         </div>
                     ) : null}
 
+                    <div className='w-100 pt2'>
+                    <div className='f6 simple-button' onClick={() => {this.initializeNetwork()}}>
+                        {'Re-run layout'}
+                    </div>
                     <div className='f6 simple-button' onClick={() => {this.cy.fit()}}>
                         {'Reset zoom'}
+                    </div>
                     </div>
                 </div>
 

@@ -6,7 +6,7 @@ const colaLayout = {
     refresh: 1, 
 
     // max length in ms to run the layout
-    maxSimulationTime: 2000, 
+    maxSimulationTime: 3000, 
 
     // so you can't drag nodes during layout
     ungrabifyWhileSimulating: false, 

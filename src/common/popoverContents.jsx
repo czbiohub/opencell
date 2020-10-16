@@ -2,7 +2,8 @@ import React, { Component } from 'react';
 import { H3, H4, H5 } from '@blueprintjs/core';
 
 const microscopyHeader = (
-    <div className='pa3 popover-container'>
+    <div className='pa3 popover-container-large'>
+        <H3>Fluorescence microscopy data</H3>
         <p>
             Opencell targets are imaged in live cells in three dimensions using a spinning-disk confocal microscope. 
             Several options are available to control the way in which the images are displayed:
@@ -24,15 +25,16 @@ const microscopyHeader = (
 );
 
 const aboutHeader = (
-    <div className='pa3 popover-container'>
+    <div className='pa3 popover-container-small'>
     <p>
-        This textbox displays the functional annotation from UniprotKB for the currently selected opencell target.
+        This is the functional annotation from UniprotKB for the currently selected opencell target.
     </p>
     </div>
 );
 
 const expressionLevelHeader = (
-    <div className='pa3 popover-container'>
+    <div className='pa3 popover-container-large'>
+        <H3>Expression level scatterplot</H3>
         <p>
         This scatterplot displays two different measurements of protein expression for all opencell targets. 
         On the x-axis, the fluorescence intensity of the tagged protein (measured by FACS) is displayed (in arbitrary fluorescence units).

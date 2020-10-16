@@ -12,7 +12,6 @@ html {
 }
 
 a {
-    font-size: 1rem;
     color: #333;
     text-decoration: none;
 }
@@ -67,8 +66,12 @@ button:focus {
     flex: 0 0 auto;
 }
 
-.popover-container {
+.popover-container-large {
     max-width: 500px;
+}
+
+.popover-container-small {
+    max-width: 300px;
 }
 
 

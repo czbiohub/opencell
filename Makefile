@@ -21,3 +21,5 @@ deploy-internal:
 deploy-aws:
 	rm -r ./dist
 	npm run-script build -- --env.appMode=public
+	scp -i ~/aws/keith-cheveralls-rsa -r dist/ ubuntu@ec2-44-230-211-234.us-west-2.compute.amazonaws.com:/home/ubuntu/data
+

@@ -79,17 +79,17 @@ export function ExternalLinks (props) {
     // links (the same for both targets and interactors)
     const linkLayout = [
         {
-            id: 'ensg',
-            defId: 'ensg_id',
-            width: 30,
-            label: 'Ensembl',
-            url: id => `https://uswest.ensembl.org/Homo_sapiens/Gene/Summary?g=${id}`,
-        },{
             id: 'uniprot',
             defId: 'uniprot_id',
             width: 30,
             label: 'Uniprot',
             url: id => `https://www.uniprot.org/uniprot/${id}`,
+        },{
+            id: 'ensg',
+            defId: 'ensg_id',
+            width: 30,
+            label: 'Ensembl',
+            url: id => `https://uswest.ensembl.org/Homo_sapiens/Gene/Summary?g=${id}`,
         },{
             id: 'hpa',
             defId: 'ensg_id',
@@ -103,14 +103,16 @@ export function ExternalLinks (props) {
         const def = cellLineMetadataDefinitions.filter(def => def.id===item.defId)[0];
         const value = def.accessor(props.data);
         return (
-            <div key={item.id} className='tc' style={{flex: `1 1 ${item.width}%`}}>
-                <a href={item.url(value)} target='_blank'>{item.label}</a>
+            <div key={item.id} className='pb1 flex w-100'>
+                <div className='w-30'>{item.label}</div>
+                <a href={item.url(value)} target='_blank'>{value}</a>
             </div>
         );
     });
 
     return (
-        <div className="flex items-center pt3 pb3">
+        <div className="pt2 pb3">
+            <div className='w-100' style={{fontWeight: 'bold'}}>External links</div>
             {linkItems}
         </div>
     );

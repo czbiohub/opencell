@@ -226,29 +226,30 @@
     padding: 2px;
     border-radius: 3px;
     font-size: 6px;
-    color: #111;
+    color: rgb(0, 0, 0);
     cursor: default;
+    background-color: #bcc0c2;
 }
 
 /* these colors must match the node background colors in massSpecNetworkStylesheet.js */
 .cy-bait-node-label-container {
-    background-color: #95ccec;
+    padding: 3px;
+    font-size: 8px;
+    background-color: #a5d2ec;
 }
 .cy-hit-node-label-container {
-    background-color: #fcbab8;
+    /* background-color: #fec8c6; */
 }
 .cy-pulldown-node-label-container {
-    background-color: #c2c8cc;
+    /* background-color: #bcc0c2; */
 }
 
 .cy-node-label-in-opencell {
-    /* background-color: #1490bd20; */
     font-weight: bold;
-    cursor: pointer;
 }
 
-.cy-node-label-in-opencell:hover {
-    color: #666;
+.cy-node-label:hover {
+    text-decoration: underline;
 }
 
 /* --------------------- expression scatterplot and FACS plot --------------------- */

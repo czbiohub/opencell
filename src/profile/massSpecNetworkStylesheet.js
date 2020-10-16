@@ -34,10 +34,10 @@ const networkStylesheet = [
         style: {
             'shape': 'round-rectangle',
             'background-color': "#ccc",
-            'background-opacity': 0,
+            'background-opacity': 0.3,
             'border-color': "#999",
             'border-width': 1.0,
-            'border-opacity': 0.7,
+            'border-opacity': 0.0,
         }
     },{
         // compound nodes of un-clustered and un-subclustered nodes 

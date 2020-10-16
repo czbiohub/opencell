@@ -397,7 +397,7 @@ class PulldownInteractions(PulldownResource):
 
         # this is a human-readable analysis type/description from Kibeom
         analysis_type = (
-            'primary:mcl_i3.0_haircut:keepcore_subcluster:newman_eigen_corecomplex:newman_eigen'
+            'primary:mcl_i3.0_haircut:keepcore_subcluster:mcl_hybrid_stoichs_2.0'
         )
 
         if subcluster_type == 'subclusters':

@@ -132,7 +132,10 @@ export default class TargetProfileOverview extends Component {
                                 </div>
                                 {this.state.massSpecView==='network' ? (
                                     <MassSpecNetworkContainer
-                                        pulldownId={this.props.pulldownId}
+                                        width={700}
+                                        height={600}
+                                        idType='pulldown'
+                                        id={this.props.pulldownId}
                                         handleGeneNameSearch={this.props.handleGeneNameSearch}
                                     />
                                 ) : (

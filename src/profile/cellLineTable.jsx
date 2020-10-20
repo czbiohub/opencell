@@ -33,7 +33,7 @@ export default function CellLineTable (props) {
     return (
         <div className='pt3 table-container'>
         <ReactTable 
-            defaultPageSize={10}
+            defaultPageSize={props.defaultPageSize || 10}
             showPageSizeOptions={true}
             filterable={true}
             columns={columnDefs}

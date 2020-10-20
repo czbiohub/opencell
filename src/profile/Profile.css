@@ -222,10 +222,7 @@
 
 
 /* --------------------- cytoscape network --------------------- */
-.cytoscape-container {
-    width: 700px;
-    height: 600px;
-}
+.cytoscape-container {}
 
 .cy-node-label-container {
     padding: 2px;

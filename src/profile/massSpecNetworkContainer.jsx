@@ -59,7 +59,7 @@ export default class MassSpecNetworkContainer extends Component {
 
         this.state = {
 
-            layoutName: 'coseb',
+            layoutName: 'cola',
 
             includeParentNodes: true,
 
@@ -75,7 +75,7 @@ export default class MassSpecNetworkContainer extends Component {
             loadingError: false,
 
             colaEdgeLength: 10,
-            colaNodeSpacing: 10,
+            colaNodeSpacing: 5,
         };
     
         this.elements = [];
@@ -113,7 +113,7 @@ export default class MassSpecNetworkContainer extends Component {
     }
 
     componentDidMount() {
-        if (this.props.pulldownId) {
+        if (this.props.id) {
             this.getData();
         }
     }
@@ -122,7 +122,7 @@ export default class MassSpecNetworkContainer extends Component {
 
         // if we need to load the network data again
         if (
-            this.props.pulldownId!==prevProps.pulldownId || 
+            this.props.id!==prevProps.id || 
             this.state.includeParentNodes!==prevState.includeParentNodes ||
             this.state.showSavedNetwork!==prevState.showSavedNetwork ||
             this.state.clusteringAnalysisType!==prevState.clusteringAnalysisType ||
@@ -191,12 +191,14 @@ export default class MassSpecNetworkContainer extends Component {
     }
 
     saveNetwork () {
+        // save the network
+        // *assumes* the network is a pulldown network (not an interactor network)
         const data = {
             cytoscape_json: this.cy.json(),
             client_metadata: {last_modified: (new Date()).toString()}
         };
         this.setState({deletionStatus: ''});
-        utils.putData(`${settings.apiUrl}/pulldowns/${this.props.pulldownId}/network`, data)
+        utils.putData(`${settings.apiUrl}/pulldowns/${this.props.id}/saved_network`, data)
             .then(response => {
                 console.log(response.json());
                 if (!response.ok) throw new Error('Error saving cytoscape layout');
@@ -208,7 +210,7 @@ export default class MassSpecNetworkContainer extends Component {
 
     deleteSavedNetwork () {
         this.setState({submissionStatus: ''});
-        utils.deleteData(`${settings.apiUrl}/pulldowns/${this.props.pulldownId}/network`)
+        utils.deleteData(`${settings.apiUrl}/pulldowns/${this.props.id}/saved_network`)
             .then(response => {
                 console.log(response);
                 if (!response.ok) throw new Error('Error deleting saved layout');
@@ -254,7 +256,6 @@ export default class MassSpecNetworkContainer extends Component {
 
     getLayout () {
         let layout = networkLayouts[this.state.layoutName];
-        if (this.state.layoutName==='cise') layout = {...layout, clusters: this.clusterInfo};
         if (this.state.layoutName==='cola') {
             layout.edgeLength = this.state.colaEdgeLength;
             layout.nodeSpacing = this.state.colaNodeSpacing;
@@ -264,18 +265,16 @@ export default class MassSpecNetworkContainer extends Component {
 
 
     getNetworkElements () {
-        // load the elements (nodes and edges) from the /interactions endpoint
+        // load the cytoscape elements (nodes and edges)
 
+        const endpoint = this.props.idType==='pulldown' ? 'pulldowns' : 'interactors';
         const url = (
-            `${settings.apiUrl}/pulldowns/${this.props.pulldownId}/interactions?` +
+            `${settings.apiUrl}/${endpoint}/${this.props.id}/network?` +
             `subcluster_type=${this.state.subclusterType}`
         );
 
         d3.json(url).then(data => {
 
-            // include only clusters with more than one node
-            const clusters = data.clusters.filter(cluster => cluster.protein_group_ids.length > 1);
-            const clusterIds = [...new Set(clusters.map(cluster => cluster.cluster_id))];
             const parentNodes = data.parent_nodes;
 
             // whether each parent node represents a cluster or subcluster
@@ -321,11 +320,13 @@ export default class MassSpecNetworkContainer extends Component {
         
             let elements = [...data.nodes, ...data.edges];
             if (this.state.includeParentNodes) {
-                elements = [...parentNodes, unclusteredParentNode, ...unsubclusteredParentNodes, ...elements];
+                elements = [
+                    unclusteredParentNode, 
+                    ...parentNodes, 
+                    ...unsubclusteredParentNodes, 
+                    ...elements
+                ];
             }
-
-            // lists of the node ids in each cluster (only required for the CiSE layout)
-            this.clusterInfo = clusters.map(cluster => cluster.protein_group_ids);
 
             this.elements = elements;
             this.setState({loaded: true, loadingError: false});
@@ -338,7 +339,7 @@ export default class MassSpecNetworkContainer extends Component {
 
 
     getSavedNetwork () {
-        const url = `${settings.apiUrl}/pulldowns/${this.props.pulldownId}/network`;
+        const url = `${settings.apiUrl}/pulldowns/${this.props.id}/saved_network`;
         d3.json(url).then(data => {
             this.elements = [
                 ...data.cytoscape_json.elements.nodes,
@@ -358,8 +359,8 @@ export default class MassSpecNetworkContainer extends Component {
         const allLayoutNames = ['cola', 'fcose', 'coseb'];
         const allLayoutLabels = ['Cola', 'fCoSE', 'CoSE-Bilkent'];
         
-        const layoutNames = this.context==='public' ? ['fcose', 'coseb'] : allLayoutNames;
-        const layoutLabels = this.context==='public' ? ['fCoSE', 'CoSE-Bilkent'] : allLayoutLabels;
+        const layoutNames = this.context==='public' ? ['cola', 'coseb'] : allLayoutNames;
+        const layoutLabels = this.context==='public' ? ['Cola', 'CoSE-Bilkent'] : allLayoutLabels;
 
         return (
             <div className='relative'>
@@ -441,7 +442,7 @@ export default class MassSpecNetworkContainer extends Component {
                 <div className="w-100 cytoscape-container">
                     {this.state.loaded ? (
                         <CytoscapeComponent
-                            style={{width: '700px', height: '600px'}}
+                            style={{width: this.props.width, height: this.props.height}}
                             elements={this.elements}
                             stylesheet={networkStylesheet}
                             minZoom={0.1}

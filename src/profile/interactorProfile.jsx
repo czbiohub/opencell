@@ -1,21 +1,7 @@
 
 import * as d3 from 'd3';
-import React, { useState, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-
-import {
-    BrowserRouter,
-    Switch,
-    Route,
-    Redirect,
-    useHistory, 
-    useLocation, 
-    useParams, 
-    useRouteMatch
- } from "react-router-dom";
-
-import { Button, Radio, RadioGroup, MenuItem } from "@blueprintjs/core";
-import { Select } from "@blueprintjs/select";
 
 import CellLineTable from './cellLineTable.jsx';
 import { SectionHeader } from './common.jsx';
@@ -25,6 +11,7 @@ import 'react-table/react-table.css';
 import "@blueprintjs/core/lib/css/blueprint.css";
 
 import { CellLineMetadata, ExternalLinks } from './cellLineMetadata.jsx';
+import MassSpecNetworkContainer from './massSpecNetworkContainer.jsx';
 import settings from '../common/settings.js';
 import * as utils from '../common/utils.js';
 
@@ -50,7 +37,7 @@ export default function InteractorProfile (props) {
             <div className="pl3 pr3 flex">
 
                 {/* Left column */}
-                <div className="w-25 pl2 pr4 pt0">
+                <div className="w-20 pl2 pr2">
 
                     <CellLineMetadata data={data} isInteractor/>
 
@@ -61,14 +48,25 @@ export default function InteractorProfile (props) {
                             <p>{data.uniprot_metadata?.annotation}</p>
                         </div>
                     </div>
-                    
+
                     <ExternalLinks data={data}/>
                 </div>
 
                 {/* table of all interacting targets */}
-                <div className="w-75 pl2 pt2 pb2">
+                <div className="w-40 pt4 pl2">
+                    <SectionHeader title='Interaction network'/>
+                    <MassSpecNetworkContainer
+                        width={500}
+                        height={500}
+                        idType='ensg'
+                        id={props.match.params.ensgId}
+                        handleGeneNameSearch={props.handleGeneNameSearch}
+                    />
+                </div>
+                <div className="w-40 pt4 pl2">
                     <SectionHeader title='Interacting targets'/>
                     <CellLineTable 
+                        defaultPageSize={20}
                         cellLines={data.interacting_cell_lines}
                         onCellLineSelect={props.setCellLineId}
                     />

@@ -35,15 +35,16 @@ def bulk_insert_cluster_heatmap(session, cluster_table, cluster_str, errors='war
 
         cluster = models.MassSpecClusterHeatmap(
             cluster_id=int(row.cluster_id),
-            subcluster_id = subcluster_id,
-            core_complex_id = core_complex_id,
+            subcluster_id=subcluster_id,
+            core_complex_id=core_complex_id,
             hit_id=int(row.hit_id),
             row_index=int(row.row_index),
             col_index=int(row.col_index),
-            analysis_type = cluster_str
+            analysis_type=cluster_str
         )
         all_clusters.append(cluster)
-     # bulk save
+
+    # bulk save
     try:
         session.bulk_save_objects(all_clusters)
         session.commit()
@@ -166,13 +167,13 @@ class MassSpecPulldownOperations:
 
         # get the pulldown for this plate_id and target_name
         pulldown_row = pulldown_df.loc[
-            (pulldown_df['pulldown_plate_id'] == pulldown_plate_id) &
-            (pulldown_df['target_name'] == target_name)
+            (pulldown_df['pulldown_plate_id'] == pulldown_plate_id)
+            & (pulldown_df['target_name'] == target_name)
         ]
         try:
             plate_design_id, well_id, sort_count = (
-                pulldown_row.design_id.item(), 
-                pulldown_row.well_id.item(), 
+                pulldown_row.design_id.item(),
+                pulldown_row.well_id.item(),
                 pulldown_row.sort_count.item()
             )
         except Exception:
@@ -180,22 +181,25 @@ class MassSpecPulldownOperations:
             return None
         return cls.from_ids(session, plate_design_id, well_id, sort_count, pulldown_plate_id)
 
+
     def update_to_resorted_line(self, session, plate_design_id, well_id, new_sort_count):
         """
-        pulldown data from old sorts of a cell line should be migrated to the
-        most recently sorted line. This method updates the cell_line_id of the
-        pulldown to the pre-queried cell line
+        Associate a pulldown of an 'original' cell line (i.e., having sort_count=1)
+        with its most recently sorted descendent.
+
+        This is a hack to address the fact that the pulldowns of some re-sorted lines
+        are worse than those of the original lines; it enables the opencell frontend
+        to show the 'good' pulldown from the original line alongside the 'good' FOVs
+        from the re-sorted line.
         """
         # get the cell_line_id
         pull_cls = MassSpecPolyclonalOperations.from_plate_well(
             session, plate_design_id, well_id, new_sort_count
         )
-        # new cell_line id
         new_cell_line_id = pull_cls.line.id
-
         self.cell_line_id = new_cell_line_id
-
         session.commit()
+
 
     def bulk_insert_hits(self, session, target_hits, errors='warn'):
         """

@@ -1,7 +1,5 @@
 -- force drop all connections
-SELECT pg_terminate_backend(pid)
-FROM pg_stat_activity
-WHERE datname = 'opencelldb';
+SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'opencelldb';
 
 
 -- cell line metadata
@@ -161,3 +159,27 @@ order by plate_id, well_id
 
 -- explode the protein_group table by gene_names list
 select *, unnest(gene_names) as gene_name from mass_spec_protein_group
+
+-- count the mass spec clusters per cell line
+select cell_line_id, count(*) as n from (
+    select cluster_id, min(hit_id) as hit_id
+    from mass_spec_cluster_heatmap
+    group by (cluster_id, col_index)
+) as clusters
+inner join mass_spec_hit hit on hit.id = clusters.hit_id
+inner join mass_spec_pulldown pd on pd.id = hit.pulldown_id
+group by cell_line_id
+order by n desc
+
+
+-- the pulldowns in which one or more of a crispr design's protein groups appears
+select cd.target_name, hit.*
+from crispr_design cd
+left join cell_line on cell_line.crispr_design_id = cd.id
+left join mass_spec_pulldown pd on pd.cell_line_id = cell_line.id
+left join mass_spec_hit hit on hit.pulldown_id = pd.id
+where hit.protein_group_id in (
+    select protein_group_id from protein_group_crispr_design_association pga
+    where pga.crispr_design_id = 193
+)
+and (hit.is_significant_hit = True or hit.is_minor_hit = True)

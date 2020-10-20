@@ -328,7 +328,7 @@ def map_uniprot_to_ensg_using_uniprot(uniprot_id):
 
 def map_uniprot_to_ensg_using_mygene(uniprot_id):
     '''
-    Use the mygene API to map a uniprot_id to an ensg_id
+    Use the MyGene API to map a uniprot_id to an ensg_id
     '''
     params = {
         'q': uniprot_id,
@@ -346,7 +346,7 @@ def map_uniprot_to_ensg_using_mygene(uniprot_id):
     payload = response.json()
     hits = payload.get('hits')
     if hits is None or not len(hits):
-        print("Warning: no mygene hits for uniprot_id '%s'" % uniprot_id)
+        print("Warning: no hits from the MyGene API for uniprot_id '%s'" % uniprot_id)
         return None
     hit = hits[0]
 
@@ -364,23 +364,23 @@ def map_uniprot_to_ensg_using_mygene(uniprot_id):
 
         if uniprot_id not in (swissprot_ids + trembl_ids):
             print(
-                "Warning: the top mygene hit for uniprot_id '%s' has a different uniprot_id"
+                "Warning: the top MyGene hit for uniprot_id '%s' has a different uniprot_id"
                 % uniprot_id
             )
             return None
     else:
         print(
-            "Warning: no uniprot_ids in the top mygene hit for uniprot_id '%s'"
+            "Warning: no uniprot_ids in the top MyGene hit for uniprot_id '%s'"
             % uniprot_id
         )
         return None
 
     hit_ensembl = hit['ensembl']
     if isinstance(hit_ensembl, list):
-        hit_ensembl = hit_ensembl[0]
         print(
-            "Warning: multiple ensembl entries in the top mygene hit for uniprot_id '%s'"
-            % uniprot_id
+            "Warning: using the first of %s ensg_ids in the top MyGene hit for uniprot_id '%s'"
+            % (len(hit_ensembl), uniprot_id)
         )
+        hit_ensembl = hit_ensembl[0]
     ensg_id = hit_ensembl.get('gene')
     return ensg_id

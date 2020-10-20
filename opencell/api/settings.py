@@ -17,6 +17,8 @@ def get_config(mode):
         config = RemoteProdConfig
     elif mode == 'aws':
         config = AWSConfig
+    else:
+        raise ValueError('Invalid value %s for mode' % mode)
     return config
 
 
@@ -29,6 +31,9 @@ class Config(object):
     # project root is two directory levels up
     PROJECT_ROOT = os.path.abspath(os.path.join(APP_DIR, os.pardir, os.pardir))
 
+    # the clustering analysis type (from Kibeom)
+    # (used only in resources.PulldownInteractions)
+    MS_CLUSTERING_TYPE = 'primary:mcl_i3.0_haircut:keepcore_subcluster:mcl_hybrid_stoichs_2.0'
 
 
 class DevConfig(Config):
@@ -50,7 +55,7 @@ class DevConfig(Config):
     OPENCELL_MICROSCOPY_DIR = '/Volumes/ml_group/opencell-microscopy/'
 
     CORS_ORIGINS = [
-        'http://localhost', 'http://localhost:8080',
+        'http://localhost:8080',
     ]
 
 
@@ -114,6 +119,9 @@ class RemoteProdConfig(Config):
     PLATE_MICROSCOPY_CACHE_DIR = '/Volumes/ml_group/opencell-microscopy/cache/'
     RAW_PIPELINE_MICROSCOPY_DIR = '/Volumes/ml_group/raw-pipeline-microscopy/'
     OPENCELL_MICROSCOPY_DIR = '/Volumes/ml_group/opencell-microscopy/'
+    CORS_ORIGINS = [
+        'http://localhost:8080',
+    ]
 
 
 class AWSConfig(Config):
@@ -122,4 +130,4 @@ class AWSConfig(Config):
     DEBUG = False
 
     DB_CREDENTIALS_FILEPATH = '/home/ubuntu/db-credentials.json'
-    OPENCELL_MICROSCOPY_DIR = 'http://opencell.ds.czbiohub.org/data/'
+    OPENCELL_MICROSCOPY_DIR = 'http://opencell.czbiohub.org/data/'

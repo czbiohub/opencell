@@ -873,6 +873,13 @@ class MassSpecProteinGroup(Base):
     # timestamp column
     date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
 
+    # For Opencell network visualization. At times gene names display is
+    # too crowded because a protein group consists of multiple isoforms and
+    # homologs. The manual_gene_name directs to a simplified nomenclature for
+    # such cases
+
+    manual_gene_name = db.Column(db.String, nullable=True)
+
     # one protein_group to many hits
     hits = db.orm.relationship('MassSpecHit', back_populates='protein_group')
 
@@ -881,6 +888,7 @@ class MassSpecProteinGroup(Base):
         'CrisprDesign',
         secondary='protein_group_crispr_design_association',
         back_populates='protein_groups'
+
     )
 
     # one protein group to multiple uniprot metadata rows

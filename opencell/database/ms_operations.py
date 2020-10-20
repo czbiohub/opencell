@@ -14,6 +14,27 @@ from opencell.database import models, utils
 from opencell.database import ms_utils
 from opencell.imaging import processors
 
+def insert_protein_group_manual_gene_name(session, protein_group_id, manual_name):
+    """
+    insert simplified manual_name to protein groups with complex/multiple gene names
+    """
+    all_protein_groups = []
+    # query for the protein group
+    protein_group = (
+        session.query(models.MassSpecProteinGroup)
+        .filter(models.MassSpecProteinGroup.id == protein_group_id)
+        .one_or_none())
+
+    # add manual gene name to the queried protein group
+    if protein_group:
+        protein_group.manual_gene_name = manual_name
+        session.add(protein_group)
+        session.commit()
+
+    # if protein group not found, print the protein group id and manual name
+    else:
+        print(protein_group_id + ' ' + manual_name)
+
 
 def bulk_insert_cluster_heatmap(session, cluster_table, cluster_str, errors='warn'):
     """
@@ -171,8 +192,8 @@ class MassSpecPulldownOperations:
         ]
         try:
             plate_design_id, well_id, sort_count = (
-                pulldown_row.design_id.item(), 
-                pulldown_row.well_id.item(), 
+                pulldown_row.design_id.item(),
+                pulldown_row.well_id.item(),
                 pulldown_row.sort_count.item()
             )
         except Exception:

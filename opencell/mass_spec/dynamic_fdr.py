@@ -26,6 +26,78 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 
 
+def all_hits_get_fdrs(pvals):
+    """ get dynamic FDR values and recompute new hits from all_hits table"""
+
+    pvals = pvals.copy()
+    # baits = list(pvals['target'].unique())
+    selects = []
+    grouped = pvals.groupby('target')
+    baits = []
+    for bait, group in grouped:
+        baits.append(bait)
+        selects.append(group)
+
+    print("starting FDR1 calc")
+
+    p = Pool()
+    fdr1_seeds = p.starmap(get_fdr1_seed, zip(selects, baits))
+    p.close()
+    p.join()
+
+    print("FDR1 seed finished!")
+
+    fdr1_full = [[3, seed] for seed in fdr1_seeds]
+
+    fdr5_args = zip(selects, fdr1_seeds)
+
+    p = Pool()
+    fdr5_seeds = p.starmap(get_fdr5_seed, fdr5_args)
+    p.close()
+    p.join()
+
+    print("FDR5 calculated!")
+
+    fdr5_full = [[3, seed] for seed in fdr5_seeds]
+
+    fdr_df = pd.DataFrame()
+    fdr_df['bait'] = baits
+    fdr_df['fdr1'] = fdr1_full
+    fdr_df['fdr5'] = fdr5_full
+    fdr_df.set_index('bait', inplace=True)
+
+    # Find hits for FDR1 and FDR2
+    for i, bait in enumerate(baits):
+        fdr1 = fdr_df.loc[bait]['fdr1']
+        fdr5 = fdr_df.loc[bait]['fdr5']
+
+        select = selects[i]
+        bait_pval = select['pvals']
+        enrichment = select['enrichment']
+
+        # 1% thresh
+        first_thresh = enrichment.apply(hp.calc_thresh,
+            args=[fdr1[0], fdr1[1]])
+
+        # 5% thresh
+        second_thresh = enrichment.apply(hp.calc_thresh,
+            args=[fdr5[0], fdr5[1]])
+
+        select['hits'] = np.where(
+            (bait_pval > first_thresh), True, False)
+
+        select['minor_hits'] = np.where(
+            ((bait_pval < first_thresh) & (bait_pval > second_thresh)), True, False)
+
+        select['fdr1'] = [fdr1] * select.shape[0]
+        select['fdr5'] = [fdr5] * select.shape[0]
+        selects[i] = select
+
+    pvals = pd.concat(selects)
+
+    return fdr_df, pvals
+
+
 def get_fdrs(pvals):
     """get dynamic FDR values and recompute new hits"""
 
@@ -133,7 +205,9 @@ def get_fdr5_seed(select, fdr1_seed):
 
     pos_perc = 100 * neg_hit / pos_hit
 
+    # while (neg_hit < 2 or pos_perc < 10) and seed > 0.1:
     while (neg_hit < 2 or pos_perc < 10) and seed > 0.1:
+
         seed -= 0.1
         neg_hit = hit_count(neg_select, 3, seed)
         pos_hit = hit_count(pos_select, 3, seed)

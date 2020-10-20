@@ -190,7 +190,7 @@ class MassSpecPulldownOperations:
         # new cell_line id
         new_cell_line_id = pull_cls.line.id
 
-        self.cell_line_id = new_cell_line_id
+        self.pulldown.cell_line_id = new_cell_line_id
 
         session.commit()
 

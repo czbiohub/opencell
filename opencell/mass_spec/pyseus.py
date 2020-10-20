@@ -147,6 +147,7 @@ def group_replicates(transformed_df, intensity_re=r'LFQ (\d){8}_',
         if intensity_search:
             group_search = re.search(reg_exp, col, flags=re.IGNORECASE)
             group_name = ''
+
             for re_group in group_search.groups():
                 group_name += re_group
             group_dict[col] = group_name
@@ -405,6 +406,52 @@ def imputed_bool_df(bool_imputes):
     return simple_imputes
 
 
+def convert_pg_to_primary(pg_id, change_dict):
+    """
+    convert pgs with same gene name to a pre-determined primary protein group
+    """
+    change_dict = change_dict.copy()
+
+    # search for a protein id match in change_dict
+    change_row = change_dict[change_dict['Protein IDs'] == pg_id]
+
+    # return new id if pg_id in chnage_dict else return original id
+    if change_row.shape[0] == 1:
+        return change_row.primary_id.item()
+
+    else:
+        return pg_id
+
+
+def consolidate_pgs(raw_df, change_dict):
+    """
+    To address multiple protein groups representing the same gene_name in graph views
+    this function consolidates synonymous proteingroups into one and sums up
+    the intensities
+    """
+    raw_df = raw_df.copy()
+    change_dict = change_dict.copy()
+
+    # replace synonymous protein group id with one primary id
+    raw_df['Protein IDs'] = raw_df['Protein IDs'].apply(
+        convert_pg_to_primary, args=[change_dict])
+    infos = raw_df[
+        ['Protein IDs',
+        'Majority protein IDs',
+        'Protein names',
+        'Gene names',
+        'Fasta headers']]
+
+    # consolidate same-name protein ids with summation, or taking first real value in information columns
+    info_grouped = infos.groupby('Protein IDs').first()
+
+    intensities_grouped = raw_df.groupby('Protein IDs').sum()
+    intensities_grouped.replace(0, np.nan, inplace=True)
+
+    new_df = pd.concat([info_grouped, intensities_grouped], axis=1)
+    new_df.reset_index(inplace=True)
+
+    return new_df
 
 
 

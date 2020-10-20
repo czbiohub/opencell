@@ -119,7 +119,7 @@ def get_all_interactors(plates, root, date, metrics=['pvals'], name='_pval_and_s
     else:
         selection = ['target', 'prey', 'hits', 'minor_hits'] + metrics
         all_hits = all_hits[selection]
-    all_hits = all_hits.dropna()
+    # all_hits = all_hits.dropna()
     all_hits = all_hits.sort_values(by='target')
 
     # separate out the plate and target information from plate_target format
@@ -322,7 +322,7 @@ def corum_marginals(network_df, corum, target_col, prey_col):
     network_df = network_df[[target_col, prey_col]]
     corum = corum.copy()
 
-    targets = list(set(network_df[target_col].to_list() + network_df[prey_col].to_list()))
+    targets = list(set(network_df[target_col].to_list()))
 
     coverages = []
     for target in targets:

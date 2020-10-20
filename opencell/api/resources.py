@@ -12,7 +12,7 @@ from flask_restful import Resource, reqparse
 from opencell.imaging import utils
 from opencell.api import payloads
 from opencell.api.cache import cache
-from opencell.database import models, operations, uniprot_utils
+from opencell.database import models, operations, uniprot_utils, cytoscape_networks
 from opencell.database import utils as db_utils
 from opencell.imaging.processors import FOVProcessor
 
@@ -195,27 +195,30 @@ class CellLine(CellLineResource):
         return flask.jsonify(payload)
 
 
-class Interactor(Resource):
-    '''
-    The metadata and the list of interacting opencell targets for an ensg_id
-    '''
-    def get(self, ensg_id):
+class InteractorResource(Resource):
 
-        payload = {}
-
+    @staticmethod
+    def get_uniprot_metadata(ensg_id):
+        '''
+        Get the uniprot metadata for all of the uniprot_ids associated with an ensg_id
+        '''
         uniprot_metadata = (
             flask.current_app.Session.query(models.UniprotMetadata)
             .filter(models.UniprotMetadata.ensg_id == ensg_id)
             .all()
         )
-        if not uniprot_metadata:
-            return flask.abort(404, 'There is no uniprot metadata for ENSG ID %s' % ensg_id)
+        return uniprot_metadata
 
-        # all of the uniprot_ids associated with this ensg_id
-        uniprot_ids = [row.uniprot_id for row in uniprot_metadata]
+    @staticmethod
+    def construct_ensg_metadata(ensg_id, uniprot_metadata):
+        '''
+        Generates the metadata object for an ensg_id,
+        following the schema of the cell line metadata (see payloads.generate_cell_line_payload)
+        '''
+        payload = {}
 
-        # TODO: better way to pick the best uniprot entry from which to construct the metadata
-        # (that is, the gene names and function annotation)
+        # TODO: a better way to pick the best uniprot_id from which to construct the metadata
+        # (that is, from which to take the gene names and function annotation)
         uniprot_metadata = uniprot_metadata[0]
 
         # HACK: this is copied from the cell_line payload
@@ -230,13 +233,21 @@ class Interactor(Resource):
             ),
         }
 
+        # generic ensg-level metadata (mimics the cell_line 'metadata' field)
         payload['metadata'] = {
             'ensg_id': ensg_id,
-            'uniprot_ids': uniprot_ids,
             'target_name': payload['uniprot_metadata']['gene_names'][0]
         }
+        return payload
 
-        # get the opencell targets in whose pulldowns this interactor appears as a hit
+    @staticmethod
+    def get_interacting_pulldowns(uniprot_metadata):
+        '''
+        The pulldowns in which appears one or more protein groups
+        containing one or more of the uniprot metadata entries
+
+        uniprot_metadata : a list of uniprot metadata rows
+        '''
         interacting_pulldowns = (
             flask.current_app.Session.query(models.MassSpecPulldown)
             .join(models.MassSpecHit)
@@ -247,7 +258,9 @@ class Interactor(Resource):
                 models.MassSpecPulldown.manual_display_flag == True  # noqa
             ))
             .filter(
-                models.ProteinGroupUniprotMetadataAssociation.uniprot_id.in_(uniprot_ids)
+                models.ProteinGroupUniprotMetadataAssociation.uniprot_id.in_(
+                    [row.uniprot_id for row in uniprot_metadata]
+                )
             )
             .filter(db.or_(
                 models.MassSpecHit.is_minor_hit == True,  # noqa
@@ -255,13 +268,59 @@ class Interactor(Resource):
             ))
             .all()
         )
+        return interacting_pulldowns
+
+
+class InteractorTargets(InteractorResource):
+    '''
+    The metadata and the list of interacting opencell targets for an 'interactor'
+    (identified by an ensg_id)
+    '''
+    def get(self, ensg_id):
+
+        uniprot_metadata = self.get_uniprot_metadata(ensg_id)
+        if not uniprot_metadata:
+            return flask.abort(404, 'There is no uniprot metadata for ENSG ID %s' % ensg_id)
+
+        # construct metadata and uniprot_metadata
+        payload = self.construct_ensg_metadata(ensg_id, uniprot_metadata)
 
         # the metadata for the interacting opencell targets
+        interacting_pulldowns = self.get_interacting_pulldowns(uniprot_metadata)
         payload['interacting_cell_lines'] = [
             payloads.generate_cell_line_payload(pulldown.cell_line, included_fields=[])
             for pulldown in interacting_pulldowns
         ]
+        return flask.jsonify(payload)
 
+
+class InteractorNetwork(InteractorResource):
+
+    def get(self, ensg_id):
+        '''
+        The cytoscape interaction network for an interactor (identified by an ensg_id)
+        '''
+        uniprot_metadata = self.get_uniprot_metadata(ensg_id)
+        interacting_pulldowns = self.get_interacting_pulldowns(uniprot_metadata)
+
+        nodes, edges = cytoscape_networks.construct_network(
+            interacting_pulldowns=interacting_pulldowns,
+            uniprot_metadata=uniprot_metadata[0],
+        )
+
+        # create compound nodes to represent superclusters and subclusters
+        nodes, parent_nodes = cytoscape_networks.construct_compound_nodes(
+            nodes,
+            clustering_analysis_type=flask.current_app.config.get('MS_CLUSTERING_TYPE'),
+            subcluster_type=flask.request.args.get('subcluster_type'),
+            engine=flask.current_app.Session.get_bind()
+        )
+        payload = {
+            'parent_nodes': [{'data': node} for node in parent_nodes],
+            'nodes': [{'data': node} for node in nodes],
+            'edges': [{'data': edge} for edge in edges],
+            'metadata': self.construct_ensg_metadata(ensg_id, uniprot_metadata)
+        }
         return flask.jsonify(payload)
 
 
@@ -374,17 +433,10 @@ class PulldownHits(PulldownResource):
         return flask.jsonify(payload)
 
 
-class PulldownInteractions(PulldownResource):
+class PulldownNetwork(PulldownResource):
     '''
-    The interaction network for a cell line
-    This consists of
-    1) the direct interactors of the target
-        (these include both the target's own hits and other targets
-        in whose pulldowns the target appears as a hit),
-    2) the observed interactions between the direct interactors
-       (when one direct interactor appears in the pulldown of another direct interactor)
-    3) the inferred interactions betweens direct interactors
-       (these exist when the protein groups of two interactors appear in similar sets of pulldowns)
+    The cytoscape interaction network for a cell line (technically, a pulldown)
+    (see comments in cytoscape_networks.construct_network for details)
     '''
 
     @staticmethod
@@ -396,179 +448,19 @@ class PulldownInteractions(PulldownResource):
 
     @cache.cached(timeout=3600, key_prefix=cache_key)
     def get(self, pulldown_id):
-        args = flask.request.args
-
         pulldown = self.get_pulldown(pulldown_id)
-        direct_hits = pulldown.get_significant_hits()
-        interacting_pulldowns = pulldown.get_interacting_pulldowns()
 
-        # the list of nodes (direct interactors)
-        nodes = []
+        # create nodes to represent direct hits and/or interacting pulldowns,
+        # and the edges between them
+        nodes, edges = cytoscape_networks.construct_network(target_pulldown=pulldown)
 
-        # create a node to represent the target
-        bait_hit = pulldown.get_bait_hit(only_one=True)
-        bait_node = {'type': 'bait', 'pulldown': pulldown}
-        if bait_hit:
-            bait_node.update(self.protein_group_to_node(bait_hit.protein_group))
-
-        # if the target does not appear in its own pulldown as a hit,
-        # manually fill in the attributes populated by self.protein_group_to_node
-        else:
-            bait_node.update({
-                'id': 'bait-placeholder',
-                'uniprot_gene_names': [pulldown.cell_line.crispr_design.target_name],
-                'opencell_target_names': [pulldown.cell_line.crispr_design.target_name],
-            })
-        nodes.append(bait_node)
-
-        # create nodes to represent the hits in the target's pulldown
-        for direct_hit in direct_hits:
-            if bait_hit and bait_hit.protein_group.id == direct_hit.protein_group.id:
-                continue
-            node = self.protein_group_to_node(direct_hit.protein_group)
-            node['hit'] = direct_hit
-            node['type'] = 'hit'
-            nodes.append(node)
-
-        # create nodes to represent the pulldowns in which the target appears as a hit
-        for interacting_pulldown in interacting_pulldowns:
-            interacting_bait_hit = interacting_pulldown.get_bait_hit(only_one=True)
-
-            # if the bait was not found in the interacting pulldown,
-            # we cannot create a node to represent the pulldown
-            if not interacting_bait_hit:
-                continue
-
-            protein_group = interacting_bait_hit.protein_group
-            node = self.protein_group_to_node(protein_group)
-            node['pulldown'] = interacting_pulldown
-            node['type'] = 'pulldown'
-            nodes.append(node)
-
-        all_node_ids = [node['id'] for node in nodes]
-
-        # generate the edges between direct nodes
-        edges = []
-        for node in nodes:
-            indirect_hits = None
-
-            if node['type'] == 'bait':
-                indirect_hits = direct_hits
-
-            # if the node represents a pulldown, we already have the list of indirect hits
-            if node['type'] == 'pulldown':
-                indirect_hits = node['pulldown'].get_significant_hits(eagerload=False)
-
-            # if the node represents a direct hit in the target's pulldown,
-            # we need to determine whether the hit corresponds to an opencell target
-            # (and therefore to a pulldown with its own hits)
-            if node['type'] == 'hit':
-                designs = node['hit'].protein_group.crispr_designs
-
-                # if the hit does not correspond to any opencell targets,
-                # or if the hit corresponds to multiple distinct opencell targets,
-                # we do not need to generate edges between the hit and the other hits
-                num_distinct_designs = len(set([d.uniprot_id for d in designs]))
-                if not designs or num_distinct_designs > 1:
-                    continue
-
-                # if the hit does correspond to an opencell target,
-                # find the best cell line corresponding to the hit's protein group
-                # note that this is complicated because there may be more than one crispr design
-                # for a protein group, and because there may be more than one cell line per design
-                # (e.g., for resorted targets)
-                node_pulldown = None
-                for design in designs:
-                    cell_line = design.get_best_cell_line()
-                    if cell_line:
-                        node_pulldown = cell_line.get_best_pulldown()
-                        if node_pulldown:
-                            indirect_hits = node_pulldown.get_significant_hits(eagerload=False)
-                            break
-
-            if not indirect_hits:
-                continue
-
-            for indirect_hit in indirect_hits:
-                indirect_node_id = indirect_hit.protein_group.id
-
-                # if the hit of the node is not among the nodes, we don't need to create an edge
-                if indirect_node_id not in all_node_ids or indirect_node_id == node['id']:
-                    continue
-
-                # create the edge between the two direct interactors
-                edges.append({
-                    'id': '%s-%s' % (node['id'], indirect_node_id),
-                    'source': node['id'],
-                    'target': indirect_node_id,
-                })
-
-        # drop the pulldown and hit instances from the node dicts
-        for node in nodes:
-            node.pop('hit', None)
-            node.pop('pulldown', None)
-
-
-        analysis_type = flask.current_app.config.get('MS_CLUSTERING_TYPE')
-        clusters = pd.read_sql(
-            f'''
-            select protein_group_id, cluster_id, subcluster_id, core_complex_id
-            from mass_spec_cluster_heatmap heatmap
-            inner join mass_spec_hit hit on hit.id = heatmap.hit_id
-            where analysis_type = '{analysis_type}'
-            ''',
-            flask.current_app.Session.get_bind()
+        # create compound nodes to represent superclusters and subclusters
+        nodes, parent_nodes = cytoscape_networks.construct_compound_nodes(
+            nodes,
+            clustering_analysis_type=flask.current_app.config.get('MS_CLUSTERING_TYPE'),
+            subcluster_type=flask.request.args.get('subcluster_type'),
+            engine=flask.current_app.Session.get_bind()
         )
-
-        # cluster memberships are the same for all hits with the same protein group (by design)
-        clusters = clusters.groupby(['protein_group_id']).first().reset_index()
-
-        # all clusters in which more than one node appears
-        clusters = clusters.loc[clusters.protein_group_id.isin(all_node_ids)]
-        cluster_sizes = clusters.groupby('cluster_id').count().reset_index()
-        clusters = clusters.loc[
-            clusters.cluster_id.isin(
-                cluster_sizes.loc[cluster_sizes.protein_group_id > 1].cluster_id.values
-            )
-        ]
-
-        # the type of subclustering that will be represented by the compound nodes
-        subcluster_id_name = 'core_complex_id'
-        subcluster_type = args.get('subcluster_type')
-        if subcluster_type == 'subclusters':
-            subcluster_id_name = 'subcluster_id'
-
-        # append cluster, subcluster, and parent node ids to the nodes
-        for node in nodes:
-            row = clusters.loc[clusters.protein_group_id == node['id']]
-            if len(row):
-                row = row.iloc[0]
-                node['cluster_id'] = int(row.cluster_id) if not pd.isna(row.cluster_id) else None
-                node['subcluster_id'] = (
-                    int(row[subcluster_id_name]) if not pd.isna(row[subcluster_id_name]) else None
-                )
-
-            # if the node is in a subcluster, its parent should be the subcluster compound node
-            if node.get('subcluster_id'):
-                node['parent'] = '%s-%s' % (node.get('cluster_id'), node.get('subcluster_id'))
-
-            # if the node is in a cluster but not a subcluster,
-            # its parent should be the cluster compound node itself
-            elif node.get('cluster_id'):
-                node['parent'] = '%s' % node.get('cluster_id')
-
-        # create the parent nodes for clusters
-        cluster_ids = [node['cluster_id'] for node in nodes if node.get('cluster_id') is not None]
-        parent_nodes = [{'id': '%s' % cluster_id} for cluster_id in list(set(cluster_ids))]
-
-        # create the parent nodes for subclusters
-        for node in nodes:
-            if node.get('subcluster_id') is None:
-                continue
-            parent_node_id = node.get('parent')
-            if parent_node_id in [node['id'] for node in parent_nodes]:
-                continue
-            parent_nodes.append({'id': parent_node_id, 'parent': node['cluster_id']})
 
         payload = {
             'parent_nodes': [{'data': node} for node in parent_nodes],
@@ -878,7 +770,7 @@ class MicroscopyFOVAnnotation(Resource):
         return ('', 204)
 
 
-class PulldownNetwork(PulldownResource):
+class SavedPulldownNetwork(PulldownResource):
     '''
     Cached manually-edited cytoscape layout for a cell line
     '''

@@ -55,8 +55,11 @@ def create_app(config=None):
     api.add_resource(resources.CellLines, '/lines')
     api.add_resource(resources.CellLine, '/lines/<int:cell_line_id>')
 
-    # interactor/prey metadata
-    api.add_resource(resources.Interactor, '/interactors/<string:ensg_id>')
+    # the metadata for opencell targets that interact with an ensg_id
+    api.add_resource(resources.InteractorTargets, '/interactors/<string:ensg_id>')
+
+    # the cytoscape network for a given interactor (identified by ensg_id)
+    api.add_resource(resources.InteractorNetwork, '/interactors/<string:ensg_id>/network')
 
     # cell-line-related endpoints
     api.add_resource(resources.FACSDataset, '/lines/<int:cell_line_id>/facs')
@@ -67,10 +70,10 @@ def create_app(config=None):
     api.add_resource(resources.PulldownHits, '/pulldowns/<int:pulldown_id>/hits')
     api.add_resource(resources.PulldownClusters, '/pulldowns/<int:pulldown_id>/clusters')
     api.add_resource(
-        resources.PulldownInteractions, '/pulldowns/<int:pulldown_id>/interactions'
+        resources.PulldownNetwork, '/pulldowns/<int:pulldown_id>/network'
     )
     api.add_resource(
-        resources.PulldownNetwork, '/pulldowns/<int:pulldown_id>/network'
+        resources.SavedPulldownNetwork, '/pulldowns/<int:pulldown_id>/saved_network'
     )
 
     # FOV and ROI image data (z-stacks and z-projections)

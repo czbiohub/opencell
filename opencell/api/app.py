@@ -1,4 +1,4 @@
-
+import os
 import argparse
 import sqlalchemy as sa
 from flask import Flask
@@ -32,28 +32,49 @@ def create_session_registry(url):
     return Session
 
 
-def create_app(args):
+def create_app(config=None):
+
+    if not config:
+        config = settings.get_config(os.environ.get('MODE'))
 
     app = Flask(__name__)
-    app.config.from_object(settings.get_config(args.mode))
+    app.config.from_object(config)
     if app.config.get('CORS_ORIGINS'):
         CORS(app, origins=app.config['CORS_ORIGINS'])
 
     cache.init_app(app)
     api = Api()
 
+    # search by gene name, ENSG ID, etc
+    api.add_resource(resources.Search, '/search/<string:search_string>')
+
     # plate designs
-    api.add_resource(resources.Plate, '/plates/<string:plate_id>/')
+    api.add_resource(resources.Plate, '/plates/<string:plate_id>')
 
     # cell line metadata
     api.add_resource(resources.CellLines, '/lines')
     api.add_resource(resources.CellLine, '/lines/<int:cell_line_id>')
 
-    # cell-line-dependent datasets
+    # the metadata for opencell targets that interact with an ensg_id
+    api.add_resource(resources.InteractorTargets, '/interactors/<string:ensg_id>')
+
+    # the cytoscape network for a given interactor (identified by ensg_id)
+    api.add_resource(resources.InteractorNetwork, '/interactors/<string:ensg_id>/network')
+
+    # cell-line-related endpoints
     api.add_resource(resources.FACSDataset, '/lines/<int:cell_line_id>/facs')
-    api.add_resource(resources.CellLineFOVs, '/lines/<int:cell_line_id>/fovs')
-    api.add_resource(resources.CellLinePulldown, '/lines/<int:cell_line_id>/pulldown')
+    api.add_resource(resources.MicroscopyFOVMetadata, '/lines/<int:cell_line_id>/fovs')
     api.add_resource(resources.CellLineAnnotation, '/lines/<int:cell_line_id>/annotation')
+
+    # pulldown-related endpoints
+    api.add_resource(resources.PulldownHits, '/pulldowns/<int:pulldown_id>/hits')
+    api.add_resource(resources.PulldownClusters, '/pulldowns/<int:pulldown_id>/clusters')
+    api.add_resource(
+        resources.PulldownNetwork, '/pulldowns/<int:pulldown_id>/network'
+    )
+    api.add_resource(
+        resources.SavedPulldownNetwork, '/pulldowns/<int:pulldown_id>/saved_network'
+    )
 
     # FOV and ROI image data (z-stacks and z-projections)
     api.add_resource(
@@ -68,25 +89,22 @@ def create_app(args):
 
     api.init_app(app)
 
-    if args.credentials_filepath:
-        app.config['DB_CREDENTIALS_FILEPATH'] = args.credentials_filepath
-
-    if args.opencell_microscopy_dir:
-        app.config['OPENCELL_MICROSCOPY_DIR'] = args.opencell_microscopy_dir
-
     # create an instance of sqlalchemy's scoped_session registry
     url = utils.url_from_credentials(app.config['DB_CREDENTIALS_FILEPATH'])
     app.Session = create_session_registry(url)
 
-    # required to close the session instance when a request is completed
+    # close the session instance when a request is completed
     @app.teardown_appcontext
     def remove_session(error=None):
         app.Session.remove()
 
-    app.run(host='0.0.0.0', debug=True)
+    return app
 
 
 def parse_args():
+    '''
+    CLI args for running the app via app.run (i.e., in non-production environments)
+    '''
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', dest='mode', required=True)
     parser.add_argument('--credentials', dest='credentials_filepath')
@@ -96,4 +114,13 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    create_app(args)
+    config = settings.get_config(args.mode)
+
+    if args.credentials_filepath:
+        config.DB_CREDENTIALS_FILEPATH = args.credentials_filepath
+
+    if args.opencell_microscopy_dir:
+        config.OPENCELL_MICROSCOPY_DIR = args.opencell_microscopy_dir
+
+    app = create_app(config)
+    app.run(host='0.0.0.0', debug=True)

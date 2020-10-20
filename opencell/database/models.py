@@ -143,6 +143,25 @@ class CellLine(Base):
         )
 
 
+    def get_best_pulldown(self):
+        '''
+        Get the 'good' pulldown
+        This logic is necessary because there may be multiple pulldowns per cell line,
+        but only ever one 'good' one whose hits should be displayed/analyzed
+        '''
+        if not self.pulldowns:
+            return None
+
+        # the manually-flagged 'good' pulldowns
+        # (there should be only one of these, but we don't enforce this)
+        candidate_pulldowns = [
+            pulldown for pulldown in self.pulldowns if pulldown.manual_display_flag
+        ]
+        if not candidate_pulldowns:
+            candidate_pulldowns = self.pulldowns
+        return candidate_pulldowns[0]
+
+
     def get_top_scoring_fovs(self, ntop=None):
         '''
         Get the n highest-scoring FOVs
@@ -279,7 +298,7 @@ class CrisprDesign(Base):
         db.String, db.ForeignKey('plate_design.design_id'), nullable=False
     )
 
-    # the uniprot_id of the protein tagged by the design
+    # the uniprot_id of the transcript tagged by the design
     uniprot_id = db.Column(
         db.String, db.ForeignKey('uniprot_metadata.uniprot_id')
     )
@@ -363,6 +382,27 @@ class CrisprDesign(Base):
             raise ValueError('Invalid template sequence %s' % value)
         return value
 
+    def get_best_cell_line(self):
+        '''
+        Logic to choose the 'best' cell line when there is more than one
+        '''
+        if not self.cell_lines:
+            return None
+
+        for line in self.cell_lines:
+            if line.sort_count > 1:
+                return line
+
+        for line in self.cell_lines:
+            if line.get_best_pulldown():
+                return line
+
+        for line in self.cell_lines:
+            if line.fovs:
+                return line
+
+        return self.cell_lines[0]
+
 
 class UniprotMetadata(Base):
     '''
@@ -387,6 +427,15 @@ class UniprotMetadata(Base):
 
     # one uniprot_id to many crispr designs
     crispr_designs = db.orm.relationship('CrisprDesign', back_populates='uniprot_metadata')
+
+    def get_primary_gene_name(self):
+        return self.gene_names.split(' ')[0] if self.gene_names != 'NaN' else self.uniprot_id
+
+    def __repr__(self):
+        return (
+            "<UniprotMetadata(uniprot_id='%s', ensg_id=%s', gene_name='%s')>" %
+            (self.uniprot_id, self.ensg_id, self.get_primary_gene_name())
+        )
 
 
 class FACSDataset(Base):
@@ -843,13 +892,100 @@ class MassSpecPulldown(Base):
         'MassSpecPulldownPlate', back_populates='pulldowns', uselist=False
     )
 
+    # the cached cytoscape network for the pulldown
+    network = db.orm.relationship(
+        'MassSpecPulldownNetwork', back_populates='pulldown', uselist=False
+    )
+
     def get_target_name(self):
         '''Convenience method to get target_name for each pulldown'''
         return self.cell_line.crispr_design.target_name
 
+
+    def get_significant_hits(self, eagerload=True):
+        '''
+        Retrieve the significant hits and eager-load their protein groups
+        and the protein groups' crispr designs and uniprot metadata
+        '''
+        query = (
+            db.orm.object_session(self).query(MassSpecHit)
+            .options(db.orm.joinedload(MassSpecHit.protein_group, innerjoin=True))
+            .filter(MassSpecHit.pulldown_id == self.id)
+            .filter(db.or_(
+                MassSpecHit.is_minor_hit == True,  # noqa
+                MassSpecHit.is_significant_hit == True  # noqa
+            ))
+        )
+
+        if eagerload:
+            query = query.options(
+                db.orm.joinedload(MassSpecHit.protein_group, innerjoin=True)
+                .joinedload(MassSpecProteinGroup.crispr_designs),
+                db.orm.joinedload(MassSpecHit.protein_group, innerjoin=True)
+                .joinedload(MassSpecProteinGroup.uniprot_metadata),
+            )
+
+        significant_hits = query.all()
+        return significant_hits
+
+
+    def get_bait_hit(self, only_one=False):
+        '''
+        Get the hit(s) that corresponds to the pulldown's target/bait
+        Returns none if the bait does not appear among the hits
+        '''
+        bait_hits = (
+            db.orm.object_session(self).query(MassSpecHit)
+            .join(MassSpecProteinGroup)
+            .join(ProteinGroupCrisprDesignAssociation)
+            .join(CrisprDesign)
+            .filter(MassSpecHit.pulldown_id == self.id)
+            .filter(db.or_(
+                MassSpecHit.is_minor_hit == True,  # noqa
+                MassSpecHit.is_significant_hit == True  # noqa
+            ))
+            .filter(CrisprDesign.id == self.cell_line.crispr_design.id)
+            .all()
+        )
+
+        if not bait_hits:
+            return None
+
+        if only_one:
+            # return the hit with the greatest enrichment
+            bait_hits = sorted(bait_hits, key=lambda hit: -hit.enrichment)
+            return bait_hits[0]
+
+        return bait_hits
+
+
+    def get_interacting_pulldowns(self):
+        '''
+        '''
+        interacting_pulldowns = (
+            db.orm.object_session(self).query(MassSpecPulldown).join(MassSpecHit)
+            .filter(db.or_(
+                MassSpecPulldown.manual_display_flag == None,  # noqa
+                MassSpecPulldown.manual_display_flag == True  # noqa
+            ))
+            .filter(MassSpecPulldown.id != self.id)
+            .filter(
+                MassSpecHit.protein_group_id.in_(
+                    [pg.id for pg in self.cell_line.crispr_design.protein_groups]
+                )
+            )
+            .filter(db.or_(
+                MassSpecHit.is_minor_hit == True,  # noqa
+                MassSpecHit.is_significant_hit == True  # noqa
+            ))
+            .all()
+        )
+        return interacting_pulldowns
+
+
     def __repr__(self):
         return (
-            "<Bait(id=%s, pulldown_plate=%s, target=%s)>"
+            "<MassSpecPulldown(id=%s, pulldown_plate_id=%s, target_name=%s)>"
             % (self.id, self.pulldown_plate_id, self.get_target_name())
         )
 
@@ -896,6 +1032,9 @@ class MassSpecProteinGroup(Base):
         'UniprotMetadata',
         secondary='protein_group_uniprot_metadata_association'
     )
+
+    def __repr__(self):
+        return "<MassSpecProteinGroup(gene_names=[%s])>" % (', '.join(self.gene_names))
 
 
 class ProteinGroupUniprotMetadataAssociation(Base):
@@ -972,6 +1111,18 @@ class MassSpecHit(Base):
     # A hit needs to have a unique set of target (pulldown) and the prey (protein_group)
     __table_args__ = (db.UniqueConstraint(pulldown_id, protein_group_id),)
 
+    def __repr__(self):
+        return (
+            "<MassSpecHit(bait=%s, pval=%0.2f, enrichment=%0.2f, gene_names=[%s])>"
+            % (
+                self.pulldown.get_target_name(),
+                float(self.pval),
+                float(self.enrichment),
+                ', '.join(self.protein_group.gene_names)
+            )
+        )
+
+
 class MassSpecClusterHeatmap(Base):
     """
     This table contains hard-coded cluster memberships of interactions as well as
@@ -992,8 +1143,7 @@ class MassSpecClusterHeatmap(Base):
     core_complex_id = db.Column(db.Integer, nullable=True)
 
     # hit id that the heatmap coordinate refers to in target-prey match
-    hit_id = db.Column(
-        db.Integer, db.ForeignKey('mass_spec_hit.id'), nullable=False)
+    hit_id = db.Column(db.Integer, db.ForeignKey('mass_spec_hit.id'), nullable=False)
 
     # row index of the heat map
     row_index = db.Column(db.Integer, nullable=False)
@@ -1005,7 +1155,31 @@ class MassSpecClusterHeatmap(Base):
     analysis_type = db.Column(db.String, nullable=False)
 
     # many cluster rows to one mass spec hit
-    hit = db.orm.relationship("MassSpecHit", uselist=False)
+    hit = db.orm.relationship('MassSpecHit', uselist=False)
 
-    # The cluster heatmap needs to have a unique set of cluster_id, row and col index
+    # The row and col indexes should be unique within a cluster
     __table_args__ = (db.UniqueConstraint(cluster_id, row_index, col_index, analysis_type),)
+
+
+class MassSpecPulldownNetwork(Base):
+    '''
+    Cached cytoscape network and layout (generated by cytoscapejs)
+    '''
+    __tablename__ = 'mass_spec_pulldown_network'
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # one network to one pulldown
+    pulldown_id = db.Column(db.Integer, db.ForeignKey('mass_spec_pulldown.id'))
+    pulldown = db.orm.relationship(
+        'MassSpecPulldown', back_populates='network', uselist=False
+    )
+
+    date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
+    last_modified = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
+
+    # the JSON dump from cy.json()
+    cytoscape_json = db.Column(postgresql.JSONB)
+
+    # the client-side timestamp, app state, etc
+    client_metadata = db.Column(postgresql.JSONB)

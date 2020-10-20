@@ -1,6 +1,7 @@
 import os
 import io
 import flask
+import json
 import urllib
 import imageio
 import tifffile
@@ -11,7 +12,7 @@ from flask_restful import Resource, reqparse
 from opencell.imaging import utils
 from opencell.api import payloads
 from opencell.api.cache import cache
-from opencell.database import models, operations
+from opencell.database import models, operations, uniprot_utils, cytoscape_networks
 from opencell.database import utils as db_utils
 from opencell.imaging.processors import FOVProcessor
 
@@ -23,6 +24,53 @@ def cache_key():
         (k, v) for k in sorted(args) for v in sorted(args.getlist(k))
     ])
     return key
+
+
+class Search(Resource):
+    def get(self, search_string):
+
+        payload = {}
+        search_string = search_string.upper()
+        publication_ready_only = flask.request.args.get('publication_ready') == 'true'
+
+        # search for opencell targets
+        query = (
+            flask.current_app.Session.query(models.CellLine).join(models.CellLine.crispr_design)
+            .filter(db.func.upper(models.CrisprDesign.target_name) == search_string)
+        )
+
+        if publication_ready_only:
+            cell_line_ids = operations.get_lines_by_annotation(
+                engine=flask.current_app.Session.get_bind(), annotation='publication_ready'
+            )
+            query = query.filter(models.CellLine.id.in_(cell_line_ids))
+
+        # hack for the positive controls
+        if search_string in ['CLTA', 'BCAP31']:
+            query = query.filter(models.CrisprDesign.plate_design_id == 'P0001')
+
+        targets = query.all()
+
+        # use a zero-padded 11-digit number to match ENSG ID format
+        if targets:
+            payload['oc_ids'] = ['OPCT%011d' % target.id for target in targets]
+
+        # search the gene names column in the uniprot metadata table
+        uniprot_metadata = pd.read_sql(
+            f'''
+            select ensg_id from (
+                select *, string_to_array(gene_names, ' ') as gene_names_array
+                from uniprot_metadata
+            ) tmp
+            where '{search_string}' = any(gene_names_array)
+            ''',
+            flask.current_app.Session.get_bind()
+        )
+        if len(uniprot_metadata):
+            payload['ensg_ids'] = list(set([row.ensg_id for _, row in uniprot_metadata.iterrows()]))
+
+        return flask.jsonify(payload)
+
 
 
 class Plate(Resource):
@@ -51,8 +99,8 @@ class CellLines(Resource):
         Session = flask.current_app.Session
 
         args = flask.request.args
-        plate_id = args.get('plate')
-        target_name = args.get('target')
+        plate_id = args.get('plate_id')
+        publication_ready_only = args.get('publication_ready') == 'true'
 
         included_fields = args.get('fields')
         included_fields = included_fields.split(',') if included_fields else []
@@ -60,40 +108,15 @@ class CellLines(Resource):
         cell_line_ids = args.get('ids')
         cell_line_ids = [int(_id) for _id in cell_line_ids.split(',')] if cell_line_ids else []
 
-        query = (
-            Session.query(models.CrisprDesign)
-            .options(db.orm.joinedload(models.CrisprDesign.cell_lines, innerjoin=True))
-        )
-
-        # filter crispr designs by plate_id
-        if plate_id:
-            query = query.filter(models.CrisprDesign.plate_design_id == plate_id)
-
-        # filter crispr designs by target name
-        if target_name:
-            # check for an exact match to the target name
-            exact_query = query.filter(
-                db.func.lower(models.CrisprDesign.target_name) == target_name.lower()
+        if publication_ready_only:
+            cell_line_ids = operations.get_lines_by_annotation(
+                engine=flask.current_app.Session.get_bind(), annotation='publication_ready'
             )
-            # if no exact match, filter by startswith
-            if not exact_query.all():
-                query = query.filter(
-                    db.func.lower(models.CrisprDesign.target_name)
-                    .startswith(target_name.lower())
-                )
-            else:
-                query = exact_query
 
-        # retrieve all of the cell lines corresponding to the filtered crispr designs
-        all_ids = []
-        [all_ids.extend([line.id for line in design.cell_lines]) for design in query.all()]
-
-        # retain only the cell_line_ids that were included in the URL (if any)
-        if len(cell_line_ids):
-            all_ids = list(set(all_ids).intersection(cell_line_ids))
-
-        lines = (
+        # cell line query with the eager-loading required by generate_cell_line_payload
+        query = (
             Session.query(models.CellLine)
+            .join(models.CellLine.crispr_design)
             .options(
                 (
                     db.orm.joinedload(models.CellLine.crispr_design, innerjoin=True)
@@ -102,13 +125,19 @@ class CellLines(Resource):
                 db.orm.joinedload(models.CellLine.facs_dataset),
                 db.orm.joinedload(models.CellLine.sequencing_dataset),
                 db.orm.joinedload(models.CellLine.annotation),
+                db.orm.joinedload(models.CellLine.pulldowns)
             )
-            .filter(models.CellLine.id.in_(all_ids))
-            .all()
         )
 
-        # TODO: pass the FOV counts to the cell_line_payload method if they are needed
-        _ = (
+        if plate_id:
+            query = query.filter(models.CrisprDesign.plate_design_id == plate_id)
+        if cell_line_ids:
+            query = query.filter(models.CellLine.id.in_(cell_line_ids))
+
+        lines = query.all()
+
+        # a separate query for counting FOVs and annotated FOVs per cell line
+        fov_counts = (
             Session.query(
                 models.CellLine.id,
                 db.func.count(models.MicroscopyFOV.id).label('num_fovs'),
@@ -116,11 +145,18 @@ class CellLines(Resource):
             )
             .outerjoin(models.CellLine.fovs)
             .outerjoin(models.MicroscopyFOV.annotation)
+            .filter(models.CellLine.id.in_([line.id for line in lines]))
             .group_by(models.CellLine.id)
             .all()
         )
+        fov_counts = pd.DataFrame(data=fov_counts)
 
-        payload = [payloads.cell_line_payload(line, included_fields) for line in lines]
+        payload = []
+        for line in lines:
+            fov_count = fov_counts.loc[fov_counts.id == line.id].iloc[0]
+            payload.append(
+                payloads.generate_cell_line_payload(line, included_fields, fov_count=fov_count)
+            )
         return flask.jsonify(payload)
 
 
@@ -145,25 +181,148 @@ class CellLineResource(Resource):
             .one_or_none()
         )
 
-    def get(self, cell_line_id):
-        ...
-
-    def put(self, cell_line_id):
-        ...
-
-    def delete(self, cell_line_id):
-        ...
-
 
 class CellLine(CellLineResource):
-
+    '''
+    The cell line metadata for a single cell line
+    '''
     def get(self, cell_line_id):
         line = self.get_cell_line(cell_line_id)
         optional_fields, error = self.parse_listlike_arg('fields', allowed_values=['best-fov'])
         if error:
             return error
-        payload = payloads.cell_line_payload(line, optional_fields)
+        payload = payloads.generate_cell_line_payload(line, optional_fields)
         return flask.jsonify(payload)
+
+
+class InteractorResource(Resource):
+
+    @staticmethod
+    def get_uniprot_metadata(ensg_id):
+        '''
+        Get the uniprot metadata for all of the uniprot_ids associated with an ensg_id
+        '''
+        uniprot_metadata = (
+            flask.current_app.Session.query(models.UniprotMetadata)
+            .filter(models.UniprotMetadata.ensg_id == ensg_id)
+            .all()
+        )
+        return uniprot_metadata
+
+    @staticmethod
+    def construct_ensg_metadata(ensg_id, uniprot_metadata):
+        '''
+        Generates the metadata object for an ensg_id,
+        following the schema of the cell line metadata (see payloads.generate_cell_line_payload)
+        '''
+        payload = {}
+
+        # TODO: a better way to pick the best uniprot_id from which to construct the metadata
+        # (that is, from which to take the gene names and function annotation)
+        uniprot_metadata = uniprot_metadata[0]
+
+        # HACK: this is copied from the cell_line payload
+        payload['uniprot_metadata'] = {
+            'uniprot_id': uniprot_metadata.uniprot_id,
+            'gene_names': uniprot_metadata.gene_names.split(' '),
+            'protein_name': uniprot_utils.prettify_uniprot_protein_name(
+                uniprot_metadata.protein_names
+            ),
+            'annotation': uniprot_utils.prettify_uniprot_annotation(
+                uniprot_metadata.annotation
+            ),
+        }
+
+        # generic ensg-level metadata (mimics the cell_line 'metadata' field)
+        payload['metadata'] = {
+            'ensg_id': ensg_id,
+            'target_name': payload['uniprot_metadata']['gene_names'][0]
+        }
+        return payload
+
+    @staticmethod
+    def get_interacting_pulldowns(uniprot_metadata):
+        '''
+        The pulldowns in which appears one or more protein groups
+        containing one or more of the uniprot metadata entries
+
+        uniprot_metadata : a list of uniprot metadata rows
+        '''
+        interacting_pulldowns = (
+            flask.current_app.Session.query(models.MassSpecPulldown)
+            .join(models.MassSpecHit)
+            .join(models.MassSpecProteinGroup)
+            .join(models.ProteinGroupUniprotMetadataAssociation)
+            .filter(db.or_(
+                models.MassSpecPulldown.manual_display_flag == None,  # noqa
+                models.MassSpecPulldown.manual_display_flag == True  # noqa
+            ))
+            .filter(
+                models.ProteinGroupUniprotMetadataAssociation.uniprot_id.in_(
+                    [row.uniprot_id for row in uniprot_metadata]
+                )
+            )
+            .filter(db.or_(
+                models.MassSpecHit.is_minor_hit == True,  # noqa
+                models.MassSpecHit.is_significant_hit == True  # noqa
+            ))
+            .all()
+        )
+        return interacting_pulldowns
+
+
+class InteractorTargets(InteractorResource):
+    '''
+    The metadata and the list of interacting opencell targets for an 'interactor'
+    (identified by an ensg_id)
+    '''
+    def get(self, ensg_id):
+
+        uniprot_metadata = self.get_uniprot_metadata(ensg_id)
+        if not uniprot_metadata:
+            return flask.abort(404, 'There is no uniprot metadata for ENSG ID %s' % ensg_id)
+
+        # construct metadata and uniprot_metadata
+        payload = self.construct_ensg_metadata(ensg_id, uniprot_metadata)
+
+        # the metadata for the interacting opencell targets
+        interacting_pulldowns = self.get_interacting_pulldowns(uniprot_metadata)
+        payload['interacting_cell_lines'] = [
+            payloads.generate_cell_line_payload(pulldown.cell_line, included_fields=[])
+            for pulldown in interacting_pulldowns
+        ]
+        return flask.jsonify(payload)
+
+
+class InteractorNetwork(InteractorResource):
+
+    def get(self, ensg_id):
+        '''
+        The cytoscape interaction network for an interactor (identified by an ensg_id)
+        '''
+        uniprot_metadata = self.get_uniprot_metadata(ensg_id)
+        interacting_pulldowns = self.get_interacting_pulldowns(uniprot_metadata)
+
+        nodes, edges = cytoscape_networks.construct_network(
+            interacting_pulldowns=interacting_pulldowns,
+            uniprot_metadata=uniprot_metadata[0],
+        )
+
+        # create compound nodes to represent superclusters and subclusters
+        nodes, parent_nodes = cytoscape_networks.construct_compound_nodes(
+            nodes,
+            clustering_analysis_type=flask.current_app.config.get('MS_CLUSTERING_TYPE'),
+            subcluster_type=flask.request.args.get('subcluster_type'),
+            engine=flask.current_app.Session.get_bind()
+        )
+        payload = {
+            'parent_nodes': [{'data': node} for node in parent_nodes],
+            'nodes': [{'data': node} for node in nodes],
+            'edges': [{'data': edge} for edge in edges],
+            'metadata': self.construct_ensg_metadata(ensg_id, uniprot_metadata)
+        }
+        return flask.jsonify(payload)
+
 
 
 class FACSDataset(CellLineResource):
@@ -172,13 +331,13 @@ class FACSDataset(CellLineResource):
         line = self.get_cell_line(cell_line_id)
         if not line.facs_dataset:
             return flask.abort(404)
-        payload = payloads.facs_payload(line.facs_dataset)
+        payload = payloads.generate_facs_payload(line.facs_dataset)
         return flask.jsonify(payload)
 
 
-class CellLineFOVs(CellLineResource):
+class MicroscopyFOVMetadata(CellLineResource):
     '''
-    The MicroscopyFOVs associated with a cell line
+    Metadata for all of the FOVs associated with a cell line
     '''
     def get(self, cell_line_id):
 
@@ -219,7 +378,7 @@ class CellLineFOVs(CellLineResource):
             return flask.abort(404, 'There are no FOVs associated with the cell line')
 
         payload = [
-            payloads.fov_payload(
+            payloads.generate_fov_payload(
                 fov,
                 include_rois=('rois' in included_fields),
                 include_thumbnails=('thumbnails' in included_fields)
@@ -232,68 +391,196 @@ class CellLineFOVs(CellLineResource):
         return flask.jsonify(payload)
 
 
-class CellLinePulldown(CellLineResource):
-    '''
-    The mass spec pulldown and associated hits for a given cell line
-    Note that there is always one 'good' pulldown per cell line,
-    from the perspective of the API and the public-facing frontend
-    (though there may be multiple pulldowns per cell line in the database)
-    '''
-    def get(self, cell_line_id):
-        line = self.get_cell_line(cell_line_id)
-        if not line.pulldowns:
-            return flask.abort(
-                404, 'There are no pulldowns associated with cell line %d' % cell_line_id
-            )
+class PulldownResource(CellLineResource):
 
-        # the manually-flagged 'good' pulldowns
-        # (there should be only one of these, but we don't enforce this)
-        candidate_pulldowns = [
-            pulldown for pulldown in line.pulldowns if pulldown.manual_display_flag
-        ]
-
-        # if none were flagged, find the pulldowns with hits
-        if not candidate_pulldowns:
-            candidate_pulldowns = [
-                pulldown for pulldown in line.pulldowns if pulldown.hits
-            ]
-
-        # pick either the first flagged pulldown, the first pulldown with hits,
-        # or the first pulldown
-        pulldown = candidate_pulldowns[0] if candidate_pulldowns else line.pulldowns[0]
-
-        if not pulldown.hits:
-            return flask.abort(
-                404, 'The pulldown for cell line %s does not have any hits' % cell_line_id
-            )
-
-        # we need the crispr designs and uniprot metadata for the significant hits
-        significant_hits = (
-            flask.current_app.Session.query(models.MassSpecHit)
-            .options(
-                db.orm.joinedload(models.MassSpecHit.protein_group, innerjoin=True)
-                    .joinedload(models.MassSpecProteinGroup.crispr_designs),
-                db.orm.joinedload(models.MassSpecHit.protein_group, innerjoin=True)
-                    .joinedload(models.MassSpecProteinGroup.uniprot_metadata),
-            )
-            .filter(models.MassSpecHit.pulldown_id == pulldown.id)
-            .filter(db.or_(
-                models.MassSpecHit.is_minor_hit == True,  # noqa
-                models.MassSpecHit.is_significant_hit == True  # noqa
-            ))
-            .all()
+    @staticmethod
+    def get_pulldown(pulldown_id):
+        pulldown = (
+            flask.current_app.Session.query(models.MassSpecPulldown)
+            .filter(models.MassSpecPulldown.id == pulldown_id)
+            .one_or_none()
         )
+        if not pulldown:
+            return flask.abort(404, 'Pulldown %d does not exist' % pulldown_id)
+        return pulldown
+
+
+class PulldownHits(PulldownResource):
+    '''
+    The mass spec pulldown and its associated hits for a cell line
+    '''
+    def get(self, pulldown_id):
+        Session = flask.current_app.Session
+        pulldown = self.get_pulldown(pulldown_id)
+        if not pulldown.hits:
+            return flask.abort(404, 'Pulldown %s does not have any hits' % pulldown_id)
+
+        significant_hits = pulldown.get_significant_hits()
 
         # we need only the pval and enrichment for the non-significant hits
         nonsignificant_hits = (
-            flask.current_app.Session.query(models.MassSpecHit.pval, models.MassSpecHit.enrichment)
+            Session.query(models.MassSpecHit.pval, models.MassSpecHit.enrichment)
             .filter(models.MassSpecHit.pulldown_id == pulldown.id)
             .filter(models.MassSpecHit.is_minor_hit == False)  # noqa
             .filter(models.MassSpecHit.is_significant_hit == False)  # noqa
             .all()
         )
 
-        payload = payloads.pulldown_payload(pulldown, significant_hits, nonsignificant_hits)
+        # construct the JSON payload from the pulldown and hit instances
+        payload = payloads.generate_pulldown_hits_payload(
+            pulldown, significant_hits, nonsignificant_hits
+        )
+        return flask.jsonify(payload)
+
+
+class PulldownNetwork(PulldownResource):
+    '''
+    The cytoscape interaction network for a cell line (technically, a pulldown)
+    (see comments in cytoscape_networks.construct_network for details)
+    '''
+
+    @staticmethod
+    def protein_group_to_node(protein_group):
+        node = payloads.generate_protein_group_payload(protein_group)
+        node['id'] = protein_group.id
+        node.pop('is_bait')
+        return node
+
+    @cache.cached(timeout=3600, key_prefix=cache_key)
+    def get(self, pulldown_id):
+        pulldown = self.get_pulldown(pulldown_id)
+
+        # create nodes to represent direct hits and/or interacting pulldowns,
+        # and the edges between them
+        nodes, edges = cytoscape_networks.construct_network(target_pulldown=pulldown)
+
+        # create compound nodes to represent superclusters and subclusters
+        nodes, parent_nodes = cytoscape_networks.construct_compound_nodes(
+            nodes,
+            clustering_analysis_type=flask.current_app.config.get('MS_CLUSTERING_TYPE'),
+            subcluster_type=flask.request.args.get('subcluster_type'),
+            engine=flask.current_app.Session.get_bind()
+        )
+
+        payload = {
+            'parent_nodes': [{'data': node} for node in parent_nodes],
+            'nodes': [{'data': node} for node in nodes],
+            'edges': [{'data': edge} for edge in edges],
+            'metadata': pulldown.as_dict(),
+        }
+        return flask.jsonify(payload)
+
+
+class PulldownClusters(PulldownResource):
+    '''
+    The cluster heatmap(s) in which a cell line's pulldown appears
+
+    The cluster heatmap represents a
+    '''
+    def get(self, pulldown_id):
+        Session = flask.current_app.Session
+        pulldown = self.get_pulldown(pulldown_id)
+
+        # get the cluster_ids of all clusters in which the pulldown appears
+        rows = (
+            Session.query(db.distinct(models.MassSpecClusterHeatmap.cluster_id))
+            .join(models.MassSpecClusterHeatmap.hit)
+            .join(models.MassSpecHit.pulldown)
+            .filter(models.MassSpecPulldown.id == pulldown.id)
+            .all()
+        )
+        cluster_ids = [row[0] for row in rows]
+
+        if not cluster_ids:
+            return flask.abort(404, 'Pulldown %s does not appear in any clusters' % pulldown_id)
+
+        # for now, if there are multiple clusters, pick the first one
+        cluster_id = cluster_ids[0]
+
+        # get the cluster heatmap tiles
+        # (one row of the ClusterHeatmap table corresponds to one tile)
+        rows = (
+            Session.query(
+                models.MassSpecClusterHeatmap.hit_id,
+                models.MassSpecClusterHeatmap.row_index,
+                models.MassSpecClusterHeatmap.col_index,
+                models.MassSpecHit.pval,
+                models.MassSpecHit.enrichment,
+                models.MassSpecHit.interaction_stoich,
+                models.MassSpecHit.abundance_stoich,
+            )
+            .join(models.MassSpecClusterHeatmap.hit)
+            .filter(models.MassSpecClusterHeatmap.cluster_id == cluster_id)
+            .all()
+        )
+        heatmap_tiles = pd.DataFrame(data=rows)
+
+        # pick an arbitrary hit_id from each column and each row of the heatmap
+        # we will use these hit_ids to retrieve the pulldown and protein group metadata
+        # for the columns and rows, respectively, since we know/assume that all of the hits
+        # in each column correspond to the same pulldown, and all of the hits in each row
+        # correspond to the same protein group
+        heatmap_row_metadata = heatmap_tiles.groupby('row_index').first().reset_index()
+        heatmap_column_metadata = heatmap_tiles.groupby('col_index').first().reset_index()
+
+        # the pulldowns corresponding to the heatmap columns
+        heatmap_column_pulldowns = (
+            Session.query(
+                models.MassSpecHit.id.label('hit_id'),
+                models.MassSpecHit.pulldown_id,
+                models.CellLine.id.label('cell_line_id'),
+                models.CrisprDesign.target_name
+            )
+            .join(models.MassSpecHit.pulldown)
+            .join(models.MassSpecPulldown.cell_line)
+            .join(models.CrisprDesign)
+            .filter(
+                models.MassSpecHit.id.in_(heatmap_column_metadata.hit_id.astype(int).tolist())
+            )
+            .all()
+        )
+
+        # merge the col_index with the pulldown metadata
+        heatmap_column_metadata = pd.merge(
+            heatmap_column_metadata[['hit_id', 'col_index']],
+            pd.DataFrame(data=heatmap_column_pulldowns),
+            on='hit_id'
+        )
+
+        # the protein groups corresponding to the heatmap rows
+        # (the hits are included so that we can use the hit_id to merge the protein group metadata
+        # with heatmap_row_metadata dataframe)
+        heatmap_rows = (
+            Session.query(models.MassSpecHit, models.MassSpecProteinGroup)
+            .join(models.MassSpecProteinGroup.hits)
+            .filter(models.MassSpecHit.id.in_(heatmap_row_metadata.hit_id.astype(int).tolist()))
+            .all()
+        )
+
+        # construct the protein group metadata
+        protein_group_metadata = []
+        for hit, protein_group in heatmap_rows:
+            metadata = payloads.generate_protein_group_payload(protein_group)
+            metadata['hit_id'] = hit.id
+            protein_group_metadata.append(metadata)
+
+        # merge the row_index with the protein group metadata
+        heatmap_row_metadata = pd.merge(
+            heatmap_row_metadata[['hit_id', 'row_index']],
+            pd.DataFrame(data=protein_group_metadata),
+            on='hit_id'
+        )
+
+        # drop the now-useless hit_id column from the row and column metadata
+        heatmap_row_metadata.drop(labels='hit_id', axis=1, inplace=True)
+        heatmap_column_metadata.drop(labels='hit_id', axis=1, inplace=True)
+
+        payload = {
+            'metadata': {'cluster_id': cluster_id},
+            'tiles': json.loads(heatmap_tiles.to_json(orient='records')),
+            'rows': json.loads(heatmap_row_metadata.to_json(orient='records')),
+            'columns': json.loads(heatmap_column_metadata.to_json(orient='records')),
+        }
         return flask.jsonify(payload)
 
 
@@ -420,7 +707,8 @@ class CellLineAnnotation(CellLineResource):
             db_utils.add_and_commit(
                 flask.current_app.Session,
                 annotation,
-                errors='raise')
+                errors='raise'
+            )
         except Exception as error:
             flask.abort(500, str(error))
 
@@ -477,6 +765,54 @@ class MicroscopyFOVAnnotation(Resource):
 
         try:
             db_utils.delete_and_commit(flask.current_app.Session, fov.annotation)
+        except Exception as error:
+            flask.abort(500, str(error))
+        return ('', 204)
+
+
+class SavedPulldownNetwork(PulldownResource):
+    '''
+    Cached manually-edited cytoscape layout for a cell line
+    '''
+    def get(self, pulldown_id):
+        pulldown = self.get_pulldown(pulldown_id)
+        if pulldown.network is not None:
+            return flask.jsonify({
+                'cytoscape_json': pulldown.network.cytoscape_json,
+                'last_modified': pulldown.network.last_modified,
+            })
+        return flask.abort(
+            404, 'Pulldown %s does not have a cached cytoscape network' % pulldown_id
+        )
+
+    def put(self, pulldown_id):
+        data = flask.request.get_json()
+        pulldown = self.get_pulldown(pulldown_id)
+        network = pulldown.network
+        if network is None:
+            network = models.MassSpecPulldownNetwork(pulldown_id=pulldown_id)
+
+        network.cytoscape_json = data.get('cytoscape_json')
+        network.client_metadata = data.get('client_metadata')
+
+        try:
+            db_utils.add_and_commit(
+                flask.current_app.Session,
+                network,
+                errors='raise'
+            )
+        except Exception as error:
+            flask.abort(500, str(error))
+        return flask.jsonify(network.as_dict())
+
+    def delete(self, pulldown_id):
+        pulldown = self.get_pulldown(pulldown_id)
+        if pulldown.network is None:
+            return flask.abort(
+                404, 'Pulldown %s does not have a cached cytoscape network' % pulldown_id
+            )
+        try:
+            db_utils.delete_and_commit(flask.current_app.Session, pulldown.network)
         except Exception as error:
             flask.abort(500, str(error))
         return ('', 204)

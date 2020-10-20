@@ -211,7 +211,9 @@ def generate_protein_group_payload(protein_group, pulldown_crispr_design_id=None
 
     # the 'primary' gene name for each uniprot_id in the protein group
     gene_names = ['Unknown']
-    if protein_group.uniprot_metadata:
+    if protein_group.manual_gene_name:
+        gene_names = protein_group.manual_gene_name.split(', ')
+    elif protein_group.uniprot_metadata:
         gene_names = list(set([d.get_primary_gene_name() for d in protein_group.uniprot_metadata]))
 
     # the target names of the crispr designs that are associated with this protein group

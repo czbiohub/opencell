@@ -31,9 +31,8 @@ export default function Navbar (props) {
         <div>
         {/* 'space-between' left- and right-justifies the two children divs */}
         <div 
-            className="flex items-center w-100 pr3 pl3 navbar-container" 
+            className="flex items-center justify-between w-100 pr3 pl3 navbar-container" 
             style={{
-                justifyContent: 'space-between', 
                 backgroundColor: "#eee",
                 minWidth: 1400,
             }}

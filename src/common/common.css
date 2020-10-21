@@ -26,6 +26,7 @@ a:visited {
     text-decoration: none;
 }
 
+abbr {text-decoration: none !important}
 
 div {
     /* border: 1px solid #f66 !important; */

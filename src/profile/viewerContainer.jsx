@@ -65,7 +65,7 @@ export default class ViewerContainer extends Component {
             min488: 0,
             max488: 90,
             gamma488: 1.0,
-            min405: 0,
+            min405: 15,
             max405: 100,
             gamma405: 1.0,
         }
@@ -172,6 +172,12 @@ export default class ViewerContainer extends Component {
 
     render () {
         
+
+        const zIndexToMicrons = (index) => {
+            const micronsPerSlice = 0.4;
+            return (index * micronsPerSlice).toFixed(1);
+        }
+
         if (!this.props.rois.length) {
             return (
                 <div className="relative" style={{height: "500px"}}>
@@ -224,7 +230,7 @@ export default class ViewerContainer extends Component {
             <div className="pt3 pb2">
 
                 {/* top row */}
-                <div className='flex flex-wrap w-100 pb3'>
+                <div className='flex flex-wrap w-100 pb2'>
 
                     <div className="roi-thumbnail-select-container pr3">
                         <Select 
@@ -308,10 +314,29 @@ export default class ViewerContainer extends Component {
             {/* Display settings */}
             <div className='flex flex-wrap w-100 pt2 pb2'>
 
+                {/* z-index slider */}
+                <div className='w-100 flex flex-0-0-auto pr3'>
+                    <div className='w-30'>
+                        <b>
+                        {`Z-position: ${zIndexToMicrons(this.state.zIndex)}`}
+                        <span>&micro;m</span>
+                        </b>
+                    </div>
+                    <Slider 
+                        min={0} 
+                        max={this.numSlices - 1} 
+                        stepSize={1}
+                        labelStepSize={50}
+                        showTrackFill={false}
+                        value={this.state.zIndex}
+                        onChange={value => this.setState({zIndex: parseInt(value)})}
+                    />
+                </div>
+
                 {/* 405 min/max/gamma */}
-                <div className='flex-0-0-auto w-50 pl3 pr3'>
+                <div className='flex-0-0-auto w-50 pr4'>
                     <div className='pb1'>
-                        {`DNA image range: ${this.state.min405}% to ${this.state.max405}%`}
+                        {`DNA intensity range: ${this.state.min405}% to ${this.state.max405}%`}
                     </div>
                     <RangeSlider 
                         min={0} 
@@ -323,7 +348,7 @@ export default class ViewerContainer extends Component {
                         onChange={values => this.setState({min405: values[0], max405: values[1]})}
                     />
                     <div className='pb1'>
-                        {`DNA image gamma: ${this.state.gamma405.toFixed(2)}`}
+                        {`DNA intensity gamma: ${this.state.gamma405.toFixed(2)}`}
                     </div>
                     <Slider
                         min={0.5} 
@@ -337,9 +362,9 @@ export default class ViewerContainer extends Component {
                 </div>
 
                 {/* 488 min/max/gamma */}
-                <div className='flex-0-0-auto w-50 pl3 pr3'>
+                <div className='flex-0-0-auto w-50 pl1 pr3'>
                     <div className='pb1'>
-                        {`Protein image range: ${this.state.min488}% to ${this.state.max488}%`}
+                        {`Protein intensity range: ${this.state.min488}% to ${this.state.max488}%`}
                     </div>
                     <RangeSlider 
                         min={0} 
@@ -351,7 +376,7 @@ export default class ViewerContainer extends Component {
                         onChange={values => this.setState({min488: values[0], max488: values[1]})}
                     />
                     <div className='pb1'>
-                        {`Protein image gamma: ${this.state.gamma488.toFixed(2)}`}
+                        {`Protein intensity gamma: ${this.state.gamma488.toFixed(2)}`}
                     </div>
                     <Slider
                         min={0.5} 
@@ -363,23 +388,6 @@ export default class ViewerContainer extends Component {
                         onChange={value => this.setState({gamma488: parseFloat(value)})}
                     />
                 </div>
-
-                {/* z-index slider */}
-                <div className='flex flex-auto pl3 pr3'>
-                    <div className='w-20'>
-                        {`Z-index ${this.state.zIndex + 1}/${this.numSlices}`}
-                    </div>
-                    <Slider 
-                        min={0} 
-                        max={this.numSlices - 1} 
-                        stepSize={1}
-                        labelStepSize={50}
-                        showTrackFill={false}
-                        value={this.state.zIndex}
-                        onChange={value => this.setState({zIndex: parseInt(value)})}
-                    />
-                </div>
-
             </div>
             
             {this.props.showMetadata ? (

@@ -75,6 +75,10 @@ const cellLineMetadataDefinitions = [
         accessor: row => String(row.annotation.categories?.includes('publication_ready')),
         Header: 'Pub ready',
     },{
+        id: 'has_pulldown',
+        accessor: row => String(!!row.best_pulldown?.id),
+        Header: 'Has pulldown',
+    },{
         id: 're_image',
         accessor: row => String(row.annotation.categories?.includes('re_image')),
         Header: 'Re-image',

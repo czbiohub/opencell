@@ -316,7 +316,7 @@ export default class ViewerContainer extends Component {
 
                 {/* z-index slider */}
                 <div className='w-100 flex flex-0-0-auto pr3'>
-                    <div className='w-30'>
+                    <div className={classNames('w-30', {'black-30': this.state.mode!=='Slice'})}>
                         <b>
                         {`Z-position: ${zIndexToMicrons(this.state.zIndex)}`}
                         <span>&micro;m</span>
@@ -328,6 +328,7 @@ export default class ViewerContainer extends Component {
                         stepSize={1}
                         labelStepSize={50}
                         showTrackFill={false}
+                        disabled={this.state.mode!=='Slice'}
                         value={this.state.zIndex}
                         onChange={value => this.setState({zIndex: parseInt(value)})}
                     />

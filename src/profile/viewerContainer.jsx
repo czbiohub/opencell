@@ -83,8 +83,8 @@ export default class ViewerContainer extends Component {
             // '405', '488', or 'Both'
             channel: "Both",
 
-            // 'Low' or 'High'
-            imageQuality: "Low",
+            // 'Auto' or 'High'
+            imageQuality: "Auto",
 
             // the middle of the z-stack
             zIndex: parseInt(this.numSlices/2),
@@ -143,7 +143,7 @@ export default class ViewerContainer extends Component {
         // ***WARNING***
         // the order of the channels in the `filepaths` array below matters,
         // because it is *independently* hard-coded in SliceViewer and VolumeViewer
-        const quality = this.state.imageQuality==='Low' ? 'lqtile' : 'hqtile';
+        const quality = this.state.imageQuality==='Auto' ? 'lqtile' : 'hqtile';
         const stackFilepaths = [
             `${settings.apiUrl}/rois/${this.props.roiId}/${quality}/405`,
             `${settings.apiUrl}/rois/${this.props.roiId}/${quality}/488`,
@@ -264,10 +264,11 @@ export default class ViewerContainer extends Component {
 
                     <div className='pr3'>
                         <ButtonGroup 
-                            label='Quality' 
-                            values={['Low', 'High']}
+                            label='Image quality' 
+                            values={['Auto', 'High']}
                             activeValue={this.state.imageQuality}
                             onClick={value => this.setState({imageQuality: value})}
+                            disabled={this.state.mode==='Proj'}
                         />
                     </div>
                     <div className='pr3'>

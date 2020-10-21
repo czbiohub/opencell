@@ -22,14 +22,14 @@ class ButtonGroup extends Component {
             return (
                 <SimpleButton 
                     active={this.props.activeValue===value} 
-                    onClick={d => this.props.onClick(value)} 
+                    onClick={d => this.props.disabled ? null : this.props.onClick(value)} 
                     text={label}
                     key={value}/>
             );
         });
 
         return (
-            <div className='simple-button-group'>
+            <div className={classNames('simple-button-group', {'o-50': this.props.disabled})}>
                 <div className='simple-button-group-label'>{this.props.label}</div>
                 {buttons}
             </div>

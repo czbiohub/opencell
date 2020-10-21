@@ -525,8 +525,8 @@ def main():
             .filter(models.MicroscopyFOV.annotation.has())
         )
 
-        # only process FOVs annotated since the last time annotated ROIs were cropped
-        # (this means ROIs from FOVs with newly-edited existing annotations will not be updated)
+        # only process newly-annotated FOVs
+        # (this means ROIs from FOVs with existing but newly-edited annotations will not be updated)
         if not args.process_all:
             query = query.filter(~models.MicroscopyFOV.rois.any())
 
@@ -541,13 +541,17 @@ def main():
             'quality': int(args.thumbnail_quality),
         }
 
-        # only process annotated FOVs
-        fovs = (
-            Session.query(models.MicroscopyFOV)
+        # we only need to process FOVs with cropped annotation ROIs
+        query = (
+            Session.query(models.MicroscopyFOV).join(models.MicroscopyFOVROI)
             .filter(models.MicroscopyFOV.annotation.has())
-            .all()
         )
-        do_fov_tasks(Session, config, method_name, method_kwargs, fovs=fovs)
+
+        # only process newly-cropped ROIs (those that don't already have thumbnails)
+        if not args.process_all:
+            query = query.filter(~models.MicroscopyFOVROI.thumbnails.any())
+
+        do_fov_tasks(Session, config, method_name, method_kwargs, fovs=query.all())
 
 
     if args.generate_nucleus_segmentations:

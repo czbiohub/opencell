@@ -73,6 +73,7 @@ def construct_network(target_pulldown=None, interacting_pulldowns=None, uniprot_
         nodes.append(node)
 
     # the bait hits from each of the interacting pulldowns
+    # (this list will include Nones for pulldowns in which the bait hit does not exist)
     interacting_bait_hits = [
         interacting_pulldown.get_bait_hit(only_one=True)
         for interacting_pulldown in interacting_pulldowns
@@ -81,7 +82,7 @@ def construct_network(target_pulldown=None, interacting_pulldowns=None, uniprot_
     # create nodes to represent the interacting pulldowns
     for interacting_pulldown, bait_hit in zip(interacting_pulldowns, interacting_bait_hits):
 
-        # if the bait was not found in the interacting pulldown,
+        # if no bait hit was found in the interacting pulldown,
         # we cannot create a node to represent the pulldown
         if not bait_hit:
             continue
@@ -93,7 +94,7 @@ def construct_network(target_pulldown=None, interacting_pulldowns=None, uniprot_
     # if no target pulldown was provided, the 'direct hits', for the purpose of constructing edges,
     #  are the bait hits from the interacting pulldowns
     if not target_pulldown:
-        direct_hits = interacting_bait_hits
+        direct_hits = [hit for hit in interacting_bait_hits if hit is not None]
 
     # generate the edges between direct nodes
     edges = []

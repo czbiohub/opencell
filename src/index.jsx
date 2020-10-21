@@ -77,7 +77,11 @@ function useGeneNameSearch (setCellLineId) {
     // HACK: if there's more than one matching ensg_id or oc_id, we arbitrarily pick one
     useEffect(() => {
         if (!geneName || !doSearch) return;
-        const url = `${settings.apiUrl}/search/${geneName}?publication_ready=${modeContext==='public'}`; 
+
+        // hack: remove slashes, which are used in some cytoscape node labels
+        const sanitizedGeneName = geneName.split('/')[0]
+
+        const url = `${settings.apiUrl}/search/${sanitizedGeneName}?publication_ready=${modeContext==='public'}`; 
         console.log(`Search url: ${url}`);
         d3.json(url).then(result => {
             if (result.oc_ids) {

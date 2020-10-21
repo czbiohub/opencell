@@ -365,9 +365,9 @@ export default class ViewerContainer extends Component {
                 </div>
 
                 {/* z-index slider */}
-                <div className='flex-0-0-auto w-80 pl3 pr3'>
-                    <div className='pb1'>
-                        {`Z-slice: ${this.state.zIndex + 1}/${this.numSlices}`}
+                <div className='flex flex-auto pl3 pr3'>
+                    <div className='w-20'>
+                        {`Z-index ${this.state.zIndex + 1}/${this.numSlices}`}
                     </div>
                     <Slider 
                         min={0} 

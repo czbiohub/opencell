@@ -23,7 +23,7 @@ class FOVProcessor:
         self,
         fov_id,
         pml_id,
-        parental_line,
+        parental_line_name,
         plate_id,
         well_id,
         site_num,
@@ -35,7 +35,7 @@ class FOVProcessor:
 
         self.fov_id = fov_id
         self.pml_id = pml_id
-        self.parental_line = parental_line
+        self.parental_line_name = parental_line_name
         self.plate_id = plate_id
         self.well_id = well_id
         self.site_num = site_num
@@ -101,10 +101,18 @@ class FOVProcessor:
         # roi_props for all ROIs cropped from this FOV (will often be empty)
         all_roi_rows = [roi.as_dict() for roi in fov.rois]
 
+        # get the name of the progenitor cell line
+        line = fov.cell_line
+        while True:
+            line = line.parent
+            if line.line_type.value == 'PROGENITOR':
+                parental_line_name = line.name
+                break
+
         processor = cls(
             fov_id=fov.id,
             pml_id=fov.dataset.pml_id,
-            parental_line=fov.cell_line.parent.name,
+            parental_line_name=parental_line_name,
             plate_id=crispr_design.plate_design_id,
             well_id=crispr_design.well_id,
             site_num=fov.site_num,
@@ -155,7 +163,7 @@ class FOVProcessor:
 
         Destination plate directory names are of the form 'czML0383-P0001'
         '''
-        dst_plate_dir = f'{self.parental_line}-{self.plate_id}'
+        dst_plate_dir = f'{self.parental_line_name}-{self.plate_id}'
         return dst_plate_dir
 
 

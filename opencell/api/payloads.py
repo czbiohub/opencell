@@ -66,7 +66,7 @@ def generate_cell_line_payload(cell_line, included_fields, fov_count=None):
         })
 
     # The FOV counts (`fov_count` is a pd.Series)
-    counts = fov_count.to_dict() if fov_count is not None else {}
+    counts = json.loads(fov_count.to_json()) if fov_count is not None else {}
 
     # all of the manual annotation categories
     categories = cell_line.annotation.categories if cell_line.annotation else []

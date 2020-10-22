@@ -734,12 +734,21 @@ class MicroscopyFOVAnnotation(Resource):
 
 
     def put(self, fov_id):
+        '''
+        Create or modify the FOV annotation and, if an annotation already exists,
+        delete its corresponding ROI
 
+        Note: we delete the ROI because we assume that if it already exists,
+        it will need to be recreated to reflect the changes to the annotation
+        '''
         data = flask.request.get_json()
         fov = self.get_fov(fov_id)
+
         annotation = fov.annotation
         if annotation is None:
             annotation = models.MicroscopyFOVAnnotation(fov_id=fov_id)
+        else:
+            db_utils.delete_and_commit(flask.current_app.Session, fov.rois, errors='warn')
 
         annotation.categories = data.get('categories')
         annotation.client_metadata = data.get('client_metadata')
@@ -758,13 +767,20 @@ class MicroscopyFOVAnnotation(Resource):
 
 
     def delete(self, fov_id):
+        '''
+        Delete both the annotation and its corresponding ROI (if one exists)
 
+        Note: to delete the annotation's ROI, we assume that the only ROI associated with the FOV
+        is the one associated with its annotation, so we can simply delete fov.rois entirely
+        (this is a useful shortcut because there is currently no direct relationship
+        between the annotation and its corresponding annotated ROI)
+        '''
         fov = self.get_fov(fov_id)
         if fov.annotation is None:
             return flask.abort(404, 'FOV %s does not have an annotation' % fov_id)
-
         try:
             db_utils.delete_and_commit(flask.current_app.Session, fov.annotation)
+            db_utils.delete_and_commit(flask.current_app.Session, fov.rois)
         except Exception as error:
             flask.abort(500, str(error))
         return ('', 204)

@@ -79,6 +79,10 @@ const cellLineMetadataDefinitions = [
         accessor: row => String(!!row.best_pulldown?.id),
         Header: 'Has pulldown',
     },{
+        id: 'has_saved_network',
+        accessor: row => String(!!row.best_pulldown?.has_saved_network),
+        Header: 'Has saved network',
+    },{
         id: 're_image',
         accessor: row => String(row.annotation.categories?.includes('re_image')),
         Header: 'Re-image',

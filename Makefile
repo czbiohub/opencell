@@ -21,11 +21,12 @@ start-test-db:
 drop-test-db:
 	docker rm --force $(TEST_DB_CONTAINER_NAME);
 
-# create a populated test database from a truncated database dump (without FOVs or MS data)
+# create a populated test database from a truncated database dump
+# (without microscopy or mass spec data)
 restore-test-db:
 	docker exec -it $(TEST_DB_CONTAINER_NAME) \
 	pg_restore -U postgres -d opencelldb-test \
-	/home/opencell/tests/data/dumps/2020-09-23-opencelldb-prod-dump-wo-fovs-wo-ms;
+	/home/opencell/tests/data/dumps/2020-10-22_opencelldb-prod-dump-trunc;
 	docker network connect opencell $(TEST_DB_CONTAINER_NAME);
 
 test:

@@ -137,7 +137,7 @@ class CellLines(Resource):
         lines = query.all()
 
         # a separate query for counting FOVs and annotated FOVs per cell line
-        fov_counts = (
+        fov_counts_query = (
             Session.query(
                 models.CellLine.id,
                 db.func.count(models.MicroscopyFOV.id).label('num_fovs'),
@@ -148,26 +148,45 @@ class CellLines(Resource):
             .filter(models.CellLine.id.in_([line.id for line in lines]))
             .group_by(models.CellLine.id)
         )
+        fov_counts = pd.DataFrame(data=fov_counts_query.all())
 
-        # count the number of annotated FOVs from dragonfly-automation datasets
+        # hackish counting of the number of annotated FOVs from dragonfly-automation datasets
+        # (the 'da' stands for dragonfly-automation)
         da_pmls = ['PML%04d' % ind for ind in range(196, 999)]
-        fov_counts_da = fov_counts.filter(models.MicroscopyFOV.pml_id == db.any_([da_pmls]))
-
-        fov_counts = pd.DataFrame(data=fov_counts.all())
-        fov_counts_da = pd.DataFrame(data=fov_counts_da.all())
+        fov_counts_query = fov_counts_query.filter(models.MicroscopyFOV.pml_id == db.any_(da_pmls))
+        fov_counts_da = pd.DataFrame(data=fov_counts_query.all())
         fov_counts_da.rename(
             columns={column: '%s_da' % column for column in fov_counts_da.columns},
             inplace=True
         )
-        fov_counts = pd.merge(fov_counts, fov_counts_da, left_on='id', right_on='id_da', how='left')
+        fov_counts = pd.merge(
+            fov_counts, fov_counts_da, left_on='id', right_on='id_da', how='left'
+        )
 
-        payload = []
+        # the list of pulldown_ids with saved cytoscape networks
+        pulldowns_with_saved_networks = [
+            row[0] for row in Session.query(models.MassSpecPulldownNetwork.pulldown_id).all()
+        ]
+
+        cell_line_payloads = []
         for line in lines:
+            payload = payloads.generate_cell_line_payload(line, included_fields)
+
+            # append the FOV counts (for the internal version of the frontend)
             fov_count = fov_counts.loc[fov_counts.id == line.id].iloc[0]
-            payload.append(
-                payloads.generate_cell_line_payload(line, included_fields, fov_count=fov_count)
-            )
-        return flask.jsonify(payload)
+            if fov_count.shape[0]:
+                payload['fov_counts'] = json.loads(fov_count.to_json())
+
+            # append a flag for the existence of a saved pulldown network
+            pulldown_id = payload['best_pulldown']['id']
+            if pulldown_id is not None:
+                payload['best_pulldown']['has_saved_network'] = (
+                    pulldown_id in pulldowns_with_saved_networks
+                )
+
+            cell_line_payloads.append(payload)
+
+        return flask.jsonify(cell_line_payloads)
 
 
 class CellLineResource(Resource):

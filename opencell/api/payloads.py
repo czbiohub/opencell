@@ -12,13 +12,12 @@ from opencell.database import models, utils, uniprot_utils
 from opencell.imaging.processors import FOVProcessor
 
 
-def generate_cell_line_payload(cell_line, included_fields, fov_count=None):
+def generate_cell_line_payload(cell_line, included_fields):
     '''
     The JSON payload returned by the /lines endpoint of the API
     Note that, awkwardly, the RNAseq data is a column in the crispr_design table
 
     included_fields : a list of optional fields to include
-    fov_count : optional pandas series of FOV counts for the cell line
     '''
     design = cell_line.crispr_design
 
@@ -65,9 +64,6 @@ def generate_cell_line_payload(cell_line, included_fields, fov_count=None):
             'facs_intensity': cell_line.facs_dataset.scalars.get('rel_median_log')
         })
 
-    # The FOV counts (`fov_count` is a pd.Series)
-    counts = json.loads(fov_count.to_json()) if fov_count is not None else {}
-
     # all of the manual annotation categories
     categories = cell_line.annotation.categories if cell_line.annotation else []
     annotation = {
@@ -84,7 +80,6 @@ def generate_cell_line_payload(cell_line, included_fields, fov_count=None):
     payload = {
         'metadata': metadata,
         'scalars': scalars,
-        'fov_counts': counts,
         'annotation': annotation,
         'uniprot_metadata': uniprot_metadata,
         'best_pulldown': {'id': pulldown_id}

@@ -147,9 +147,19 @@ class CellLines(Resource):
             .outerjoin(models.MicroscopyFOV.annotation)
             .filter(models.CellLine.id.in_([line.id for line in lines]))
             .group_by(models.CellLine.id)
-            .all()
         )
-        fov_counts = pd.DataFrame(data=fov_counts)
+
+        # count the number of annotated FOVs from dragonfly-automation datasets
+        da_pmls = ['PML%04d' % ind for ind in range(196, 999)]
+        fov_counts_da = fov_counts.filter(models.MicroscopyFOV.pml_id == db.any_([da_pmls]))
+
+        fov_counts = pd.DataFrame(data=fov_counts.all())
+        fov_counts_da = pd.DataFrame(data=fov_counts_da.all())
+        fov_counts_da.rename(
+            columns={column: '%s_da' % column for column in fov_counts_da.columns},
+            inplace=True
+        )
+        fov_counts = pd.merge(fov_counts, fov_counts_da, left_on='id', right_on='id_da', how='left')
 
         payload = []
         for line in lines:

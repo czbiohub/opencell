@@ -84,7 +84,7 @@ def generate_cell_line_payload(cell_line, included_fields, fov_count=None):
     payload = {
         'metadata': metadata,
         'scalars': scalars,
-        'counts': counts,
+        'fov_counts': counts,
         'annotation': annotation,
         'uniprot_metadata': uniprot_metadata,
         'best_pulldown': {'id': pulldown_id}

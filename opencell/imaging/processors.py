@@ -520,6 +520,14 @@ class FOVProcessor:
         Crop the manually annotated ROI (assumes an annotation exists)
         '''
 
+        # if no annotation exists or the annotated ROI coordinates are not defined
+        if (
+            not self.fov.annotation
+            or self.fov.annotation.roi_position_top is None
+            or self.fov.annotation.roi_position_left is None
+        ):
+            return None
+
         roi_size = 600
         roi_top_left_positions = [
             (

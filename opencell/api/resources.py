@@ -26,6 +26,13 @@ def cache_key():
     return key
 
 
+class ClearCache(Resource):
+    def get(self):
+        with flask.current_app.app_context():
+            cache.clear()
+        return flask.jsonify({'result': 'cache cleared'})
+
+
 class Search(Resource):
     def get(self, search_string):
 

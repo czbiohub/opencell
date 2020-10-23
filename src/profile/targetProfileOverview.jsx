@@ -5,8 +5,7 @@ import ExpressionPlot from '../common/expressionPlot.jsx';
 import FacsPlotContainer from './facsPlotContainer.jsx';
 import ViewerContainer from './viewerContainer.jsx';
 
-import MassSpecScatterPlotContainer from './massSpecScatterPlotContainer.jsx';
-import MassSpecNetworkContainer from './massSpecNetworkContainer.jsx';
+import MassSpecContainer from './massSpecContainer.jsx';
 import TargetAnnotator from './targetAnnotator.jsx';
 import { SectionHeader } from './common.jsx';
 import settings from '../common/settings.js';
@@ -115,37 +114,10 @@ export default class TargetProfileOverview extends Component {
                                 />
                             </div>
                         ) : (
-                            <div>
-                                <div className="flex bb b--black-10">
-                                    <div 
-                                        className={"f3 mr5 section-header" + (this.state.massSpecView==='network' ? ' section-header-active' : '')}
-                                        onClick={() => this.setState({massSpecView: 'network'})}
-                                    >
-                                        Interaction Network
-                                    </div>
-                                    <div 
-                                        className={"f3 mr5 section-header" + (this.state.massSpecView==='volcano' ? ' section-header-active' : '')}
-                                        onClick={() => this.setState({massSpecView: 'volcano'})}
-                                    >
-                                        Volcano Plot
-                                    </div>
-                                </div>
-                                {this.state.massSpecView==='network' ? (
-                                    <MassSpecNetworkContainer
-                                        width={700}
-                                        height={600}
-                                        idType='pulldown'
-                                        id={this.props.pulldownId}
-                                        handleGeneNameSearch={this.props.handleGeneNameSearch}
-                                    />
-                                ) : (
-                                    <MassSpecScatterPlotContainer
-                                        pulldownId={this.props.pulldownId}
-                                        handleGeneNameSearch={this.props.handleGeneNameSearch}
-                                    />
-                                )}                            
-
-                            </div>
+                            <MassSpecContainer 
+                                pulldownId={this.props.pulldownId}
+                                handleGeneNameSearch={this.props.handleGeneNameSearch}
+                            />
                         )}
                     </div>
                 </div>

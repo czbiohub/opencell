@@ -82,7 +82,7 @@ export function ExternalLinks (props) {
             id: 'uniprot',
             defId: 'uniprot_id',
             width: 30,
-            label: 'Uniprot',
+            label: 'UniProtKB',
             url: id => `https://www.uniprot.org/uniprot/${id}`,
         },{
             id: 'ensg',
@@ -103,16 +103,18 @@ export function ExternalLinks (props) {
         const def = cellLineMetadataDefinitions.filter(def => def.id===item.defId)[0];
         const value = def.accessor(props.data);
         return (
-            <div key={item.id} className='pb1 flex w-100'>
-                <div className='w-30'>{item.label}</div>
-                <a href={item.url(value)} target='_blank'>{value}</a>
+            <div 
+                key={item.id}
+                className='f6 simple-button'
+                onClick={() => window.open(item.url(value))}
+            >
+                {item.label}
             </div>
         );
     });
 
     return (
         <div className="pt2 pb3">
-            <div className='w-100' style={{fontWeight: 'bold'}}>External links</div>
             {linkItems}
         </div>
     );

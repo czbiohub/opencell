@@ -14,6 +14,14 @@ const columnDefs = [
         Header: 'Interactor type',
         accessor: row => row.type,
     },{
+        id: 'ensg_ids',
+        Header: 'ENSG ID(s)',
+        accessor: row => row.ensg_ids?.length===1 ? row.ensg_ids[0] : row.ensg_ids?.join(', ')
+    },{
+        id: 'uniprot_ids',
+        Header: 'Uniprot ID(s)',
+        accessor: row => row.uniprot_ids?.length===1 ? row.uniprot_ids[0] : row.uniprot_ids?.join(', ')
+    },{
         id: 'cluster_id',
         Header: 'Cluster ID',
         accessor: row => String(row.cluster_id || 'None'),

@@ -61,7 +61,9 @@ export default function Navbar (props) {
                         defaultValue={''}
                         onKeyPress={(event) => {
                             if (event.charCode===13) {
-                                props.handleGeneNameSearch(event.currentTarget.value);
+                                const query = event.currentTarget.value
+                                props.handleGeneNameSearch(query);
+                                event.currentTarget.value = '';
                             }
                         }}
                         placeholder="Search for a protein"

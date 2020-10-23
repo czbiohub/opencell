@@ -65,8 +65,8 @@ export default class ViewerContainer extends Component {
             min488: 0,
             max488: 90,
             gamma488: 1.0,
-            min405: 15,
-            max405: 100,
+            min405: 10,
+            max405: 80,
             gamma405: 1.0,
         }
 

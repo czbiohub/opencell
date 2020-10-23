@@ -6,7 +6,6 @@ def protein_group_to_node(protein_group, kind):
     node = payloads.generate_protein_group_payload(protein_group)
     node['id'] = protein_group.id
     node['type'] = kind
-    node.pop('is_bait')
     return node
 
 

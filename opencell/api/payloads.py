@@ -202,6 +202,10 @@ def generate_pulldown_hits_payload(pulldown, significant_hits, nonsignificant_hi
 
 def generate_protein_group_payload(protein_group, pulldown_crispr_design_id=None):
     '''
+    Construct the payload to represent a protein group
+
+    pulldown_crispr_design_id : optional id of the crispr design of the target
+    from which the pulldown came
     '''
 
     # the 'primary' gene name for each uniprot_id in the protein group
@@ -211,6 +215,9 @@ def generate_protein_group_payload(protein_group, pulldown_crispr_design_id=None
     elif protein_group.uniprot_metadata:
         gene_names = list(set([d.get_primary_gene_name() for d in protein_group.uniprot_metadata]))
 
+    uniprot_ids = [d.uniprot_id for d in protein_group.uniprot_metadata]
+    ensg_ids = [d.ensg_id for d in protein_group.uniprot_metadata]
+
     # the target names of the crispr designs that are associated with this protein group
     # (these are not always unique, because there are multiple designs for some targets)
     target_names = list(set([design.target_name for design in protein_group.crispr_designs]))
@@ -218,7 +225,8 @@ def generate_protein_group_payload(protein_group, pulldown_crispr_design_id=None
     payload = {
         'uniprot_gene_names': gene_names,
         'opencell_target_names': target_names,
-        'is_bait': False,
+        'uniprot_ids': uniprot_ids,
+        'ensg_ids': ensg_ids,
     }
 
     # use the crispr_design_id of the pulldown to determine

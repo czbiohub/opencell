@@ -246,6 +246,32 @@ class InteractorResource(Resource):
         return uniprot_metadata
 
     @staticmethod
+    def get_interacting_pulldowns(uniprot_ids):
+        '''
+        The pulldowns in which one or more protein groups
+        containing one or more of the uniprot_ids appears
+        '''
+        interacting_pulldowns = (
+            flask.current_app.Session.query(models.MassSpecPulldown)
+            .join(models.MassSpecHit)
+            .join(models.MassSpecProteinGroup)
+            .join(models.ProteinGroupUniprotMetadataAssociation)
+            .filter(db.or_(
+                models.MassSpecPulldown.manual_display_flag == None,  # noqa
+                models.MassSpecPulldown.manual_display_flag == True  # noqa
+            ))
+            .filter(
+                models.ProteinGroupUniprotMetadataAssociation.uniprot_id.in_(uniprot_ids)
+            )
+            .filter(db.or_(
+                models.MassSpecHit.is_minor_hit == True,  # noqa
+                models.MassSpecHit.is_significant_hit == True  # noqa
+            ))
+            .all()
+        )
+        return interacting_pulldowns
+
+    @staticmethod
     def construct_ensg_metadata(ensg_id, uniprot_metadata):
         '''
         Generates the metadata object for an ensg_id,
@@ -276,36 +302,6 @@ class InteractorResource(Resource):
         }
         return payload
 
-    @staticmethod
-    def get_interacting_pulldowns(uniprot_metadata):
-        '''
-        The pulldowns in which appears one or more protein groups
-        containing one or more of the uniprot metadata entries
-
-        uniprot_metadata : a list of uniprot metadata rows
-        '''
-        interacting_pulldowns = (
-            flask.current_app.Session.query(models.MassSpecPulldown)
-            .join(models.MassSpecHit)
-            .join(models.MassSpecProteinGroup)
-            .join(models.ProteinGroupUniprotMetadataAssociation)
-            .filter(db.or_(
-                models.MassSpecPulldown.manual_display_flag == None,  # noqa
-                models.MassSpecPulldown.manual_display_flag == True  # noqa
-            ))
-            .filter(
-                models.ProteinGroupUniprotMetadataAssociation.uniprot_id.in_(
-                    [row.uniprot_id for row in uniprot_metadata]
-                )
-            )
-            .filter(db.or_(
-                models.MassSpecHit.is_minor_hit == True,  # noqa
-                models.MassSpecHit.is_significant_hit == True  # noqa
-            ))
-            .all()
-        )
-        return interacting_pulldowns
-
 
 class InteractorTargets(InteractorResource):
     '''
@@ -322,7 +318,9 @@ class InteractorTargets(InteractorResource):
         payload = self.construct_ensg_metadata(ensg_id, uniprot_metadata)
 
         # the metadata for the interacting opencell targets
-        interacting_pulldowns = self.get_interacting_pulldowns(uniprot_metadata)
+        interacting_pulldowns = self.get_interacting_pulldowns(
+            [row.uniprot_id for row in uniprot_metadata]
+        )
         payload['interacting_cell_lines'] = [
             payloads.generate_cell_line_payload(pulldown.cell_line, included_fields=[])
             for pulldown in interacting_pulldowns
@@ -337,7 +335,9 @@ class InteractorNetwork(InteractorResource):
         The cytoscape interaction network for an interactor (identified by an ensg_id)
         '''
         uniprot_metadata = self.get_uniprot_metadata(ensg_id)
-        interacting_pulldowns = self.get_interacting_pulldowns(uniprot_metadata)
+        interacting_pulldowns = self.get_interacting_pulldowns(
+            [row.uniprot_id for row in uniprot_metadata]
+        )
 
         nodes, edges = cytoscape_networks.construct_network(
             interacting_pulldowns=interacting_pulldowns,

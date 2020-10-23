@@ -132,11 +132,21 @@ export default class MassSpecNetworkContainer extends Component {
             return;   
         }
 
+        // if a loading error occurred in saved-network mode, turn off saved-network mode
+        // (which will trigger a new attempt to load the data using getNetworkElements)
+        if (this.state.showSavedNetwork && this.state.loaded && this.state.loadingError) {
+            this.setState({showSavedNetwork: false});
+            return;
+        }
+
         if (!this.cy) return;
 
-        // initialize the network if state.loaded has switched from false to true,
+        // initialize the network if the data has just been loaded,
         // or if the layout name has changed
-        if((this.state.loaded && !prevState.loaded) || this.state.layoutName!==prevState.layoutName) {
+        if (
+            (this.state.loaded && !prevState.loaded) ||
+            this.state.layoutName!==prevState.layoutName
+        ) {
             this.initializeNetwork();
         }
     }

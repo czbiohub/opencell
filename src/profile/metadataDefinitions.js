@@ -100,15 +100,15 @@ const cellLineMetadataDefinitions = [
         Header: 'Salvageable re-sort',
     },{
         id: 'num_fovs',
-        accessor: row => row.fov_counts.num_fovs,
+        accessor: row => row.fov_counts?.num_fovs,
         Header: 'Num FOVs',
     },{
         id: 'num_annoted_fovs',
-        accessor: row => row.fov_counts.num_annotated_fovs,
+        accessor: row => row.fov_counts?.num_annotated_fovs,
         Header: 'Num annotated FOVs',
     },{
         id: 'only_old_annotated_fovs',
-        accessor: row => String(row.fov_counts.num_annotated_fovs > 0 && !row.fov_counts.num_annotated_fovs_da),
+        accessor: row => String(row.fov_counts?.num_annotated_fovs > 0 && !row.fov_counts.num_annotated_fovs_da),
         Header: 'Annotated FOVs all old',
     },{
         id: 'graded_annotations',

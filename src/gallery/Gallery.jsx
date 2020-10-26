@@ -131,15 +131,15 @@ function Lightbox (props) {
 function Thumbnail (props) {
     const metadata = props.cellLine.metadata;
     return (
-        <div className='thumbnail-container'>
+        <div className='gallery-thumbnail-container'>
             <img 
                 className='thumbnail'
                 onClick={() => props.onThumbnailImageClick(metadata)}
                 src={`data:image/jpg;base64,${props.cellLine.best_fov?.thumbnails?.data}`}
             />
-            <div className='thumbnail-caption'>
+            <div className='gallery-thumbnail-caption'>
                 <span 
-                    className='f4 thumbnail-caption-link'
+                    className='f4 gallery-thumbnail-caption-link'
                     onClick={() => props.onThumbnailCaptionClick(metadata)}>
                     {`${metadata.target_name}`}
                 </span>
@@ -314,7 +314,7 @@ class Gallery extends Component {
                         </div>
                     </div>
 
-                    <div className='pa3 thumbnail-grid-container'>{thumbnails}</div>
+                    <div className='pa3 gallery-thumbnail-grid-container'>{thumbnails}</div>
 
                 </div>
 

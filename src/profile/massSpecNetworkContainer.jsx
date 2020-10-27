@@ -208,7 +208,7 @@ export default class MassSpecNetworkContainer extends Component {
             client_metadata: {last_modified: (new Date()).toString()}
         };
         this.setState({deletionStatus: ''});
-        utils.putData(`${settings.apiUrl}/pulldowns/${this.props.id}/saved_network`, data)
+        utils.putData(`${settings.apiUrl}/pulldowns/${this.props.pulldownId}/saved_network`, data)
             .then(response => {
                 console.log(response.json());
                 if (!response.ok) throw new Error('Error saving cytoscape layout');
@@ -220,7 +220,7 @@ export default class MassSpecNetworkContainer extends Component {
 
     deleteSavedNetwork () {
         this.setState({submissionStatus: ''});
-        utils.deleteData(`${settings.apiUrl}/pulldowns/${this.props.id}/saved_network`)
+        utils.deleteData(`${settings.apiUrl}/pulldowns/${this.props.pulldownId}/saved_network`)
             .then(response => {
                 console.log(response);
                 if (!response.ok) throw new Error('Error deleting saved layout');

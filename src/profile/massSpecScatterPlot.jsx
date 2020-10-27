@@ -127,10 +127,8 @@ export default class MassSpecScatterPlot extends Component {
 
     componentDidMount() {
         this.createScatterPlot();
-        if (this.props.pulldownId) {
-            this.constructData();
-            this.updateScatterPlot();
-        }
+        this.constructData();
+        this.updateScatterPlot();
     }
 
 
@@ -160,6 +158,8 @@ export default class MassSpecScatterPlot extends Component {
         // fetch the pulldown metadata and the hits from the backend
 
         this.setState({loaded: false});
+        if (!this.props.pulldownId) return;
+
         const url = `${settings.apiUrl}/pulldowns/${this.props.pulldownId}/hits`;
         d3.json(url).then(data => {
 
@@ -460,11 +460,11 @@ export default class MassSpecScatterPlot extends Component {
         this.drawLegend();
         const _this = this;
 
-        if (!this.state.loaded) {
+        if (this.props.pulldownId && !this.state.loaded) {
             this.loadingDiv.style('visibility', 'visible').text('Loading...');
             return;
         }
-        if (!this.hits.length) {
+        else if (!this.hits.length) {
             this.g.selectAll('.scatter-dot').remove();
             this.loadingDiv.style('visibility', 'visible').text('No data');
             return;

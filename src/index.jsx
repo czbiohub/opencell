@@ -1,6 +1,7 @@
 import * as d3 from 'd3';
 import React, { useState, useEffect, useContext } from 'react';
 import ReactDOM from 'react-dom';
+import ReactGA from 'react-ga';
 
 import {
     BrowserRouter,
@@ -101,8 +102,19 @@ function useGeneNameSearch (setCellLineId) {
 }
 
 
+function useGoogleAnalytics () {
+    const location = useLocation();
+    useEffect(() => {
+        ReactGA.initialize(settings.gaTrackingId);
+        ReactGA.pageview(`${location.pathname}${location.search}`);
+    }, [location]);
+}
+
+
 function App() {
+
     const modeContext = useContext(settings.ModeContext);
+    if (modeContext==='public') useGoogleAnalytics();
 
     const [cellLineId, setCellLineId] = useCellLineId();
     const handleGeneNameSearch = useGeneNameSearch(setCellLineId);

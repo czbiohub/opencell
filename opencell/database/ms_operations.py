@@ -34,7 +34,7 @@ def insert_protein_group_manual_gene_name(session, protein_group_id, manual_name
     else:
         print(protein_group_id + ' ' + manual_name)
 
-def bulk_insert_ensg_protein_group_association(session, association_table):
+def bulk_insert_ensg_protein_group_association(session, association_table, errors='warn'):
     """
     insert ensg to protein_group associations
     """
@@ -44,8 +44,8 @@ def bulk_insert_ensg_protein_group_association(session, association_table):
     for ind, row in association_table.iterrows():
 
         ensg_pg_association = models.EnsgProteinGroupAssociation(
-            ensg_id = row.ensg_id,
-            protein_group_id = row.protein_group_id)
+            ensg_id=row.ensg_id,
+            protein_group_id=row.protein_group_id)
 
         associations.append(ensg_pg_association)
 

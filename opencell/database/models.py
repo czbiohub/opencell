@@ -1190,7 +1190,7 @@ class EnsgProteinGroupAssociation(Base):
     '''
     __tablename__ = 'ensg_protein_group_association'
     ensg_id = db.Column(
-        db.String, db.ForeignKey('uniprot_metadat.ensg_id'), primary_key=True
+        db.String, db.ForeignKey('uniprot_metadata.ensg_id'), primary_key=True
     )
     protein_group_id = db.Column(
         db.String, db.ForeignKey('mass_spec_protein_group.id')

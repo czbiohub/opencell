@@ -1183,3 +1183,14 @@ class MassSpecPulldownNetwork(Base):
 
     # the client-side timestamp, app state, etc
     client_metadata = db.Column(postgresql.JSONB)
+
+
+class EnsgProteinGroupAssociation(Base):
+    '''
+    '''
+    __tablename__ = 'ensg_protein_group_association'
+    ensg_id = db.Column(db.String, primary_key=True)
+
+    protein_group_id = db.Column(
+        db.String, db.ForeignKey('mass_spec_protein_group.id')
+    )

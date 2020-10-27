@@ -41,9 +41,7 @@ export default function MassSpecTable (props) {
 
     useEffect(() => {  
         setLoaded(false);      
-        const url = (
-            `${settings.apiUrl}/pulldowns/${props.pulldownId}/network?subcluster_type=core-complexes`
-        );
+        const url = `${props.url}?subcluster_type=core-complexes`;
         d3.json(url).then(data => {
             setData(data.nodes.map(node => node.data));
             setLoadingError(false);
@@ -54,7 +52,7 @@ export default function MassSpecTable (props) {
             setLoadingError(true);
         });
 
-    }, [props.pulldownId]);
+    }, [props.url]);
 
     return (
         <div className='relative'>

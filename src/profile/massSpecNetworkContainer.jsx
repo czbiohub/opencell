@@ -113,7 +113,7 @@ export default class MassSpecNetworkContainer extends Component {
     }
 
     componentDidMount() {
-        if (this.props.id) {
+        if (this.props.url) {
             this.getData();
         }
     }
@@ -122,7 +122,7 @@ export default class MassSpecNetworkContainer extends Component {
 
         // if we need to load the network data again
         if (
-            this.props.id!==prevProps.id || 
+            this.props.url!==prevProps.url || 
             this.state.includeParentNodes!==prevState.includeParentNodes ||
             this.state.showSavedNetwork!==prevState.showSavedNetwork ||
             this.state.clusteringAnalysisType!==prevState.clusteringAnalysisType ||
@@ -277,12 +277,7 @@ export default class MassSpecNetworkContainer extends Component {
     getNetworkElements () {
         // load the cytoscape elements (nodes and edges)
 
-        const endpoint = this.props.idType==='pulldown' ? 'pulldowns' : 'interactors';
-        const url = (
-            `${settings.apiUrl}/${endpoint}/${this.props.id}/network?` +
-            `subcluster_type=${this.state.subclusterType}`
-        );
-
+        const url = `${this.props.url}?subcluster_type=${this.state.subclusterType}`;
         d3.json(url).then(data => {
 
             const parentNodes = data.parent_nodes;
@@ -349,7 +344,7 @@ export default class MassSpecNetworkContainer extends Component {
 
 
     getSavedNetwork () {
-        const url = `${settings.apiUrl}/pulldowns/${this.props.id}/saved_network`;
+        const url = `${settings.apiUrl}/pulldowns/${this.props.pulldownId}/saved_network`;
         d3.json(url).then(data => {
             this.elements = [
                 ...data.cytoscape_json.elements.nodes,

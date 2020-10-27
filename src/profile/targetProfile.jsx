@@ -59,7 +59,6 @@ export default function TargetProfile (props) {
                     <TargetProfileOverview
                         cellLine={cellLine}
                         cellLineId={props.cellLineId}
-                        pulldownId={pulldownId}
                         handleGeneNameSearch={props.handleGeneNameSearch}
                         onCellLineSelect={props.setCellLineId}
                         showTargetAnnotator={props.showTargetAnnotator}

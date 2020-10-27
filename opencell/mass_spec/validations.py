@@ -212,6 +212,51 @@ def prep_all_hits_clusterone(all_hits, metric, hit_bools=True):
     return all_hits
 
 
+def spatial_distance(network, spatial, target_col, prey_col):
+    """
+    calculate the spatial distance between two interactors
+    """
+    network = network.copy()
+    spatial = spatial.copy()
+
+    # Limit network to genes found in spatial df
+    selected = network[
+        (network[target_col].isin(spatial['Gene names'])) & (
+            network[prey_col].isin(spatial['Gene names']))]
+
+    targets = selected[target_col].to_list()
+    preys = selected[prey_col].to_list()
+    multi_targets = zip(targets, repeat(spatial))
+    multi_preys = zip(preys, repeat(spatial))
+
+    p = Pool()
+    target_umap = p.starmap(retrieve_umap, multi_targets)
+    p.close()
+    p.join()
+
+    p = Pool()
+    prey_umap = p.starmap(retrieve_umap, multi_preys)
+    p.close()
+    p.join()
+
+    dists = []
+    for i in range(len(target_umap)):
+        dists.append(np.linalg.norm(target_umap[i] - prey_umap[i]))
+
+    return dists
+
+
+def retrieve_umap(target, spatial):
+
+    spatial = spatial.copy()
+    selected = spatial[spatial['Gene names'] == target]
+    umap_1 = selected['umap_1'].mean()
+    umap_2 = selected['umap_2'].mean()
+
+    return np.array([umap_1, umap_2])
+
+
+
 def calculate_coes_coverage(all_hits, coes, target_col, prey_col):
     """
     calculate proportion of coessential edges

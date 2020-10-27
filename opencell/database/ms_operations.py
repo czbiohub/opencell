@@ -34,6 +34,33 @@ def insert_protein_group_manual_gene_name(session, protein_group_id, manual_name
     else:
         print(protein_group_id + ' ' + manual_name)
 
+def bulk_insert_ensg_protein_group_association(session, association_table):
+    """
+    insert ensg to protein_group associations
+    """
+    association_table = association_table.copy()
+
+    associations = []
+    for ind, row in association_table.iterrows():
+
+        ensg_pg_association = models.EnsgProteinGroupAssociation(
+            ensg_id = row.ensg_id
+            protein_group_id = row.protein_group_id)
+
+        associations.append(ensg_pg_association)
+
+    # bulk append associations
+    try:
+        session.bulk_save_objects(associations)
+        session.commit()
+    except Exception as exception:
+        session.rollback()
+        if errors == 'raise':
+            raise
+        if errors == 'warn':
+            print('Error in bulk_insert_ensg_pg_associations: %s' % exception)
+
+
 
 def bulk_insert_cluster_heatmap(session, cluster_table, cluster_str, errors='warn'):
     """

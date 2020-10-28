@@ -49,7 +49,7 @@ export default function InteractorProfile (props) {
                 </div>
 
                 {/* right column - mass spec network/table */}
-                <div className="w-60 pt4 pl2">
+                <div className="w-70 pt4 pl2">
                     <MassSpecContainer
                         ensgId={props.match.params.ensgId}
                         handleGeneNameSearch={props.handleGeneNameSearch}

@@ -261,6 +261,9 @@ export default class MassSpecNetworkContainer extends Component {
                 const geneName = d3.select(this).text();
                 handleGeneNameSearch(geneName);
             });
+
+        // enable pass-through panning on all of the nodes and edges in public mode
+        if (this.context==='public') this.cy.elements().panify();
     }
 
 

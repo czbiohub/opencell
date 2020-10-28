@@ -236,7 +236,7 @@ class InteractorResource(Resource):
     @staticmethod
     def get_uniprot_metadata(ensg_id):
         '''
-        Get the uniprot metadata for all of the uniprot_ids associated with an ensg_id
+        Get all of the uniprot metadata entries associated with an ENSG ID
         '''
         uniprot_metadata = (
             flask.current_app.Session.query(models.UniprotMetadata)
@@ -246,42 +246,30 @@ class InteractorResource(Resource):
         return uniprot_metadata
 
     @staticmethod
-    def get_interacting_pulldowns(uniprot_ids):
+    def get_primary_protein_group(ensg_id):
         '''
-        The pulldowns in which one or more protein groups
-        containing one or more of the uniprot_ids appears
+        Get the 'primary' protein group for an ENSG ID
         '''
-        interacting_pulldowns = (
-            flask.current_app.Session.query(models.MassSpecPulldown)
-            .join(models.MassSpecHit)
-            .join(models.MassSpecProteinGroup)
-            .join(models.ProteinGroupUniprotMetadataAssociation)
-            .filter(db.or_(
-                models.MassSpecPulldown.manual_display_flag == None,  # noqa
-                models.MassSpecPulldown.manual_display_flag == True  # noqa
-            ))
-            .filter(
-                models.ProteinGroupUniprotMetadataAssociation.uniprot_id.in_(uniprot_ids)
-            )
-            .filter(db.or_(
-                models.MassSpecHit.is_minor_hit == True,  # noqa
-                models.MassSpecHit.is_significant_hit == True  # noqa
-            ))
-            .all()
+        protein_group = (
+            flask.current_app.Session.query(models.MassSpecProteinGroup)
+            .join(models.EnsgProteinGroupAssociation)
+            .filter(models.EnsgProteinGroupAssociation.ensg_id == ensg_id)
+            .options(db.orm.joinedload(models.MassSpecProteinGroup.uniprot_metadata))
+            .one_or_none()
         )
-        return interacting_pulldowns
+        return protein_group
 
     @staticmethod
-    def construct_ensg_metadata(ensg_id, uniprot_metadata):
+    def construct_ensg_metadata(protein_group):
         '''
-        Generates the metadata object for an ensg_id,
+        Generates the metadata object for an ENSG ID from its 'primary' protein group,
         following the schema of the cell line metadata (see payloads.generate_cell_line_payload)
         '''
         payload = {}
 
         # TODO: a better way to pick the best uniprot_id from which to construct the metadata
         # (that is, from which to take the gene names and function annotation)
-        uniprot_metadata = uniprot_metadata[0]
+        uniprot_metadata = protein_group.uniprot_metadata[0]
 
         # HACK: this is copied from the cell_line payload
         payload['uniprot_metadata'] = {
@@ -297,7 +285,7 @@ class InteractorResource(Resource):
 
         # generic ensg-level metadata (mimics the cell_line 'metadata' field)
         payload['metadata'] = {
-            'ensg_id': ensg_id,
+            'ensg_id': uniprot_metadata.ensg_id,
             'target_name': payload['uniprot_metadata']['gene_names'][0]
         }
         return payload
@@ -310,17 +298,13 @@ class InteractorTargets(InteractorResource):
     '''
     def get(self, ensg_id):
 
-        uniprot_metadata = self.get_uniprot_metadata(ensg_id)
-        if not uniprot_metadata:
-            return flask.abort(404, 'There is no uniprot metadata for ENSG ID %s' % ensg_id)
+        primary_protein_group = self.get_primary_protein_group(ensg_id)
+        if not primary_protein_group:
+            return flask.abort(404, 'There is no primary protein group for ENSG ID %s' % ensg_id)
 
-        # construct metadata and uniprot_metadata
-        payload = self.construct_ensg_metadata(ensg_id, uniprot_metadata)
+        payload = self.construct_ensg_metadata(primary_protein_group)
+        interacting_pulldowns = primary_protein_group.get_pulldowns()
 
-        # the metadata for the interacting opencell targets
-        interacting_pulldowns = self.get_interacting_pulldowns(
-            [row.uniprot_id for row in uniprot_metadata]
-        )
         payload['interacting_cell_lines'] = [
             payloads.generate_cell_line_payload(pulldown.cell_line, included_fields=[])
             for pulldown in interacting_pulldowns
@@ -329,19 +313,17 @@ class InteractorTargets(InteractorResource):
 
 
 class InteractorNetwork(InteractorResource):
-
+    '''
+    The cytoscape interaction network for an interactor (identified by an ensg_id)
+    '''
     def get(self, ensg_id):
-        '''
-        The cytoscape interaction network for an interactor (identified by an ensg_id)
-        '''
-        uniprot_metadata = self.get_uniprot_metadata(ensg_id)
-        interacting_pulldowns = self.get_interacting_pulldowns(
-            [row.uniprot_id for row in uniprot_metadata]
-        )
+
+        primary_protein_group = self.get_primary_protein_group(ensg_id)
+        interacting_pulldowns = primary_protein_group.get_pulldowns()
 
         nodes, edges = cytoscape_networks.construct_network(
             interacting_pulldowns=interacting_pulldowns,
-            uniprot_metadata=uniprot_metadata[0],
+            primary_protein_group=primary_protein_group,
         )
 
         # create compound nodes to represent superclusters and subclusters
@@ -355,7 +337,7 @@ class InteractorNetwork(InteractorResource):
             'parent_nodes': [{'data': node} for node in parent_nodes],
             'nodes': [{'data': node} for node in nodes],
             'edges': [{'data': edge} for edge in edges],
-            'metadata': self.construct_ensg_metadata(ensg_id, uniprot_metadata)
+            'metadata': self.construct_ensg_metadata(primary_protein_group)
         }
         return flask.jsonify(payload)
 
@@ -443,7 +425,7 @@ class PulldownResource(CellLineResource):
 
 class PulldownHits(PulldownResource):
     '''
-    The mass spec pulldown and its associated hits for a cell line
+    The metadata and hits for a pulldown
     '''
     def get(self, pulldown_id):
         Session = flask.current_app.Session
@@ -471,24 +453,32 @@ class PulldownHits(PulldownResource):
 
 class PulldownNetwork(PulldownResource):
     '''
-    The cytoscape interaction network for a cell line (technically, a pulldown)
+    The cytoscape interaction network for a pulldown
     (see comments in cytoscape_networks.construct_network for details)
     '''
-
-    @staticmethod
-    def protein_group_to_node(protein_group):
-        node = payloads.generate_protein_group_payload(protein_group)
-        node['id'] = protein_group.id
-        node.pop('is_bait')
-        return node
-
     @cache.cached(timeout=3600, key_prefix=cache_key)
     def get(self, pulldown_id):
+
         pulldown = self.get_pulldown(pulldown_id)
+
+        # determine the primary protein group to represent the target;
+        # if the target appears in its own pulldown, this is easy
+        bait_hit = pulldown.get_bait_hit(only_one=True)
+        if bait_hit:
+            primary_protein_group = bait_hit.protein_group
+
+        # if the target does not appear in its own pulldown, we must use the protein group
+        # for the ENSG ID associated with the target's crispr design
+        else:
+            primary_protein_group = InteractorResource.get_primary_protein_group(
+                pulldown.cell_line.crispr_design.uniprot_metadata.ensg_id
+            )
 
         # create nodes to represent direct hits and/or interacting pulldowns,
         # and the edges between them
-        nodes, edges = cytoscape_networks.construct_network(target_pulldown=pulldown)
+        nodes, edges = cytoscape_networks.construct_network(
+            target_pulldown=pulldown, primary_protein_group=primary_protein_group
+        )
 
         # create compound nodes to represent superclusters and subclusters
         nodes, parent_nodes = cytoscape_networks.construct_compound_nodes(

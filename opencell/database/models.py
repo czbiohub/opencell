@@ -961,6 +961,10 @@ class MassSpecPulldown(Base):
 
     def get_interacting_pulldowns(self):
         '''
+        Get the 'interacting pulldowns' in which one or more of the protein groups
+        associated with the pulldown's target appears as a significant hit
+
+        TODO: consider using only the protein_group of the bait hit to do the filtering
         '''
         interacting_pulldowns = (
             db.orm.object_session(self).query(MassSpecPulldown).join(MassSpecHit)
@@ -971,7 +975,7 @@ class MassSpecPulldown(Base):
             .filter(MassSpecPulldown.id != self.id)
             .filter(
                 MassSpecHit.protein_group_id.in_(
-                    [pg.id for pg in self.cell_line.crispr_design.protein_groups]
+                    [group.id for group in self.cell_line.crispr_design.protein_groups]
                 )
             )
             .filter(db.or_(
@@ -981,7 +985,6 @@ class MassSpecPulldown(Base):
             .all()
         )
         return interacting_pulldowns
-
 
     def __repr__(self):
         return (
@@ -1030,6 +1033,27 @@ class MassSpecProteinGroup(Base):
         'UniprotMetadata',
         secondary='protein_group_uniprot_metadata_association'
     )
+
+    def get_pulldowns(self):
+        '''
+        Get the pulldowns in which the protein group appears as a significant hit
+        '''
+        pulldowns = (
+            db.orm.object_session(self).query(MassSpecPulldown)
+            .join(MassSpecHit)
+            .join(MassSpecProteinGroup)
+            .filter(MassSpecProteinGroup.id == self.id)
+            .filter(db.or_(
+                MassSpecPulldown.manual_display_flag == None,  # noqa
+                MassSpecPulldown.manual_display_flag == True  # noqa
+            ))
+            .filter(db.or_(
+                MassSpecHit.is_minor_hit == True,  # noqa
+                MassSpecHit.is_significant_hit == True  # noqa
+            ))
+            .all()
+        )
+        return pulldowns
 
     def __repr__(self):
         return "<MassSpecProteinGroup(gene_names=[%s])>" % (', '.join(self.gene_names))
@@ -1185,10 +1209,13 @@ class MassSpecPulldownNetwork(Base):
 
 class EnsgProteinGroupAssociation(Base):
     '''
+    The manually-defined 'primary' protein group for each ENSG ID
+
+    The purpose of this table is to assign a single protein group to opencell 'interactors',
+    which are defined by ENSG IDs and are not, a priori, associated with a protein group.
+    This is necessary when constructing the interaction networks for the interactors,
+    since the nodes in the interaction networks correspond to protein groups.
     '''
     __tablename__ = 'ensg_protein_group_association'
     ensg_id = db.Column(db.String, primary_key=True)
-
-    protein_group_id = db.Column(
-        db.String, db.ForeignKey('mass_spec_protein_group.id')
-    )
+    protein_group_id = db.Column(db.String, db.ForeignKey('mass_spec_protein_group.id'))

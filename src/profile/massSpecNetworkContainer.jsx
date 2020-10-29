@@ -28,6 +28,10 @@ cytoscape.use(fcose);
 cytoscape.use(coseBilkent);
 cytoscape.use(nodeHtmlLabel);
 
+async function sleep (ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 
 function tplFactory(customClassName) {
     // returns the tpl function that is used by the nodeHtmlLabel cytoscape plugin
@@ -170,19 +174,27 @@ export default class MassSpecNetworkContainer extends Component {
         }
     }
 
-    initializeNetwork () {
-        try {
+    async initializeNetwork () {
 
-            // manually set the height of the cytoscape container using the rendered width
+        try {
+            // manually set the height of the cytoscape container using its rendered width
             // (this is the only way I could find to programmatically set the height
             // of the network itself after the component has initially rendered; 
-            // either calling this.cy.style({height}) 
-            // or setting the 'height' attribute of any parental div did not work)
-            const container = ReactDOM.findDOMNode(this);
-            d3.select(container)
-                .select('.__________cytoscape_container')
-                .style('height', `${container.offsetWidth}px`);
-            
+            // calling this.cy.style({height}) or setting the height attribute
+            // of any of the container divs did not work)
+            if (this.cy.height()===0) {
+                const container = ReactDOM.findDOMNode(this);
+                d3.select(container)
+                    .select('.__________cytoscape_container')
+                    .style('height', `${container.offsetWidth}px`);
+                
+                // apparently, cytoscape listens for changes to the height of its container,
+                // but it takes ~200ms for it to update the size of its canvas elements, 
+                // so that if we don't force a pause here to wait for that to happen,
+                // the layout (see below) will run before the height has been updated
+                await sleep(300);
+            }
+
             // remove any unconnected nodes (other than parent/compound nodes)
             // (these correspond to nodes that represent pulldowns in which
             // the target appeared with a protein group different from the one with which
@@ -208,7 +220,7 @@ export default class MassSpecNetworkContainer extends Component {
             }
         }
         catch (err) {
-            console.log(err);
+            console.log(`Error in initializeNetwork: ${err}`);
         }
     }
 

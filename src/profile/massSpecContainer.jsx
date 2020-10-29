@@ -20,8 +20,6 @@ export default function MassSpecContainer (props) {
 
     const network = (
         <MassSpecNetworkContainer
-            width={700}
-            height={600}
             url={url}
             pulldownId={props.pulldownId}
             handleGeneNameSearch={props.handleGeneNameSearch}

@@ -115,6 +115,7 @@ export default class TargetProfileOverview extends Component {
                             </div>
                         ) : (
                             <MassSpecContainer 
+                                layout='tabs'
                                 ensgId={this.props.cellLine.metadata.ensg_id}
                                 pulldownId={this.props.cellLine.best_pulldown?.id}
                                 handleGeneNameSearch={this.props.handleGeneNameSearch}

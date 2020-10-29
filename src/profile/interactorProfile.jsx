@@ -37,7 +37,7 @@ export default function InteractorProfile (props) {
             <div className="pl3 pr3 flex">
 
                 {/* Left column */}
-                <div className="w-30 pl2 pr2">
+                <div className="w-25 pl2 pr2">
                     <CellLineMetadata data={data} isInteractor/>
                     <div className='pb4'>
                         <SectionHeader title='About this protein'/>
@@ -49,8 +49,9 @@ export default function InteractorProfile (props) {
                 </div>
 
                 {/* right column - mass spec network/table */}
-                <div className="w-70 pt4 pl2">
+                <div className="w-75 pt4 pl3">
                     <MassSpecContainer
+                        layout='columns'
                         ensgId={props.match.params.ensgId}
                         handleGeneNameSearch={props.handleGeneNameSearch}
                     />

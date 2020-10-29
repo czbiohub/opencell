@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { Component, useState  } from 'react';
 import classNames from 'classnames';
 import { H5, Icon, Popover } from "@blueprintjs/core";
 
@@ -16,7 +16,39 @@ function SectionHeader (props) {
 }
 
 
-function MetadataItem(props) {
+function Tab (props) {
+    return props.component;
+}
+
+
+function Tabs (props) {
+
+    const [activeTabId, setActiveTabId] = useState(props.activeTabId);
+
+    const tabs = props.children.map(child => {
+        const className = classNames(
+            'f4', 'mr5', 'section-header', {'section-header-active': child.props.id===activeTabId}
+        );
+        return (
+            <div key={child.props.id} className={className} onClick={() => setActiveTabId(child.props.id)}>
+                {child.props.title}
+            </div>
+        );
+    });
+
+    const ActiveTab = props.children.filter(child => child.props.id===activeTabId)[0];
+    return (
+        <div>
+            <div className="flex bb b--black-10">
+                {tabs}
+            </div>
+            {ActiveTab}
+        </div>
+    );
+}
+
+
+function MetadataItem (props) {
     return (
         <div className={props.className}>
             <strong className={`f${props.scale}`}>{props.value || 'NA'}</strong>
@@ -68,6 +100,8 @@ function MetadataContainer (props) {
 
 
 export {
+    Tab,
+    Tabs,
     SectionHeader,
     MetadataItem,
     MetadataContainer,

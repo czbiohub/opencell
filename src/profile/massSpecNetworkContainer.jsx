@@ -1,6 +1,7 @@
 
 import * as d3 from 'd3';
 import React, { Component } from 'react';
+import ReactDOM from 'react-dom';
 import { Button, Checkbox } from "@blueprintjs/core";
 import chroma from 'chroma-js';
 
@@ -171,6 +172,17 @@ export default class MassSpecNetworkContainer extends Component {
 
     initializeNetwork () {
         try {
+
+            // manually set the height of the cytoscape container using the rendered width
+            // (this is the only way I could find to programmatically set the height
+            // of the network itself after the component has initially rendered; 
+            // either calling this.cy.style({height}) 
+            // or setting the 'height' attribute of any parental div did not work)
+            const container = ReactDOM.findDOMNode(this);
+            d3.select(container)
+                .select('.__________cytoscape_container')
+                .style('height', `${container.offsetWidth}px`);
+            
             // remove any unconnected nodes (other than parent/compound nodes)
             // (these correspond to nodes that represent pulldowns in which
             // the target appeared with a protein group different from the one with which
@@ -450,7 +462,6 @@ export default class MassSpecNetworkContainer extends Component {
                 <div className="w-100 cytoscape-container">
                     {this.state.loaded ? (
                         <CytoscapeComponent
-                            style={{width: this.props.width, height: this.props.height}}
                             elements={this.elements}
                             stylesheet={networkStylesheet}
                             minZoom={0.1}

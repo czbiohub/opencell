@@ -6,13 +6,11 @@ import MassSpecScatterPlotContainer from './massSpecScatterPlotContainer.jsx';
 import MassSpecNetworkContainer from './massSpecNetworkContainer.jsx';
 import MassSpecTableContainer from './massSpecTableContainer.jsx';
 
-import { SectionHeader } from './common.jsx';
+import { SectionHeader, Tab, Tabs } from './common.jsx';
 import settings from '../common/settings.js';
 import popoverContents from '../common/popoverContents.jsx';
 
 export default function MassSpecContainer (props) {
-
-    const [mode, useMode] = useState('network');
 
     // logic to determine the API url for the cytoscape network elements,
     // so that the interactor network is shown on the target page for targets without pulldowns
@@ -20,63 +18,46 @@ export default function MassSpecContainer (props) {
     const id = props.pulldownId ? props.pulldownId : props.ensgId;
     const url = `${settings.apiUrl}/${endpoint}/${id}/network`;
 
-    let content;
-    if (mode==='network') {
-        content = (
-            <MassSpecNetworkContainer
-                width={700}
-                height={600}
-                url={url}
-                pulldownId={props.pulldownId}
-                handleGeneNameSearch={props.handleGeneNameSearch}
-            />
-        );
-    }
-    if (mode==='scatterplot') {
-        content = (
-            <MassSpecScatterPlotContainer
-                pulldownId={props.pulldownId}
-                handleGeneNameSearch={props.handleGeneNameSearch}
-            />
-        );
-    }
-    if (mode==='table') {
-        content = (
-            <MassSpecTableContainer
-                url={url}
-                handleGeneNameSearch={props.handleGeneNameSearch}
-            />
-        );
-    }
+    const network = (
+        <MassSpecNetworkContainer
+            width={700}
+            height={600}
+            url={url}
+            pulldownId={props.pulldownId}
+            handleGeneNameSearch={props.handleGeneNameSearch}
+        />
+    );
+    const scatterplot = (
+        <MassSpecScatterPlotContainer
+            pulldownId={props.pulldownId}
+            handleGeneNameSearch={props.handleGeneNameSearch}
+        />
+    );
+    const table = (
+        <MassSpecTableContainer
+            url={url}
+            handleGeneNameSearch={props.handleGeneNameSearch}
+        />
+    );
 
-    const headerClassNames = ['f4', 'mr5', 'section-header',];
+    if (props.layout==='tabs') return (
+        <Tabs activeTabId='network'>
+            <Tab id='network' title='Interaction network' component={network}/>
+            <Tab id='scatterplot' title='Scatterplots' component={scatterplot}/>
+            <Tab id='table' title='Table of interactors' component={table}/>
+        </Tabs>
+    );
 
-    return (
-        <div>
-        <div className="flex bb b--black-10">
-            <div 
-                className={classNames(headerClassNames, {'section-header-active': mode==='network'})}
-                onClick={() => useMode('network')}
-                key='network'
-            >
-                Interaction Network
+    if (props.layout==='columns') return (
+        <div className='flex'>
+            <div className='w-50'>
+                <SectionHeader title='Interaction network'/>
+                {network}
             </div>
-            <div 
-                className={classNames(headerClassNames, {'section-header-active': mode==='scatterplot'})}
-                onClick={() => useMode('scatterplot')}
-                key='scatterplot'
-            >
-                Scatterplots
-            </div>
-            <div 
-                className={classNames(headerClassNames, {'section-header-active': mode==='table'})}
-                onClick={() => useMode('table')}
-                key='table'
-            >
-                Table of interactors
+            <div className='w-50 pr2'>
+                <SectionHeader title='Interacting targets'/>
+                {table}
             </div>
         </div>
-        {content}
-    </div>
     );
 }

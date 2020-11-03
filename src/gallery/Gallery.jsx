@@ -240,7 +240,7 @@ class Gallery extends Component {
             this.loadData();
         }
         if (prevState.cellLineId!==this.state.cellLineId) {
-            utils.loadAnnotatedFovs(this.state.cellLineId, fovState => this.setState({...fovState}));    
+            utils.getAnnotatedFovMetadata(this.state.cellLineId, fovState => this.setState({...fovState}));    
         }
     }
 

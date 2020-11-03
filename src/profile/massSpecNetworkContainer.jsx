@@ -109,7 +109,8 @@ export default class MassSpecNetworkContainer extends Component {
         this.getData = this.getData.bind(this);
         this.getLayout = this.getLayout.bind(this);
         this.getSavedNetwork = this.getSavedNetwork.bind(this);
-        this.getNetworkElements = this.getNetworkElements.bind(this);
+        this.processNetworkElements = this.processNetworkElements.bind(this);
+    
         this.saveNetwork = this.saveNetwork.bind(this);
         this.deleteSavedNetwork = this.deleteSavedNetwork.bind(this);
 
@@ -118,7 +119,7 @@ export default class MassSpecNetworkContainer extends Component {
     }
 
     componentDidMount() {
-        if (this.props.url) {
+        if (this.props.id) {
             this.getData();
         }
     }
@@ -127,7 +128,7 @@ export default class MassSpecNetworkContainer extends Component {
 
         // if we need to load the network data again
         if (
-            this.props.url!==prevProps.url || 
+            this.props.id!==prevProps.id || 
             this.state.includeParentNodes!==prevState.includeParentNodes ||
             this.state.showSavedNetwork!==prevState.showSavedNetwork ||
             this.state.clusteringAnalysisType!==prevState.clusteringAnalysisType ||
@@ -170,7 +171,16 @@ export default class MassSpecNetworkContainer extends Component {
         if (this.state.showSavedNetwork) {
             this.getSavedNetwork();
         } else {
-            this.getNetworkElements();
+            utils.getNetworkElements(
+                this.props.id, 
+                this.props.idType, 
+                this.state.subclusterType,
+                this.processNetworkElements,
+                error => {
+                    this.elements = [];
+                    this.setState({loaded: true, loadingError: true});
+                }
+            );
         }
     }
 
@@ -225,14 +235,14 @@ export default class MassSpecNetworkContainer extends Component {
     }
 
     saveNetwork () {
-        // save the network
-        // *assumes* the network is a pulldown network (not an interactor network)
+        // *assumes* the network is a pulldown network (not an interactor network),
+        // and that this.props.id is a valid pulldownId
         const data = {
             cytoscape_json: this.cy.json(),
             client_metadata: {last_modified: (new Date()).toString()}
         };
         this.setState({deletionStatus: ''});
-        utils.putData(`${settings.apiUrl}/pulldowns/${this.props.pulldownId}/saved_network`, data)
+        utils.putData(`${settings.apiUrl}/pulldowns/${this.props.id}/saved_network`, data)
             .then(response => {
                 console.log(response.json());
                 if (!response.ok) throw new Error('Error saving cytoscape layout');
@@ -241,10 +251,9 @@ export default class MassSpecNetworkContainer extends Component {
             .catch(error => this.setState({submissionStatus: 'danger'}));
     }
 
-
     deleteSavedNetwork () {
         this.setState({submissionStatus: ''});
-        utils.deleteData(`${settings.apiUrl}/pulldowns/${this.props.pulldownId}/saved_network`)
+        utils.deleteData(`${settings.apiUrl}/pulldowns/${this.props.id}/saved_network`)
             .then(response => {
                 console.log(response);
                 if (!response.ok) throw new Error('Error deleting saved layout');
@@ -252,7 +261,6 @@ export default class MassSpecNetworkContainer extends Component {
             })
             .catch(error => this.setState({deletionStatus: 'danger'}));
     }
-
 
     defineLabelEventHandlers () {
 
@@ -301,77 +309,68 @@ export default class MassSpecNetworkContainer extends Component {
     }
 
 
-    getNetworkElements () {
-        // load the cytoscape elements (nodes and edges)
+    processNetworkElements (parentNodes, nodes, edges) {
+        // process the 'raw' cytoscape elements and create 'fake' compound nodes
+        // for un(sub)clustered nodes to keep them organized/together
 
-        const url = `${this.props.url}?subcluster_type=${this.state.subclusterType}`;
-        d3.json(url).then(data => {
-
-            const parentNodes = data.parent_nodes;
-
-            // whether each parent node represents a cluster or subcluster
-            parentNodes.forEach(node => {
-                node.data.type = node.data.parent ? 'subcluster' : 'cluster'
-            });
-
-            // the ids of the parent nodes that correspond to clusters
-            const clusterParentNodeIds = parentNodes
-                .filter(node => node.data.type==='cluster')
-                .map(node => node.data.id);
-            
-            // create parent nodes for the un-subclustered nodes in each cluster
-            const unsubclusteredParentNodes = [];
-            data.nodes.forEach(node => {
-        
-                // if the node is in a real subcluster, we don't need to do anything
-                if (!clusterParentNodeIds.includes(node.data.parent)) return;
-
-                const clusterId = node.data.parent;
-                const newId = `${clusterId}-'unclustered`;
-                node.data.parent = newId;
-
-                // if a parent node for this cluster already exists, don't create it
-                if (unsubclusteredParentNodes.map(node => node.data.id).includes(newId)) return;
-                unsubclusteredParentNodes.push({
-                    data: {
-                        id: newId, 
-                        parent: clusterId, 
-                        type: 'unsubclustered',
-                    }
-                });
-            });
-
-            // create a parent node for the unclustered nodes
-            const unclusteredParentNodeId = 'unclustered';
-            const unclusteredParentNode = {data: {id: unclusteredParentNodeId}};
-            
-            // make this node the parent of the unclustered nodes
-            data.nodes.forEach(node => {
-                if (!node.data.parent) node.data.parent = unclusteredParentNodeId;
-            });
-        
-            let elements = [...data.nodes, ...data.edges];
-            if (this.state.includeParentNodes) {
-                elements = [
-                    unclusteredParentNode, 
-                    ...parentNodes, 
-                    ...unsubclusteredParentNodes, 
-                    ...elements
-                ];
-            }
-
-            this.elements = elements;
-            this.setState({loaded: true, loadingError: false});
-        },
-        error => {
-            this.elements = [];
-            this.setState({loaded: true, loadingError: true});
+        // whether each parent node represents a cluster or subcluster
+        parentNodes.forEach(node => {
+            node.data.type = node.data.parent ? 'subcluster' : 'cluster'
         });
+
+        // the ids of the parent nodes that correspond to clusters
+        const clusterParentNodeIds = parentNodes
+            .filter(node => node.data.type==='cluster')
+            .map(node => node.data.id);
+        
+        // create parent nodes for the un-subclustered nodes in each cluster
+        const unsubclusteredParentNodes = [];
+        nodes.forEach(node => {
+    
+            // if the node is in a real subcluster, we don't need to do anything
+            if (!clusterParentNodeIds.includes(node.data.parent)) return;
+
+            const clusterId = node.data.parent;
+            const newId = `${clusterId}-'unclustered`;
+            node.data.parent = newId;
+
+            // if a parent node for this cluster already exists, don't create it
+            if (unsubclusteredParentNodes.map(node => node.data.id).includes(newId)) return;
+            unsubclusteredParentNodes.push({
+                data: {
+                    id: newId, 
+                    parent: clusterId, 
+                    type: 'unsubclustered',
+                }
+            });
+        });
+
+        // create a parent node for the unclustered nodes
+        const unclusteredParentNodeId = 'unclustered';
+        const unclusteredParentNode = {data: {id: unclusteredParentNodeId}};
+        
+        // make this node the parent of the unclustered nodes
+        nodes.forEach(node => {
+            if (!node.data.parent) node.data.parent = unclusteredParentNodeId;
+        });
+    
+        let elements = [...nodes, ...edges];
+        if (this.state.includeParentNodes) {
+            elements = [
+                unclusteredParentNode, 
+                ...parentNodes, 
+                ...unsubclusteredParentNodes, 
+                ...elements
+            ];
+        }
+
+        this.elements = elements;
+        this.setState({loaded: true, loadingError: false});
     }
 
 
     getSavedNetwork () {
-        const url = `${settings.apiUrl}/pulldowns/${this.props.pulldownId}/saved_network`;
+        const url = `${settings.apiUrl}/pulldowns/${this.props.id}/saved_network`;
         d3.json(url).then(data => {
             this.elements = [
                 ...data.cytoscape_json.elements.nodes,

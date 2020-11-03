@@ -125,13 +125,13 @@ export default class ViewerContainer extends Component {
 
         const loadStack = (filepath) => {
             return new Promise((resolve, reject) => {
-                utils.loadStack(filepath, data => resolve(data));
+                utils.getZStack(filepath, data => resolve(data));
             });
         }
 
         const loadProj = (filepath) => {
             return new Promise((resolve, reject) => {
-                utils.loadProj(filepath, data => resolve(data));
+                utils.getZProjection(filepath, data => resolve(data));
             });
         }
 

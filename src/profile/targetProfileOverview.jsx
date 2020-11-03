@@ -10,7 +10,7 @@ import TargetAnnotator from './targetAnnotator.jsx';
 import { SectionHeader } from './common.jsx';
 import settings from '../common/settings.js';
 import popoverContents from '../common/popoverContents.jsx';
-import { loadAnnotatedFovs } from '../common/utils.js';
+import * as utils from '../common/utils.js';
 import { CellLineMetadata, ExternalLinks } from './cellLineMetadata.jsx';
 
 
@@ -30,7 +30,7 @@ export default class TargetProfileOverview extends Component {
     componentDidMount () {
         //console.log(`Overview mounted with cellLineId ${this.props.cellLineId}`);
         if (!this.props.cellLineId) return;
-        loadAnnotatedFovs(
+        utils.getAnnotatedFovMetadata(
             this.props.cellLineId, 
             fovState => this.setState({...fovState}),
             error => this.setState({fovs: [], rois: []})
@@ -40,7 +40,7 @@ export default class TargetProfileOverview extends Component {
     componentDidUpdate (prevProps) {
         //console.log(`Overview updated with cellLineId ${this.props.cellLineId}`);
         if (prevProps.cellLineId===this.props.cellLineId) return;
-        loadAnnotatedFovs(
+        utils.getAnnotatedFovMetadata(
             this.props.cellLineId, 
             fovState => this.setState({...fovState}),
             error => this.setState({fovs: [], rois: []})

@@ -3,6 +3,7 @@ import React, { useState, useContext, useEffect } from 'react';
 import ReactTable from 'react-table';
 
 import settings from '../common/settings.js';
+import * as utils from '../common/utils.js';
 
 const columnDefs = [
     {
@@ -40,18 +41,22 @@ export default function MassSpecTable (props) {
     const [loadingError, setLoadingError] = useState(false);
 
     useEffect(() => {  
-        setLoaded(false);      
-        const url = `${props.url}?subcluster_type=core-complexes`;
-        d3.json(url).then(data => {
-            setData(data.nodes.map(node => node.data));
-            setLoadingError(false);
-            setLoaded(true);
-        }, error => {
-            setData([]);
-            setLoaded(true);
-            setLoadingError(true);
-        });
-
+        setLoaded(false);
+        utils.getNetworkElements(
+            props.id, 
+            props.idType, 
+            'core-complexes',
+            (parentNodes, nodes, edges) => {
+                setData(nodes.map(node => node.data));
+                setLoadingError(false);
+                setLoaded(true);
+            }, 
+            error => {
+                setData([]);
+                setLoaded(true);
+                setLoadingError(true);
+            }
+        );
     }, [props.url]);
 
     return (
@@ -69,7 +74,9 @@ export default function MassSpecTable (props) {
                     getTrProps={(state, rowInfo, column) => {
                         const isActive = rowInfo && rowInfo.original.type==='bait';
                         return {
-                            onClick: () => props.handleGeneNameSearch(rowInfo.original.uniprot_gene_names[0]),
+                            onClick: () => props.handleGeneNameSearch(
+                                rowInfo.original.uniprot_gene_names[0]
+                            ),
                             style: {
                                 background: isActive ? '#ddd' : null,
                                 fontWeight: isActive ? 'bold' : 'normal'

@@ -29,7 +29,7 @@ export async function deleteData(url) {
 }
 
 
-export function loadAnnotatedFovs (cellLineId, onLoad, onError) {
+export function getAnnotatedFovMetadata (cellLineId, onLoad, onError) {
 
     // retrieve the FOV metadata
     const url = `${settings.apiUrl}/lines/${cellLineId}/fovs?fields=rois&onlyannotated=true`
@@ -51,13 +51,11 @@ export function loadAnnotatedFovs (cellLineId, onLoad, onError) {
 }
 
 
-export function loadStack(url, onLoad) {
+export function getZStack(url, onLoad) {
     // Load the z-stack of an ROI (as a tiled JPG)
     //
-
     const sliceSize = settings.zSliceSize;
     const numRawSlices = settings.numZSlices;
-
     const canvasWidth = sliceSize;
     const canvasHeight = sliceSize * numRawSlices;
     const numPixelsPerSlice = sliceSize * sliceSize;
@@ -76,14 +74,13 @@ export function loadStack(url, onLoad) {
     img.setAttribute('crossOrigin', '');
 
     img.onload = function () {
-
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
         canvas.setAttribute('width', canvasWidth);
         canvas.setAttribute('height', canvasHeight);
         context.drawImage(img, 0, 0);
         const imageData = context.getImageData(0, 0, canvasWidth, canvasHeight);
-        
+
         // copy each raw z-slice and its average with the next raw z-slice
         // into the volume.data array
         for (let z = 0; z < numRawSlices - 1; z++) {
@@ -101,19 +98,15 @@ export function loadStack(url, onLoad) {
             thisPixel = imageData.data[(ind + z*numPixelsPerSlice)*4];
             volume.data[ind + 2*z*numPixelsPerSlice] = thisPixel;
         }
-
         onLoad(volume);
     };
-
     img.src = url;
-
 }
 
 
-export function loadProj(url, onLoad) {
+export function getZProjection(url, onLoad) {
     // Load the 2D z-projection of an ROI
     //
-
     const sliceSize = settings.zSliceSize;
     const canvasWidth = sliceSize;
     const canvasHeight = sliceSize ;
@@ -140,7 +133,19 @@ export function loadProj(url, onLoad) {
         }
         onLoad(proj);
     };
-
     img.src = url;
+}
 
+
+export function getNetworkElements(id, idType, subclusterType, onLoad, onError) {
+    // 
+    // idType : either 'pulldown' or 'ensg'
+    // subclusterType : either 'core-complexes' or 'subclusters'
+    // onLoad : a function of (parentNodes, nodes, edges)
+
+    const endpoint = idType==='pulldown' ? 'pulldowns' : 'interactors';
+    const url = `${settings.apiUrl}/${endpoint}/${id}/network?subcluster_type=${subclusterType}`;
+    d3.json(url).then(
+        data => onLoad(data.parent_nodes, data.nodes, data.edges), error => onError(error)
+    );
 }

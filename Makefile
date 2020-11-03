@@ -1,23 +1,22 @@
-# staging locally (requires local nginx service)
+# local staging (requires a local nginx service running)
 stage-local:
 	rm -r ./dist
 	npm run-script build -- --env.appMode=private
 	cp -r dist ~/nginx/data/dist
 
-# staging on `hulk`
-stage:
+# the internal public deployment (for now, on `hulk`)
+deploy-hulk:
 	rm -r ./dist
-	npm run-script build -- --env.appMode=private
+	npm run-script build -- --env.appMode=public
 	scp -r dist keith@cap:/gpfs/gpfsML/ML_group/KC/nginx/hulk/data/
 
-# the internal ('private') deployment on `cap`
-deploy-internal:
+# the internal private deployment on `cap`
+deploy-cap:
 	rm -r ./dist
 	npm run-script build -- --env.appMode=private
 	scp -r dist keith@cap:/gpfs/gpfsML/ML_group/KC/nginx/data/
 
 # the public deployment on AWS
-# TODO: copy ./dist to AWS
 deploy-aws:
 	rm -r ./dist
 	npm run-script build -- --env.appMode=public

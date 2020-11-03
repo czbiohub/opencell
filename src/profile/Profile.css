@@ -228,7 +228,10 @@
 
 
 /* --------------------- cytoscape network --------------------- */
-.cytoscape-container {}
+.cytoscape-container {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+}
 
 .cy-node-label-container {
     padding: 2px;

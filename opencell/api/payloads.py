@@ -161,19 +161,10 @@ def generate_pulldown_hits_payload(pulldown, significant_hits, nonsignificant_hi
         for all of the pulldown's non-significant hits (usually thousands)
     '''
 
-    hit_columns = [
-        'pval',
-        'enrichment',
-        'interaction_stoich',
-        'abundance_stoich'
-    ]
-
+    hit_attrs = ['pval', 'enrichment', 'interaction_stoich', 'abundance_stoich']
     significant_hit_payloads = []
     for hit in significant_hits:
-        significant_hit_payload = {
-            column: getattr(hit, column) for column in hit_columns
-        }
-
+        significant_hit_payload = {attr: getattr(hit, attr) for attr in hit_attrs}
         significant_hit_payload.update(
             generate_protein_group_payload(
                 hit.protein_group, pulldown.cell_line.crispr_design_id

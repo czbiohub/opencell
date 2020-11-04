@@ -323,7 +323,7 @@ class InteractorNetwork(InteractorResource):
 
         nodes, edges = cytoscape_networks.construct_network(
             interacting_pulldowns=interacting_pulldowns,
-            primary_protein_group=primary_protein_group,
+            origin_protein_group=primary_protein_group,
         )
 
         # create compound nodes to represent superclusters and subclusters
@@ -465,19 +465,19 @@ class PulldownNetwork(PulldownResource):
         # if the target appears in its own pulldown, this is easy
         bait_hit = pulldown.get_bait_hit(only_one=True)
         if bait_hit:
-            primary_protein_group = bait_hit.protein_group
+            bait_protein_group = bait_hit.protein_group
 
         # if the target does not appear in its own pulldown, we must use the protein group
         # for the ENSG ID associated with the target's crispr design
         else:
-            primary_protein_group = InteractorResource.get_primary_protein_group(
+            bait_protein_group = InteractorResource.get_primary_protein_group(
                 pulldown.cell_line.crispr_design.uniprot_metadata.ensg_id
             )
 
         # create nodes to represent direct hits and/or interacting pulldowns,
         # and the edges between them
         nodes, edges = cytoscape_networks.construct_network(
-            target_pulldown=pulldown, primary_protein_group=primary_protein_group
+            target_pulldown=pulldown, origin_protein_group=bait_protein_group
         )
 
         # create compound nodes to represent superclusters and subclusters

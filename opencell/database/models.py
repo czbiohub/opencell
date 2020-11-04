@@ -902,9 +902,9 @@ class MassSpecPulldown(Base):
         return self.cell_line.crispr_design.target_name
 
 
-    def get_significant_hits(self, eagerload=True):
+    def get_significant_hits(self, protein_group_ids=None, eagerload=True):
         '''
-        Retrieve the significant hits and eager-load their protein groups
+        Retrieve the significant hits and optionally eager-load their protein groups
         and the protein groups' crispr designs and uniprot metadata
         '''
         query = (
@@ -916,6 +916,8 @@ class MassSpecPulldown(Base):
                 MassSpecHit.is_significant_hit == True  # noqa
             ))
         )
+        if protein_group_ids:
+            query = query.filter(MassSpecHit.protein_group_id.in_(protein_group_ids))
 
         if eagerload:
             query = query.options(
@@ -924,7 +926,6 @@ class MassSpecPulldown(Base):
                 db.orm.joinedload(MassSpecHit.protein_group, innerjoin=True)
                 .joinedload(MassSpecProteinGroup.uniprot_metadata),
             )
-
         significant_hits = query.all()
         return significant_hits
 
@@ -947,15 +948,12 @@ class MassSpecPulldown(Base):
             .filter(CrisprDesign.id == self.cell_line.crispr_design.id)
             .all()
         )
-
         if not bait_hits:
             return None
-
         if only_one:
             # return the hit with the greatest enrichment
             bait_hits = sorted(bait_hits, key=lambda hit: -hit.enrichment)
             return bait_hits[0]
-
         return bait_hits
 
 
@@ -985,6 +983,7 @@ class MassSpecPulldown(Base):
             .all()
         )
         return interacting_pulldowns
+
 
     def __repr__(self):
         return (

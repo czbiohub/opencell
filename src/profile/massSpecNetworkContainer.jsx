@@ -179,6 +179,7 @@ export default class MassSpecNetworkContainer extends Component {
                 error => {
                     this.elements = [];
                     this.setState({loaded: true, loadingError: true});
+                    console.log(error);
                 }
             );
         }

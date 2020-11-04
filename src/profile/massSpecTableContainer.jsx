@@ -5,23 +5,39 @@ import ReactTable from 'react-table';
 import settings from '../common/settings.js';
 import * as utils from '../common/utils.js';
 
+
+const safeLog10 = value => {
+    // calculating the log of the abundance and interaction stoichiometries requires care
+    // because these values can be zero or null, and Math.log10(null) yields -Infinity
+    // (the solution here works because Math.log10(undefined) is NaN)
+    return Math.log10(value || undefined)
+}
+
 const columnDefs = [
     {
-        id: 'gene_name',
-        Header: 'Gene name',
-        accessor: row => row.uniprot_gene_names[0],
+        id: 'bait_name',
+        Header: 'Bait',
+        accessor: row => row.bait_name,
     },{
-        id: 'type',
-        Header: 'Interactor type',
-        accessor: row => row.type,
+        id: 'prey_name',
+        Header: 'Prey',
+        accessor: row => row.prey_name,
     },{
-        id: 'ensg_ids',
-        Header: 'ENSG ID(s)',
-        accessor: row => row.ensg_ids?.length===1 ? row.ensg_ids[0] : row.ensg_ids?.join(', ')
+        id: 'pval',
+        Header: 'P-value (-log10)',
+        accessor: row => parseFloat(row.pval?.toFixed(2)),
     },{
-        id: 'uniprot_ids',
-        Header: 'Uniprot ID(s)',
-        accessor: row => row.uniprot_ids?.length===1 ? row.uniprot_ids[0] : row.uniprot_ids?.join(', ')
+        id: 'enrichment',
+        Header: 'Relative enrichment',
+        accessor: row => parseFloat(row.enrichment?.toFixed(2)),
+    },{
+        id: 'abundance',
+        Header: 'Abundance stoichiometry (log10)',
+        accessor: row => parseFloat(safeLog10(row.abundance_stoich).toFixed(2)),
+    },{
+        id: 'interaction',
+        Header: 'Interaction stoichiometry (log10)',
+        accessor: row => parseFloat(safeLog10(row.interaction_stoich).toFixed(2)),
     },{
         id: 'cluster_id',
         Header: 'Cluster ID',
@@ -30,8 +46,34 @@ const columnDefs = [
         id: 'subcluster_id',
         Header: 'Core complex ID',
         accessor: row => String(row.subcluster_id || 'None'),
-    }
+    },
 ];
+
+
+const constructTableData = nodes => {
+    // create the array of JSON objects for the table of interactors
+
+    let rows = nodes.map(node => node.data);
+    const baitName = rows.filter(row => row.type==='bait')[0].uniprot_gene_names[0];
+
+    // set the 'bait' and 'prey' names
+    rows.forEach(row => {
+        const rowName = row.uniprot_gene_names[0];
+        if (row.type==='hit') {
+            row.bait_name = baitName
+            row.prey_name = rowName;
+        }
+        if (row.type==='pulldown') {
+            row.bait_name = rowName;
+            row.prey_name = baitName;
+        }
+        if (row.type==='bait') {
+            row.bait_name = baitName;
+            row.prey_name = baitName;
+        }
+    });
+    return rows;
+}
 
 
 export default function MassSpecTable (props) {
@@ -47,7 +89,7 @@ export default function MassSpecTable (props) {
             props.idType, 
             'core-complexes',
             (parentNodes, nodes, edges) => {
-                setData(nodes.map(node => node.data));
+                setData(constructTableData(nodes));
                 setLoadingError(false);
                 setLoaded(true);
             }, 
@@ -55,9 +97,10 @@ export default function MassSpecTable (props) {
                 setData([]);
                 setLoaded(true);
                 setLoadingError(true);
+                console.log(error);
             }
         );
-    }, [props.url]);
+    }, [props.id]);
 
     return (
         <div className='relative'>
@@ -89,7 +132,7 @@ export default function MassSpecTable (props) {
                         const value = filter.value.toLowerCase();
                         return row[id] !== undefined ? String(row[id]).toLowerCase().startsWith(value) : true
                     }}
-            />
+                />
             </div>
         </div>
     );

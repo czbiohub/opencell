@@ -47,16 +47,16 @@ function useCellLineId () {
             // if we are on the home page, redirect to the profile page
             let page = match?.params.page || 'target';
 
-            //if we are on a target-non-specific page, redirect to the profile page
+            // if we are on a target-non-specific page, redirect to the profile page
             const targetNonSpecificPages = ['gallery', 'dashboard', 'microscopy', 'interactor'];
             page = targetNonSpecificPages.includes(page) ? 'target' : page;
             
             const newUrl = `/${page}/${newCellLineId}${history.location.search}`;
-            console.log(`Pushing to history: ${newUrl}`);
+            //console.log(`Pushing to history: ${newUrl}`);
             history.push(newUrl);
         }
 
-        console.log(`setCellLineId changing id from ${cellLineId} to ${newCellLineId}`);
+        //console.log(`setCellLineId changing id from ${cellLineId} to ${newCellLineId}`);
         setCellLineId(newCellLineId);
     }
     return [cellLineId, onSetCellLineId];
@@ -83,7 +83,6 @@ function useGeneNameSearch (setCellLineId) {
         const sanitizedGeneName = geneName.split('/')[0]
 
         const url = `${settings.apiUrl}/search/${sanitizedGeneName}?publication_ready=${modeContext==='public'}`; 
-        console.log(`Search url: ${url}`);
         d3.json(url).then(result => {
             if (result.oc_ids) {
                 setCellLineId(result.oc_ids[0].replace('OPCT', ''));

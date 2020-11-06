@@ -110,17 +110,17 @@
 
 .localization-grade-1 {
     height: 10px;
-    background-color: #dce3f1;
+    background-color: #ccdeef;
 }
 
 .localization-grade-2 {
     height: 14px;
-    background-color: #94aad8;
+    background-color: #51ade1cc;
 }
 
 .localization-grade-3 {
     height: 18px;
-    background-color: #385692;
+    background-color: #00477bcc;
 }
 
 /* --------------------- ROI thumbnails --------------------- */

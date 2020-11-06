@@ -139,7 +139,7 @@ function LocalizationAnnotation (props) {
         );
     }
     return (
-        <div className='w-80 flex'>
+        <div className='w-90 flex'>
             <div className='w-50 flex items-center'>{gradeRectangles}</div>
             <div className='w-50 localization-row'>{label}</div>
         </div>
@@ -165,9 +165,7 @@ export function LocalizationAnnotations (props) {
 
     return (
         <div className="pt2 pb3">
-            <div className='w-80 flex b pb1'>
-                <div className='w-50'></div>
-                <div className='w-50'>Category</div>
+            <div className='w-90 flex b pb1'>
             </div>
             {gradedCategories.map(category => {
                 return <LocalizationAnnotation name={category.name} grade={category.grade}/>

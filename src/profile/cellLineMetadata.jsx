@@ -153,11 +153,12 @@ export function LocalizationAnnotations (props) {
     const allPublicCategories = annotationDefs.publicLocalizationCategories.map(d => d.name);
     
     // the public graded categories associated with the current cell line
-    let gradedCategories = props.data.annotation.categories.map(categoryName => {
+    let gradedCategories = props.data.annotation.categories?.map(categoryName => {
         const grade = categoryName.slice(-1);
         const name = categoryName.replace(/_[1,2,3]$/, '');
         if (name!==categoryName && allPublicCategories.includes(name)) return {name, grade};
     });
+    gradedCategories = gradedCategories || [];
 
     // drop nulls and sort by grade
     gradedCategories = gradedCategories.filter(d => !!d)

@@ -11,7 +11,7 @@ import { SectionHeader } from './common.jsx';
 import settings from '../common/settings.js';
 import popoverContents from '../common/popoverContents.jsx';
 import * as utils from '../common/utils.js';
-import { CellLineMetadata, ExternalLinks } from './cellLineMetadata.jsx';
+import { CellLineMetadata, ExternalLinks, LocalizationAnnotations } from './cellLineMetadata.jsx';
 
 
 export default class TargetProfileOverview extends Component {
@@ -64,8 +64,10 @@ export default class TargetProfileOverview extends Component {
                                 <p>{this.props.cellLine.uniprot_metadata?.annotation}</p>
                             </div>
                         </div>
-
                         <ExternalLinks data={this.props.cellLine}/>
+
+                        <SectionHeader title='Localization' popoverContent={popoverContents.aboutLocalization}/>
+                        <LocalizationAnnotations data={this.props.cellLine}/>
 
                         {/* expression scatterplot*/}
                         <SectionHeader title='Expression level' popoverContent={popoverContents.expressionLevelHeader}/>

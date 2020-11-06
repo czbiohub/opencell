@@ -12,6 +12,7 @@ import ViewerContainer from '../profile/viewerContainer.jsx';
 import MultiSelectContainer from './multiSelectContainer.jsx';
 import settings from '../common/settings.js';
 import * as utils from '../common/utils.js';
+import * as annotationDefs from '../common/annotationDefs.js';
 import {cellLineMetadataDefinitions} from '../profile/metadataDefinitions.js';
 
 import '../common/common.css';
@@ -19,90 +20,18 @@ import '../profile/Profile.css';
 import './gallery.css';
 
 
-const localizationCategories = [
-    {'name': 'membrane', 'num': 192},
-    {'name': 'vesicles', 'num': 350},
-    {'name': 'er', 'num': 125, 'label': 'ER'},
-    {'name': 'golgi', 'num': 90},
-    {'name': 'mitochondria', 'num': 14},
-    {'name': 'centrosome', 'num': 45},
-    {'name': 'cytoskeleton', 'num': 52},
-    {'name': 'chromatin', 'num': 149},
-    {'name': 'nuclear', 'num': 594},
-    {'name': 'nuclear_membrane', 'num': 44},
-    {'name': 'nucleolus', 'num': 30},
-    {'name': 'nucleolus_gc', 'num': 73, 'label': 'Nucleolus - GC'},
-    {'name': 'nucleolus_fc_dfc', 'num': 32, 'label': 'Nucleolus - FC/DFC'},
-    {'name': 'nucleolar_ring', 'num': 17},
-    {'name': 'nuclear_punctae', 'num': 110},
-    {'name': 'nucleus_cytoplasm_variation', 'num': 92, 'label': 'Nucleus-cytoplasm variation'},
-    {'name': 'small_aggregates', 'num': 112},
-    {'name': 'big_aggregates', 'num': 30},
-    {'name': 'cell_contact', 'num': 50},
-    {'name': 'cilia', 'num': 4},
-    {'name': 'diffuse', 'num': 82},
-    {'name': 'textured', 'num': 127},
-    {'name': 'cytoplasmic', 'num': 630},
-    {'name': 'mitotic_cells', 'num': 7},
-];
-
-
-const qcCategories = [
-    {'name': 'publication_ready', 'num': 1235},
-    {'name': 'no_gfp', 'num': 338},
-    {'name': 'interesting', 'num': 288},
-    {'name': 'pretty', 'num': 187},
-    {'name': 'low_gfp', 'num': 179},
-    {'name': 'salvageable_re_sort', 'num': 170},
-    {'name': 'heterogeneous_gfp', 'num': 163},
-    {'name': 'low_hdr', 'num': 137},
-    {'name': 're_image', 'num': 103},
-    {'name': 'disk_artifact', 'num': 43},
-    {'name': 'cross_contamination', 'num': 14},
-    {'name': 'rare_gfp', 'num': 6},
-    {'name': 'over_exposed', 'num': 4},
-];
-
-
-// the 20 most frequent target families
-const families = [
-    {'name': 'kinase', 'num': 179},
-    {'name': 'SLC', 'num': 74},
-    {'name': 'chaperone', 'num': 52},
-    {'name': 'endocytosis', 'num': 50},
-    {'name': 'proteasome', 'num': 43},
-    {'name': 'motor', 'num': 39},
-    {'name': 'Diana', 'num': 39},
-    {'name': 'transport', 'num': 38},
-    {'name': 'BAR', 'num': 35},
-    {'name': 'nuclear transport', 'num': 34},
-    {'name': 'ER', 'num': 34},
-    {'name': 'GEF', 'num': 33},
-    {'name': 'PIP metabolism', 'num': 33},
-    {'name': 'GAP', 'num': 31},
-    {'name': 'positive control', 'num': 30},
-    {'name': 'orphan', 'num': 29},
-    {'name': 'RNA binding', 'num': 29},
-    {'name': 'SNARE', 'num': 28},
-    {'name': 'Peter Tuhl', 'num': 25},
-    {'name': 'centrosome', 'num': 23},
-];
-
-
 function generateCategoryLabels (categories) {
-    // make capitalized labels from the category names
     categories.forEach(category => {
-        let label = category.name.replace(/_/g, ' ');
-        category.label = category.label ? category.label : label.charAt(0).toUpperCase() + label.slice(1);
+        category.label = annotationDefs.categoryNameToLabel(category.name)
     });
+    return categories;
 }
 
-
-const proteinNameDef = cellLineMetadataDefinitions.filter(def => def.id === 'protein_name')[0];
-
+const qcCategories = generateCategoryLabels(annotationDefs.qcCategories);
+const localizationCategories = generateCategoryLabels(annotationDefs.publicLocalizationCategories);
+const targetFamilies = generateCategoryLabels(annotationDefs.targetFamilies);
 
 function Lightbox (props) {
-    
     return (
         <div 
             className='lightbox-container' 
@@ -129,6 +58,7 @@ function Lightbox (props) {
 
 
 function Thumbnail (props) {
+    const proteinNameDef = cellLineMetadataDefinitions.filter(def => def.id === 'protein_name')[0];
     const metadata = props.cellLine.metadata;
     return (
         <div className='gallery-thumbnail-container'>
@@ -156,16 +86,11 @@ class Gallery extends Component {
 
     constructor (props) {
         super(props);
-
-        generateCategoryLabels(localizationCategories);
-        generateCategoryLabels(qcCategories);
-        generateCategoryLabels(families);
-        
         this.state = {
             loaded: false,
             qcCategories: qcCategories.filter(item => item.name === 'publication_ready'),
             localizationCategories: localizationCategories.filter(item => item.name === 'nucleolus'),
-            families: [],
+            targetFamilies: [],
             selectedCellLines: [],
 
             fovs: [],
@@ -284,11 +209,11 @@ class Gallery extends Component {
                 />
             </div>,
             <div className="pa3 w-25">
-                <div className="f4">{"Gene families"}</div>
+                <div className="f4">{"Target families"}</div>
                 <MultiSelectContainer
-                    items={families}
-                    selectedItems={this.state.families}
-                    updateSelectedItems={items => this.updateCategories('families', items)}
+                    items={targetFamilies}
+                    selectedItems={this.state.targetFamilies}
+                    updateSelectedItems={items => this.updateCategories('targetFamilies', items)}
                 />
             </div>
         ];

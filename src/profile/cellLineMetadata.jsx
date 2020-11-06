@@ -2,13 +2,14 @@ import React, { useState, useEffect, useContext } from 'react';
 import {cellLineMetadataDefinitions} from './metadataDefinitions.js';
 import { MetadataItem } from './common.jsx';
 import settings from '../common/settings.js';
+import * as annotationDefs from '../common/annotationDefs.js';
 
 
 export function CellLineMetadata (props) {
     const modeContext = useContext(settings.ModeContext);
 
     // metadata items to display in the header for opencell targets
-    let targetLayout = [
+    let targetItemLayouts = [
         {
             id: 'target_terminus',
             width: 24,
@@ -33,11 +34,10 @@ export function CellLineMetadata (props) {
         }
     ];
 
-    // TODO: metadata items for interactors
-    const interactorLayout = [];
-
-    const layout = props.isInteractor ? interactorLayout : targetLayout;
-    const metadataItems = layout.map(item => {
+    // TODO: metadata items for interactors (none, for now)
+    const interactorItemLayouts = [];
+    const itemLayouts = props.isInteractor ? interactorItemLayouts : targetItemLayouts;
+    const metadataItems = itemLayouts.map(item => {
         const def = cellLineMetadataDefinitions.filter(def => def.id===item.id)[0];
         return (
             <div 
@@ -83,9 +83,9 @@ export function CellLineMetadata (props) {
 
 
 export function ExternalLinks (props) {
+    // note that external links are the same for both targets and interactors
 
-    // links (the same for both targets and interactors)
-    const linkLayout = [
+    const linkLayouts = [
         {
             id: 'uniprot',
             defId: 'uniprot_id',
@@ -106,8 +106,7 @@ export function ExternalLinks (props) {
             url: id => `https://www.proteinatlas.org/${id}`,
         },
     ];
-
-    const linkItems = linkLayout.map(item => {
+    const linkItems = linkLayouts.map(item => {
         const def = cellLineMetadataDefinitions.filter(def => def.id===item.defId)[0];
         const value = def.accessor(props.data);
         return (
@@ -120,10 +119,50 @@ export function ExternalLinks (props) {
             </div>
         );
     });
-
     return (
         <div className="pt2 pb3">
             {linkItems}
+        </div>
+    );
+}
+
+
+function LocalizationAnnotation (props) {
+    const grade = props.categoryName.slice(-1);
+    const categoryName = props.categoryName.replace(/_[1,2,3]$/, '');
+    const label = annotationDefs.categoryNameToLabel(categoryName);
+    return (
+        <div className='w-80 flex'>
+            <div className='w-25'>
+                <div className={`tc localization-grade localization-grade-${grade}`}>
+                    {grade}
+                </div>
+            </div>
+            <div className='w-70 localization-row'>{label}</div>
+        </div>
+    );
+}
+
+
+export function LocalizationAnnotations (props) {
+
+    // the public localization-related cell line annotation categories
+    const allPublicCategories = annotationDefs.publicLocalizationCategories.map(d => d.name);
+    
+    // the public graded categories associated with the current cell line
+    const gradedCategories = props.data.annotation.categories.filter(categoryName => {
+        const rootName = categoryName.replace(/_[1,2,3]$/, '');
+        return (rootName!==categoryName && allPublicCategories.includes(rootName));
+    });
+    gradedCategories.sort();
+
+    return (
+        <div className="pt2 pb3">
+            <div className='w-80 flex b pb1'>
+                <div className='w-25'><div className=''>Grade</div></div>
+                <div className='w-70'>Category</div>
+            </div>
+            {gradedCategories.map(category => <LocalizationAnnotation categoryName={category}/>)}
         </div>
     );
 }

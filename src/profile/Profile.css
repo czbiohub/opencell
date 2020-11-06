@@ -20,6 +20,16 @@
     font-weight: 400;
 }
 
+/* the header for each main panel/section */
+.section-header {
+    color: #333;
+}
+
+.section-header-active {
+    border-bottom: 3px solid #555;
+}
+
+
 /* --------------------- cell line and FOV metadata --------------------- */
 .clm-container {
     display: flex;
@@ -71,6 +81,39 @@
     text-overflow: ellipsis;
 }
 
+.about-this-protein-container {
+    height: auto;
+    max-height: 150px;
+    overflow: auto;
+    line-height: 1.33;
+}
+
+.localization-row {
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+.localization-grade {
+    width: 40px;
+    border-radius: 3px;
+    padding-top: 3px;
+    padding-bottom: 3px;
+    font-weight: bold;
+}
+
+.localization-grade-1 {
+    background-color: rgb(200, 221, 240);
+}
+
+.localization-grade-2 {
+    background-color: rgb(65, 136, 199);
+    color: #eee;
+}
+
+.localization-grade-3 {
+    background-color: rgb(10, 90, 160);
+    color: #eee;
+}
 
 /* --------------------- ROI thumbnails --------------------- */
 .roi-thumbnail-container {
@@ -107,15 +150,6 @@
     margin: 0;
     border-radius: 3px;
     color: #182026;
-}
-
-/* the header for each main panel/section */
-.section-header {
-    color: #333;
-}
-
-.section-header-active {
-    border-bottom: 3px solid #555;
 }
 
 
@@ -207,14 +241,6 @@
     stroke: none;
     stroke-width: 1px;
 }
-
-.about-this-protein-container {
-    height: auto;
-    max-height: 150px;
-    overflow: auto;
-    line-height: 1.33;
-}
-
 
 
 /* --------------------- cluster heatmaps --------------------- */

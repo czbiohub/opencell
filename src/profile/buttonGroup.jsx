@@ -11,10 +11,8 @@ class ButtonGroup extends Component {
 
     constructor (props) {
         super(props);
-        this.state = {};
     }
 
-    
     render() {
 
         const buttons = this.props.values.map((value, ind) => {
@@ -28,8 +26,13 @@ class ButtonGroup extends Component {
             );
         });
 
+        // class names for the button group container
+        const className = classNames(
+            'simple-button-group', this.props.className, {'o-50': this.props.disabled}
+        );
+
         return (
-            <div className={classNames('simple-button-group', {'o-50': this.props.disabled})}>
+            <div className={className}>
                 <div className='simple-button-group-label'>{this.props.label}</div>
                 {buttons}
             </div>

@@ -10,6 +10,8 @@ import "@blueprintjs/core/lib/css/blueprint.css";
 
 import ViewerContainer from '../profile/viewerContainer.jsx';
 import MultiSelectContainer from './multiSelectContainer.jsx';
+import ButtonGroup from '../profile/buttonGroup.jsx';
+
 import settings from '../common/settings.js';
 import * as utils from '../common/utils.js';
 import * as annotationDefs from '../common/annotationDefs.js';
@@ -20,16 +22,16 @@ import '../profile/Profile.css';
 import './gallery.css';
 
 
-function generateCategoryLabels (categories) {
+function appendCategoryLabels (categories) {
     categories.forEach(category => {
         category.label = annotationDefs.categoryNameToLabel(category.name)
     });
     return categories;
 }
 
-const qcCategories = generateCategoryLabels(annotationDefs.qcCategories);
-const localizationCategories = generateCategoryLabels(annotationDefs.publicLocalizationCategories);
-const targetFamilies = generateCategoryLabels(annotationDefs.targetFamilies);
+const qcCategories = appendCategoryLabels(annotationDefs.qcCategories);
+const targetFamilies = appendCategoryLabels(annotationDefs.targetFamilies);
+const localizationCategories = appendCategoryLabels(annotationDefs.publicLocalizationCategories);
 
 function Lightbox (props) {
     return (
@@ -88,10 +90,23 @@ class Gallery extends Component {
         super(props);
         this.state = {
             loaded: false,
+
+            // default to publication-ready targets 
+            // (note that in 'public' mode, the QC category selection component is hidden, 
+            // so only the publication-ready targets will be displayed)
             qcCategories: qcCategories.filter(item => item.name === 'publication_ready'),
-            localizationCategories: localizationCategories.filter(item => item.name === 'nucleolus'),
+
+            // pick a pretty localization category for the default
+            localizationCategories: localizationCategories.filter(item => item.name === 'cytoskeleton'),
+
+            // no families selected by default (and these are hidden in public mode)
             targetFamilies: [],
+
+            // the list of selected cell lines
             selectedCellLines: [],
+
+            // whether to select lines that have any or all of the selected localization categories
+            selectionMode: 'All',
 
             fovs: [],
             rois: [],
@@ -119,40 +134,55 @@ class Gallery extends Component {
     }
 
     loadData () {
-        // when the selected categories or families are changed
+        // load the thumbnails for the selected cell lines
 
-        this.setState({loaded: false});
-
+        // simplify the cell line metadata and strip the grades from the annotation categories
         let lines = this.cellLines.map(line => {
             return {
                 id: line.metadata.cell_line_id, 
-                categories: line.annotation.categories || [],
                 family: line.metadata.target_family,
+                categories: line.annotation.categories?.map(name => name.replace(/_[1,2,3]$/, '')) || [],
             };
         });
 
-        // filter for lines that have all of the selected categories
-        // TODO: add button to toggle between 'all' and 'any'
-        for (let category of [...this.state.localizationCategories, ...this.state.qcCategories]) {
+        // select the lines with *all* of the selected QC categories 
+        for (let category of this.state.qcCategories) {
             lines = lines.filter(line => line.categories.includes(category.name));
+        }
+
+        // select the lines that have either any or all of the selected localization categories
+        let selectedLines;
+        if (this.state.selectionMode==='All') {
+            selectedLines = [...lines];
+            for (let category of this.state.localizationCategories) {
+                selectedLines = selectedLines.filter(line => line.categories.includes(category.name));
+            }
+        }
+        if (this.state.selectionMode==='Any') {
+            selectedLines = [];
+            for(let category of this.state.localizationCategories) {
+                selectedLines.push(...lines.filter(line => line.categories.includes(category.name)));
+            }
         }
 
         // limit to the first n lines to avoid slow loading times
         const maxNum = 999;
-        const ids = lines.map(line => line.id).slice(0, maxNum);
+        const ids = selectedLines.map(line => line.id).slice(0, maxNum);
 
+        // load the thumbnails for the selected cell lines
+        this.setState({loaded: false});
         if (!ids.length) {
             this.setState({selectedCellLines: [], loaded: true});
-        } else {
-            const url = `${settings.apiUrl}/lines?fields=best-fov&ids=${ids.join(',')}`;
-            d3.json(url).then(data => {
-                // sort lines alphabetically by target_name
-                const selectedCellLines = data.sort((a, b) => {
-                    return a.metadata.target_name > b.metadata.target_name ? 1 : -1;
-                });
-                this.setState({selectedCellLines, loaded: true});
-            });
+            return;
         }
+        const url = `${settings.apiUrl}/lines?fields=best-fov&ids=${ids.join(',')}`;
+        d3.json(url).then(data => {
+            // sort lines alphabetically by target_name
+            const selectedCellLines = data.sort((a, b) => {
+                return a.metadata.target_name > b.metadata.target_name ? 1 : -1;
+            });
+            this.setState({selectedCellLines, loaded: true});
+        });
     }
 
     componentDidMount () {
@@ -202,7 +232,7 @@ class Gallery extends Component {
         }
 
         const privateMultiSelectContainers = [
-            <div className="pa3 w-25">
+            <div className="pr3 w-20">
                 <div className="f4">{"QC annotations"}</div>
                 <MultiSelectContainer
                     items={qcCategories}
@@ -210,7 +240,7 @@ class Gallery extends Component {
                     updateSelectedItems={items => this.updateCategories('qcCategories', items)}
                 />
             </div>,
-            <div className="pa3 w-25">
+            <div className="pr3 w-20">
                 <div className="f4">{"Target families"}</div>
                 <MultiSelectContainer
                     items={targetFamilies}
@@ -223,9 +253,8 @@ class Gallery extends Component {
         return (
             <div>
                 <div className="pa4 w-100">
-
                     <div className="flex" style={{alignItems: 'flex-start'}}>
-                        <div className="pa3 w-33">
+                        <div className="pr3 w-33">
                             <div className="f4">{"Select localization annotations"}</div>
                             <MultiSelectContainer
                                 items={localizationCategories}
@@ -236,9 +265,16 @@ class Gallery extends Component {
                             />
                         </div>
                         {this.context==='private' ? privateMultiSelectContainers : null}
-                        <div className='pt4'>
+                        <ButtonGroup
+                            className='pr3'
+                            label='Selection mode'
+                            values={['Any', 'All']}
+                            activeValue={this.state.selectionMode}
+                            onClick={value => this.setState({selectionMode: value})}
+                        />
+                        <div className='pt3'>
                             <div 
-                                className='f4 simple-button' 
+                                className='f4 pl2 pr2 simple-button' 
                                 onClick={() => {this.setState({reload: true})}}
                             >
                             {'Load'}

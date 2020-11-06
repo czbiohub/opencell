@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import { H3, H4, H5 } from '@blueprintjs/core';
 
-const microscopyHeader = (
+export const microscopyHeader = (
     <div className='pa3 popover-container-large'>
         <H3>Fluorescence microscopy data</H3>
         <p>
@@ -24,7 +24,7 @@ const microscopyHeader = (
     </div>
 );
 
-const aboutHeader = (
+export const aboutHeader = (
     <div className='pa3 popover-container-small'>
     <p>
         This is the functional annotation from UniprotKB for the currently selected opencell target.
@@ -32,7 +32,7 @@ const aboutHeader = (
     </div>
 );
 
-const expressionLevelHeader = (
+export const expressionLevelHeader = (
     <div className='pa3 popover-container-large'>
         <H3>Expression level scatterplot</H3>
         <p>
@@ -45,8 +45,10 @@ const expressionLevelHeader = (
     </div>
 );
 
-export default {
-    microscopyHeader,
-    aboutHeader,
-    expressionLevelHeader,
-}
+export const microscopyChannel = (
+    <div className='pa3 popover-container-small'>
+    <p>
+        These buttons toggle between the 'DNA' and the 'protein' channels. 
+    </p>
+    </div>
+);

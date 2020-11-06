@@ -8,7 +8,7 @@ function SectionHeader (props) {
         <div className="flex items-center bb b--black-10">
             <div className="pr2 f3 section-header">{props.title}</div>
             <Popover>
-                <Icon icon='info-sign' iconSize={14} color="#aaa"/>
+                <Icon icon='info-sign' iconSize={14} color="#bbb"/>
                 {props.popoverContent}
             </Popover>
         </div>
@@ -20,17 +20,19 @@ function Tab (props) {
     return props.component;
 }
 
-
 function Tabs (props) {
 
     const [activeTabId, setActiveTabId] = useState(props.activeTabId);
-
     const tabs = props.children.map(child => {
         const className = classNames(
             'f4', 'mr5', 'section-header', {'section-header-active': child.props.id===activeTabId}
         );
         return (
-            <div key={child.props.id} className={className} onClick={() => setActiveTabId(child.props.id)}>
+            <div 
+                key={child.props.id} 
+                className={className} 
+                onClick={() => setActiveTabId(child.props.id)}
+            >
                 {child.props.title}
             </div>
         );

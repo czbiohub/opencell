@@ -9,7 +9,7 @@ import MassSpecContainer from './massSpecContainer.jsx';
 import TargetAnnotator from './targetAnnotator.jsx';
 import { SectionHeader } from './common.jsx';
 import settings from '../common/settings.js';
-import popoverContents from '../common/popoverContents.jsx';
+import * as popoverContents from '../common/popoverContents.jsx';
 import * as utils from '../common/utils.js';
 import { CellLineMetadata, ExternalLinks, LocalizationAnnotations } from './cellLineMetadata.jsx';
 

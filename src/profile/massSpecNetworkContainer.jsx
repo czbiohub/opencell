@@ -461,7 +461,7 @@ export default class MassSpecNetworkContainer extends Component {
                         </div>
                     ) : null}
 
-                    <div className='w-100 pt2'>
+                    <div className='w-100 pt2 flex'>
                     <div className='f6 simple-button' onClick={() => {this.initializeNetwork()}}>
                         {'Re-run layout'}
                     </div>

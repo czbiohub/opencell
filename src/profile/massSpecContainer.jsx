@@ -8,7 +8,7 @@ import MassSpecTableContainer from './massSpecTableContainer.jsx';
 
 import { SectionHeader, Tab, Tabs } from './common.jsx';
 import settings from '../common/settings.js';
-import popoverContents from '../common/popoverContents.jsx';
+import * as popoverContents from '../common/popoverContents.jsx';
 
 
 export default function MassSpecContainer (props) {

@@ -78,17 +78,12 @@ button:focus {
 
 /* --------------------- custom div-based buttons --------------------- */
 .simple-button {
-    /* font-family: Helvetica; */
-    display: inline-block;
-	width: auto;
     cursor: pointer;
     padding: 4px 8px 4px 8px;
     margin-right: 10px;
     line-height: 1.42;
     border-radius: 5px;
     background-color: rgba(209, 212, 214, 0.3) !important;
-    /* border-bottom: 1px solid #333; */
-
 }
 
 .simple-button:hover {
@@ -103,9 +98,6 @@ button:focus {
 .simple-button-group-label {
     font-size: 14px;
     color: #777;
-    display: block;
-    padding-right: 5px;
-    padding-bottom: 3px;
 }
 
 

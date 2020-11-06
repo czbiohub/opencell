@@ -9,6 +9,8 @@ import SliceViewer from './sliceViewer.jsx';
 import VolumeViewer from './volumeViewer.jsx';
 import settings from '../common/settings.js';
 import * as utils from '../common/utils.js';
+import * as popoverContents from '../common/popoverContents.jsx';
+
 import { SectionHeader, MetadataContainer } from './common.jsx';
 import { fovMetadataDefinitions } from './metadataDefinitions.js';
 
@@ -278,6 +280,7 @@ export default class ViewerContainer extends Component {
                             labels={['DNA', 'Protein', 'Both']}
                             activeValue={this.state.channel}
                             onClick={value => this.setState({channel: value})}
+                            popoverContent={popoverContents.microscopyChannel}
                         />
                     </div>
                 </div>

@@ -68,12 +68,12 @@ export function CellLineMetadata (props) {
             </div>
 
             {/* protein descriptoin */}
-            <div className="w-100 clm-protein-description pb2">
+            <div className="w-100 clm-protein-description pt2 pb2">
                 {props.data.uniprot_metadata?.protein_name}
             </div>
 
             <div className="w-100">
-                <div className='clm-opencell-status'>{`OpenCell status: ${opencellStatus} ${tagType}`}</div>
+                {/* <div className='clm-opencell-status'>{`OpenCell status: ${opencellStatus} ${tagType}`}</div> */}
             </div>
 
             {modeContext==='private' ? metadataItems : null}

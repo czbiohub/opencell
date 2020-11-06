@@ -91,11 +91,12 @@
 .localization-row {
     padding-top: 5px;
     padding-bottom: 5px;
+    margin-left: -10px;
 }
 
 .localization-grade-container {
     height: 25px;
-    width: 35px;
+    width: 38px;
     padding-left: 3px;
     padding-right: 3px;
 }
@@ -109,17 +110,17 @@
 
 .localization-grade-1 {
     height: 14px;
-    background-color: rgb(200, 221, 240);
+    background-color: #dce3f1;
 }
 
 .localization-grade-2 {
     height: 18px;
-    background-color: rgb(65, 136, 199);
+    background-color: #94aad8;
 }
 
 .localization-grade-3 {
     height: 22px;
-    background-color: rgb(10, 90, 160);
+    background-color: #385692;
 }
 
 /* --------------------- ROI thumbnails --------------------- */

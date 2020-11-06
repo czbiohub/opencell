@@ -93,26 +93,33 @@
     padding-bottom: 5px;
 }
 
+.localization-grade-container {
+    height: 25px;
+    width: 35px;
+    padding-left: 3px;
+    padding-right: 3px;
+}
+
 .localization-grade {
-    width: 40px;
-    border-radius: 3px;
-    padding-top: 3px;
-    padding-bottom: 3px;
-    font-weight: bold;
+    border-style: solid;
+    border-color: white;
+    border-radius: 5px;
+    width: 100%;
 }
 
 .localization-grade-1 {
+    height: 14px;
     background-color: rgb(200, 221, 240);
 }
 
 .localization-grade-2 {
+    height: 18px;
     background-color: rgb(65, 136, 199);
-    color: #eee;
 }
 
 .localization-grade-3 {
+    height: 22px;
     background-color: rgb(10, 90, 160);
-    color: #eee;
 }
 
 /* --------------------- ROI thumbnails --------------------- */

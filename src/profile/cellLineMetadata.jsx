@@ -128,17 +128,20 @@ export function ExternalLinks (props) {
 
 
 function LocalizationAnnotation (props) {
-    const grade = props.categoryName.slice(-1);
-    const categoryName = props.categoryName.replace(/_[1,2,3]$/, '');
-    const label = annotationDefs.categoryNameToLabel(categoryName);
+    const label = annotationDefs.categoryNameToLabel(props.name);
+    
+    const gradeRectangles = []
+    for (let grade = 1; grade <= parseInt(props.grade); grade++) {
+        gradeRectangles.push(
+            <div className='flex items-center localization-grade-container'>
+                <div className={`localization-grade localization-grade-${grade}`}></div>
+            </div>
+        );
+    }
     return (
         <div className='w-80 flex'>
-            <div className='w-25'>
-                <div className={`tc localization-grade localization-grade-${grade}`}>
-                    {grade}
-                </div>
-            </div>
-            <div className='w-70 localization-row'>{label}</div>
+            <div className='w-50 flex items-center'>{gradeRectangles}</div>
+            <div className='w-50 localization-row'>{label}</div>
         </div>
     );
 }
@@ -150,19 +153,25 @@ export function LocalizationAnnotations (props) {
     const allPublicCategories = annotationDefs.publicLocalizationCategories.map(d => d.name);
     
     // the public graded categories associated with the current cell line
-    const gradedCategories = props.data.annotation.categories.filter(categoryName => {
-        const rootName = categoryName.replace(/_[1,2,3]$/, '');
-        return (rootName!==categoryName && allPublicCategories.includes(rootName));
+    let gradedCategories = props.data.annotation.categories.map(categoryName => {
+        const grade = categoryName.slice(-1);
+        const name = categoryName.replace(/_[1,2,3]$/, '');
+        if (name!==categoryName && allPublicCategories.includes(name)) return {name, grade};
     });
-    gradedCategories.sort();
+
+    // drop nulls and sort by grade
+    gradedCategories = gradedCategories.filter(d => !!d)
+    gradedCategories.sort((a, b) => a.grade > b.grade ? -1 : 1);
 
     return (
         <div className="pt2 pb3">
             <div className='w-80 flex b pb1'>
-                <div className='w-25'><div className=''>Grade</div></div>
-                <div className='w-70'>Category</div>
+                <div className='w-50'></div>
+                <div className='w-50'>Category</div>
             </div>
-            {gradedCategories.map(category => <LocalizationAnnotation categoryName={category}/>)}
+            {gradedCategories.map(category => {
+                return <LocalizationAnnotation name={category.name} grade={category.grade}/>
+            })}
         </div>
     );
 }

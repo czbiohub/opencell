@@ -165,7 +165,9 @@ class Gallery extends Component {
             this.loadData();
         }
         if (prevState.cellLineId!==this.state.cellLineId) {
-            utils.getAnnotatedFovMetadata(this.state.cellLineId, fovState => this.setState({...fovState}));    
+            utils.getAnnotatedFovMetadata(
+                this.state.cellLineId, fovState => this.setState({...fovState})
+            );    
         }
     }
 
@@ -228,12 +230,17 @@ class Gallery extends Component {
                             <MultiSelectContainer
                                 items={localizationCategories}
                                 selectedItems={this.state.localizationCategories}
-                                updateSelectedItems={items => this.updateCategories('localizationCategories', items)}
+                                updateSelectedItems={
+                                    items => this.updateCategories('localizationCategories', items)
+                                }
                             />
                         </div>
                         {this.context==='private' ? privateMultiSelectContainers : null}
                         <div className='pt4'>
-                            <div className='f4 simple-button' onClick={() => {this.setState({reload: true})}}>
+                            <div 
+                                className='f4 simple-button' 
+                                onClick={() => {this.setState({reload: true})}}
+                            >
                             {'Load'}
                             </div>
                         </div>

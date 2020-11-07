@@ -25,8 +25,19 @@
     color: #333;
 }
 
-.section-header-active {
-    border-bottom: 3px solid #555;
+.tab-header {
+    color: #333;
+    cursor: pointer;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+}
+
+.tab-header:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.tab-header-active {
+    background-color: rgba(0, 0, 0, 0.1);
 }
 
 

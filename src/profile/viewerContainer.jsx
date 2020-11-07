@@ -271,6 +271,7 @@ export default class ViewerContainer extends Component {
                             activeValue={this.state.imageQuality}
                             onClick={value => this.setState({imageQuality: value})}
                             disabled={this.state.mode==='Proj'}
+                            popoverContent={popoverContents.microscopyImageQuality}
                         />
                     </div>
                     <div className='pr3'>

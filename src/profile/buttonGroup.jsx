@@ -40,7 +40,7 @@ export default function ButtonGroup (props) {
             <div className='flex items-center'>
                 <div className='pr1 simple-button-group-label'>{props.label}</div>
                     {props.popoverContent ? (
-                    <div style={{marginTop: '-7px'}}>
+                    <div>
                         <Popover>
                             <Icon icon='info-sign' iconSize={12} color="#bbb"/>
                             {props.popoverContent}

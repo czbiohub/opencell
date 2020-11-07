@@ -69,10 +69,16 @@ button:focus {
 
 .popover-container-large {
     max-width: 500px;
+    padding: 10px;
 }
 
 .popover-container-small {
     max-width: 300px;
+    padding: 10px;
+}
+
+.popover-container-small p {
+    margin: 0px;
 }
 
 
@@ -102,6 +108,12 @@ button:focus {
 
 
 /* --------------------- blueprint overrides --------------------- */
+
+/*  this is necessary for the info icons to be vertically centered */
+.bp3-icon {
+    display: block !important;
+}
+
 /* inline radiogroup labels */
 label.bp3-label {
 	display: inline-block;

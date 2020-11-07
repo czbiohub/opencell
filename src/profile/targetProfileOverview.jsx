@@ -59,18 +59,27 @@ export default class TargetProfileOverview extends Component {
 
                         {/* 'About' textbox */}
                         <div>
-                            <SectionHeader title='About this protein' popoverContent={popoverContents.aboutHeader}/>
+                            <SectionHeader 
+                                title='About this protein' 
+                                popoverContent={popoverContents.aboutThisProteinHeader}
+                            />
                             <div className='pt2 about-this-protein-container'>
                                 <p>{this.props.cellLine.uniprot_metadata?.annotation}</p>
                             </div>
                         </div>
                         <ExternalLinks data={this.props.cellLine}/>
 
-                        <SectionHeader title='Localization' popoverContent={popoverContents.aboutLocalization}/>
+                        <SectionHeader 
+                            title='Localization' 
+                            popoverContent={popoverContents.localizationHeader}
+                        />
                         <LocalizationAnnotations data={this.props.cellLine}/>
 
                         {/* expression scatterplot*/}
-                        <SectionHeader title='Expression level' popoverContent={popoverContents.expressionLevelHeader}/>
+                        <SectionHeader 
+                            title='Expression level' 
+                            popoverContent={popoverContents.expressionLevelHeader}
+                        />
                         <div className="w-100 pb3 expression-plot-container">
                             <ExpressionPlot targetName={this.props.cellLine.metadata.target_name}/>
                         </div>

@@ -45,20 +45,41 @@ export default function MassSpecContainer (props) {
 
     if (props.layout==='tabs') return (
         <Tabs activeTabId='network'>
-            <Tab id='network' title='Interaction network' component={network}/>
-            <Tab id='scatterplot' title='Scatterplots' component={scatterplot}/>
-            <Tab id='table' title='Table of interactors' component={table}/>
+            <Tab 
+                id='network' 
+                title='Interaction network'
+                component={network}
+                popoverContent={popoverContents.interactionNetworkHeader}
+            />
+            <Tab 
+                id='scatterplot' 
+                title='Scatterplots' 
+                component={scatterplot}
+                popoverContent={popoverContents.scatterplotsHeader}
+            />
+            <Tab 
+                id='table' 
+                title='Interactors table' 
+                component={table}
+                popoverContent={popoverContents.interactionTableHeader}
+            />
         </Tabs>
     );
 
     if (props.layout==='columns') return (
         <div className='flex'>
             <div className='w-50 pr3'>
-                <SectionHeader title='Interaction network'/>
+                <SectionHeader 
+                    title='Interaction network' 
+                    popoverContent={popoverContents.interactionNetworkHeader}
+                />
                 {network}
             </div>
             <div className='w-50 pr2'>
-                <SectionHeader title='Interacting targets'/>
+                <SectionHeader 
+                    title='Table of interactors'
+                    popoverContent={popoverContents.interactionTableHeader}
+                />
                 {table}
             </div>
         </div>

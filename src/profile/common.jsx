@@ -6,7 +6,7 @@ import { H5, Icon, Popover } from "@blueprintjs/core";
 function SectionHeader (props) {
     return (
         <div className="flex items-center bb b--black-10">
-            <div className="pr2 f3 section-header">{props.title}</div>
+            <div className="pr2 f4 section-header">{props.title}</div>
             <Popover>
                 <Icon icon='info-sign' iconSize={14} color="#bbb"/>
                 {props.popoverContent}
@@ -25,7 +25,8 @@ function Tabs (props) {
     const [activeTabId, setActiveTabId] = useState(props.activeTabId);
     const tabs = props.children.map(child => {
         const className = classNames(
-            'f4', 'mr5', 'section-header', {'section-header-active': child.props.id===activeTabId}
+            'f4', 'mr4', 'pt1', 'pl2', 'pr2', 'flex', 'items-center', 'tab-header', 
+            {'tab-header-active': child.props.id===activeTabId}
         );
         return (
             <div 
@@ -33,7 +34,13 @@ function Tabs (props) {
                 className={className} 
                 onClick={() => setActiveTabId(child.props.id)}
             >
-                {child.props.title}
+                <div className='pr2'>{child.props.title}</div>
+                {child.props.popoverContent ? (
+                    <Popover>
+                        <Icon icon='info-sign' iconSize={14} color="#bbb"/>
+                        {child.props.popoverContent}
+                    </Popover>
+                ) : null}
             </div>
         );
     });

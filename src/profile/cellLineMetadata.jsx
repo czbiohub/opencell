@@ -133,7 +133,7 @@ export function LocalizationAnnotation (props) {
     const gradeRectangles = []
     for (let grade = 1; grade <= parseInt(props.grade); grade++) {
         gradeRectangles.push(
-            <div className='flex items-center localization-grade-container'>
+            <div key={grade} className='flex items-center localization-grade-container'>
                 <div className={`localization-grade localization-grade-${grade}`}></div>
             </div>
         );
@@ -171,7 +171,11 @@ export function LocalizationAnnotations (props) {
             <div className='w-90 flex b pb1'>
             </div>
             {gradedCategories.map(category => {
-                return <LocalizationAnnotation name={category.name} grade={category.grade}/>
+                return <LocalizationAnnotation 
+                    key={category.name} 
+                    name={category.name} 
+                    grade={category.grade}
+                />
             })}
         </div>
     );

@@ -73,34 +73,34 @@ const cellLineMetadataDefinitions = [
     },{
         id: 'facs_grade',
         accessor: row => facsGrades[`${row.metadata?.plate_id}-${row.metadata?.well_id}`],
-        Header: 'FACS',
+        Header: 'FACS grade',
     },{
         id: 'publication_ready',
-        accessor: row => String(row.annotation.categories?.includes('publication_ready')),
+        accessor: row => row.annotation.categories?.includes('publication_ready'),
         Header: 'Pub ready',
     },{
         id: 'has_pulldown',
-        accessor: row => String(!!row.best_pulldown?.id),
+        accessor: row => !!row.best_pulldown?.id,
         Header: 'Has pulldown',
     },{
         id: 'has_saved_network',
-        accessor: row => String(!!row.best_pulldown?.has_saved_network),
+        accessor: row => !!row.best_pulldown?.has_saved_network,
         Header: 'Has saved network',
     },{
         id: 're_image',
-        accessor: row => String(row.annotation.categories?.includes('re_image')),
+        accessor: row => row.annotation.categories?.includes('re_image'),
         Header: 'Re-image',
     },{
         id: 'no_gfp',
-        accessor: row => String(row.annotation.categories?.includes('no_gfp')),
+        accessor: row => row.annotation.categories?.includes('no_gfp'),
         Header: 'No GFP',
     },{
         id: 'low_gfp',
-        accessor: row => String(row.annotation.categories?.includes('low_gfp')),
+        accessor: row => row.annotation.categories?.includes('low_gfp'),
         Header: 'Low GFP',
     },{
         id: 're_sort',
-        accessor: row => String(row.annotation.categories?.includes('salvageable_re_sort')),
+        accessor: row => row.annotation.categories?.includes('salvageable_re_sort'),
         Header: 'Salvageable re-sort',
     },{
         id: 'num_fovs',
@@ -112,15 +112,14 @@ const cellLineMetadataDefinitions = [
         Header: 'Num annotated FOVs',
     },{
         id: 'only_old_annotated_fovs',
-        accessor: row => String(row.fov_counts?.num_annotated_fovs > 0 && !row.fov_counts.num_annotated_fovs_da),
+        accessor: row => row.fov_counts?.num_annotated_fovs > 0 && !row.fov_counts.num_annotated_fovs_da,
         Header: 'Annotated FOVs all old',
     },{
         id: 'graded_annotations',
-        accessor: row => String(row.annotation.has_graded_annotations),
+        accessor: row => row.annotation.has_graded_annotations,
         Header: 'Graded annotations',
     }
 ];
-
 
 const fovMetadataDefinitions = [
     {
@@ -162,6 +161,17 @@ const fovMetadataDefinitions = [
     }
 ];
 
+
+// wrap accessors to coerce all values to strings
+cellLineMetadataDefinitions.forEach(def => {
+    const accessor = def.accessor;
+    def.accessor = row => String(accessor(row));
+});
+
+fovMetadataDefinitions.forEach(def => {
+    const accessor = def.accessor;
+    def.accessor = row => String(accessor(row));
+});
 
 export {
     cellLineMetadataDefinitions,

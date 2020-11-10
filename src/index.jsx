@@ -131,7 +131,8 @@ function App() {
 
     const publicCellLineRoutes = [
         <Route 
-            path={"/target/:cellLineId"}
+            key='target'
+            path="/target/:cellLineId"
             render={props => (
                 <TargetProfile 
                     {...props} 
@@ -142,7 +143,8 @@ function App() {
             )}
         />,
         <Route 
-            path={"/interactor/:ensgId"}
+            key='interactor'
+            path="/interactor/:ensgId"
             render={props => (
                 <InteractorProfile 
                     {...props} 
@@ -155,7 +157,8 @@ function App() {
 
     const privateCellLineRoutes = [
         <Route 
-            path={"/fovs/:cellLineId"}
+            key='fovs'
+            path="/fovs/:cellLineId"
             render={props => (
                 <TargetProfile 
                     {...props} 
@@ -166,7 +169,8 @@ function App() {
             )}
         />,
         <Route 
-            path={"/annotations/:cellLineId"}
+            key='annotations'
+            path="/annotations/:cellLineId"
             render={props => (
                 <TargetProfile 
                     {...props} 

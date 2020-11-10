@@ -319,8 +319,10 @@ class InteractorNetwork(InteractorResource):
     def get(self, ensg_id):
 
         primary_protein_group = self.get_primary_protein_group(ensg_id)
-        interacting_pulldowns = primary_protein_group.get_pulldowns()
+        if not primary_protein_group:
+            return flask.abort(404, 'There is no primary protein group for ENSG ID %s' % ensg_id)
 
+        interacting_pulldowns = primary_protein_group.get_pulldowns()
         nodes, edges = cytoscape_networks.construct_network(
             interacting_pulldowns=interacting_pulldowns,
             origin_protein_group=primary_protein_group,

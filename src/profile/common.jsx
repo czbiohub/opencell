@@ -29,12 +29,10 @@ function Tabs (props) {
             {'tab-header-active': child.props.id===activeTabId}
         );
         return (
-            <div 
-                key={child.props.id} 
-                className={className} 
-                onClick={() => setActiveTabId(child.props.id)}
-            >
-                <div className='pr2'>{child.props.title}</div>
+            <div key={child.props.id} className={className} >
+                <div className='pr2' onClick={() => setActiveTabId(child.props.id)}>
+                    {child.props.title}
+                </div>
                 {child.props.popoverContent ? (
                     <Popover>
                         <Icon icon='info-sign' iconSize={14} color="#bbb"/>

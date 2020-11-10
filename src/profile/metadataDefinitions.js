@@ -20,7 +20,11 @@ const cellLineMetadataDefinitions = [
     },{
         id: 'target_terminus',
         accessor: row => row.metadata?.target_terminus,
-        Header: 'Terminus',
+        Header: 'Tag terminus',
+    },{
+        id: 'protospacer_sequence',
+        accessor: row => row.metadata?.protospacer_sequence,
+        Header: 'Protospacer sequence',
     },{
         id: 'uniprot_id',
         accessor: row => row.uniprot_metadata?.uniprot_id,

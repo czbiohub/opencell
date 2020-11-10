@@ -12,7 +12,12 @@ export function CellLineMetadata (props) {
     let targetItemLayouts = [
         {
             id: 'target_terminus',
-            width: 24,
+            width: 28,
+            isPublic: true,
+        },{
+            id: 'protospacer_sequence',
+            width: 70,
+            isPublic: true,
         },{
             id: 'hdr_all',
             width: 24,
@@ -36,7 +41,10 @@ export function CellLineMetadata (props) {
 
     // TODO: metadata items for interactors (none, for now)
     const interactorItemLayouts = [];
-    const itemLayouts = props.isInteractor ? interactorItemLayouts : targetItemLayouts;
+
+    let itemLayouts = props.isInteractor ? interactorItemLayouts : targetItemLayouts;
+    if (modeContext==='public') itemLayouts = itemLayouts.filter(layout => layout.isPublic);
+
     const metadataItems = itemLayouts.map(item => {
         const def = cellLineMetadataDefinitions.filter(def => def.id===item.id)[0];
         return (
@@ -46,7 +54,7 @@ export function CellLineMetadata (props) {
                 style={{flex: `1 1 ${item.width}%`}}
             >
                 <MetadataItem
-                    scale={4}
+                    scale={5}
                     value={def.accessor(props.data)}
                     label={def.Header}
                     units={def.units}
@@ -54,10 +62,6 @@ export function CellLineMetadata (props) {
             </div>
         );
     });
-
-    const opencellStatus = props.data.metadata?.cell_line_id ? 'tagged' : 'untagged';
-    let tagType = props.data.metadata?.target_terminus;
-    tagType = tagType ? `(${tagType}-terminus)` : '';
 
     return (
         <div className="flex-wrap items-center pt3 pb3 clm-container">
@@ -71,12 +75,7 @@ export function CellLineMetadata (props) {
             <div className="w-100 clm-protein-description pt2 pb2">
                 {props.data.uniprot_metadata?.protein_name}
             </div>
-
-            <div className="w-100">
-                {/* <div className='clm-opencell-status'>{`OpenCell status: ${opencellStatus} ${tagType}`}</div> */}
-            </div>
-
-            {modeContext==='private' ? metadataItems : null}
+            {metadataItems}
         </div>
     );
 }
@@ -106,6 +105,7 @@ export function ExternalLinks (props) {
             url: id => `https://www.proteinatlas.org/${id}`,
         },
     ];
+
     const linkItems = linkLayouts.map(item => {
         const def = cellLineMetadataDefinitions.filter(def => def.id===item.defId)[0];
         const value = def.accessor(props.data);
@@ -119,6 +119,7 @@ export function ExternalLinks (props) {
             </div>
         );
     });
+
     return (
         <div className="pt2 pb3 flex">
             {linkItems}
@@ -128,7 +129,6 @@ export function ExternalLinks (props) {
 
 
 export function LocalizationAnnotation (props) {
-    const label = annotationDefs.categoryNameToLabel(props.name);
     
     const gradeRectangles = []
     for (let grade = 1; grade <= parseInt(props.grade); grade++) {
@@ -138,6 +138,8 @@ export function LocalizationAnnotation (props) {
             </div>
         );
     }
+
+    const label = annotationDefs.categoryNameToLabel(props.name);
     return (
         <div className='w-90 flex'>
             <div className='flex items-center' style={{width: '120px'}}>{gradeRectangles}</div>

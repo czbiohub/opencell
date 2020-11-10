@@ -1,3 +1,4 @@
+import { Button } from '@blueprintjs/core';
 import * as d3 from 'd3';
 import React, { useState, useContext, useEffect } from 'react';
 import ReactTable from 'react-table';
@@ -7,35 +8,35 @@ import * as utils from '../common/utils.js';
 
 
 const safeLog10 = value => {
-    // calculating the log of the abundance and interaction stoichiometries requires care
-    // because these values can be zero or null, and Math.log10(null) yields -Infinity
-    // (the solution here works because Math.log10(undefined) is NaN)
+    // special method to calculate the log of the abundance and interaction stoichiometries,
+    // because these values can be zero or null, and Math.log10(null) yields `-Infinity`
+    // (this line below works because Math.log10(undefined) is NaN)
     return Math.log10(value || undefined)
 }
 
 const columnDefs = [
     {
-        id: 'bait_name',
+        id: 'bait_gene_name',
         Header: 'Bait',
         accessor: row => row.bait_name,
     },{
-        id: 'prey_name',
+        id: 'prey_gene_name',
         Header: 'Prey',
         accessor: row => row.prey_name,
     },{
-        id: 'pval',
+        id: 'pval_minus_log10',
         Header: 'P-value (-log10)',
         accessor: row => parseFloat(row.pval?.toFixed(2)),
     },{
-        id: 'enrichment',
+        id: 'relative_enrichment',
         Header: 'Relative enrichment',
         accessor: row => parseFloat(row.enrichment?.toFixed(2)),
     },{
-        id: 'abundance',
+        id: 'abundance_stoich_log10',
         Header: 'Abundance stoichiometry (log10)',
         accessor: row => parseFloat(safeLog10(row.abundance_stoich).toFixed(2)),
     },{
-        id: 'interaction',
+        id: 'interaction_stoich_log10',
         Header: 'Interaction stoichiometry (log10)',
         accessor: row => parseFloat(safeLog10(row.interaction_stoich).toFixed(2)),
     },{
@@ -43,7 +44,7 @@ const columnDefs = [
         Header: 'Cluster ID',
         accessor: row => String(row.cluster_id || 'None'),
     },{
-        id: 'subcluster_id',
+        id: 'core_complex_id',
         Header: 'Core complex ID',
         accessor: row => String(row.subcluster_id || 'None'),
     },
@@ -73,6 +74,33 @@ const constructTableData = nodes => {
         }
     });
     return rows;
+}
+
+const downloadTableAsCSV = (data, props) => {
+    // download the interactions table as a CSV
+    // data : the data array returned by constructTableData
+    // props : the props passed to MassSpecTable
+
+    // construct a timestamp in the form 'YYYY-MM-DD'
+    const d = new Date();
+    const year = String(d.getFullYear());
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const timestamp = `${year}-${month}-${day}`;
+
+    // if the id is a pulldownId, format it to resemble the ENSG IDs
+    const id = props.idType==='pulldown' ? `OCPD${String(props.id).padStart(11, '0')}` : props.id;
+
+    const csvFilename = `opencell-interactions-${id}-${props.geneName}-${timestamp}.csv`;
+
+    // construct an array of sanitized data for the CSV
+    // (using the same columnDefs used to display the data in the table)
+    const csvData = data.map(row => {
+        const csvRow = {};
+        columnDefs.forEach(def => csvRow[def.id] = def.accessor(row));
+        return csvRow;
+    });
+    utils.triggerCSVDownload(csvData, csvFilename);
 }
 
 
@@ -134,6 +162,13 @@ export default function MassSpecTable (props) {
                     }}
                 />
             </div>
+            
+            {/* Button to download the table as a CSV file */}
+            <Button
+                text={'Export table as CSV'}
+                className='ma2 bp3-button'
+                onClick={() => downloadTableAsCSV(data, props)}
+            />
         </div>
     );
 }

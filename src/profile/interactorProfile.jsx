@@ -20,6 +20,7 @@ import './Profile.css';
 export default function InteractorProfile (props) {
 
     const [data, setData] = useState({});
+    const [loaded, setLoaded] = useState(false);
 
     // load the metadata for the interactor
     // TODO: this request is only needed for the interactor's uniprot metadata, 
@@ -27,8 +28,9 @@ export default function InteractorProfile (props) {
     useEffect(() => {
         if (!props.match.params.ensgId) return;
         d3.json(`${settings.apiUrl}/interactors/${props.match.params.ensgId}`).then(data => {
-            setData(data);  
-        });
+            setData(data); 
+            setLoaded(true); 
+        }, error => setLoaded(true));
     }, [props.match]);
 
     return (
@@ -53,11 +55,12 @@ export default function InteractorProfile (props) {
                     <MassSpecContainer
                         layout='columns'
                         ensgId={props.match.params.ensgId}
+                        geneName={data.metadata?.target_name}
                         handleGeneNameSearch={props.handleGeneNameSearch}
                     />
                 </div>
             </div>
-        {data.interacting_cell_lines ? (null) : (<div className='loading-overlay'/>)}
+        {loaded ? (null) : (<div className='loading-overlay'/>)}
         </div>
     );
 }

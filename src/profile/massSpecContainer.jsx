@@ -39,6 +39,7 @@ export default function MassSpecContainer (props) {
         <MassSpecTableContainer
             id={id}
             idType={idType}
+            geneName={props.geneName}
             handleGeneNameSearch={props.handleGeneNameSearch}
         />
     );

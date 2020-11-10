@@ -129,6 +129,7 @@ export default class TargetProfileOverview extends Component {
                                 layout='tabs'
                                 ensgId={this.props.cellLine.metadata.ensg_id}
                                 pulldownId={this.props.cellLine.best_pulldown?.id}
+                                geneName={this.props.cellLine.metadata?.target_name}
                                 handleGeneNameSearch={this.props.handleGeneNameSearch}
                             />
                         )}

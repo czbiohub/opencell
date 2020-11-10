@@ -149,3 +149,39 @@ export function getNetworkElements(id, idType, subclusterType, onLoad, onError) 
         data => onLoad(data.parent_nodes, data.nodes, data.edges), error => onError(error)
     );
 }
+
+
+export function generateCSVContent (data) {
+    // generate the content of a CSV file (as a string) from an array of dicts
+    // in which the keys correspond to the CSV column names
+    const sep = ",";
+    const newline = "\n";
+    const columnNames = Object.keys(data[0]);
+
+    // the header row
+    let content = columnNames.join(sep) + newline;
+
+    // create the rows of the CSV from the objects in `data`
+    data.forEach(row => {
+        const values = columnNames.map(name => row[name]);
+        content += (values.join(sep) + newline);
+    });
+
+    // remove the trailing newline
+    content = content.slice(0, content.length - 1);
+    return content;
+}
+
+
+export function triggerCSVDownload (data, filename) {
+    // trigger the browser to download a CSV file
+    // a little hackish, but it works (originally adapted from a stackoverflow post)
+    const content = generateCSVContent(data);
+    const mimeType = "text/csv;encoding:utf-8";
+    let link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([content], {type: mimeType}));
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}

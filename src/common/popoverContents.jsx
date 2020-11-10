@@ -21,10 +21,10 @@ export const localizationHeader = (
         which are represented by the colored rectangles as follows:
     </p>
     <VSpace/>
-    <div className="w-70">
-        <LocalizationAnnotation name='Detectable but subtle' grade='1'/>
-        <LocalizationAnnotation name='Clearly detectable' grade='2'/>
-        <LocalizationAnnotation name='Prominent' grade='3'/>
+    <div className="w-100">
+        <LocalizationAnnotation name='Prominent signal' grade='3'/>
+        <LocalizationAnnotation name='Clearly detectable signal' grade='2'/>
+        <LocalizationAnnotation name='Detectable but subtle and/or weak signal' grade='1'/>
     </div>
     </div>
 );

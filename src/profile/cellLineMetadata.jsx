@@ -140,8 +140,8 @@ export function LocalizationAnnotation (props) {
     }
     return (
         <div className='w-90 flex'>
-            <div className='w-50 flex items-center'>{gradeRectangles}</div>
-            <div className='w-50 localization-row'>{label}</div>
+            <div className='flex items-center' style={{width: '120px'}}>{gradeRectangles}</div>
+            <div className='w-70 pl1 localization-row'>{label}</div>
         </div>
     );
 }

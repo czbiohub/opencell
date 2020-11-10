@@ -127,7 +127,7 @@ export function ExternalLinks (props) {
 }
 
 
-function LocalizationAnnotation (props) {
+export function LocalizationAnnotation (props) {
     const label = annotationDefs.categoryNameToLabel(props.name);
     
     const gradeRectangles = []

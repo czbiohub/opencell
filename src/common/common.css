@@ -67,12 +67,12 @@ button:focus {
     flex: 0 0 auto;
 }
 
-.popover-container-large {
+.popover-container-wide {
     max-width: 500px;
-    padding: 10px;
+    padding: 15px;
 }
 
-.popover-container-small {
+.popover-container-narrow {
     max-width: 300px;
     padding: 10px;
 }

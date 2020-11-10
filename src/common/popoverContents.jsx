@@ -1,18 +1,36 @@
 import React, { Component } from 'react';
 import { H3, H4, H5 } from '@blueprintjs/core';
 
+import {LocalizationAnnotation} from '../profile/cellLineMetadata.jsx';
+
 const VSpace = props => <div style={{'height': '15px', width: '100%'}}/>;
 
 export const aboutThisProteinHeader = (
-    <div className='popover-container-small'>
+    <div className='popover-container-narrow'>
     <p>
     This is the functional annotation from UniprotKB for the currently selected protein.
     </p>
     </div>
 );
 
+export const localizationHeader = (
+    <div className='popover-container-wide'>
+    <p>
+        These are protein localization categories determined by a human observer 
+        from the fluorescence microscopy images. Each category is assigned one of three 'grades,'
+        which are represented by the colored rectangles as follows:
+    </p>
+    <VSpace/>
+    <div className="w-70">
+        <LocalizationAnnotation name='Detectable but subtle' grade='1'/>
+        <LocalizationAnnotation name='Clearly detectable' grade='2'/>
+        <LocalizationAnnotation name='Prominent' grade='3'/>
+    </div>
+    </div>
+);
+
 export const expressionLevelHeader = (
-    <div className='popover-container-large'>
+    <div className='popover-container-wide'>
         <H3>Expression level scatterplot</H3>
         <p>
         This scatterplot compares two different measurements of protein expression 
@@ -27,7 +45,7 @@ export const expressionLevelHeader = (
 );
 
 export const microscopyHeader = (
-    <div className='popover-container-large'>
+    <div className='popover-container-wide'>
         <p>
             Opencell targets are imaged in live cells in three dimensions using a spinning-disk 
             confocal microscope. Three different ways of visualizing these images are available.
@@ -46,43 +64,32 @@ export const microscopyHeader = (
 );
 
 export const microscopyChannel = (
-    <div className='popover-container-small'>
+    <div className='popover-container-narrow'>
     <p>
-        The <b>'DNA' channel</b> shows the DNA stain (Hoechst) used to label the DNA and visualize the nuclei.
+        The <b>'DNA' channel</b> shows the signal from the Hoechst stain used to label the DNA.
         <VSpace/>
         The <b>'Protein' channel</b> shows the signal from the mNeonGreen-tagged protein.
         <VSpace/>
         When <b>both channels</b> are selected, the Hoechst staining is overlaid in blue 
-        on the mNeonGreen signal (which is shown in gray). 
+        on the mNeonGreen signal, which is shown in gray.
     </p>
     </div>
 );
 
 export const microscopyImageQuality = (
-    <div className='popover-container-small'>
+    <div className='popover-container-narrow'>
     <p>
         In <b>'auto' mode</b>, the images are heavily compressed to ensure fast loading times.
-        Compression artifacts may be visible in some images on this setting. 
+        Compression artifacts will be visible in some images on this setting. 
         <VSpace/>
-        In <b>'high' mode</b>, the images are lightly compressed to preserve image quality 
+        In <b>'high-quality' mode</b>, the images are lightly compressed to preserve image quality 
         at the expense of longer loading times.
     </p>
     </div>
 );
 
-export const _ = (
-    <div className='popover-container-small'>
-    <p>
-        
-        <VSpace/>
-        
-    </p>
-    </div>
-);
-
-
 export const interactionNetworkHeader = (
-    <div className='popover-container-small'>
+    <div className='popover-container-wide'>
     <p>
         The protein-protein interaction network for the currently selected protein. 
         This network consists of all of the direct interactors of the selected protein 
@@ -94,6 +101,34 @@ export const interactionNetworkHeader = (
         Clicking on a protein navigates to the OpenCell page for that protein 
         (whether or not it has been tagged). 
         <VSpace/>
+    </p>
+    </div>
+);
+
+export const scatterplotsHeader = (
+    <div className='popover-container-wide'>
+    <p>
+        
+        <VSpace/>
+        
+    </p>
+    </div>
+);
+
+export const interactionTableHeader = (
+    <div className='popover-container-wide'>
+    <p>
+        
+        <VSpace/>
+        
+    </p>
+    </div>
+);
+
+export const _ = (
+    <div className='popover-container-narrow'>
+    <p>
+        
         <VSpace/>
         
     </p>

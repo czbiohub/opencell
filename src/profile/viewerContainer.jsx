@@ -278,14 +278,14 @@ export default class ViewerContainer extends Component {
                         <ButtonGroup 
                             label='Channel' 
                             values={['405', '488', 'Both']}
-                            labels={['DNA', 'Protein', 'Both']}
+                            labels={['Nucleus', 'Target', 'Both']}
                             activeValue={this.state.channel}
                             onClick={value => this.setState({channel: value})}
                             popoverContent={popoverContents.microscopyChannel}
                         />
                     </div>
                 </div>
-                    
+
                 {/* bottom row of controls */}
                 <div className='flex items-center w-100' style={{justifyContent: 'space-between'}}>
                     <div className='flex'>

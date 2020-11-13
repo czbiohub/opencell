@@ -44,7 +44,7 @@ export default function Navbar (props) {
                         width={785} 
                         height={50} 
                         style={{mixBlendMode: 'darken'}}
-                        src='/assets/logos/oc_banner_transparent.png' 
+                        src='/assets/images/oc_banner_transparent.png' 
                     />
                 </div>
                 <div className="pl3 blue navbar-opencell-title">OpenCell</div>

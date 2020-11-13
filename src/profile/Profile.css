@@ -231,11 +231,11 @@
     fill: #01a2ddb2;
 }
 
-.sig-hit-dot {
+.major-sig-hit-dot {
     fill: #f9463ab2;
 }
 
-.minor-hit-dot {
+.minor-sig-hit-dot {
     fill: #ff9b89bf;
 }
 

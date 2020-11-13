@@ -72,19 +72,19 @@ export default class MassSpecScatterPlot extends Component {
 
         this.calcDotColor = d => {
             const baitColor = chroma('#01a1dd').alpha(0.7);  // blue
-            const sigHitColor = chroma('#ff463a').alpha(0.5);  // dark red
-            const minorHitColor = chroma('#ff9b89').alpha(0.5);  // light red
+            const majorSigHitColor = chroma('#ff463a').alpha(0.5);  // dark red
+            const minorSigHitColor = chroma('#ff9b89').alpha(0.5);  // light red
             const notSigHitColor = chroma('#333').alpha(0.2);
             if (d.is_bait) return baitColor
             if (!this.hitIsSignificant(d)) return notSigHitColor;
-            return d.is_minor_hit ? minorHitColor : sigHitColor;
+            return d.is_minor_hit ? minorSigHitColor : majorSigHitColor;
         }
 
         this.calcDotClass = d => {
             // use this to experiment with the dot colors by editing the css classes in devtools
             if (d.is_bait) return 'bait-dot';
             if (!this.hitIsSignificant(d)) return 'not-sig-hit-dot';
-            return d.is_minor_hit ? 'minor-hit-dot' : 'sig-hit-dot';
+            return d.is_minor_hit ? 'minor-sig-hit-dot' : 'major-sig-hit-dot';
         }
 
         this.calcDotStroke = d => {
@@ -220,7 +220,7 @@ export default class MassSpecScatterPlot extends Component {
 
     hitIsSignificant (d) {
         // whether the hit is 'significant' and should be colored, labeled, interactive, etc
-        return d.is_significant_hit || d.is_minor_hit;
+        return d.is_significant_hit;
     }
 
 
@@ -405,7 +405,7 @@ export default class MassSpecScatterPlot extends Component {
             .attr("stroke", "#333");
         appendText(lineNum, "Bait");
 
-        // significant hits
+        // 'major' significant hits
         lineNum = 1;
         d = {is_bait: false, is_significant_hit: true, is_minor_hit: false};
         legend.append("circle")
@@ -414,11 +414,11 @@ export default class MassSpecScatterPlot extends Component {
             .attr("r", dotSize)
             .attr("fill", this.calcDotColor(d))
             .attr("stroke", this.calcDotStroke(d));
-        appendText(lineNum, "Significant hit");
+        appendText(lineNum, "Major hit");
 
-        // minor hits
+        // 'minor' significant hits
         lineNum = 2;
-        d = {is_bait: false, is_significant_hit: false, is_minor_hit: true};
+        d = {is_bait: false, is_significant_hit: true, is_minor_hit: true};
         legend.append("circle")
             .attr("cx", padLeft)
             .attr("cy", padTop + lineNum * lineHeight)

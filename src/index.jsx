@@ -99,14 +99,18 @@ function useGeneNameSearch (setCellLineId) {
 
     const searchAlert = (
             <Alert
-                style={{'min-width': '500px'}}
+                style={{minWidth: '500px'}}
                 isOpen={!searchResultsFound && geneName}
                 confirmButtonText='Okay'
                 canEscapeKeyCancel={true}
                 canOutsideClickCancel={true}
                 onClose={() => setSearchResultsFound(true)}
+                onOpened={(node) => {
+                    node.focus();
+                    node.onkeyup = event => (event.keyCode===13) ? setSearchResultsFound(true) : null;
+                }}
             >
-                <p className='f4'>{`No genes named '${geneName?.toUpperCase()}' found in OpenCell`}</p>
+                <p className='f4'>{`No gene named '${geneName?.toUpperCase()}' found in OpenCell`}</p>
             </Alert>
     );
 

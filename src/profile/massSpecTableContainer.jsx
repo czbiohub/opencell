@@ -42,14 +42,19 @@ const columnDefs = [
     },{
         id: 'cluster_id',
         Header: 'Cluster ID',
-        accessor: row => String(row.cluster_id || 'None'),
+        accessor: row => row.cluster_id || 'None',
     },{
         id: 'core_complex_id',
         Header: 'Core complex ID',
-        accessor: row => String(row.subcluster_id || 'None'),
+        accessor: row => row.subcluster_id || 'None',
     },
 ];
 
+// wrap accessors to coerce all values to strings
+columnDefs.forEach(def => {
+    const accessor = def.accessor;
+    def.accessor = row => String(accessor(row));
+});
 
 const constructTableData = nodes => {
     // create the array of JSON objects for the table of interactors

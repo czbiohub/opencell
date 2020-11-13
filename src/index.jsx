@@ -2,7 +2,7 @@ import * as d3 from 'd3';
 import React, { useState, useEffect, useContext } from 'react';
 import ReactDOM from 'react-dom';
 import ReactGA from 'react-ga';
-
+import {Alert} from '@blueprintjs/core';
 import {
     BrowserRouter,
     Switch,
@@ -70,13 +70,15 @@ function useGeneNameSearch (setCellLineId) {
     // (e.g., to redirect from /gallery to /profile even if the search, and cellLineId, is unchanged)
     
     let history = useHistory();
-    const [doSearch, setDoSearch] = useState(false);
+    const [doSearch, setDoSearch] = useState(true);
+    const [searchResultsFound, setSearchResultsFound] = useState(false);
     const [geneName, setGeneName] = useState();
     const modeContext = useContext(settings.ModeContext);
 
     // retrieve a cellLineId from the target name query 
     // HACK: if there's more than one matching ensg_id or oc_id, we arbitrarily pick one
     useEffect(() => {
+
         if (!geneName || !doSearch) return;
 
         // hack: remove slashes, which are used in some cytoscape node labels
@@ -89,15 +91,27 @@ function useGeneNameSearch (setCellLineId) {
             } else if (result.ensg_ids) {
                 history.push(`/interactor/${result.ensg_ids[0]}${history.location.search}`);
             } else {
-                // TODO: popup warning that no results were found
-                console.log(`No search results for gene name "${geneName}"`);
+                setSearchResultsFound(false);
+                return;
             }
-            setDoSearch(false);            
         });
-    }, [doSearch]);
+    }, [geneName]);
+
+    const searchAlert = (
+            <Alert
+                style={{'min-width': '500px'}}
+                isOpen={!searchResultsFound && geneName}
+                confirmButtonText='Okay'
+                canEscapeKeyCancel={true}
+                canOutsideClickCancel={true}
+                onClose={() => setSearchResultsFound(true)}
+            >
+                <p className='f4'>{`No genes named '${geneName?.toUpperCase()}' found in OpenCell`}</p>
+            </Alert>
+    );
 
     const handleGeneNameSearch = (query) => { setGeneName(query); setDoSearch(true); };
-    return handleGeneNameSearch;
+    return [searchAlert, handleGeneNameSearch];
 }
 
 
@@ -116,7 +130,7 @@ function App() {
     if (modeContext==='public') useGoogleAnalytics();
 
     const [cellLineId, setCellLineId] = useCellLineId();
-    const handleGeneNameSearch = useGeneNameSearch(setCellLineId);
+    const [searchAlert, handleGeneNameSearch] = useGeneNameSearch(setCellLineId);
 
     // handle the back button
     const history = useHistory();
@@ -205,6 +219,9 @@ function App() {
                     <div className="f2 pa3 w-100 ma">Page not found</div>
                 </Route>
             </Switch>
+
+            {searchAlert}
+
         </div>
     )
 }

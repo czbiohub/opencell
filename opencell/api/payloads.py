@@ -162,7 +162,7 @@ def generate_pulldown_hits_payload(pulldown, significant_hits, nonsignificant_hi
         for all of the pulldown's non-significant hits (usually thousands)
     '''
 
-    hit_attrs = ['pval', 'enrichment', 'interaction_stoich', 'abundance_stoich']
+    hit_attrs = ['pval', 'enrichment', 'interaction_stoich', 'abundance_stoich', 'is_minor_hit']
     significant_hit_payloads = []
     for hit in significant_hits:
         significant_hit_payload = {attr: getattr(hit, attr) for attr in hit_attrs}

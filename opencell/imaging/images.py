@@ -82,7 +82,7 @@ class MicroManagerTIFF:
         Parse a MicroManagerMetadata tag in the 'old' schema
         (KC: I believe this schema corresponds to MicroManager 1.x)
         '''
-        md = {
+        metadata = {
             'slice_ind': mm_tag['SliceIndex'],
             'frame_ind': mm_tag['FrameIndex'],
             'channel_ind': mm_tag['ChannelIndex'],
@@ -93,7 +93,7 @@ class MicroManagerTIFF:
             'laser_status_488': mm_tag['AndorILE-A-Laser 488-Power Enable'],
             'laser_power_488': mm_tag['AndorILE-A-Laser 488-Power Setpoint'],
         }
-        return md
+        return metadata
 
 
     @staticmethod
@@ -102,7 +102,7 @@ class MicroManagerTIFF:
         Parse a MicroManagerMetadata tag in the 'new' schema
         (KC: I believe this schema corresponds to MicroManager 2.x)
         '''
-        md = {
+        metadata = {
             'slice_ind': mm_tag['SliceIndex'],
             'frame_ind': mm_tag['FrameIndex'],
             'channel_ind': mm_tag['ChannelIndex'],
@@ -113,7 +113,7 @@ class MicroManagerTIFF:
             'laser_status_488': mm_tag.get('Andor ILE-A-Laser 488-Power Enable')['PropVal'],
             'laser_power_488': mm_tag.get('Andor ILE-A-Laser 488-Power Setpoint')['PropVal'],
         }
-        return md
+        return metadata
 
 
     def parse_micromanager_metadata(self):

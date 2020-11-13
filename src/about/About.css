@@ -1,5 +1,5 @@
 
-about-page-link a, about-page-link a:visited {
+.about-page-link, .about-page-link:visited {
     color: #106ba3;
 }
 
@@ -29,8 +29,15 @@ li {
 }
 
 .about-item-screenshot-container img {
-    border-radius: 5px;
-    border: 1px solid #999;
+    cursor: pointer;
+}
+
+.about-item-screenshot-container img:hover {
+    opacity: 70%;
+}
+
+.lightbox-container img {
+    max-width: 1000px;
 }
 
 .about-item-caption {

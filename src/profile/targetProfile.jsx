@@ -48,7 +48,7 @@ export default function TargetProfile (props) {
 
     if (!cellLine) return null;
 
-    const pulldownId = cellLine.best_pulldown?.id;
+    const tableWidthClass = modeContext==='public'? 'w-70' : 'w-100';
     return (
         <div>
             {/* main container */}
@@ -67,7 +67,7 @@ export default function TargetProfile (props) {
             </div>
 
             {/* table of all targets */}
-            <div className="w-100 pl2 pt2 pb2">
+            <div className={'pl5 pr5 pt2 pb2 ' + tableWidthClass}>
                 <SectionHeader title='All OpenCell targets'/>
                 <CellLineTable 
                     cellLines={allCellLines}

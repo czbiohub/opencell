@@ -24,7 +24,7 @@ const cellLineMetadataDefinitions = [
     },{
         id: 'protospacer_sequence',
         accessor: row => row.metadata?.protospacer_sequence,
-        Header: 'Protospacer sequence',
+        Header: 'CRISPR guide RNA sequence',
     },{
         id: 'uniprot_id',
         accessor: row => row.uniprot_metadata?.uniprot_id,

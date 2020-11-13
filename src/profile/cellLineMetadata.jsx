@@ -121,7 +121,8 @@ export function ExternalLinks (props) {
     });
 
     return (
-        <div className="pt2 pb3 flex">
+        <div className="pt2 pb3 flex items-center">
+            <div className='pr2'>Links: </div>
             {linkItems}
         </div>
     );

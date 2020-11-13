@@ -1,5 +1,5 @@
 
-import React, { Component } from 'react';
+import React, { Component, useState } from 'react';
 import classNames from 'classnames';
 import { Button } from "@blueprintjs/core";
 
@@ -16,9 +16,27 @@ import '../about/About.css';
 
 const Link = props => <a className='about-page-link' target='_blank' href={props.href}>{props.children}</a>
 
+const Lightbox = props => {
+
+    const [visible, setVisible] = useState(false);
+    const lightboxContainer = (
+        <div className='lightbox-container' onClick={() => setVisible(false)}>
+            <div className='pa3 bg-white br4'>
+                <div className='w-100 f2 b tc'>{props.title}</div>
+                {props.children}
+            </div>
+        </div>
+    );
+    const childContainer = (
+        <div className={props.className} onClick={() => setVisible(true)}>{props.children}</div>
+    );
+    return visible ? lightboxContainer : childContainer;
+};
+
+
 export default function About (props) {
     return (
-        <div className='w-90 pa4 f5' style={{minWidth: '1200px'}}>
+        <div className='w-100 pt4 pl5 pr5 f5' style={{minWidth: '1200px'}}>
 
 
             {/* first row - logo and welcome blurb */}
@@ -50,7 +68,8 @@ export default function About (props) {
                             <b>Please keep our data confidential and do not share login credentials.</b>
                             </li>
                             <li>
-                            At the moment, the website is best viewed in a wide browser window on a laptop or desktop.
+                            At the moment, the website is best viewed in a wide browser window 
+                            on a laptop or desktop computer screen.
                             </li>
                             <li>
                             We need your feedback! Write to us 
@@ -85,7 +104,9 @@ export default function About (props) {
                         </div>
                         <div className='about-item-caption'>
                             <p>
-                                Using CRISPR, we endogenously tag our target proteins 
+                                Using CRISPR, 
+                                we <Link href='https://www.pnas.org/content/113/25/E3501'>endogenously tag</Link> our 
+                                target proteins 
                                 with <Link href='https://www.nature.com/articles/s41467-017-00494-8'>split-mNeonGreen<sub>2</sub></Link>.
                             </p>
                             <p>
@@ -100,7 +121,8 @@ export default function About (props) {
                             <img src='/assets/images/microscope_icon.png'/>
                         </div>
                         <div className='about-item-caption'>
-                            All images are of <b>living cells</b> and were acquired using a spinning-disk confocal microscope.
+                            All images are of <b>living cells</b> and were acquired 
+                            using a spinning-disk confocal microscope with a 63x 1.45NA objective. 
                         </div>
                     </div>
 
@@ -123,9 +145,9 @@ export default function About (props) {
                 <div className='w-100 f6 pt3 flex items-center'>
 
                     <div className='about-item-container' style={{flex: '1 1 30%'}}>
-                        <div className='about-item-screenshot-container'>
-                            <img src='/assets/images/target_page.png'/>
-                        </div>
+                        <Lightbox className='about-item-screenshot-container' title='Target page'>
+                            <img src='/assets/images/2020-11-13-opencell-guide-target-page.jpeg'/>
+                        </Lightbox>
                         <div className='about-item-caption'>
                             <b>The target page</b> shows the imaging and interactome data
                             for the 1,217 proteins that we have successfully tagged so far.
@@ -133,9 +155,9 @@ export default function About (props) {
                     </div>
 
                     <div className='about-item-container' style={{flex: '1 1 30%'}}>
-                        <div className='about-item-screenshot-container'>
-                            <img src='/assets/images/interactor_page.png'/>
-                        </div>
+                        <Lightbox className='about-item-screenshot-container' title='Interactor page'>
+                            <img src='/assets/images/2020-11-13-opencell-guide-interactor-page.jpeg'/>
+                        </Lightbox>
                         <div className='about-item-caption'>
                             <b>The interactor page</b> shows the interactome data for more than 4,000
                             additional proteins that we have not tagged but that are present in our mass spec datasets.
@@ -143,9 +165,9 @@ export default function About (props) {
                     </div>
 
                     <div className='about-item-container' style={{flex: '1 1 30%'}}>
-                        <div className='about-item-screenshot-container'>
-                            <img src='/assets/images/gallery_page_small.jpg'/>
-                        </div>
+                        <Lightbox className='about-item-screenshot-container' title='Gallery page'>
+                            <img src='/assets/images/2020-11-13-opencell-guide-gallery-page.jpeg'/>
+                        </Lightbox>
                         <div className='about-item-caption'>
                             <b>The gallery page</b> displays a tiled array of image thumbnails
                             representing all of the tagged proteins with a particular set of localization annotations.

@@ -11,22 +11,9 @@ html {
 	line-height: 1.15;
 }
 
-a {
-    color: #333;
-    text-decoration: none;
+abbr {
+    text-decoration: none !important;
 }
-
-a:hover, a:visited:hover {
-    color: #999;
-    text-decoration: none;
-}
-
-a:visited {
-    color: #333;
-    text-decoration: none;
-}
-
-abbr {text-decoration: none !important}
 
 div {
     /* border: 1px solid #f66 !important; */
@@ -38,6 +25,42 @@ textarea:focus,
 button:focus {
     outline: none;
 }
+
+/* --------------------- navbar --------------------- */
+.navbar-opencell-title {
+    font-family: "Lato", sans-serif;
+    font-size: 30px;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+.navbar-search-textbox {
+    font-size: 24px;
+    font-weight: bold;
+    padding: 5px;
+    width: 150px;
+    text-transform: uppercase;
+}
+
+.navbar-container a {
+    color: #333;
+    text-decoration: none;
+    font-size: 20px;
+    font-variant: all-small-caps;
+    font-weight: 400;
+}
+
+.navbar-container a:hover, .navbar-container a:visited:hover {
+    color: #999;
+    text-decoration: none;
+}
+
+.navbar-container a:visited {
+    color: #333;
+    text-decoration: none;
+}
+
+/* --------------------- misc common styles --------------------- */
 
 .loading-overlay {
     /* these properties force the div to overlay its parent,

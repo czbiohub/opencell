@@ -33,12 +33,12 @@ export const expressionLevelHeader = (
     <div className='popover-container-wide'>
         <p>
         This scatterplot compares two different measurements of protein expression 
-        for all opencell targets. 
+        for all OpenCell targets. 
         On the x-axis, the fluorescence intensity of the tagged protein (measured by FACS)
         is plotted in arbitrary fluorescence units.
         On the y-axis, the RNA abundance in transcripts per million is plotted. 
         </p><p>
-        The currently selected opencell target is highlighted in blue. 
+        The currently selected OpenCell target is highlighted in blue. 
         </p>
     </div>
 );

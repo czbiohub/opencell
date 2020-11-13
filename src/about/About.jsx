@@ -14,6 +14,7 @@ import '../common/common.css';
 import '../profile/Profile.css';
 import '../about/About.css';
 
+const Link = props => <a className='about-page-link' target='_blank' href={props.href}>{props.children}</a>
 
 export default function About (props) {
     return (
@@ -34,9 +35,11 @@ export default function About (props) {
                     <div className='w-100 pt2'>
                         <p>
                         OpenCell is a collection of localization and interactome measurements
-                        for human proteins. It is a collaboration between the Leonetti group
-                        at the Chan Zuckerberg Biohub and the Mann lab at the Max Plank Institute
-                        for Biochemistry, along with many other colleagues. 
+                        for human proteins. It is a collaboration between 
+                        the <Link href='https://www.czbiohub.org/manuel-leonetti-intracellular-architecture/'>Leonetti group</Link> at
+                        the Chan Zuckerberg Biohub and 
+                        the <Link href='https://www.biochem.mpg.de/mann'>Mann Lab</Link> at 
+                        the Max Plank Institute for Biochemistry, along with many other colleagues. 
                         </p>
                         <p>
                         This project is still under development. Thanks for being an alpha tester!
@@ -44,14 +47,15 @@ export default function About (props) {
                         </p>
                         <ul>
                             <li>
-                            Please keep our data confidential and do not share login credentials.
+                            <b>Please keep our data confidential and do not share login credentials.</b>
                             </li>
                             <li>
                             At the moment, the website is best viewed in a wide browser window on a laptop or desktop.
                             </li>
                             <li>
-                            We need your feedback! Write to us at opencell at czbiohub.org 
-                            to tell us what you like or dislike.
+                            We need your feedback! Write to us 
+                            at <Link href='mailto:opencell@czbiohub.org'>opencell@czbiohub.org</Link> to
+                            tell us what you like or dislike.
                             </li>
                         </ul>
                     </div>
@@ -82,7 +86,7 @@ export default function About (props) {
                         <div className='about-item-caption'>
                             <p>
                                 Using CRISPR, we endogenously tag our target proteins 
-                                with split-mNeonGreen2 (PMID 28851864).
+                                with <Link href='https://www.nature.com/articles/s41467-017-00494-8'>split-mNeonGreen<sub>2</sub></Link>.
                             </p>
                             <p>
                                 Whenever possible, we use existing literature or 3D protein structures 
@@ -96,7 +100,7 @@ export default function About (props) {
                             <img src='/assets/images/microscope_icon.png'/>
                         </div>
                         <div className='about-item-caption'>
-                            All imaging is live-cell from a spinning-disk confocal microscope.
+                            All images are of <b>living cells</b> and were acquired using a spinning-disk confocal microscope.
                         </div>
                     </div>
 
@@ -105,7 +109,7 @@ export default function About (props) {
                             <img src='/assets/images/mass_spec_icon.png'/>
                         </div>
                         <div className='about-item-caption'>
-                            We use anti-mNeonGreen nanobody for immunoprecipitation and mass spectrometry.
+                            We use an anti-mNeonGreen nanobody for immunoprecipitation and mass spectrometry.
                         </div>
                     </div>
                 </div>

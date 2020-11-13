@@ -22,6 +22,7 @@ import Dashboard from './dashboard/Dashboard';
 import TargetProfile from './profile/targetProfile.jsx';
 import InteractorProfile from './profile/interactorProfile.jsx';
 import Gallery from './gallery/Gallery.jsx';
+import About from './about/About.jsx';
 import FOVOverview from './microscopy/FOVOverview.jsx';
 import settings from './common/settings.js';
 
@@ -204,10 +205,7 @@ function App() {
         <div>
             <Navbar handleGeneNameSearch={handleGeneNameSearch}/>
             <Switch>
-
-                <Route path="/" exact={true}>
-                    <div>This is the homepage</div>
-                </Route>
+                <Route path="/" exact={true} component={About}/>
 
                 {publicCellLineRoutes}
                 {modeContext==='private' ? privateCellLineRoutes : null}

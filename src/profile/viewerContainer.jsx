@@ -94,6 +94,7 @@ export default class ViewerContainer extends Component {
             stacksLoaded: false,
             projsLoaded: false,
             shouldResetZoom: false,
+            zoomScale: 1,
         };
         this.state = {...this.defaultDisplayState, ...this.defaultZoomState, ...this.state};
 
@@ -174,7 +175,6 @@ export default class ViewerContainer extends Component {
 
     render () {
         
-
         const zIndexToMicrons = (index) => {
             const micronsPerSlice = 0.4;
             return (index * micronsPerSlice).toFixed(1);
@@ -187,6 +187,11 @@ export default class ViewerContainer extends Component {
                 </div>
             );
         }
+        
+        // the current display state
+        const displayState = Object.fromEntries(
+            Object.keys(this.defaultDisplayState).map(key => [key, this.state[key]])
+        );
 
         let viewer;
         if (this.state.mode==='Volume') {
@@ -209,13 +214,19 @@ export default class ViewerContainer extends Component {
                 loaded = this.state.projsLoaded;
             }
             viewer = (
-                <SliceViewer 
-                    {...this.state}
-                    volumes={volumes} 
+                <SliceViewer
                     loaded={loaded} 
+                    volumes={volumes} 
+                    mode={this.state.mode}
+                    channel={this.state.channel}
+                    zIndex={this.state.zIndex}
+                    cameraZoom={this.state.cameraZoom}
+                    cameraPosition={this.state.cameraPosition}
+                    shouldResetZoom={this.state.shouldResetZoom}
                     setCameraZoom={cameraZoom => this.setState({cameraZoom})}
                     setCameraPosition={cameraPosition => this.setState({cameraPosition})}
                     didResetZoom={() => this.setState({shouldResetZoom: false})}
+                    {...displayState}
                 />
             );
         }
@@ -318,6 +329,19 @@ export default class ViewerContainer extends Component {
 
             {/* Display settings */}
             <div className='flex flex-wrap w-100 pt2 pb2'>
+
+                {/* scale bar label */}
+                <div 
+                    className='w-100 flex flex-column' 
+                    style={{
+                        marginTop: -55, 
+                        marginLeft: 20, 
+                        zIndex: 999, 
+                        visibility: this.state.mode==='Volume' ? 'hidden' : 'visible'
+                    }}
+                >
+                    <div className='white b'>10 <span>&micro;m</span></div>
+                </div>
 
                 {/* z-index slider */}
                 <div className='w-100 flex flex-0-0-auto pr3'>

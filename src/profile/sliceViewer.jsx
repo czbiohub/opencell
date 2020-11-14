@@ -87,7 +87,7 @@ export default class SliceViewer extends Component {
 
         // how to display an image given a linearized uint8 array
         // https://stackoverflow.com/questions/42410080/draw-an-exisiting-arraybuffer-into-a-canvas-without-copying
-
+        
         const canvas = d3.select(this.node)
                          .append('canvas')
                          .style('margin', 'auto')
@@ -108,6 +108,17 @@ export default class SliceViewer extends Component {
             .on('zoom', () => this.onZoom(d3.event.transform));
 
         canvas.call(this.zoom);
+
+        this.scaleBarContainer = d3.select(this.node)
+            .append('div')
+            .attr('class', 'flex flex-column')
+            .style('background-color', 'white')
+            .style('position', 'absolute')
+            .style('height', '5px')
+            .style('width', '48px')
+            .style('top', '680px')
+            .style('left', '20px')
+            .style('z-index', 999);
     }
 
 
@@ -145,6 +156,10 @@ export default class SliceViewer extends Component {
 
         // save the transform so we can re-apply it after changing the z-slice
         this.lastTransform = transform;
+
+        // update the scalebar
+        this.scaleBarContainer.style('width', `${48 * this.cameraZoom}px`);
+
     }
 
 

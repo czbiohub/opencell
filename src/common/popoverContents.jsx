@@ -59,6 +59,9 @@ export const microscopyHeader = (
             <b>Volume rendering:</b> this visualizes the entire z-stack at once 
             using a three-dimensional volume rendering.
         </p>
+        <p>
+            The scale bar is in the lower left corner and corresponds to <b>10<span>&micro;</span>m</b>.
+        </p>
     </div>
 );
 

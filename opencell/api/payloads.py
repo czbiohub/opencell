@@ -91,7 +91,7 @@ def generate_cell_line_payload(cell_line, included_fields):
         fov = cell_line.get_best_fov()
         if fov and fov.rois:
             # hack: assume there is only one ROI (the annotated ROI)
-            thumbnail = fov.rois[0].get_thumbnail('rgb')
+            thumbnail = fov.rois[0].get_thumbnail('rgb', eager_loaded=True)
             payload['best_fov'] = {
                 'thumbnails': thumbnail.as_dict() if thumbnail else None
             }

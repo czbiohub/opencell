@@ -666,19 +666,23 @@ class MicroscopyFOV(Base):
         features = self.get_result('fov-features')
         return features.data.get('score') if features else None
 
-    def get_thumbnail(self, channel):
+    def get_thumbnail(self, channel, eager_loaded=False):
         '''
         Retrieve the thumbnail of the FOV
-        (note that this method uses a subquery because it is unlikely
-         that the Thumbnail table will be eager-loaded)
         '''
-        return (
-            db.orm.object_session(self)
-            .query(MicroscopyThumbnail)
-            .filter(MicroscopyThumbnail.fov_id == self.id)
-            .filter(MicroscopyThumbnail.channel == channel)
-            .one_or_none()
-        )
+        if eager_loaded:
+            for thumbnail in self.thumbnails:
+                if thumbnail.channel == channel:
+                    return thumbnail
+            return None
+        else:
+            return (
+                db.orm.object_session(self)
+                .query(MicroscopyThumbnail)
+                .filter(MicroscopyThumbnail.fov_id == self.id)
+                .filter(MicroscopyThumbnail.channel == channel)
+                .one_or_none()
+            )
 
 
 class MicroscopyFOVResult(Base):
@@ -739,18 +743,24 @@ class MicroscopyFOVROI(Base):
     # used to downsample the intensities from uint16 to uint8
     props = db.Column(postgresql.JSONB)
 
-    def get_thumbnail(self, channel):
+    def get_thumbnail(self, channel, eager_loaded=False):
         '''
         Retrieve the thumbnail of the ROI
         (this is an almost direct copy of MicroscopyFOV.get_thumbnail)
         '''
-        return (
-            db.orm.object_session(self)
-            .query(MicroscopyThumbnail)
-            .filter(MicroscopyThumbnail.roi_id == self.id)
-            .filter(MicroscopyThumbnail.channel == channel)
-            .one_or_none()
-        )
+        if eager_loaded:
+            for thumbnail in self.thumbnails:
+                if thumbnail.channel == channel:
+                    return thumbnail
+            return None
+        else:
+            return (
+                db.orm.object_session(self)
+                .query(MicroscopyThumbnail)
+                .filter(MicroscopyThumbnail.roi_id == self.id)
+                .filter(MicroscopyThumbnail.channel == channel)
+                .one_or_none()
+            )
 
 
 class MicroscopyThumbnail(Base):

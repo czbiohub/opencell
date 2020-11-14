@@ -141,6 +141,18 @@ class CellLines(Resource):
         if cell_line_ids:
             query = query.filter(models.CellLine.id.in_(cell_line_ids))
 
+        if 'best-fov' in included_fields:
+            query = query.options(
+                (
+                    db.orm.joinedload(models.CellLine.fovs, innerjoin=True)
+                    .joinedload(models.MicroscopyFOV.rois, innerjoin=True)
+                    .joinedload(models.MicroscopyFOVROI.thumbnails, innerjoin=True)
+                ), (
+                    db.orm.joinedload(models.CellLine.fovs, innerjoin=True)
+                    .joinedload(models.MicroscopyFOV.annotation, innerjoin=True)
+                )
+            )
+
         lines = query.all()
 
         # a separate query for counting FOVs and annotated FOVs per cell line

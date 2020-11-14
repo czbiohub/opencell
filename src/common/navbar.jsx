@@ -11,7 +11,7 @@ export default function Navbar (props) {
             <Link to='/'>Home</Link>
         </div>,
         <div key='target' className='pl3 pr3' style={{borderRight: '1px solid #aaa'}}>
-            <Link to="/target/701">Targets</Link>
+            <Link to="/target">Targets</Link>
         </div>,
         <div key='gallery' className='pl3 pr3'>
             <Link to="/gallery">Gallery</Link>

@@ -72,7 +72,7 @@ function useGeneNameSearch (setCellLineId) {
     
     let history = useHistory();
     const [doSearch, setDoSearch] = useState(true);
-    const [searchResultsFound, setSearchResultsFound] = useState(false);
+    const [searchResultsFound, setSearchResultsFound] = useState(true);
     const [geneName, setGeneName] = useState();
     const modeContext = useContext(settings.ModeContext);
 
@@ -149,6 +149,18 @@ function App() {
     }, []);
 
     const publicCellLineRoutes = [
+        <Route 
+            key='target'
+            path="/target"
+            exact strict
+            render={props => (
+                <TargetProfile 
+                    {...props} 
+                    setCellLineId={setCellLineId}
+                    handleGeneNameSearch={handleGeneNameSearch} 
+                />
+            )}
+        />,
         <Route 
             key='target'
             path="/target/:cellLineId"

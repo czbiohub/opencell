@@ -37,7 +37,7 @@ export default function CellLineTable (props) {
             showPageSizeOptions={true}
             filterable={true}
             columns={columnDefs}
-            data={props.cellLines}
+            data={props.cellLines.sort((a, b) => a.metadata.target_name > b.metadata.target_name ? 1 : -1)}
             getTrProps={(state, rowInfo, column) => {
                 const isActive = rowInfo && rowInfo.original.metadata.cell_line_id===props.cellLineId;
                 return {

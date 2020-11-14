@@ -149,8 +149,8 @@ export default function About (props) {
                             <img src='/assets/images/2020-11-13-opencell-guide-target-page.jpeg'/>
                         </Lightbox>
                         <div className='about-item-caption'>
-                            <b>The target page</b> shows the imaging and interactome data
-                            for the 1,217 proteins that we have successfully tagged so far.
+                            <b>The target page</b> shows all of the imaging and interactome data
+                            for a selected OpenCell target.
                         </div>
                     </div>
 
@@ -170,7 +170,7 @@ export default function About (props) {
                         </Lightbox>
                         <div className='about-item-caption'>
                             <b>The gallery page</b> displays a tiled array of image thumbnails
-                            representing all of the tagged proteins with a particular set of localization annotations.
+                            representing all of the tagged proteins in OpenCell, filtered by a user-selected set of localization annotations.
                         </div>
                     </div>
 

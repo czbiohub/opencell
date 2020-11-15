@@ -343,7 +343,7 @@ class InteractorNetwork(InteractorResource):
         # create compound nodes to represent superclusters and subclusters
         nodes, parent_nodes = cytoscape_networks.construct_compound_nodes(
             nodes,
-            clustering_analysis_type=flask.current_app.config.get('MS_CLUSTERING_TYPE'),
+            clustering_analysis_type=flask.request.args.get('clustering_analysis_type'),
             subcluster_type=flask.request.args.get('subcluster_type'),
             engine=flask.current_app.Session.get_bind()
         )
@@ -497,7 +497,7 @@ class PulldownNetwork(PulldownResource):
         # create compound nodes to represent superclusters and subclusters
         nodes, parent_nodes = cytoscape_networks.construct_compound_nodes(
             nodes,
-            clustering_analysis_type=flask.current_app.config.get('MS_CLUSTERING_TYPE'),
+            clustering_analysis_type=flask.request.args.get('clustering_analysis_type'),
             subcluster_type=flask.request.args.get('subcluster_type'),
             engine=flask.current_app.Session.get_bind()
         )

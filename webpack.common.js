@@ -7,7 +7,7 @@ const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const config = {
 
     entry: {
-        home: './src/index.jsx',
+        index: './src/index.jsx',
     },
 
     module: {
@@ -32,21 +32,22 @@ const config = {
 
     plugins: [
         new MiniCssExtractPlugin({
-            filename: '[name]-bundle.css',
-            chunks: ['home'],
+            filename: '[chunkhash]-bundle.css',
+            chunks: ['index'],
         }),
 
         new HtmlWebpackPlugin({
-            title: 'Home',
+            title: 'OpenCell',
             template: './static/index.html',
             filename: './index.html',
-            chunks: ['home']
+            chunks: ['index']
         }),
     
         // note that the `to` path is relative to the output path defined in the prod config
         new CopyPlugin({
             patterns: [
                 {from: 'static/images', to: 'assets/images'},
+                {from: 'static/favicons', to: 'assets/favicons'},
                 {from: 'static/threejs-textures', to: 'assets/threejs-textures'},
             ]
         })

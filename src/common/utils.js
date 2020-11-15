@@ -144,7 +144,7 @@ export function getNetworkElements(id, idType, subclusterType, onLoad, onError) 
     // onLoad : a function of (parentNodes, nodes, edges)
 
     const endpoint = idType==='pulldown' ? 'pulldowns' : 'interactors';
-    const url = `${settings.apiUrl}/${endpoint}/${id}/network?subcluster_type=${subclusterType}`;
+    const url = `${settings.apiUrl}/${endpoint}/${id}/network?subcluster_type=${subclusterType}&clustering_analysis_type=${settings.clusteringAnalysisType}`;
     d3.json(url).then(
         data => onLoad(data.parent_nodes, data.nodes, data.edges), error => onError(error)
     );

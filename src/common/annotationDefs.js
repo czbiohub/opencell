@@ -13,17 +13,20 @@ export const publicLocalizationCategories = [
     {'name': 'nucleolus', 'num': 13},
     {'name': 'nucleolus_gc', 'num': 100},
     {'name': 'nucleolus_fc_dfc', 'num': 37},
-    {'name': 'nucleolar_ring', 'num': 17},
     {'name': 'nuclear_punctae', 'num': 152},
-    {'name': 'nucleus_cytoplasm_variation', 'num': 117},
     {'name': 'small_aggregates', 'num': 124},
     {'name': 'big_aggregates', 'num': 73},
     {'name': 'cell_contact', 'num': 59},
     {'name': 'focal_adhesions', 'num': 13},
+    {'name': 'cytoplasmic', 'num': 760},
+];
+
+export const privateLocalizationCategories = [
     {'name': 'cilia', 'num': 3},
     {'name': 'diffuse', 'num': 79},
     {'name': 'textured', 'num': 149},
-    {'name': 'cytoplasmic', 'num': 760},
+    {'name': 'nucleus_cytoplasm_variation', 'num': 117},
+    {'name': 'nucleolar_ring', 'num': 17},
 ];
 
 export const qcCategories = [

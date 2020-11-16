@@ -7,7 +7,7 @@ const zSliceSize = 600;
 const numZSlices = 27;
 
 // the type of mass-spec clustering results to display
-const clusteringAnalysisType = 'primary:mcl_i3.0_haircut:keepcore_subcluster:mcl_hybrid_stoichs_2.0_2';
+const clusteringAnalysisType = 'primary:mcl_i3.0_haircut:keepcore_subcluster:mcl_hybrid_stoichs_7.0_1113';
 
 // constants defined by webpack at buildtime
 let apiUrl = API_URL;

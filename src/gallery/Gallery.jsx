@@ -23,15 +23,11 @@ import './gallery.css';
 
 
 function appendCategoryLabels (categories) {
-    categories.forEach(category => {
-        category.label = annotationDefs.categoryNameToLabel(category.name)
+    return categories.map(category => {
+        category.label = annotationDefs.categoryNameToLabel(category.name);
+        return category;
     });
-    return categories;
 }
-
-const qcCategories = appendCategoryLabels(annotationDefs.qcCategories);
-const targetFamilies = appendCategoryLabels(annotationDefs.targetFamilies);
-const localizationCategories = appendCategoryLabels(annotationDefs.publicLocalizationCategories);
 
 function Lightbox (props) {
     return (
@@ -88,19 +84,32 @@ class Gallery extends Component {
 
     constructor (props) {
         super(props);
+
+        this.allQcCategories = appendCategoryLabels(annotationDefs.qcCategories);
+        this.allTargetFamilies = appendCategoryLabels(annotationDefs.targetFamilies);
+        
+        this.allLocalizationCategories = annotationDefs.publicLocalizationCategories;
+        if (this.context==='private') {
+            this.allLocalizationCategories = [
+                ...annotationDefs.publicLocalizationCategories,
+                ...annotationDefs.privateLocalizationCategories,
+            ];
+        }
+        this.allLocalizationCategories = appendCategoryLabels(this.allLocalizationCategories);
+    
         this.state = {
             loaded: false,
 
-            // default to publication-ready targets 
+            // set the default selected QC category to publication_ready 
             // (note that in 'public' mode, the QC category selection component is hidden, 
             // so only the publication-ready targets will be displayed)
-            qcCategories: qcCategories.filter(item => item.name === 'publication_ready'),
+            selectedQcCategories: this.allQcCategories.filter(item => item.name === 'publication_ready'),
 
-            // pick a pretty localization category for the default
-            localizationCategories: localizationCategories.filter(item => item.name === 'cytoskeleton'),
+            // set the default localization category to something pretty
+            selectedLocalizationCategories: this.allLocalizationCategories.filter(item => item.name === 'cytoskeleton'),
 
             // no families selected by default (and these are hidden in public mode)
-            targetFamilies: [],
+            selectedTargetFamilies: [],
 
             // the list of selected cell lines
             selectedCellLines: [],
@@ -146,7 +155,7 @@ class Gallery extends Component {
         });
 
         // select the lines with *all* of the selected QC categories 
-        for (let category of this.state.qcCategories) {
+        for (let category of this.state.selectedQcCategories) {
             lines = lines.filter(line => line.categories.includes(category.name));
         }
 
@@ -154,13 +163,13 @@ class Gallery extends Component {
         let selectedLines;
         if (this.state.selectionMode==='All') {
             selectedLines = [...lines];
-            for (let category of this.state.localizationCategories) {
+            for (let category of this.state.selectedLocalizationCategories) {
                 selectedLines = selectedLines.filter(line => line.categories.includes(category.name));
             }
         }
         if (this.state.selectionMode==='Any') {
             selectedLines = [];
-            for(let category of this.state.localizationCategories) {
+            for(let category of this.state.selectedLocalizationCategories) {
                 selectedLines.push(...lines.filter(line => line.categories.includes(category.name)));
             }
         }
@@ -235,17 +244,17 @@ class Gallery extends Component {
             <div className="pr3 w-20">
                 <div className="f4">{"QC annotations"}</div>
                 <MultiSelectContainer
-                    items={qcCategories}
-                    selectedItems={this.state.qcCategories}
-                    updateSelectedItems={items => this.updateCategories('qcCategories', items)}
+                    items={this.allQcCategories}
+                    selectedItems={this.state.selectedQcCategories}
+                    updateSelectedItems={items => this.updateCategories('selectedQcCategories', items)}
                 />
             </div>,
             <div className="pr3 w-20">
                 <div className="f4">{"Target families"}</div>
                 <MultiSelectContainer
-                    items={targetFamilies}
-                    selectedItems={this.state.targetFamilies}
-                    updateSelectedItems={items => this.updateCategories('targetFamilies', items)}
+                    items={this.allTargetFamilies}
+                    selectedItems={this.state.selectedTargetFamilies}
+                    updateSelectedItems={items => this.updateCategories('selectedTargetFamilies', items)}
                 />
             </div>
         ];
@@ -257,10 +266,10 @@ class Gallery extends Component {
                         <div className="pr3 w-33">
                             <div className="f4">{"Select localization annotations"}</div>
                             <MultiSelectContainer
-                                items={localizationCategories}
-                                selectedItems={this.state.localizationCategories}
+                                items={this.allLocalizationCategories}
+                                selectedItems={this.state.selectedLocalizationCategories}
                                 updateSelectedItems={
-                                    items => this.updateCategories('localizationCategories', items)
+                                    items => this.updateCategories('selectedLocalizationCategories', items)
                                 }
                             />
                         </div>

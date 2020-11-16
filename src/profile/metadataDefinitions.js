@@ -162,15 +162,21 @@ const fovMetadataDefinitions = [
 ];
 
 
+const sanitizeValue = value => {
+    if (isNaN(value)) return String(value);
+    if (typeof(value)==='boolean') return String(value);
+    return value;
+}
+
 // wrap accessors to coerce all values to strings
 cellLineMetadataDefinitions.forEach(def => {
     const accessor = def.accessor;
-    def.accessor = row => String(accessor(row));
+    def.accessor = row => sanitizeValue(accessor(row));
 });
 
 fovMetadataDefinitions.forEach(def => {
     const accessor = def.accessor;
-    def.accessor = row => String(accessor(row));
+    def.accessor = row => sanitizeValue(accessor(row));
 });
 
 export {

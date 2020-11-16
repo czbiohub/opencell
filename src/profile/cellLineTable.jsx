@@ -22,8 +22,8 @@ export default function CellLineTable (props) {
     columnDefs = columnDefs.filter(def => !hiddenColumnDefIds.includes(def.id));
 
     const publicColumnDefIds = [
-        'gene_name', 'protein_name', 'target_terminus', 'uniprot_id', 'ensg_id',
-        'hek_tpm', 'hdr_all', 'hdr_modified', 
+        'gene_name', 'protein_name', 'uniprot_id', 'ensg_id',
+        'hek_tpm', 'target_terminus', 'protospacer_sequence', 
     ];
 
     if (modeContext!=='private') {

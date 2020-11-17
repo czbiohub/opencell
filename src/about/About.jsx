@@ -63,13 +63,13 @@ export default function About (props) {
                         This project is still under development. Thanks for being an alpha tester!
                         We ask that you keep in mind a few important points:
                         </p>
-                        <ul>
+                        <ul className='about-page-bullets'>
                             <li>
                             <b>Please keep our data confidential and do not share login credentials.</b>
                             </li>
                             <li>
-                            At the moment, the website is best viewed in a wide browser window 
-                            on a laptop or desktop computer screen.
+                            At the moment, this website is best viewed using either Firefox or Chrome
+                            in a wide browser window on a laptop or desktop computer screen.
                             </li>
                             <li>
                             We need your feedback! Write to us 
@@ -170,7 +170,8 @@ export default function About (props) {
                         </Lightbox>
                         <div className='about-item-caption'>
                             <b>The gallery page</b> displays a tiled array of image thumbnails
-                            representing all of the tagged proteins in OpenCell, filtered by a user-selected set of localization annotations.
+                            representing all of the tagged proteins in OpenCell, 
+                            filtered by a user-selected set of localization annotations.
                         </div>
                     </div>
 

@@ -103,10 +103,14 @@ class Gallery extends Component {
             // set the default selected QC category to publication_ready 
             // (note that in 'public' mode, the QC category selection component is hidden, 
             // so only the publication-ready targets will be displayed)
-            selectedQcCategories: this.allQcCategories.filter(item => item.name === 'publication_ready'),
+            selectedQcCategories: this.allQcCategories.filter(
+                item => item.name === 'publication_ready'
+            ),
 
             // set the default localization category to something pretty
-            selectedLocalizationCategories: this.allLocalizationCategories.filter(item => item.name === 'cytoskeleton'),
+            selectedLocalizationCategories: this.allLocalizationCategories.filter(
+                item => item.name === 'cytoskeleton'
+            ),
 
             // no families selected by default (and these are hidden in public mode)
             selectedTargetFamilies: [],

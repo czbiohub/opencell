@@ -46,8 +46,9 @@ export const expressionLevelHeader = (
 export const microscopyHeader = (
     <div className='popover-container-wide'>
         <p>
-            Opencell targets are imaged in live cells in three dimensions using a spinning-disk 
-            confocal microscope. Three different ways of visualizing these images are available.
+            Opencell targets are imaged in live cells using a spinning-disk 
+            confocal microscope with a 63x 1.45NA objective to acquire three-dimensional (z-stack) images. 
+            Three different ways of visualizing these images are available.
         </p><p>
             <b>Z-projection mode</b>: the maximum-intensity projection through the z-stack 
             (along the z-axis) is displayed.
@@ -58,9 +59,9 @@ export const microscopyHeader = (
         </p><p>
             <b>Volume rendering:</b> this visualizes the entire z-stack at once 
             using a three-dimensional volume rendering.
-        </p>
-        <p>
-            The scale bar is in the lower left corner and corresponds to <b>10<span>&micro;</span>m</b>.
+        </p><p>
+            Please note that the five-digit numbers labeling each FOV are identifiers
+            that uniquely and stably identify each image. They are mostly for internal use.             
         </p>
     </div>
 );
@@ -93,22 +94,61 @@ export const microscopyImageQuality = (
 export const interactionNetworkHeader = (
     <div className='popover-container-wide'>
     <p>
-        The protein-protein interaction network for the currently selected protein. 
-        This network consists of all of the direct interactors of the selected protein 
-        as well as the interactions between them. 
+        The protein-protein interactions for the selected target, displayed 
+        as an <b>interactive</b> graph representation. 
     </p><p>
-        The node that represents the selected protein is shown in blue. 
-        Bolded protein names indicate that the protein is an OpenCell target. 
+        Proteins are represented by <b>nodes</b> and significant interactions 
+        between them are represented by <b>edges</b> between nodes (the light gray lines). 
+        You can navigate to the page for any protein in the network by clicking on its node.  
     </p><p>
-        Clicking on a protein navigates to the OpenCell page for that protein 
-        (whether or not it has been tagged). 
+        The selected OpenCell target protein is labeled in blue, 
+        and all of its direct interactions are shown. 
+        Interactors in <b>bold</b> have themselves been tagged in OpenCell; all others have not. 
+    </p><p>
+        We use <a href='https://mcans.org/mcl/' target='_blank'> a type of unsupervised clustering</a> of 
+        the whole interactome to group highly connected proteins 
+        into <b>functional modules</b>. These are represented by the lightly shaded gray boxes. 
+        Within these modules, <b>core complexes</b> are represented by the slightly darker shaded boxes.
+        These core complex clusters are defined using high-stoichiometry interactions 
+        (see the stoichiometry plots under the 'Scatterplots' tab for more details). 
+    </p><p>
+        Please note that large interactomes are hard to compactly arrange in two dimensions. 
+        We are working on improving this; in the meantime, using the <b>'Re-run layout'</b> button 
+        might improve readability for large networks. 
+        Panning and zooming is also available (use <b>'Reset zoom'</b> to return to the default view). 
     </p>
     </div>
 );
 
 export const scatterplotsHeader = (
     <div className='popover-container-wide'>
-    <p>        
+    <p>
+    Scatter plots contain quantitative information about each protein-protein interaction (PPI) we measured. 
+    Each dot represents a protein (or group of homologs) that interacts with the currently selected OpenCell target. 
+    Each plot is interactive (use <b>'Show labels'</b> to toggle dot labels on/off 
+    and <b>Reset zoom</b> after panning or zooming).
+    </p><p>
+    <b>The volcano plot mode</b> represents a statistical definition of PPIs in pull-downs 
+    of the selected target. 
+    Each dot represents the relative enrichment of the interacting protein (on the x-axis)
+    and its associated p-value (on the y-axis). 
+    The enrichment value of each interactor is calculated relative to its enrichment 
+    in hundreds of other OpenCell pulldowns, 
+    and p-values are calculated from a t-test using triplicate observations of each interactor. 
+    We defined statistically significant interactions using two thresholds for false discovery rate: 
+    a very stringent 'major hit' threshold, and a more relaxed 'minor hit' threshold. 
+    </p><p>
+    <b>The stoichiometry plot mode</b> represents stoichiometry information of PPIs 
+    as defined <a href='https://www.cell.com/cell/fulltext/S0092-8674(15)01270-2' target='_blank'>here</a>. 
+    The <b>interaction stoichiometry</b> (on the x-axis) corresponds to the abundance ratio 
+    of an interactor to that of the target protein in triplicate pull-downs.
+    The <b>abundance stoichiometry</b> (on the y-axis) corresponds to the abundance ratio from expression 
+    in the whole cell. The shaded circle in the plot is the 'core-complex zone,' 
+    determined empirically to be enriched for stable protein interactions.
+    </p><p>
+    Please note that, for some targets, no data is displayed in this tab. These targets 
+    do not have their own IP-MS (immunoprecipitation-mass spectrometry) experiment yet. 
+    Rather, their interaction network is derived from the IP-MS data for all other OpenCell targets. 
     </p>
     </div>
 );
@@ -116,7 +156,23 @@ export const scatterplotsHeader = (
 export const interactionTableHeader = (
     <div className='popover-container-wide'>
     <p>
-    </p><p>        
+    This table summarizes the quantitative properties of each interaction involving the selected target. 
+    For each interaction, the <b>bait</b> column corresponds to the name of the tagged protein 
+    that was pulled down and the <b>prey</b> column corresponds to the interacting protein 
+    that was detected in that pull-down. 
+    Note that an OpenCell target can appear either as a bait or as a prey (or both) in the interactors table. 
+    </p><p>
+    The quantitative columns include the <b>p-value</b> (-log10) and the <b>relative enrichment </b>
+    from the volcano plot, as well as the abundance stoichiometry 
+    and the interaction stoichiometry (both in log10) from the stoichiometry plot. 
+    (for more details, refer to the scatterplot tab). 
+    </p><p>
+    When both interactors belong to the same functional module (the shaded boxes in 'Network' tab), 
+    the module ID is specified as the 'Cluster ID'. These IDs are unique but not human-readable; 
+    we are working on appending meaningful biological annotations to these clusters. 
+    </p><p>
+    Below the table, the <b>'Export table as CSV'</b> button allows you to download 
+    the whole interactors table for the currently selected target as a CSV file. 
     </p>
     </div>
 );

@@ -91,10 +91,11 @@ export const microscopyImageQuality = (
 export const microscopyFovSelection = (
     <div className='popover-container-narrow'>
     <p>
-        Select the image to display from among all available images of the selected target. 
+        Select the image to view from among all available images of the selected target. 
         Each image represents a different position, or field of view (FOV), on the microscope. 
     </p><p>
-        Please note that the five-digit number identifying each FOV is for internal use. 
+        Please note that the five-digit number identifying each FOV 
+        is not human-readable and is intended only for internal use. 
     </p>
     </div>
 );

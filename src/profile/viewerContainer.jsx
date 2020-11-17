@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Button, MenuItem, Slider, RangeSlider, Popover, Icon } from "@blueprintjs/core";
+import { Button, MenuItem, Slider, RangeSlider, Tooltip, Popover, Icon } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
 import classNames from 'classnames';
 
@@ -248,10 +248,12 @@ export default class ViewerContainer extends Component {
                     <div className="roi-thumbnail-select-container pr3">
                         <div className='flex'>
                             <div className="pr1 simple-button-group-label">Select image</div>
-                            <div><Popover>
-                                <Icon icon='info-sign' iconSize={12} color="#bbb"/>
-                                {popoverContents.microscopyFovSelection}
-                            </Popover></div>
+                            <div>
+                                <Popover>
+                                    <Icon icon='info-sign' iconSize={12} color="#bbb"/>
+                                    {popoverContents.microscopyFovSelection}
+                                </Popover>
+                            </div>
                         </div>
                         <Select 
                             className={'roi-select'}
@@ -355,16 +357,25 @@ export default class ViewerContainer extends Component {
                         <span>&micro;m</span>
                         </b>
                     </div>
-                    <Slider 
-                        min={0} 
-                        max={this.numSlices - 1} 
-                        stepSize={1}
-                        labelStepSize={50}
-                        showTrackFill={false}
-                        disabled={this.state.mode!=='Slice'}
-                        value={this.state.zIndex}
-                        onChange={value => this.setState({zIndex: parseInt(value)})}
-                    />
+                    <div className='w-70'>
+                        <Tooltip 
+                            intent='warning'
+                            targetClassName='w-100'
+                            content='Please switch to z-slice mode to scroll through z-slices'
+                            disabled={this.state.mode==='Slice'}
+                        >
+                            <Slider 
+                                min={0} 
+                                max={this.numSlices - 1} 
+                                stepSize={1}
+                                labelStepSize={50}
+                                showTrackFill={false}
+                                disabled={this.state.mode!=='Slice'}
+                                value={this.state.zIndex}
+                                onChange={value => this.setState({zIndex: parseInt(value)})}
+                            />
+                        </Tooltip>
+                    </div>
                 </div>
 
                 {/* 405 min/max/gamma */}

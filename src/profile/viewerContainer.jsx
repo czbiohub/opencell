@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Button, MenuItem, Slider, RangeSlider } from "@blueprintjs/core";
+import { Button, MenuItem, Slider, RangeSlider, Popover, Icon } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
 import classNames from 'classnames';
 
@@ -246,8 +246,15 @@ export default class ViewerContainer extends Component {
                 <div className='flex flex-wrap w-100 pb2'>
 
                     <div className="roi-thumbnail-select-container pr3">
+                        <div className='flex'>
+                            <div className="pr1 simple-button-group-label">Select image</div>
+                            <div><Popover>
+                                <Icon icon='info-sign' iconSize={12} color="#bbb"/>
+                                {popoverContents.microscopyFovSelection}
+                            </Popover></div>
+                        </div>
                         <Select 
-                        className={'roi-select'}
+                            className={'roi-select'}
                             activeItem={roi}
                             items={this.props.rois} 
                             itemRenderer={roiItemRenderer} 
@@ -263,15 +270,12 @@ export default class ViewerContainer extends Component {
                                 this.props.changeRoi(roi.id, roi.fov_id);
                                 this.resetZoom();
                             }}
-                        >
-                            <div className='simple-button-group'>
-                                <div className="simple-button-group-label">Select FOV</div>
-                                <Button 
-                                    className="bp3-button-custom"
-                                    rightIcon="double-caret-vertical"
-                                    text={`FOV ${roi.fov_id}`}
-                                />
-                            </div>
+                        >                            
+                            <Button 
+                                className="bp3-button-custom"
+                                rightIcon="double-caret-vertical"
+                                text={`FOV ${roi.fov_id}`}
+                            />
                         </Select>
                     </div>
 

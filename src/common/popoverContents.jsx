@@ -59,9 +59,6 @@ export const microscopyHeader = (
         </p><p>
             <b>Volume rendering:</b> this visualizes the entire z-stack at once 
             using a three-dimensional volume rendering.
-        </p><p>
-            Please note that the five-digit numbers labeling each FOV are identifiers
-            that uniquely and stably identify each image. They are mostly for internal use.             
         </p>
     </div>
 );
@@ -87,6 +84,17 @@ export const microscopyImageQuality = (
     </p><p>
         In <b>'high-quality' mode</b>, the images are lightly compressed to preserve image quality 
         at the expense of longer loading times.
+    </p>
+    </div>
+);
+
+export const microscopyFovSelection = (
+    <div className='popover-container-narrow'>
+    <p>
+        Select the image to display from among all available images of the selected target. 
+        Each image represents a different position, or field of view (FOV), on the microscope. 
+    </p><p>
+        Please note that the five-digit number identifying each FOV is for internal use. 
     </p>
     </div>
 );
@@ -146,7 +154,7 @@ export const scatterplotsHeader = (
     in the whole cell. The shaded circle in the plot is the 'core-complex zone,' 
     determined empirically to be enriched for stable protein interactions.
     </p><p>
-    Please note that, for some targets, no data is displayed in this tab. These targets 
+    Please note that, for some targets, <b>no data</b> is displayed in this tab. These targets 
     do not have their own IP-MS (immunoprecipitation-mass spectrometry) experiment yet. 
     Rather, their interaction network is derived from the IP-MS data for all other OpenCell targets. 
     </p>
@@ -163,8 +171,8 @@ export const interactionTableHeader = (
     Note that an OpenCell target can appear either as a bait or as a prey (or both) in the interactors table. 
     </p><p>
     The quantitative columns include the <b>p-value</b> (-log10) and the <b>relative enrichment </b>
-    from the volcano plot, as well as the abundance stoichiometry 
-    and the interaction stoichiometry (both in log10) from the stoichiometry plot. 
+    from the volcano plot, as well as the <b>abundance stoichiometry</b>
+    and the <b>interaction stoichiometry</b> (both in log10) from the stoichiometry plot. 
     (for more details, refer to the scatterplot tab). 
     </p><p>
     When both interactors belong to the same functional module (the shaded boxes in 'Network' tab), 

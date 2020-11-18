@@ -14,6 +14,7 @@ import 'tachyons';
 import 'react-table/react-table.css';
 import "@blueprintjs/core/lib/css/blueprint.css";
 
+import * as popoverContents from '../common/popoverContents.jsx';
 import settings from '../common/settings.js';
 import * as utils from '../common/utils.js';
 
@@ -72,7 +73,10 @@ export default function TargetProfile (props) {
 
             {/* table of all targets */}
             <div className={'pl5 pr5 pt3 pb2 ' + tableWidthClass}>
-                <SectionHeader title='All OpenCell targets'/>
+                <SectionHeader 
+                    title='All OpenCell targets' 
+                    popoverContent={popoverContents.cellLineTableHeader}
+                />
                 <CellLineTable 
                     cellLines={allCellLines}
                     cellLineId={props.cellLineId}

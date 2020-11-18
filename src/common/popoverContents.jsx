@@ -43,6 +43,20 @@ export const expressionLevelHeader = (
     </div>
 );
 
+export const cellLineTableHeader = (
+    <div className='popover-container-wide'>
+        <p>
+        This table lists all of the ~1200 genes that have been successfully tagged as part of OpenCell. 
+        </p><p>
+        Click on a column header to sort the table by the values in that column, 
+        and use the textbox below each column header to search within that column.
+        </p><p>
+        The 'Expression' column corresponds to the expression level in HEK293T cells, 
+        measured using RNAseq. 
+        </p>
+    </div>
+);
+
 export const microscopyHeader = (
     <div className='popover-container-wide'>
         <p>

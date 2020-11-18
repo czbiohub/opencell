@@ -68,6 +68,10 @@ export default function About (props) {
                             <b>Please keep our data confidential and do not share login credentials.</b>
                             </li>
                             <li>
+                            We use the canonical gene names defined by Uniprot and other reference databases;
+                            for example, 'CLTA' for clathrin light chain A and 'ACTB' for actin. 
+                            </li>
+                            <li>
                             At the moment, this website is best viewed using either Firefox or Chrome
                             in a wide browser window on a laptop or desktop computer screen.
                             </li>
@@ -77,6 +81,12 @@ export default function About (props) {
                             tell us what you like or dislike.
                             </li>
                         </ul>
+                        <p>
+                        To get started, use the search box at the top right of the page to search
+                        for a protein by name. Alternatively, jump to the page
+                        for one of our (subjectively) favorite proteins: <a href='./target/701'>POLR2F</a>, 
+                        a shared subunit of RNA polymerases.
+                        </p>
                     </div>
                 </div>
             </div>

@@ -155,9 +155,13 @@ export const scatterplotsHeader = (
     in the whole cell. The shaded circle in the plot is the 'core-complex zone,' 
     determined empirically to be enriched for stable protein interactions.
     </p><p>
-    Please note that, for some targets, <b>no data</b> is displayed in this tab. These targets 
-    do not have their own IP-MS (immunoprecipitation-mass spectrometry) experiment yet. 
-    Rather, their interaction network is derived from the IP-MS data for all other OpenCell targets. 
+    Please note that, for some targets, <b>no data</b> is displayed in this tab. This occurs for targets
+    that do not have their own IP-MS (immunoprecipitation-mass spectrometry) dataset yet. 
+    For these targets, the interaction network is derived from the IP-MS data for all other OpenCell targets. 
+    </p><p>
+    Additionally, because the interaction stoichiometry values are normalized to the target, 
+    if the target was not detected in its own pull-down,
+    the stoichiometry calculations are impossible and no data can be displayed in the stoichiometry scatterplot.
     </p>
     </div>
 );

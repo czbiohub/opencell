@@ -282,14 +282,21 @@ export default class ViewerContainer extends Component {
                     </div>
 
                     <div className='pr3'>
-                        <ButtonGroup 
-                            label='Image quality' 
-                            values={['Auto', 'High']}
-                            activeValue={this.state.imageQuality}
-                            onClick={value => this.setState({imageQuality: value})}
-                            disabled={this.state.mode==='Proj'}
-                            popoverContent={popoverContents.microscopyImageQuality}
-                        />
+                        <Tooltip 
+                            intent='warning'
+                            targetClassName='w-100'
+                            content='Image quality is only adjustable in z-slice and volume-rendering modes'
+                            disabled={this.state.mode!=='Proj'}
+                        >
+                            <ButtonGroup 
+                                label='Image quality' 
+                                values={['Auto', 'High']}
+                                activeValue={this.state.imageQuality}
+                                onClick={value => this.setState({imageQuality: value})}
+                                disabled={this.state.mode==='Proj'}
+                                popoverContent={popoverContents.microscopyImageQuality}
+                            />
+                        </Tooltip>
                     </div>
                     <div className='pr3'>
                         <ButtonGroup 

@@ -69,7 +69,7 @@ export default function About (props) {
                             </li>
                             <li>
                             We use the canonical gene names defined by Uniprot and other reference databases;
-                            for example, 'CLTA' for clathrin light chain A and 'ACTB' for actin. 
+                            for example, 'CLTA' for clathrin light chain A and 'ACTB' for beta-actin. 
                             </li>
                             <li>
                             At the moment, this website is best viewed using either Firefox or Chrome

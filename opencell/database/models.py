@@ -666,19 +666,23 @@ class MicroscopyFOV(Base):
         features = self.get_result('fov-features')
         return features.data.get('score') if features else None
 
-    def get_thumbnail(self, channel):
+    def get_thumbnail(self, channel, eager_loaded=False):
         '''
         Retrieve the thumbnail of the FOV
-        (note that this method uses a subquery because it is unlikely
-         that the Thumbnail table will be eager-loaded)
         '''
-        return (
-            db.orm.object_session(self)
-            .query(MicroscopyThumbnail)
-            .filter(MicroscopyThumbnail.fov_id == self.id)
-            .filter(MicroscopyThumbnail.channel == channel)
-            .one_or_none()
-        )
+        if eager_loaded:
+            for thumbnail in self.thumbnails:
+                if thumbnail.channel == channel:
+                    return thumbnail
+            return None
+        else:
+            return (
+                db.orm.object_session(self)
+                .query(MicroscopyThumbnail)
+                .filter(MicroscopyThumbnail.fov_id == self.id)
+                .filter(MicroscopyThumbnail.channel == channel)
+                .one_or_none()
+            )
 
 
 class MicroscopyFOVResult(Base):
@@ -739,18 +743,24 @@ class MicroscopyFOVROI(Base):
     # used to downsample the intensities from uint16 to uint8
     props = db.Column(postgresql.JSONB)
 
-    def get_thumbnail(self, channel):
+    def get_thumbnail(self, channel, eager_loaded=False):
         '''
         Retrieve the thumbnail of the ROI
         (this is an almost direct copy of MicroscopyFOV.get_thumbnail)
         '''
-        return (
-            db.orm.object_session(self)
-            .query(MicroscopyThumbnail)
-            .filter(MicroscopyThumbnail.roi_id == self.id)
-            .filter(MicroscopyThumbnail.channel == channel)
-            .one_or_none()
-        )
+        if eager_loaded:
+            for thumbnail in self.thumbnails:
+                if thumbnail.channel == channel:
+                    return thumbnail
+            return None
+        else:
+            return (
+                db.orm.object_session(self)
+                .query(MicroscopyThumbnail)
+                .filter(MicroscopyThumbnail.roi_id == self.id)
+                .filter(MicroscopyThumbnail.channel == channel)
+                .one_or_none()
+            )
 
 
 class MicroscopyThumbnail(Base):
@@ -902,9 +912,9 @@ class MassSpecPulldown(Base):
         return self.cell_line.crispr_design.target_name
 
 
-    def get_significant_hits(self, eagerload=True):
+    def get_significant_hits(self, protein_group_ids=None, eagerload=True):
         '''
-        Retrieve the significant hits and eager-load their protein groups
+        Retrieve the significant hits and optionally eager-load their protein groups
         and the protein groups' crispr designs and uniprot metadata
         '''
         query = (
@@ -916,6 +926,8 @@ class MassSpecPulldown(Base):
                 MassSpecHit.is_significant_hit == True  # noqa
             ))
         )
+        if protein_group_ids:
+            query = query.filter(MassSpecHit.protein_group_id.in_(protein_group_ids))
 
         if eagerload:
             query = query.options(
@@ -924,7 +936,6 @@ class MassSpecPulldown(Base):
                 db.orm.joinedload(MassSpecHit.protein_group, innerjoin=True)
                 .joinedload(MassSpecProteinGroup.uniprot_metadata),
             )
-
         significant_hits = query.all()
         return significant_hits
 
@@ -947,20 +958,21 @@ class MassSpecPulldown(Base):
             .filter(CrisprDesign.id == self.cell_line.crispr_design.id)
             .all()
         )
-
         if not bait_hits:
             return None
-
         if only_one:
             # return the hit with the greatest enrichment
             bait_hits = sorted(bait_hits, key=lambda hit: -hit.enrichment)
             return bait_hits[0]
-
         return bait_hits
 
 
     def get_interacting_pulldowns(self):
         '''
+        Get the 'interacting pulldowns' in which one or more of the protein groups
+        associated with the pulldown's target appears as a significant hit
+
+        TODO: consider using only the protein_group of the bait hit to do the filtering
         '''
         interacting_pulldowns = (
             db.orm.object_session(self).query(MassSpecPulldown).join(MassSpecHit)
@@ -971,7 +983,7 @@ class MassSpecPulldown(Base):
             .filter(MassSpecPulldown.id != self.id)
             .filter(
                 MassSpecHit.protein_group_id.in_(
-                    [pg.id for pg in self.cell_line.crispr_design.protein_groups]
+                    [group.id for group in self.cell_line.crispr_design.protein_groups]
                 )
             )
             .filter(db.or_(
@@ -1009,11 +1021,10 @@ class MassSpecProteinGroup(Base):
     # timestamp column
     date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
 
-    # For Opencell network visualization. At times gene names display is
-    # too crowded because a protein group consists of multiple isoforms and
-    # homologs. The manual_gene_name directs to a simplified nomenclature for
-    # such cases
-
+    # an optional manually-defined gene name (for the opencell frontend)
+    # This is needed because sometimes the protein group's unique uniprot gene names
+    # consist of multiple isoforms and homologs of the 'same' protein
+    # the manual_gene_name is a human-defined simplified nomenclature for such cases
     manual_gene_name = db.Column(db.String, nullable=True)
 
     # one protein_group to many hits
@@ -1024,7 +1035,6 @@ class MassSpecProteinGroup(Base):
         'CrisprDesign',
         secondary='protein_group_crispr_design_association',
         back_populates='protein_groups'
-
     )
 
     # one protein group to multiple uniprot metadata rows
@@ -1032,6 +1042,27 @@ class MassSpecProteinGroup(Base):
         'UniprotMetadata',
         secondary='protein_group_uniprot_metadata_association'
     )
+
+    def get_pulldowns(self):
+        '''
+        Get the pulldowns in which the protein group appears as a significant hit
+        '''
+        pulldowns = (
+            db.orm.object_session(self).query(MassSpecPulldown)
+            .join(MassSpecHit)
+            .join(MassSpecProteinGroup)
+            .filter(MassSpecProteinGroup.id == self.id)
+            .filter(db.or_(
+                MassSpecPulldown.manual_display_flag == None,  # noqa
+                MassSpecPulldown.manual_display_flag == True  # noqa
+            ))
+            .filter(db.or_(
+                MassSpecHit.is_minor_hit == True,  # noqa
+                MassSpecHit.is_significant_hit == True  # noqa
+            ))
+            .all()
+        )
+        return pulldowns
 
     def __repr__(self):
         return "<MassSpecProteinGroup(gene_names=[%s])>" % (', '.join(self.gene_names))
@@ -1187,10 +1218,13 @@ class MassSpecPulldownNetwork(Base):
 
 class EnsgProteinGroupAssociation(Base):
     '''
+    The manually-defined 'primary' protein group for each ENSG ID
+
+    The purpose of this table is to assign a single protein group to opencell 'interactors',
+    which are defined by ENSG IDs and are not, a priori, associated with a protein group.
+    This is necessary when constructing the interaction networks for the interactors,
+    since the nodes in the interaction networks correspond to protein groups.
     '''
     __tablename__ = 'ensg_protein_group_association'
     ensg_id = db.Column(db.String, primary_key=True)
-
-    protein_group_id = db.Column(
-        db.String, db.ForeignKey('mass_spec_protein_group.id')
-    )
+    protein_group_id = db.Column(db.String, db.ForeignKey('mass_spec_protein_group.id'))

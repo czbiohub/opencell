@@ -32,7 +32,7 @@ def add_and_commit(session, instances, errors='raise'):
                 print('Error in add_and_commit: %s' % exception)
 
 
-def delete_and_commit(session, instances):
+def delete_and_commit(session, instances, errors='raise'):
     if not isinstance(instances, list):
         instances = [instances]
 
@@ -40,9 +40,12 @@ def delete_and_commit(session, instances):
         try:
             session.delete(instance)
             session.commit()
-        except Exception:
+        except Exception as exception:
             session.rollback()
-            raise
+            if errors == 'raise':
+                raise
+            if errors == 'warn':
+                print('Error in delete_and_commit: %s' % exception)
 
 
 def to_jsonable(data):

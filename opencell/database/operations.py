@@ -63,6 +63,9 @@ def get_or_create_plate_design(session, design_id, date=None, notes=None, create
         .filter(models.PlateDesign.design_id == design_id)
         .one_or_none()
     )
+    if create and plate_design is not None:
+        print('Warning: plate design %s already exists' % design_id)
+
     if plate_design is None:
         if create:
             plate_design = models.PlateDesign(
@@ -108,7 +111,7 @@ def create_crispr_designs(
 
     # check that we have the expected number of designs/wells
     if designs.shape[0] != len(constants.DATABASE_WELL_IDS):
-        raise ValueError('%s crispr designs found but 96 are expected' % designs.shape[0])
+        print('Warning: %s crispr designs found but 96 are expected' % designs.shape[0])
 
     # drop the negative (empty) controls
     designs = designs.loc[designs.target_name != 'empty_control']
@@ -117,10 +120,12 @@ def create_crispr_designs(
     if drop_existing:
         utils.delete_and_commit(session, plate_design.crispr_designs)
 
-    # create the crispr designs
+    # create the crispr designs and insert them one by one
+    # (so that an insertion error on one design doesn't prevent attempting to insert the others)
     for _, design in designs.iterrows():
+        print('Inserting design for well %s on plate %s' % (design.well_id, plate_design.design_id))
         plate_design.crispr_designs.append(models.CrisprDesign(**design))
-    utils.add_and_commit(session, plate_design, errors=errors)
+        utils.add_and_commit(session, plate_design, errors=errors)
 
 
 def create_polyclonal_lines(
@@ -141,20 +146,41 @@ def create_polyclonal_lines(
             (required to disambiguate electroporations of the same plate)
     '''
 
+    line_type = 'POLYCLONAL'
+
     # sort count is always 1 for the initial sort after electroporation
     sort_count = 1
 
-    cell_lines = []
     for crispr_design in plate_design.crispr_designs:
+
+        # check for an existing polyclonal line associated with this crispr design
+        # this is necessary because it is not currently possibly to define a unique constraint on
+        # (progenitor_line_id, crispr_design_id, sort_count) in the cell line table,
+        # because sort_count is nullable (in anticipation of adding monoclonal lines)
+        existing_line = (
+            session.query(models.CellLine)
+            .filter(models.CellLine.parent_id == progenitor_cell_line.id)
+            .filter(models.CellLine.line_type == line_type)
+            .filter(models.CellLine.crispr_design_id == crispr_design.id)
+            .filter(models.CellLine.sort_count == sort_count)
+            .one_or_none()
+        )
+
+        if existing_line:
+            print(
+                'Warning: a polyclonal cell line already exists for (%s, %s)'
+                % (plate_design.design_id, crispr_design.well_id)
+            )
+            continue
+
         cell_line = models.CellLine(
             parent_id=progenitor_cell_line.id,
             crispr_design=crispr_design,
-            line_type='POLYCLONAL',
+            line_type=line_type,
             sort_count=sort_count,
             sort_date=date
         )
-        cell_lines.append(cell_line)
-    utils.add_and_commit(session, cell_lines, errors=errors)
+        utils.add_and_commit(session, cell_line, errors=errors)
 
 
 def get_lines_by_annotation(engine, annotation):

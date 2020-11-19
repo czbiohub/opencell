@@ -12,13 +12,12 @@ from opencell.database import models, utils, uniprot_utils
 from opencell.imaging.processors import FOVProcessor
 
 
-def generate_cell_line_payload(cell_line, included_fields, fov_count=None):
+def generate_cell_line_payload(cell_line, included_fields):
     '''
     The JSON payload returned by the /lines endpoint of the API
     Note that, awkwardly, the RNAseq data is a column in the crispr_design table
 
     included_fields : a list of optional fields to include
-    fov_count : optional pandas series of FOV counts for the cell line
     '''
     design = cell_line.crispr_design
 
@@ -31,6 +30,7 @@ def generate_cell_line_payload(cell_line, included_fields, fov_count=None):
         'target_name': design.target_name,
         'target_family': design.target_family,
         'target_terminus': design.target_terminus.value[0],
+        'protospacer_sequence': design.protospacer_sequence,
         'transcript_id': design.transcript_id,
         'ensg_id': design.uniprot_metadata.ensg_id,
         'hek_tpm': design.hek_tpm,
@@ -65,9 +65,6 @@ def generate_cell_line_payload(cell_line, included_fields, fov_count=None):
             'facs_intensity': cell_line.facs_dataset.scalars.get('rel_median_log')
         })
 
-    # The FOV counts (`fov_count` is a pd.Series)
-    counts = fov_count.to_dict() if fov_count is not None else {}
-
     # all of the manual annotation categories
     categories = cell_line.annotation.categories if cell_line.annotation else []
     annotation = {
@@ -84,7 +81,6 @@ def generate_cell_line_payload(cell_line, included_fields, fov_count=None):
     payload = {
         'metadata': metadata,
         'scalars': scalars,
-        'counts': counts,
         'annotation': annotation,
         'uniprot_metadata': uniprot_metadata,
         'best_pulldown': {'id': pulldown_id}
@@ -95,7 +91,7 @@ def generate_cell_line_payload(cell_line, included_fields, fov_count=None):
         fov = cell_line.get_best_fov()
         if fov and fov.rois:
             # hack: assume there is only one ROI (the annotated ROI)
-            thumbnail = fov.rois[0].get_thumbnail('rgb')
+            thumbnail = fov.rois[0].get_thumbnail('rgb', eager_loaded=True)
             payload['best_fov'] = {
                 'thumbnails': thumbnail.as_dict() if thumbnail else None
             }
@@ -166,19 +162,10 @@ def generate_pulldown_hits_payload(pulldown, significant_hits, nonsignificant_hi
         for all of the pulldown's non-significant hits (usually thousands)
     '''
 
-    hit_columns = [
-        'pval',
-        'enrichment',
-        'interaction_stoich',
-        'abundance_stoich'
-    ]
-
+    hit_attrs = ['pval', 'enrichment', 'interaction_stoich', 'abundance_stoich', 'is_minor_hit']
     significant_hit_payloads = []
     for hit in significant_hits:
-        significant_hit_payload = {
-            column: getattr(hit, column) for column in hit_columns
-        }
-
+        significant_hit_payload = {attr: getattr(hit, attr) for attr in hit_attrs}
         significant_hit_payload.update(
             generate_protein_group_payload(
                 hit.protein_group, pulldown.cell_line.crispr_design_id
@@ -207,12 +194,21 @@ def generate_pulldown_hits_payload(pulldown, significant_hits, nonsignificant_hi
 
 def generate_protein_group_payload(protein_group, pulldown_crispr_design_id=None):
     '''
+    Construct the payload to represent a protein group
+
+    pulldown_crispr_design_id : optional id of the crispr design of the target
+    from which the pulldown came
     '''
 
     # the 'primary' gene name for each uniprot_id in the protein group
     gene_names = ['Unknown']
-    if protein_group.uniprot_metadata:
+    if protein_group.manual_gene_name:
+        gene_names = protein_group.manual_gene_name.split(', ')
+    elif protein_group.uniprot_metadata:
         gene_names = list(set([d.get_primary_gene_name() for d in protein_group.uniprot_metadata]))
+
+    uniprot_ids = [d.uniprot_id for d in protein_group.uniprot_metadata]
+    ensg_ids = [d.ensg_id for d in protein_group.uniprot_metadata]
 
     # the target names of the crispr designs that are associated with this protein group
     # (these are not always unique, because there are multiple designs for some targets)
@@ -221,7 +217,8 @@ def generate_protein_group_payload(protein_group, pulldown_crispr_design_id=None
     payload = {
         'uniprot_gene_names': gene_names,
         'opencell_target_names': target_names,
-        'is_bait': False,
+        'uniprot_ids': uniprot_ids,
+        'ensg_ids': ensg_ids,
     }
 
     # use the crispr_design_id of the pulldown to determine

@@ -2,25 +2,38 @@ import pandas as pd
 from opencell.api import payloads
 
 
-def protein_group_to_node(protein_group, kind):
-    node = payloads.generate_protein_group_payload(protein_group)
-    node['id'] = protein_group.id
-    node['type'] = kind
-    node.pop('is_bait')
+def construct_node(hit=None, protein_group=None, kind=None):
+    '''
+    '''
+    if protein_group is None:
+        protein_group = hit.protein_group
+
+    node = {'id': protein_group.id, 'type': kind}
+    node.update(payloads.generate_protein_group_payload(protein_group))
+
+    hit_attrs = ['pval', 'enrichment', 'interaction_stoich', 'abundance_stoich']
+    if hit is not None:
+        node.update({attr: getattr(hit, attr) for attr in hit_attrs})
     return node
 
 
-def construct_network(target_pulldown=None, interacting_pulldowns=None, uniprot_metadata=None):
+def construct_network(
+    target_pulldown=None, interacting_pulldowns=None, origin_protein_group=None
+):
     '''
     Construct the nodes and edges for the cytoscape network of interactions
-    for a given opencell target or interactor
+    for a given opencell target or interactor. Nodes can represent baits, hits,
+    or, for interactors, protein groups directly, but in all cases
+    are associated with a single protein group.
 
     For an opencell target, its pulldown must be provided as `target_pulldown`
     (its interacting pulldowns are determined from this pulldown).
 
-    For an opencell interactor, the list of `interacting_pulldowns`
-    in which the interactor appears as a hit must be provided,
-    as well as a single uniprot_metadata entry to 'represent' the interactor.
+    For an opencell interactor, the list of interacting pulldowns
+    (i.e., the pulldowns in which the interactor appears as a hit) must be provided directly.
+
+    For both cases, the protein group associated with the 'origin' node of the network -
+    that is, the protein group that represents the target or interactor - must be provided.
 
     For both targets and interactors, the networks consist of:
     1) the direct interactors; these include both the 'interacting pulldowns'
@@ -29,71 +42,67 @@ def construct_network(target_pulldown=None, interacting_pulldowns=None, uniprot_
        (these exist when one direct interactor appears in the pulldown of another)
     '''
 
-    nodes = []
     bait_hit = None
-    direct_hits = []
+    if target_pulldown:
+        bait_hit = target_pulldown.get_bait_hit(only_one=True)
 
+    # construct the bait node using the provided 'origin' protein group
+    # (note that calling this node the 'bait' is an abuse of the nomenclature
+    # when the network we are constructing is for an interactor and not a target)
+    origin_node = construct_node(hit=bait_hit, protein_group=origin_protein_group, kind='bait')
+    nodes = [origin_node]
+
+    direct_hits = []
     if target_pulldown:
         direct_hits = target_pulldown.get_significant_hits()
-        bait_hit = target_pulldown.get_bait_hit(only_one=True)
         interacting_pulldowns = target_pulldown.get_interacting_pulldowns()
-
-    # create a node to represent the target if the bait hit exists
-    if bait_hit:
-        bait_node = protein_group_to_node(bait_hit.protein_group, kind='bait')
-        bait_node['pulldown'] = target_pulldown
-    else:
-        # if a pulldown was provided but the target (the bait hit) does not appear in it,
-        # we have to manually construct the bait node (rather than using protein_group_to_node)
-        if target_pulldown:
-            bait_node = {
-                'type': 'bait',
-                'id': 'bait-placeholder',
-                'uniprot_gene_names': [target_pulldown.cell_line.crispr_design.target_name],
-                'opencell_target_names': [target_pulldown.cell_line.crispr_design.target_name],
-            }
-        # if no pulldown was provided at all,
-        # manually construct the bait node using the provided uniprot_metadata
-        else:
-            bait_node = {
-                'type': 'bait',
-                'id': 'bait-placeholder',
-                'uniprot_gene_names': [uniprot_metadata.get_primary_gene_name()],
-                'opencell_target_names': [],
-            }
-
-    nodes.append(bait_node)
+        origin_node['pulldown'] = target_pulldown
 
     # create nodes to represent the hits in the target's pulldown
     for direct_hit in direct_hits:
-        if bait_hit and bait_hit.protein_group.id == direct_hit.protein_group.id:
+        if origin_node['id'] == direct_hit.protein_group.id:
             continue
-        node = protein_group_to_node(direct_hit.protein_group, kind='hit')
+        node = construct_node(hit=direct_hit, kind='hit')
         node['hit'] = direct_hit
         nodes.append(node)
 
-    # the bait hits from each of the interacting pulldowns
+    # the bait hits in each of the interacting pulldowns
+    # (this list will include Nones for pulldowns in which the bait hit does not exist)
     interacting_bait_hits = [
         interacting_pulldown.get_bait_hit(only_one=True)
         for interacting_pulldown in interacting_pulldowns
     ]
 
     # create nodes to represent the interacting pulldowns
-    for interacting_pulldown, bait_hit in zip(interacting_pulldowns, interacting_bait_hits):
-
-        # if the bait was not found in the interacting pulldown,
+    for interacting_pulldown, interacting_bait_hit in zip(
+        interacting_pulldowns, interacting_bait_hits
+    ):
+        # if no bait hit was found in the interacting pulldown,
         # we cannot create a node to represent the pulldown
-        if not bait_hit:
+        # TODO: technically, we can, if we use the 'primary' protein group
+        # associated with the interacting pulldown's target
+        if not interacting_bait_hit:
             continue
 
-        node = protein_group_to_node(bait_hit.protein_group, kind='pulldown')
+        # the origin node's hit in the interacting pulldown
+        interacting_hit = interacting_pulldown.get_significant_hits(
+            protein_group_ids=[origin_node['id']], eagerload=False
+        )
+        if not interacting_hit:
+            continue
+        interacting_hit = interacting_hit[0]
+
+        # construct the node to represent the interacting pulldown
+        node = construct_node(
+            hit=interacting_hit, protein_group=interacting_bait_hit.protein_group, kind='pulldown'
+        )
         node['pulldown'] = interacting_pulldown
         nodes.append(node)
 
     # if no target pulldown was provided, the 'direct hits', for the purpose of constructing edges,
     #  are the bait hits from the interacting pulldowns
     if not target_pulldown:
-        direct_hits = interacting_bait_hits
+        direct_hits = [hit for hit in interacting_bait_hits if hit is not None]
 
     # generate the edges between direct nodes
     edges = []

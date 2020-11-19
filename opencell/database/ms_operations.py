@@ -14,6 +14,7 @@ from opencell.database import models, utils
 from opencell.database import ms_utils
 from opencell.imaging import processors
 
+
 def insert_protein_group_manual_gene_name(session, protein_group_id, manual_name):
     """
     insert simplified manual_name to protein groups with complex/multiple gene names

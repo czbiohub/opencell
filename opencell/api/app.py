@@ -45,6 +45,9 @@ def create_app(config=None):
     cache.init_app(app)
     api = Api()
 
+    # convenience endpoint to clear the cache
+    api.add_resource(resources.ClearCache, '/clear_cache')
+
     # search by gene name, ENSG ID, etc
     api.add_resource(resources.Search, '/search/<string:search_string>')
 

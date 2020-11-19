@@ -31,10 +31,6 @@ class Config(object):
     # project root is two directory levels up
     PROJECT_ROOT = os.path.abspath(os.path.join(APP_DIR, os.pardir, os.pardir))
 
-    # the clustering analysis type (from Kibeom)
-    # (used only in resources.PulldownInteractions)
-    MS_CLUSTERING_TYPE = 'primary:mcl_i3.0_haircut:keepcore_subcluster:mcl_hybrid_stoichs_2.0'
-
 
 class DevConfig(Config):
 

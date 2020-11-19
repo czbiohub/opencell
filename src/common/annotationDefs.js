@@ -10,7 +10,6 @@ export const publicLocalizationCategories = [
     {'name': 'chromatin', 'num': 145},
     {'name': 'nucleoplasm', 'num': 674},
     {'name': 'nuclear_membrane', 'num': 48},
-    {'name': 'nucleolus', 'num': 13},
     {'name': 'nucleolus_gc', 'num': 100},
     {'name': 'nucleolus_fc_dfc', 'num': 37},
     {'name': 'nuclear_punctae', 'num': 152},

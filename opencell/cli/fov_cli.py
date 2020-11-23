@@ -19,7 +19,7 @@ import dask.diagnostics
 
 from opencell.api import settings
 from opencell.database import models
-from opencell.database import operations
+from opencell.database import metadata_operations
 from opencell.database import utils as db_utils
 from opencell.imaging.processors import FOVProcessor
 from opencell.database.fov_operations import MicroscopyFOVOperations
@@ -168,7 +168,7 @@ def insert_plate_microscopy_fovs(session, cache_dir=None, errors='warn'):
         group_metadata = metadata.get_group(group)
 
         try:
-            line_ops = operations.PolyclonalLineOperations.from_plate_well(
+            line_ops = metadata_operations.PolyclonalLineOperations.from_plate_well(
                 session, plate_id, well_id, sort_count=sort_count
             )
         except Exception:
@@ -215,7 +215,7 @@ def insert_raw_pipeline_microscopy_fovs(session, root_dir, pml_id, errors='warn'
         plate_id, well_id, sort_count = group
         group_metadata = metadata.get_group(group)
         try:
-            line_ops = operations.PolyclonalLineOperations.from_plate_well(
+            line_ops = metadata_operations.PolyclonalLineOperations.from_plate_well(
                 session, plate_id, well_id, sort_count
             )
         except ValueError:

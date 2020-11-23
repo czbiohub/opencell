@@ -13,7 +13,7 @@ import sqlalchemy.ext.declarative
 
 from opencell import constants, file_utils
 from opencell.api import settings
-from opencell.database import operations as ops
+from opencell.database import metadata_operations, uniprot_operations
 from opencell.database import models, utils, uniprot_utils
 
 
@@ -98,7 +98,7 @@ def populate(session, data_dir, errors='warn'):
     # create the progenitor cell line used for Plates 1-19
     # (note the hard-coded progenitor cell line name)
     print('Inserting progenitor cell line for plates 1-19')
-    ops.get_or_create_progenitor_cell_line(
+    metadata_operations.get_or_create_progenitor_cell_line(
         session,
         name=constants.PARENTAL_LINE_NAME,
         notes='mNG1-10 in HEK293',
@@ -113,10 +113,12 @@ def populate(session, data_dir, errors='warn'):
         print('Inserting crispr designs for %s' % plate_id)
 
         # create the plate design
-        plate_design = ops.get_or_create_plate_design(session, plate_id, create=True)
+        plate_design = metadata_operations.get_or_create_plate_design(
+            session, plate_id, create=True
+        )
 
         # create the crispr designs
-        ops.create_crispr_designs(
+        metadata_operations.create_crispr_designs(
             session, plate_design, library_snapshot, drop_existing=False, errors=errors
         )
 
@@ -125,14 +127,14 @@ def populate(session, data_dir, errors='warn'):
         electroporation_history_filepath
     )
 
-    progenitor_line = ops.get_or_create_progenitor_cell_line(
+    progenitor_line = metadata_operations.get_or_create_progenitor_cell_line(
         session, constants.PARENTAL_LINE_NAME
     )
 
     for _, row in electroporation_history.iterrows():
         print('Creating polyclonal lines for %s' % row.plate_id)
-        plate_design = ops.get_or_create_plate_design(session, row.plate_id)
-        ops.create_polyclonal_lines(
+        plate_design = metadata_operations.get_or_create_plate_design(session, row.plate_id)
+        metadata_operations.create_polyclonal_lines(
             session,
             progenitor_line,
             plate_design,
@@ -151,8 +153,8 @@ def insert_plate_design(session, plate_id, library_snapshot_filepath, errors='wa
     library_snapshot = file_utils.load_library_snapshot(library_snapshot_filepath)
 
     print('Inserting crispr designs for plate %s' % plate_id)
-    plate_design = ops.get_or_create_plate_design(session, plate_id, create=True)
-    ops.create_crispr_designs(
+    plate_design = metadata_operations.get_or_create_plate_design(session, plate_id, create=True)
+    metadata_operations.create_crispr_designs(
         session, plate_design, library_snapshot, drop_existing=False, errors=errors
     )
 
@@ -163,11 +165,11 @@ def insert_electroporation(session, plate_id, electroporation_date, errors='warn
     '''
     print('Creating polyclonal lines for plate %s' % plate_id)
 
-    progenitor_line = ops.get_or_create_progenitor_cell_line(
+    progenitor_line = metadata_operations.get_or_create_progenitor_cell_line(
         session, constants.PARENTAL_LINE_NAME
     )
-    plate_design = ops.get_or_create_plate_design(session, plate_id)
-    ops.create_polyclonal_lines(
+    plate_design = metadata_operations.get_or_create_plate_design(session, plate_id)
+    metadata_operations.create_polyclonal_lines(
         session,
         progenitor_line,
         plate_design,
@@ -196,11 +198,11 @@ def insert_resorted_lines(session, resorts_snapshot, errors='warn'):
         print('Inserting resorted cell line for (%s, %s)' % (row.plate_id, row.pipeline_well_id))
 
         # get the original polyclonal line
-        line_ops = ops.PolyclonalLineOperations.from_plate_well(
+        line_operations = metadata_operations.PolyclonalLineOperations.from_plate_well(
             session, row.plate_id, row.pipeline_well_id, sort_count=1
         )
+        line = line_operations.line
 
-        line = line_ops.line
         if line.children:
             print(
                 'Warning: This cell line already has descendents '
@@ -244,7 +246,7 @@ def insert_facs(session, facs_results_dir, errors='warn'):
         plate_id = row.plate_id
         well_id = utils.format_well_id(row.well_id)
         try:
-            line_ops = ops.PolyclonalLineOperations.from_plate_well(
+            line_ops = metadata_operations.PolyclonalLineOperations.from_plate_well(
                 session, plate_id, well_id, sort_count=1
             )
         except ValueError:
@@ -293,7 +295,7 @@ def insert_uniprot_metadata_for_crispr_designs(Session):
     '''
     @dask.delayed
     def create_task(Session, design_id):
-        ops.insert_uniprot_metadata_for_crispr_design(Session(), design_id)
+        uniprot_operations.insert_uniprot_metadata_for_crispr_design(Session(), design_id)
 
     designs = Session.query(models.CrisprDesign).all()
     tasks = [create_task(Session, design.id) for design in designs]
@@ -328,7 +330,7 @@ def insert_uniprot_metadata_for_protein_groups(Session):
 
     @dask.delayed
     def create_task(Session, uniprot_id):
-        ops.insert_uniprot_metadata_from_id(Session(), uniprot_id)
+        uniprot_operations.insert_uniprot_metadata_from_id(Session(), uniprot_id)
 
     tasks = [create_task(Session, uniprot_id) for uniprot_id in new_uniprot_ids]
     with dask.diagnostics.ProgressBar():
@@ -339,7 +341,6 @@ def insert_ensg_ids(Session):
     '''
     Populate the ENSG ID column of the uniprot_metadata table
     '''
-
     uniprot_ids = [
         row.uniprot_id
         for row in (
@@ -353,12 +354,12 @@ def insert_ensg_ids(Session):
     parallelize = False
     if not parallelize:
         for uniprot_id in uniprot_ids:
-            ops.insert_ensg_id(Session, uniprot_id)
+            uniprot_operations.insert_ensg_id(Session, uniprot_id)
         return
 
     @dask.delayed
     def create_task(Session, uniprot_id):
-        ops.insert_ensg_id(Session(), uniprot_id)
+        uniprot_operations.insert_ensg_id(Session(), uniprot_id)
 
     tasks = [create_task(Session, uniprot_id) for uniprot_id in uniprot_ids]
     with dask.diagnostics.ProgressBar():

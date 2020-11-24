@@ -86,7 +86,11 @@ class CellLine(Base):
     # the type of cell line (progenitor, polyclonal, and monoconal)
     line_type = db.Column(cell_line_type_enum, nullable=False)
 
-    # the sort count if the line is polyclonal (tracks resorts)
+    # the sort count (identifies resorts; defined only for polyclonal lines)
+    # NOTE: this column is troublesome; it is required to uniquely identify polyclonal lines,
+    # but it also must be nullable (in anticipation of adding monoclonal lines),
+    # so it is not possible to impose a unique constraint on
+    # (progenitor_line_id, crispr_design_id, sort_count)
     sort_count = db.Column(db.Integer, nullable=True)
 
     # the sort date (for polyclonal and monoclonal lines)

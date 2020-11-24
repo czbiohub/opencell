@@ -33,7 +33,6 @@ def get_or_create_progenitor_cell_line(session, name, notes=None, create=False):
     A CellLine instance corresponding to the progenitor cell line
 
     '''
-
     # check whether the progenitor cell line already exists
     cell_line = (
         session.query(models.CellLine)
@@ -57,7 +56,6 @@ def get_or_create_plate_design(session, design_id, date=None, notes=None, create
     Get or create a new plate design
     note that date and notes may be None
     '''
-
     plate_design = (
         session.query(models.PlateDesign)
         .filter(models.PlateDesign.design_id == design_id)
@@ -97,7 +95,6 @@ def create_crispr_designs(
     library_snapshot : a snapshot of the library spreadsheet as a pandas dataframe
     drop_existing : whether to drop any existing crispr designs linked to this plate
     '''
-
     # crop the library to the current plate
     designs = library_snapshot.loc[
         library_snapshot.plate_id == plate_design.design_id
@@ -148,15 +145,14 @@ def create_polyclonal_lines(
 
     line_type = 'POLYCLONAL'
 
-    # sort count is always 1 for the initial sort after electroporation
+    # sort count is always `1` for the initial sort after electroporation
     sort_count = 1
 
     for crispr_design in plate_design.crispr_designs:
 
         # check for an existing polyclonal line associated with this crispr design
-        # this is necessary because it is not currently possibly to define a unique constraint on
-        # (progenitor_line_id, crispr_design_id, sort_count) in the cell line table,
-        # because sort_count is nullable (in anticipation of adding monoclonal lines)
+        # (this is necessary because there is no unique constraint on
+        # (progenitor_line_id, crispr_design_id, sort_count))
         existing_line = (
             session.query(models.CellLine)
             .filter(models.CellLine.parent_id == progenitor_cell_line.id)
@@ -225,15 +221,17 @@ class PolyclonalLineOperations:
     @classmethod
     def from_plate_well(cls, session, design_id, well_id, sort_count):
         '''
-        Convenience method to retrieve the cell line
-        corresponding to a plate design and a well id
-        (assuming that there is only one such cell line)
+        Retrieve a polyclonal cell line given a plate_id, a well_id, and a sort_count
 
-        sort_count : 1 for the original polyclonal line
-               2 for the resorted descendent (if any)
-               3 for the resort of the resort (if any)
+        Parameters
+        ----------
+        design_id : the plate design id (in the form 'P0001')
+        well_id : the zero-padded well_id (in the form 'A01')
+        sort_count : integer that distinguishes between the 'original' line and subsequent resorts
+            1 for the original polyclonal line
+            2 for the resorted descendent (if any)
+            3 for the resort of the resort (if any)
         '''
-
         lines = (
             session.query(models.CellLine)
             .join(models.CrisprDesign)
@@ -261,19 +259,17 @@ class PolyclonalLineOperations:
     @classmethod
     def from_target_name(cls, session, target_name):
         '''
-        Convenience method to retrieve the cell line for the given target_name
+        Retrieve a cell line given a target_name
 
-        If there is more than one cell_line for the target_name,
+        Note: if there is more than one cell line for the target_name,
         then the PolyClonalLineOperations class is instantiated using the first such cell_line
         '''
-
         lines = (
             session.query(models.CellLine)
             .join(models.CrisprDesign)
             .filter(db.func.lower(models.CrisprDesign.target_name) == db.func.lower(target_name))
             .all()
         )
-
         if len(lines) > 1:
             print(
                 'Warning: returning the first of %s cell lines found for target_name %s' %
@@ -285,12 +281,33 @@ class PolyclonalLineOperations:
         return cls(lines[0])
 
 
+    def insert_resorted_line(self, session, sort_count, sort_date):
+        '''
+        Insert a polyclonal line produced by re-sorting the existing polyclonal line
+        '''
+        for line in ([self.line] + self.line.children):
+            if line.sort_count == sort_count:
+                print(
+                    'Warning: A resorted cell line with sort_count=%s already exists, '
+                    'so no cell line will be created'
+                    % sort_count
+                )
+                return
+
+        resorted_line = models.CellLine(
+            parent_id=self.line.id,
+            crispr_design=self.line.crispr_design,
+            line_type='POLYCLONAL',
+            sort_date=sort_date,
+            sort_count=sort_count
+        )
+        utils.add_and_commit(session, resorted_line, errors='warn')
+
+
     def insert_facs_dataset(self, session, histograms, scalars, errors='warn'):
         '''
         Insert the processed FACS data for a single polyclonal cell line
         '''
-
-        # drop any existing data
         if self.line.facs_dataset:
             utils.delete_and_commit(session, self.line.facs_dataset)
 
@@ -306,8 +323,6 @@ class PolyclonalLineOperations:
         '''
         Insert a limited set of the sequencing results - just the HDR/all and HDR/modified ratios
         '''
-
-        # drop any existing data
         if self.line.sequencing_dataset:
             utils.delete_and_commit(session, self.line.sequencing_dataset)
 
@@ -325,7 +340,6 @@ class PolyclonalLineOperations:
         metadata : dataframe of raw FOV metadata with the following columns:
         pml_id, imaging_round_id, site_num, raw_filepath
         '''
-
         fovs = self.line.fovs
         for _, row in metadata.iterrows():
             fov = models.MicroscopyFOV(

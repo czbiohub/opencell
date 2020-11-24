@@ -2,6 +2,7 @@
 import * as d3 from 'd3';
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
+import {Callout} from '@blueprintjs/core';
 
 import 'tachyons';
 import 'react-table/react-table.css';
@@ -35,6 +36,18 @@ export default function InteractorProfile (props) {
 
     return (
         <div>
+
+            <div className='pl5 pr5 pt3 pb1 flex justify-center'>
+                <div className='w-80'>
+                    <Callout intent='warning' title='This is an OpenCell interactor page' showHeader>
+                        This page represents a protein that has not yet been tagged as part of OpenCell.
+                        The interaction network and list of interactors shown below 
+                        consist <b>only</b> of the OpenCell targets that we have observed to interact 
+                        with this protein; they are therefore necessarily incomplete. 
+                    </Callout>
+                </div>
+            </div>
+
             {/* main container */}
             <div className="pl3 pr3 flex">
 

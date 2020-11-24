@@ -11,6 +11,38 @@ from opencell.database import models, utils
 from opencell.imaging.processors import FOVProcessor
 
 
+def insert_microscopy_dataset(session, metadata_row, root_directory, update=False):
+    '''
+    metadata_row : a row of the 'pipeline-microscopy-master-key' google sheet
+    root_directory : identifies the root directory in which the dataset appears in ESS;
+        either 'plate_microscopy' or 'raw_pipeline_microscopy'
+
+    Note that the only required columns in the row are 'pml_id' and 'date';
+    the many remaining columns present in the google sheet do not need to be machine-readable
+    and are simply dumped in a json column
+    '''
+    pml_id = metadata_row.pml_id
+    dataset = (
+        session.query(models.MicroscopyDataset)
+        .filter(models.MicroscopyDataset.pml_id == pml_id)
+        .one_or_none()
+    )
+    if dataset:
+        if update:
+            print('Warning: updating existing entry for %s' % pml_id)
+        else:
+            print('Warning: dataset %s already exists and will not be updated' % pml_id)
+            return
+    else:
+        dataset = models.MicroscopyDataset(pml_id=pml_id)
+        print('Inserting new dataset %s' % pml_id)
+
+    dataset.date = metadata_row.date
+    dataset.root_directory = root_directory
+    dataset.raw_metadata = json.loads(metadata_row.to_json())
+    utils.add_and_commit(session, dataset, errors='warn')
+
+
 class MicroscopyFOVOperations:
     '''
     Methods to insert metadata associated with, or 'children' of, microscopy FOVs

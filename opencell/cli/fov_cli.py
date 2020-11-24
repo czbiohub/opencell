@@ -332,7 +332,8 @@ def do_fov_tasks(Session, config, processor_method_name, processor_method_kwargs
     if 'message' in list(errors.columns):
         print("Errors occurred while running method '%s'" % processor_method_name)
         cache_filepath = os.path.join(
-            config.OPENCELL_MICROSCOPY_DIR, '%s_%s-errors.csv' % (timestamp(), processor_method_name)
+            config.OPENCELL_MICROSCOPY_DIR,
+            '%s_%s-errors.csv' % (timestamp(), processor_method_name)
         )
         errors.to_csv(cache_filepath, index=False)
         print("Error log was saved to %s" % cache_filepath)
@@ -345,14 +346,12 @@ def get_unprocessed_fovs(engine, session, result_kind):
     Retrieve all FOV instances without any results of the specified kind
     in the MicroscopyFOVResult table
     '''
-
     query = '''
         select fov.*, res.kind as kind from microscopy_fov fov
         left join (select * from microscopy_fov_result where kind = '%s') res
         on fov.id = res.fov_id
         where kind is null;
     '''
-
     d = pd.read_sql(query % result_kind, engine)
     unprocessed_fovs = (
         session.query(models.MicroscopyFOV)

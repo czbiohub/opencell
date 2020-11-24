@@ -161,7 +161,6 @@ def create_polyclonal_lines(
             .filter(models.CellLine.sort_count == sort_count)
             .one_or_none()
         )
-
         if existing_line:
             print(
                 'Warning: a polyclonal cell line already exists for (%s, %s)'
@@ -285,6 +284,9 @@ class PolyclonalLineOperations:
         '''
         Insert a polyclonal line produced by re-sorting the existing polyclonal line
         '''
+        # do a crude check for uniqueness
+        # (this is necessary because there is no unique constraint on
+        # (parent_id, crispr_design_id, sort_count))
         for line in ([self.line] + self.line.children):
             if line.sort_count == sort_count:
                 print(

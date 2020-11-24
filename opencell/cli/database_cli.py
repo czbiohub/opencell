@@ -13,7 +13,7 @@ import sqlalchemy.ext.declarative
 
 from opencell import constants, file_utils
 from opencell.api import settings
-from opencell.database import metadata_operations, uniprot_operations
+from opencell.database import metadata_operations, uniprot_operations, fov_operations
 from opencell.database import models, utils, uniprot_utils
 
 
@@ -186,7 +186,6 @@ def insert_resorted_lines(session, resorts_snapshot, errors='warn'):
     resorts_snapshot : snapshot of the google sheet of resorted lines,
         with columns 'plate_id', 'pipeline_well_id', and 'resorting_date'
     '''
-
     resorts_snapshot.dropna(how='any', axis=0, inplace=True)
 
     # zero-pad the well_ids
@@ -243,31 +242,11 @@ def insert_facs(session, facs_results_dir, errors='warn'):
         )
 
 
-def insert_microscopy_datasets(
-    session, metadata, root_directory, update=False, errors='warn'
-):
-    '''
-    '''
-    for _, row in metadata.iterrows():
-        dataset = (
-            session.query(models.MicroscopyDataset)
-            .filter(models.MicroscopyDataset.pml_id == row.pml_id)
-            .one_or_none()
+def insert_microscopy_datasets(session, metadata, root_directory, update=False):
+    for _, metadata_row in metadata.iterrows():
+        fov_operations.insert_microscopy_dataset(
+            session, root_directory, metadata_row, update=update
         )
-        if dataset:
-            if update:
-                print('Warning: updating existing entry for %s' % row.pml_id)
-            else:
-                print('Warning: dataset %s already exists and will not be updated' % row.pml_id)
-                continue
-        else:
-            dataset = models.MicroscopyDataset(pml_id=row.pml_id)
-            print('Inserting new dataset %s' % row.pml_id)
-
-        dataset.date = row.date
-        dataset.root_directory = root_directory
-        dataset.raw_metadata = json.loads(row.to_json())
-        utils.add_and_commit(session, dataset, errors=errors)
 
 
 def insert_uniprot_metadata_for_crispr_designs(Session):
@@ -387,7 +366,7 @@ def main():
     if args.insert_facs:
         insert_facs(Session, args.facs_results_dir, errors='warn')
 
-    # insert the 'legacy' pipeline microscopy datasets found in the 'PlateMicroscopy' directory
+    # insert the 'legacy' pipeline microscopy datasets in the 'PlateMicroscopy' directory
     # (these are datasets up to PML0179)
     if args.insert_plate_microscopy_datasets:
         filepath = os.path.join(
@@ -395,28 +374,22 @@ def main():
             'data',
             '2019-12-05_Pipeline-microscopy-master-key_PlateMicroscopy-MLs-raw.csv'
         )
-        metadata = file_utils.load_legacy_microscopy_master_key(filepath)
-        insert_microscopy_datasets(
-            Session,
-            metadata,
-            root_directory='plate_microscopy',
-            update=False,
-            errors='warn'
-        )
+        plate_microscopy_metadata = file_utils.load_legacy_microscopy_master_key(filepath)
+        for _, metadata_row in plate_microscopy_metadata.iterrows():
+            fov_operations.insert_microscopy_dataset(
+                Session, metadata_row, root_directory='plate_microscopy', update=False
+            )
 
-    # insert pipeline microscopy datasets found in the 'raw-pipeline-microscopy' directory
+    # insert pipeline microscopy datasets in the 'raw-pipeline-microscopy' directory
     # (these datasets start at PML0196 and were acquired using the dragonfly-automation scripts)
     if args.insert_raw_pipeline_microscopy_datasets:
         pml_metadata = pd.read_csv(args.snapshot_filepath)
         pml_metadata.rename(columns={'id': 'pml_id'}, inplace=True)
         pml_metadata.dropna(how='any', subset=['pml_id', 'date'], axis=0, inplace=True)
-        insert_microscopy_datasets(
-            Session,
-            pml_metadata,
-            root_directory='raw_pipeline_microscopy',
-            update=args.update,
-            errors='warn'
-        )
+        for _, metadata_row in pml_metadata.iterrows():
+            fov_operations.insert_microscopy_dataset(
+                Session, metadata_row, root_directory='raw_pipeline_microscopy', update=args.update
+            )
 
     if args.insert_uniprot_metadata_for_crispr_designs:
         insert_uniprot_metadata_for_crispr_designs(Session)

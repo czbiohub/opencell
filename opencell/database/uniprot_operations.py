@@ -8,8 +8,11 @@ import sqlalchemy as db
 
 from opencell.database import models, utils, uniprot_utils
 
+import logging
+logger = logging.getLogger(__name__)
 
-def insert_uniprot_metadata_from_id(session, uniprot_id, errors='warn'):
+
+def insert_uniprot_metadata_from_id(session, uniprot_id):
     '''
     Retrieve and insert Uniprot metadata for a given uniprot_id
 
@@ -18,7 +21,7 @@ def insert_uniprot_metadata_from_id(session, uniprot_id, errors='warn'):
     '''
     metadata = uniprot_utils.query_uniprotkb(query=uniprot_id, only_reviewed=False, limit=10)
     if metadata is None:
-        print('Warning: no UniprotKB results were found for uniprot_id %s' % uniprot_id)
+        logger.warning('No UniprotKB results were found for uniprot_id %s' % uniprot_id)
         return
 
     # filter out results corresponding to other uniprot_ids
@@ -26,20 +29,18 @@ def insert_uniprot_metadata_from_id(session, uniprot_id, errors='warn'):
     # one or more results are retrieved, but none of them actually match the query uniprot_id)
     metadata = metadata.loc[metadata.uniprot_id == uniprot_id]
     if not len(metadata):
-        print(
-            'Warning: UniprotKB results were retrieved for uniprot_id %s '
+        logger.warning(
+            'UniprotKB results were retrieved for uniprot_id %s '
             'but none have the correct uniprot_id'
             % uniprot_id
         )
         return
 
     uniprot_metadata = models.UniprotMetadata(**metadata.iloc[0])
-    utils.add_and_commit(session, uniprot_metadata, errors=errors)
+    utils.add_and_commit(session, uniprot_metadata)
 
 
-def insert_uniprot_metadata_for_crispr_design(
-    session, crispr_design_id, retrieved_metadata=None, errors='warn'
-):
+def insert_uniprot_metadata_for_crispr_design(session, crispr_design_id, retrieved_metadata=None):
     '''
     Retrieve and insert the raw uniprot metadata for a crispr design
 
@@ -73,8 +74,8 @@ def insert_uniprot_metadata_for_crispr_design(
 
         # if there is no ENST ID or no metadata was found, query with the target name
         if crispr_design.transcript_id is None or retrieved_metadata is None:
-            print(
-                "Warning: querying UniprotKB by target name and not by ENST ID for '%s'"
+            logger.warning(
+                "Querying UniprotKB by target name and not by ENST ID for '%s'"
                 % crispr_design.target_name
             )
             retrieved_metadata = uniprot_utils.query_uniprotkb(
@@ -82,7 +83,7 @@ def insert_uniprot_metadata_for_crispr_design(
             )
 
     if retrieved_metadata is None:
-        print('Warning: no Uniprot metadata found for target %s' % crispr_design.target_name)
+        logger.warning('No Uniprot metadata found for target %s' % crispr_design.target_name)
         return
     retrieved_metadata = retrieved_metadata.iloc[0]
 
@@ -94,11 +95,11 @@ def insert_uniprot_metadata_for_crispr_design(
     )
     if extant_metadata is None:
         uniprot_metadata = models.UniprotMetadata(**retrieved_metadata)
-        utils.add_and_commit(session, uniprot_metadata, errors=errors)
+        utils.add_and_commit(session, uniprot_metadata)
 
     # update the crispr design's uniprot_id
     crispr_design.uniprot_id = retrieved_metadata.uniprot_id
-    utils.add_and_commit(session, crispr_design, errors=errors)
+    utils.add_and_commit(session, crispr_design)
 
 
 def insert_ensg_id(session, uniprot_id):
@@ -114,14 +115,14 @@ def insert_ensg_id(session, uniprot_id):
     )
 
     if uniprot_metadata is None:
-        print('Warning: no uniprot metadata found for uniprot_id %s' % uniprot_id)
+        logger.warning('No uniprot metadata found for uniprot_id %s' % uniprot_id)
         return
 
     # try to look up the ensg_id using mygene
     try:
         ensg_id = uniprot_utils.map_uniprot_to_ensg_using_mygene(uniprot_id)
     except Exception:
-        print('Uncaught error in mygene API query for uniprot_id %s' % uniprot_id)
+        logger.error('Uncaught error in mygene API query for uniprot_id %s' % uniprot_id)
         return
 
     # if mygene didn't work, try using the uniprot mapper API
@@ -130,15 +131,15 @@ def insert_ensg_id(session, uniprot_id):
         try:
             ensg_id = uniprot_utils.map_uniprot_to_ensg_using_uniprot(uniprot_id)
         except Exception:
-            print('Uncaught error in uniprot mapper query for uniprot_id %s' % uniprot_id)
+            logger.error('Uncaught error in uniprot mapper query for uniprot_id %s' % uniprot_id)
             return
 
     if ensg_id is None:
-        print('Warning: no ENSG ID found for uniprot_id %s' % uniprot_id)
+        logger.warning('No ENSG ID found for uniprot_id %s' % uniprot_id)
         return
 
     uniprot_metadata.ensg_id = ensg_id
-    utils.add_and_commit(session, uniprot_metadata, errors='warn')
+    utils.add_and_commit(session, uniprot_metadata)
 
 
 def generate_protein_group_uniprot_metadata_associations(Session):
@@ -156,11 +157,11 @@ def generate_protein_group_uniprot_metadata_associations(Session):
     '''
 
     engine = Session.get_bind()
-    print('Truncating the protein_group_uniprot_metadata_association table')
+    logger.info('Truncating the protein_group_uniprot_metadata_association table')
     engine.execute('truncate protein_group_uniprot_metadata_association')
 
     uniprot_metadata = uniprot_utils.export_uniprot_metadata(engine)
-    print('Found metadata for %s uniprot_ids' % uniprot_metadata.shape[0])
+    logger.info('Found metadata for %s uniprot_ids' % uniprot_metadata.shape[0])
 
     # all (protein_group_id, uniprot_id) pairs
     group_uniprot_ids = pd.read_sql(
@@ -177,7 +178,7 @@ def generate_protein_group_uniprot_metadata_associations(Session):
     # merge uniprot metadata on uniprot_id to get the (group_id, ensg_id) associations
     group_ensg_ids = pd.merge(uniprot_metadata, group_uniprot_ids, on='uniprot_id', how='inner')
     group_ensg_ids = group_ensg_ids.groupby(['protein_group_id', 'ensg_id']).first().reset_index()
-    print('Found %s (protein_group_id, ensg_id) pairs' % group_ensg_ids.shape[0])
+    logger.info('Found %s (protein_group_id, ensg_id) pairs' % group_ensg_ids.shape[0])
 
     # merge reference uniprot_ids on ensg_id to get the final (group_id, uniprot_id) associations
     group_consensus_ids = pd.merge(
@@ -192,7 +193,7 @@ def generate_protein_group_uniprot_metadata_associations(Session):
         for ind, row in group_consensus_ids.iterrows()
     ]
 
-    print(
+    logger.info(
         'Inserting %s rows into the protein_group_uniprot_metadata_association table'
         % len(rows)
     )
@@ -219,7 +220,7 @@ def generate_protein_group_crispr_design_associations(Session):
     '''
 
     engine = Session.get_bind()
-    print('Truncating the protein_group_crispr_design_association table')
+    logger.info('Truncating the protein_group_crispr_design_association table')
     engine.execute('truncate protein_group_crispr_design_association')
 
     # all crispr designs for which uniprot_metadata exists
@@ -227,7 +228,7 @@ def generate_protein_group_crispr_design_associations(Session):
         '''select * from crispr_design inner join uniprot_metadata using (uniprot_id)''',
         engine
     )
-    print('Found %s crispr designs' % crispr_designs.shape[0])
+    logger.info('Found %s crispr designs' % crispr_designs.shape[0])
 
     # all mass spec protein groups
     groups = (
@@ -237,7 +238,7 @@ def generate_protein_group_crispr_design_associations(Session):
         )
         .all()
     )
-    print('Found %s protein groups' % len(groups))
+    logger.info('Found %s protein groups' % len(groups))
 
     # find the crispr_designs whose ENSG IDs appear in each group's ENSG IDs
     assocs = []
@@ -249,6 +250,6 @@ def generate_protein_group_crispr_design_associations(Session):
             for crispr_design_id in crispr_design_ids
         ])
 
-    print('Inserting %s (protein_group, crispr_design) associations' % len(assocs))
+    logger.info('Inserting %s (protein_group, crispr_design) associations' % len(assocs))
     Session.bulk_insert_mappings(models.ProteinGroupCrisprDesignAssociation, assocs)
     Session.commit()

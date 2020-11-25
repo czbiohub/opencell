@@ -10,6 +10,9 @@ import sqlalchemy as db
 
 from opencell.database import models, utils
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 def export_uniprot_metadata(engine):
     '''
@@ -25,10 +28,7 @@ def export_uniprot_metadata(engine):
     metadata.replace(to_replace='NaN', value=np.nan, inplace=True)
 
     # there are a few uniprot_ids without ensg_ids
-    print(
-        'Warning in export_uniprot_metadata: dropping %s uniprot_ids without ensg_ids'
-        % metadata.ensg_id.isna().sum()
-    )
+    logger.warning('Dropping %s uniprot_ids without ensg_ids' % metadata.ensg_id.isna().sum())
     metadata.dropna(axis=0, subset=['ensg_id'], inplace=True)
 
     # annotation length and number of gene names are used
@@ -201,11 +201,11 @@ def query_uniprotkb(query, only_reviewed=True, limit=1):
     try:
         response = requests.get(url, params)
     except Exception:
-        print('Error while querying for %s' % query)
+        logger.warning('Error while querying UniprotKB for %s' % query)
         return None
 
     if not response.text:
-        print("No UniprotKB results found for query '%s'" % query)
+        logger.warning("No UniprotKB results found for query '%s'" % query)
         return None
 
     df = pd.read_csv(io.StringIO(response.text), sep='\t')
@@ -307,17 +307,17 @@ def map_uniprot_to_ensg_using_uniprot(uniprot_id):
     try:
         df = uniprot_id_mapper([uniprot_id], input_type='ACC', output_type='ENSEMBL_ID')
     except Exception:
-        print("Warning: uniprot mapper API error for uniprot_id '%s'" % uniprot_id)
+        logger.warning("Uniprot mapper API error for uniprot_id '%s'" % uniprot_id)
         return None
 
     if not df.shape[0]:
-        print("Warning: no hits from the Uniprot mapper API for '%s'" % uniprot_id)
+        logger.warning("No hits from the Uniprot mapper API for '%s'" % uniprot_id)
         return None
 
     retrieved_uniprot_id = df.iloc[0].ACC
     if retrieved_uniprot_id != uniprot_id:
-        print(
-            "Warning: the top hit from the Uniprot mapper API for '%s' has a different uniprot_id"
+        logger.warning(
+            "The top hit from the Uniprot mapper API for '%s' has a different uniprot_id"
             % uniprot_id
         )
         return None
@@ -340,13 +340,13 @@ def map_uniprot_to_ensg_using_mygene(uniprot_id):
     try:
         response = requests.get('http://mygene.info/v3/query', params)
     except Exception:
-        print("Warning: mygene API error for uniprot_id '%s'" % uniprot_id)
+        logger.warning("MyGene API error for uniprot_id '%s'" % uniprot_id)
         return None
 
     payload = response.json()
     hits = payload.get('hits')
     if hits is None or not len(hits):
-        print("Warning: no hits from the MyGene API for uniprot_id '%s'" % uniprot_id)
+        logger.warning("No hits from the MyGene API for uniprot_id '%s'" % uniprot_id)
         return None
     hit = hits[0]
 
@@ -363,22 +363,22 @@ def map_uniprot_to_ensg_using_mygene(uniprot_id):
             trembl_ids = [trembl_ids]
 
         if uniprot_id not in (swissprot_ids + trembl_ids):
-            print(
-                "Warning: the top MyGene hit for uniprot_id '%s' has a different uniprot_id"
+            logger.warning(
+                "The top MyGene hit for uniprot_id '%s' has a different uniprot_id"
                 % uniprot_id
             )
             return None
     else:
-        print(
-            "Warning: no uniprot_ids in the top MyGene hit for uniprot_id '%s'"
+        logger.warning(
+            "No uniprot_ids in the top MyGene hit for uniprot_id '%s'"
             % uniprot_id
         )
         return None
 
     hit_ensembl = hit['ensembl']
     if isinstance(hit_ensembl, list):
-        print(
-            "Warning: using the first of %s ensg_ids in the top MyGene hit for uniprot_id '%s'"
+        logger.warning(
+            "Using the first of %s ensg_ids in the top MyGene hit for uniprot_id '%s'"
             % (len(hit_ensembl), uniprot_id)
         )
         hit_ensembl = hit_ensembl[0]

@@ -788,7 +788,7 @@ class MicroscopyFOVAnnotation(Resource):
         if annotation is None:
             annotation = models.MicroscopyFOVAnnotation(fov_id=fov_id)
         else:
-            db_utils.delete_and_commit(flask.current_app.Session, fov.rois, errors='warn')
+            db_utils.delete_and_commit(flask.current_app.Session, fov.rois)
 
         annotation.categories = data.get('categories')
         annotation.client_metadata = data.get('client_metadata')

@@ -1,9 +1,13 @@
 import os
 import pytest
+import logging
 from opencell import constants, file_utils
 from opencell.database import models, metadata_operations
 
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
+
+logging.basicConfig(filename='test-log.log')
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture(scope='function')
@@ -15,9 +19,11 @@ def insert_plates(session):
     )
 
     for plate_id in ['P0001', 'P0002']:
-        plate_design = metadata_operations.get_or_create_plate_design(session, plate_id, create=True)
+        plate_design = metadata_operations.get_or_create_plate_design(
+            session, plate_id, create=True
+        )
         metadata_operations.create_crispr_designs(
-            session, plate_design, library_snapshot, drop_existing=False, errors='raise'
+            session, plate_design, library_snapshot, drop_existing=False
         )
 
     progenitor_line = metadata_operations.get_or_create_progenitor_cell_line(
@@ -31,7 +37,6 @@ def insert_plates(session):
         progenitor_line,
         plate_design,
         date='2020-01-01',
-        errors='raise'
     )
 
     # create cell lines for plate2
@@ -41,7 +46,6 @@ def insert_plates(session):
         progenitor_line,
         plate_design,
         date='2020-01-01',
-        errors='raise'
     )
 
 
@@ -59,7 +63,9 @@ def test_get_or_create_progenitor_cell_line(session):
     assert line.name == name
 
     # try to get a non-existent line
-    line = metadata_operations.get_or_create_progenitor_cell_line(session, 'nonexistent-name', create=False)
+    line = metadata_operations.get_or_create_progenitor_cell_line(
+        session, 'nonexistent-name', create=False
+    )
     assert line is None
 
 

@@ -15,6 +15,9 @@ import pandas as pd
 from opencell import constants
 from opencell.imaging import images
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class PlateMicroscopyManager:
     '''
@@ -232,7 +235,7 @@ class PlateMicroscopyManager:
             result = self.parse_raw_tiff_filename(row.filename)
             if not result:
                 if 'MMStack' not in row.filename:
-                    print('Warning: unparseable raw filename %s' % row.filename)
+                    logger.warning('Unparseable raw filename %s' % row.filename)
                 dropped_inds.append(ind)
                 continue
 
@@ -244,7 +247,7 @@ class PlateMicroscopyManager:
             well_row, well_col = re.match(r'([A-H])([0-9]{1,2})', well_id).groups()
             md_raw.at[ind, 'well_id'] = '%s%02d' % (well_row, int(well_col))
 
-        print('Warning: dropping %s rows of unparseable raw metadata' % len(dropped_inds))
+        logger.warning('Dropping %s rows of unparseable raw metadata' % len(dropped_inds))
         md_raw.drop(dropped_inds, inplace=True)
 
         # the parental_line is the same for all plates in PlateMicroscopy
@@ -286,7 +289,7 @@ class PlateMicroscopyManager:
         n = md_raw.groupby('fov_id').count()
         degenerate_fov_ids = n.loc[n.filename > 1].index
         md_raw = md_raw.loc[~md_raw.fov_id.isin(degenerate_fov_ids)]
-        print('Warning: dropping non-unique fov_ids %s' % list(degenerate_fov_ids))
+        logger.warning('Dropping non-unique fov_ids %s' % list(degenerate_fov_ids))
 
         self.md_raw = md_raw
 
@@ -297,7 +300,7 @@ class PlateMicroscopyManager:
         (requires that the partition be mounted)
         '''
         if not os.path.isdir(self.root_dir):
-            print('Warning: cannot determine file info unless the partition is mounted')
+            logger.warning('Cannot determine file info unless the partition is mounted')
             return
 
         md = self.md.replace(to_replace=np.nan, value='')

@@ -10,6 +10,8 @@ from sqlalchemy.dialects import postgresql
 from opencell import constants
 from opencell.database import utils
 
+import logging
+logger = logging.getLogger(__name__)
 
 # constraint naming conventions
 # see https://alembic.sqlalchemy.org/en/latest/naming.html
@@ -355,15 +357,15 @@ class CrisprDesign(Base):
 
         value = value.lower()
         if value.startswith('int'):
-            print("Warning: terminus type '%s' coerced to INTERNAL" % value)
+            logger.warning("Terminus type '%s' coerced to INTERNAL" % value)
             value = TerminusTypeEnum.INTERNAL
         elif value.startswith('c'):
             if value != 'c':
-                print("Warning: terminus type '%s' coerced to C_TERMINUS" % value)
+                logger.warning("Terminus type '%s' coerced to C_TERMINUS" % value)
             value = TerminusTypeEnum.C_TERMINUS
         elif value.startswith('n'):
             if value != 'n':
-                print("Warning: terminus type '%s' coerced to N_TERMINUS" % value)
+                logger.warning("Terminus type '%s' coerced to N_TERMINUS" % value)
             value = TerminusTypeEnum.N_TERMINUS
         return value
 

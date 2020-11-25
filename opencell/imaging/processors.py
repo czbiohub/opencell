@@ -16,6 +16,9 @@ import pandas as pd
 from opencell import constants
 from opencell.imaging import images, utils, nucleus_segmentation
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class FOVProcessor:
 
@@ -262,7 +265,7 @@ class FOVProcessor:
             if tiff.did_split_channels:
                 return tiff
             else:
-                print('Warning: could not split the TIFF')
+                logger.warning('Could not split the TIFF file at %s' % src_filepath)
                 tiff.tiff.close()
 
 

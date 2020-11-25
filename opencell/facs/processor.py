@@ -14,6 +14,9 @@ from opencell.facs import utils as facs_utils
 from opencell.facs import constants as facs_constants
 from opencell import constants as common_constants
 
+import logging
+logger = logging.getLogger(__name__)
+
 # FITC channel name
 FITC = facs_constants.FITC
 
@@ -74,18 +77,19 @@ class FACSProcessor(object):
         # check for missing/unexpected well_ids
         missing_well_ids = set(common_constants.RAW_WELL_IDS).difference(well_ids)
         if missing_well_ids:
-            print('Warning: there is no FCS file for some well_ids: %s' % missing_well_ids)
+            logger.warning('There is no FCS file for some well_ids: %s' % missing_well_ids)
 
         unexpected_well_ids = set(well_ids).difference(common_constants.RAW_WELL_IDS)
         if unexpected_well_ids:
-            print('Warning: FCS files found for unexpected well_ids %s' % unexpected_well_ids)
+            logger.warning('FCS files found for unexpected well_ids %s' % unexpected_well_ids)
 
         # count the number of negative control datasets
         control_filepaths = glob.glob(os.path.join(self.controls_dirpath, '*.fcs'))
         if len(control_filepaths) != facs_constants.NUM_CONTROL_DATASETS:
-            print('Warning: expected %s control datasets but found %s' %
-                (facs_constants.NUM_CONTROL_DATASETS, len(control_filepaths)))
-
+            logger.warning(
+                'Expected %s control datasets but found %s'
+                % (facs_constants.NUM_CONTROL_DATASETS, len(control_filepaths))
+            )
         return well_ids, control_filepaths
 
 
@@ -141,8 +145,7 @@ class FACSProcessor(object):
             means.append(mean)
             counts.append(count)
             all_values.append(values - mean)
-            if self.verbose:
-                print('Loaded control dataset %s: n=%d, mean=%d' % (control.ID, count, mean))
+            logger.info('Loaded control dataset %s: n=%d, mean=%d' % (control.ID, count, mean))
 
         all_values = np.concatenate(tuple(all_values), axis=0)
 
@@ -188,7 +191,7 @@ class FACSProcessor(object):
         '''
 
         if nbins is None and xrange is not None and verbose:
-            print('Warning: a range was provided but the number of bins was not provided')
+            logger.warning('A range was provided but the number of bins was not provided')
 
         # calculate the x-range from the percentile
         # (defaults to max/min because percentile=1)
@@ -203,8 +206,7 @@ class FACSProcessor(object):
         # then this rule is similar to "Scott's rule" for the optimal bin width.
         if nbins is None:
             nbins = 2 * len(values) ** (1/3)
-            if verbose:
-                print('Using nbins=%d' % nbins)
+            logger.info('Using nbins=%d' % nbins)
 
         bin_width = (maxx - minn) / nbins
         bins = np.arange(minn, maxx, bin_width)
@@ -238,7 +240,8 @@ class FACSProcessor(object):
             y_sample,
             offset_guess=offset_guess,
             offset_bounds=offset_bounds,
-            fit_window=fit_window)
+            fit_window=fit_window
+        )
 
         # do the fit
         result = unmixer.fit()

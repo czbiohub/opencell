@@ -22,6 +22,7 @@ import Dashboard from './dashboard/Dashboard';
 import TargetProfile from './profile/targetProfile.jsx';
 import InteractorProfile from './profile/interactorProfile.jsx';
 import Gallery from './gallery/Gallery.jsx';
+import UmapViewer from './umap/umap.jsx';
 import About from './about/About.jsx';
 import FOVOverview from './microscopy/FOVOverview.jsx';
 import settings from './common/settings.js';
@@ -224,6 +225,7 @@ function App() {
 
                 <Route path="/target"></Route>
                 <Route path="/gallery" component={Gallery}/>
+                <Route path="/umap" component={UmapViewer}/>
                 <Route path="/dashboard" component={Dashboard}/>
 
                 {/* TODO: fix this - FOVOverview needs a plateId prop */}

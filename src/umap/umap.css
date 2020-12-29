@@ -1,0 +1,13 @@
+
+.thumbnail-hover-container {
+    position: absolute;
+    visibility: hidden;
+    pointer-events: none;
+    background-color: #ffffff33;
+    color: white;
+}
+
+canvas {
+    border: 1px solid #aaa;
+    background-color: black;
+}

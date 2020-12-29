@@ -109,9 +109,10 @@ export default class ViewerContainer extends Component {
     componentDidUpdate(prevProps, prevState, snapshot) {
 
         if (
-            prevProps.roiId!==this.props.roiId || 
-            prevState.imageQuality!==this.state.imageQuality
-        ) this.loadStacks();
+            prevProps.roiId!==this.props.roiId || prevState.imageQuality!==this.state.imageQuality
+        ) {
+            this.loadStacks();
+        }
 
         // reset the camera zoom and the GFP black point if the target has changed
         // (because the black point is different for low-GFP targets)

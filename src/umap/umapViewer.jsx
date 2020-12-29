@@ -6,12 +6,14 @@ import 'tachyons';
 import './umap.css';
 
 
-export default class UmapViewer extends Component {
+export default class UMAPViewer extends Component {
 
     constructor(props) {
         super(props);
         
-        this.state = {loaded: false};
+        this.state = {
+            loaded: false,
+        };
 
         // the size of the canvas 
         // HACK: this is chosen to be large enough to prevent downsampling the thumbnails,
@@ -26,12 +28,11 @@ export default class UmapViewer extends Component {
         // the native size of each thumbnail (in the JPG of tiled thumbnails)
         this.nativeThumbnailSize = 100;
 
-        this.umapCoord = 'umap_grid_pos';
-
         // HACK: hard-coded filepaths to the JPG of tiled thumbnails and the JSON of thumbnail UMAP positions
         this.thumbnailTileUrl = '/assets/images/2020-12-28_all-thumbnails.jpg';
         this.thumbnailMetadataUrl = '/assets/images/2020-12-28_thumbnail-positions.json';
 
+        this.getCoordName = this.getCoordName.bind(this);
         this.maybeLoadData = this.maybeLoadData.bind(this);
         this.drawThumbnails = this.drawThumbnails.bind(this);
         this.addCanvasEventHandlers = this.addCanvasEventHandlers.bind(this);
@@ -41,9 +42,14 @@ export default class UmapViewer extends Component {
 
     componentDidMount() {
 
+        const container = d3.select(this.node);
+
+        this.canvasRenderedSize = d3.max([window.innerHeight, window.innerWidth]) - 50;
+
         // the visible canvas
         const canvas = d3.select(this.node)
             .append('canvas')
+            .attr('class', 'umap-canvas')
             .attr('width', this.canvasSize)
             .attr('height', this.canvasSize)
             .style('width', `${this.canvasRenderedSize}px`)
@@ -119,21 +125,25 @@ export default class UmapViewer extends Component {
         });
     }
 
+    getCoordName () {
+        if (this.props.coordType==='raw') return 'umap_pos';
+        if (this.props.coordType==='grid') return 'umap_grid_pos';
+    }
 
     drawThumbnails () {
 
-        // assumes the umap_pos coordinates have been normalized to [0, 1]
-        if (this.umapCoord==='umap_pos') {
+        // assumes the raw coordinates have been normalized to [0, 1]
+        if (this.props.coordType==='raw') {
             this.canvasSize = 6000;
             d3.select(this.canvas).attr('width', this.canvasSize).attr('height', this.canvasSize);
             d3.select(this.shadowCanvas).attr('width', this.canvasSize).attr('height', this.canvasSize);
             this.umapScale = d3.scaleLinear().rangeRound([0, this.canvasSize]).domain([-0.01, 1.03]);
             this.canvasThumbnailSize = 100;
         }
-        if (this.umapCoord==='umap_grid_pos') {
+        if (this.props.coordType==='grid') {
             this.umapScale = d3.scaleLinear()
                 .rangeRound([0, this.canvasSize])
-                .domain([0, d3.max(this.thumbnailMetadata, d => d3.max(d[this.umapCoord])) + 1]);
+                .domain([0, d3.max(this.thumbnailMetadata, d => d3.max(d[this.getCoordName()])) + 1]);
             this.canvasThumbnailSize = this.umapScale(1) - this.umapScale(0);
         }
 
@@ -148,14 +158,16 @@ export default class UmapViewer extends Component {
                 this.tiledThumbnailCanvas,
                 
                 // source x, y (note the col, row order is reversed)
-                thumbnail.tile_pos[1] * this.nativeThumbnailSize, thumbnail.tile_pos[0] * this.nativeThumbnailSize,
+                thumbnail.tile_pos[1] * this.nativeThumbnailSize, 
+                thumbnail.tile_pos[0] * this.nativeThumbnailSize,
                 
                 // source width, height 
                 this.nativeThumbnailSize, this.nativeThumbnailSize,
                 
                 // destination x, y
-                this.umapScale(thumbnail[this.umapCoord][1]), this.umapScale(thumbnail[this.umapCoord][0]), 
-                
+                this.umapScale(thumbnail[this.getCoordName()][1]), 
+                this.umapScale(thumbnail[this.getCoordName()][0]), 
+
                 // destination width, height
                 this.canvasThumbnailSize, this.canvasThumbnailSize,
             );
@@ -197,19 +209,19 @@ export default class UmapViewer extends Component {
             ];
 
             // clamp the mouse position to the grid coordinates
-            if (_this.umapCoord==='umap_grid_pos') {
+            if (_this.props.coordType==='grid') {
                 mouseUmapPosition = mouseUmapPosition.map(val => Math.floor(val));
             }
 
             // move the mouse position to the top left of the thumbnail,
             // because this (and not the thumbnail center) is what the umap positions correspond to
-            if (_this.umapCoord==='umap_pos') {
+            if (_this.props.coordType==='raw') {
                 mouseUmapPosition = mouseUmapPosition.map(val => val - umapThumbnailSize/2);
             }
 
-            const coord = _this.umapCoord;
+            const coordName = _this.getCoordName();
             const dists = _this.thumbnailMetadata.map(
-                d => (d[coord][1] - mouseUmapPosition[0])**2 + (d[coord][0] - mouseUmapPosition[1])**2
+                d => (d[coordName][1] - mouseUmapPosition[0])**2 + (d[coordName][0] - mouseUmapPosition[1])**2
             );
             const minDist = d3.min(dists);
             if (Math.sqrt(minDist) > (umapThumbnailSize/2)) {
@@ -221,8 +233,8 @@ export default class UmapViewer extends Component {
 
             // top-left corner of the hovered thumbnail in client pixel coordinates
             const thumbnailPosition = transform.apply([
-                _this.umapScale(thumbnail[coord][1]) / canvasPixelsPerScreenPixel,
-                _this.umapScale(thumbnail[coord][0]) / canvasPixelsPerScreenPixel,
+                _this.umapScale(thumbnail[coordName][1]) / canvasPixelsPerScreenPixel,
+                _this.umapScale(thumbnail[coordName][0]) / canvasPixelsPerScreenPixel,
             ]);
 
             // update the position of the hover div
@@ -237,7 +249,7 @@ export default class UmapViewer extends Component {
 
         // add zooming to the canvas
         this.zoom = d3.zoom()
-            .scaleExtent([0.8, 16])
+            .scaleExtent([0.8, 8])
             .on('zoom', () => this.onZoom(d3.event.transform));
         d3.select(this.canvas).call(this.zoom).call(this.zoom.transform, d3.zoomIdentity);
 
@@ -265,7 +277,7 @@ export default class UmapViewer extends Component {
         context.scale(transform.k, transform.k);
 
         // re-draw the image (without smoothing, to show the true pixels when zoomed in)
-        context.imageSmoothingEnabled = false;
+        // context.imageSmoothingEnabled = false;
         context.drawImage(this.shadowCanvas, 0, 0, this.canvas.width, this.canvas.height);
         context.restore();
 
@@ -275,8 +287,8 @@ export default class UmapViewer extends Component {
 
     render() {
         return (
-            <div className='w-100 pa4'>
-                <div ref={node => this.node = node} style={{position: 'relative'}}/>
+            <div className='flex justify-center'>
+                <div ref={node => this.node = node} style={{position: 'relative'}}/> 
             </div>
         );
     }

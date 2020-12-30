@@ -3,13 +3,17 @@
     position: absolute;
     visibility: hidden;
     pointer-events: none;
-    background-color: #ffffff33;
+    /* background-color: #ffffff33; */
     color: white;
+    border: 1px solid white;
+    border-radius: 5px;
+    padding: 5px;
 }
 
 .umap-canvas {
     /* border: 1px solid red; */
     background-color: black;
+    overflow-y: hidden;
 }
 
 .umap-controls-container {
@@ -27,6 +31,7 @@
     top: 0;
     left: 0;
     width: 100%;
-    height: 1200px;
+    height: 95vh;
     background-color: black;
+    overflow: hidden;
 }

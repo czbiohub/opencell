@@ -21,14 +21,15 @@ export default class UMAPViewer extends Component {
         this.canvasSize = 4000;
 
         // the size of the canvas on the screen
-        // NOTE: the ratio of canvasSize to canvasRenderedSize should be at least equal to window.devicePixelRatio
+        // NOTE: the ratio of canvasSize to canvasRenderedSize 
+        // should be at least equal to window.devicePixelRatio
         // (which is equal to 2.0 on my macbook pro)
         this.canvasRenderedSize = 800;
 
         // the native size of each thumbnail (in the JPG of tiled thumbnails)
         this.nativeThumbnailSize = 100;
 
-        // HACK: hard-coded filepaths to the JPG of tiled thumbnails and the JSON of thumbnail UMAP positions
+        // HACK: hard-coded paths to the tiled thumbnails JPG and the thumbnail UMAP positions
         this.thumbnailTileUrl = '/assets/images/2020-12-28_all-thumbnails.jpg';
         this.thumbnailMetadataUrl = '/assets/images/2020-12-28_thumbnail-positions.json';
 
@@ -59,7 +60,9 @@ export default class UMAPViewer extends Component {
 
         // off-screen canvas for 'holding' the rendered canvas while applying zoom transforms
         this.shadowCanvas = document.createElement('canvas');
-        d3.select(this.shadowCanvas).attr('width', this.canvas.width).attr('height', this.canvas.height);
+        d3.select(this.shadowCanvas)
+            .attr('width', this.canvas.width)
+            .attr('height', this.canvas.height);
 
         // off-screen canvas for the JPG of tiled thumbnails
         this.tiledThumbnailCanvas = document.createElement("canvas");
@@ -132,20 +135,28 @@ export default class UMAPViewer extends Component {
 
     drawThumbnails () {
 
-        // assumes the raw coordinates have been normalized to [0, 1]
         if (this.props.coordType==='raw') {
+
+            // hard-coded thumbnail size (since in raw coords, it is not constrained by the grid)
+            this.canvasThumbnailSize = 100;
+
+            // resize the canvas to avoid downsampling the thumbnails
             this.canvasSize = 6000;
             d3.select(this.canvas).attr('width', this.canvasSize).attr('height', this.canvasSize);
             d3.select(this.shadowCanvas).attr('width', this.canvasSize).attr('height', this.canvasSize);
+
+            // WARNING: assumes the raw coordinates have been normalized to [0, 1]
             this.umapScale = d3.scaleLinear().rangeRound([0, this.canvasSize]).domain([-0.01, 1.03]);
-            this.canvasThumbnailSize = 100;
         }
+
         if (this.props.coordType==='grid') {
             this.umapScale = d3.scaleLinear()
                 .rangeRound([0, this.canvasSize])
                 .domain([0, d3.max(this.thumbnailMetadata, d => d3.max(d[this.getCoordName()])) + 1]);
             this.canvasThumbnailSize = this.umapScale(1) - this.umapScale(0);
         }
+
+        console.log(this.canvasThumbnailSize);
 
         const context = this.shadowCanvas.getContext('2d');
 
@@ -249,10 +260,16 @@ export default class UMAPViewer extends Component {
 
         // add zooming to the canvas
         this.zoom = d3.zoom()
-            .scaleExtent([0.8, 8])
+            .scaleExtent([0.5, 8])
             .on('zoom', () => this.onZoom(d3.event.transform));
 
-        d3.select(this.canvas).call(this.zoom).call(this.zoom.transform, d3.zoomIdentity.scale(1));
+        d3.select(this.canvas).call(this.zoom);
+        
+        // set the initial transform so that the full UMAP fits and is horizontally centered
+        d3.select(this.canvas).call(
+            this.zoom.transform, 
+            d3.zoomIdentity.translate(window.innerWidth/4, 20).scale(0.6)
+        );
 
     }
 
@@ -288,9 +305,7 @@ export default class UMAPViewer extends Component {
 
     render() {
         return (
-            <div className='flex justify-center'>
-                <div ref={node => this.node = node} style={{position: 'relative'}}/> 
-            </div>
+             <div ref={node => this.node = node} style={{position: 'relative'}}/> 
         );
     }
 }

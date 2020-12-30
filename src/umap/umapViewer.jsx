@@ -30,7 +30,7 @@ export default class UMAPViewer extends Component {
         this.nativeThumbnailSize = 100;
 
         // HACK: hard-coded paths to the tiled thumbnails JPG and the thumbnail UMAP positions
-        this.thumbnailTileUrl = '/assets/images/2020-12-28_all-thumbnails.jpg';
+        this.thumbnailTileUrl = '/assets/images/2020-12-28_all-thumbnails-100px.jpg';
         this.thumbnailMetadataUrl = '/assets/images/2020-12-28_thumbnail-positions.json';
 
         this.getCoordName = this.getCoordName.bind(this);
@@ -38,6 +38,7 @@ export default class UMAPViewer extends Component {
         this.drawThumbnails = this.drawThumbnails.bind(this);
         this.addCanvasEventHandlers = this.addCanvasEventHandlers.bind(this);
         this.onZoom = this.onZoom.bind(this);
+        this.onCanvasMouseMove = this.onCanvasMouseMove.bind(this);
     }
 
 
@@ -88,7 +89,6 @@ export default class UMAPViewer extends Component {
 
         const img = new Image;
         img.setAttribute('crossOrigin', '');
-
         img.onload = () => {
 
             // set the size of the virtual canvas to the actual size of the image
@@ -96,12 +96,10 @@ export default class UMAPViewer extends Component {
                 .attr("width", img.naturalWidth)
                 .attr("height", img.naturalHeight);
 
+            // draw the image on the 'raw' canvas
             let context = this.tiledThumbnailCanvas.getContext('2d');
             context.drawImage(img, 0, 0);
 
-            //context = this.canvas.getContext('2d');
-            //context.drawImage(this.virtualCanvas, 0, 0, this.canvas.width, this.canvas.height);
-            
             // HACK: here we load the JSON thumbnail positions within the img onload callback
             d3.json(this.thumbnailMetadataUrl).then(data => {
                 this.thumbnailMetadata = data;
@@ -128,10 +126,12 @@ export default class UMAPViewer extends Component {
         });
     }
 
+
     getCoordName () {
         if (this.props.coordType==='raw') return 'umap_pos';
         if (this.props.coordType==='grid') return 'umap_grid_pos';
     }
+
 
     drawThumbnails () {
 
@@ -141,7 +141,7 @@ export default class UMAPViewer extends Component {
             this.canvasThumbnailSize = 100;
 
             // resize the canvas to avoid downsampling the thumbnails
-            this.canvasSize = 6000;
+            this.canvasSize = 4000;
             d3.select(this.canvas).attr('width', this.canvasSize).attr('height', this.canvasSize);
             d3.select(this.shadowCanvas).attr('width', this.canvasSize).attr('height', this.canvasSize);
 
@@ -155,8 +155,6 @@ export default class UMAPViewer extends Component {
                 .domain([0, d3.max(this.thumbnailMetadata, d => d3.max(d[this.getCoordName()])) + 1]);
             this.canvasThumbnailSize = this.umapScale(1) - this.umapScale(0);
         }
-
-        console.log(this.canvasThumbnailSize);
 
         const context = this.shadowCanvas.getContext('2d');
 
@@ -188,7 +186,32 @@ export default class UMAPViewer extends Component {
 
     addCanvasEventHandlers () {
 
-        const _this = this;
+        // highlight the hovered thumbnail
+        const onCanvasMouseMove = this.onCanvasMouseMove;
+        d3.select(this.canvas)
+            .on('mousemove', function () { 
+                onCanvasMouseMove(d3.mouse(this), d3.zoomTransform(this));
+            })
+            .on('mouseout', () => this.hoveredThumbnailDiv.style('visibility', 'hidden'));
+
+        // add zooming to the canvas
+        const zoom = d3.zoom()
+            .scaleExtent([0.5, 4])
+            .on('zoom', () => this.onZoom(d3.event.transform));
+        d3.select(this.canvas).call(zoom);
+
+        // set the initial transform so that the full UMAP fits and is horizontally centered
+        const initialTransform = d3.zoomIdentity.translate(window.innerWidth/4, 20).scale(0.6);
+        d3.select(this.canvas).call(zoom.transform, initialTransform);
+
+    }
+
+
+    onCanvasMouseMove (mousePosition, transform) {
+        // Draw a div around the thumbnail the mouse is hovered over
+        //
+        // mousePosition : the current mouse position on the canvas (in client pixel coordinates)
+        // transform : the current d3.zoomTransform applied to the canvas
 
         const canvasPixelsPerScreenPixel = this.canvasSize/this.canvasRenderedSize;
 
@@ -198,79 +221,56 @@ export default class UMAPViewer extends Component {
         // thumbnail size in client screen pixels
         const renderedThumbnailSize = this.canvasThumbnailSize/canvasPixelsPerScreenPixel;
 
-        // outline thumbnails on hover
-        d3.select(this.canvas)
-            .on('mouseout', () => this.hoveredThumbnailDiv.style('visibility', 'hidden'))
-            .on('mousemove', function () { 
+        // the mouse position in rendered canvas pixel coordinates 
+        // (that is, relative to the 800x800 rendered canvas)
+        const mouseRenderedPosition = transform.invert(mousePosition);
 
-            // the current transform applied to the canvas
-            const transform = d3.zoomTransform(this);
-            
-            // the mouse position in client pixel coordinates
-            const mousePosition = d3.mouse(this);
+        // the mouse position in UMAP coordinates (either a grid cell or the normalized position)
+        let mouseUmapPosition = [
+            this.umapScale.invert(mouseRenderedPosition[0] * canvasPixelsPerScreenPixel), 
+            this.umapScale.invert(mouseRenderedPosition[1] * canvasPixelsPerScreenPixel)
+        ];
 
-            // the mouse position in rendered canvas pixel coordinates 
-            // (that is, relative to the 800x800 rendered canvas)
-            const mouseRenderedPosition = transform.invert(mousePosition);
+        // clamp the mouse position to the grid coordinates
+        if (this.props.coordType==='grid') {
+            mouseUmapPosition = mouseUmapPosition.map(val => Math.floor(val));
+        }
 
-            // the mouse position in UMAP coordinates (either a grid cell or the normalized position)
-            let mouseUmapPosition = [
-                _this.umapScale.invert(mouseRenderedPosition[0] * canvasPixelsPerScreenPixel), 
-                _this.umapScale.invert(mouseRenderedPosition[1] * canvasPixelsPerScreenPixel)
-            ];
+        // move the mouse position to the top left of the thumbnail,
+        // because this (and not the thumbnail center) is what the umap positions correspond to
+        if (this.props.coordType==='raw') {
+            mouseUmapPosition = mouseUmapPosition.map(val => val - umapThumbnailSize/2);
+        }
 
-            // clamp the mouse position to the grid coordinates
-            if (_this.props.coordType==='grid') {
-                mouseUmapPosition = mouseUmapPosition.map(val => Math.floor(val));
-            }
-
-            // move the mouse position to the top left of the thumbnail,
-            // because this (and not the thumbnail center) is what the umap positions correspond to
-            if (_this.props.coordType==='raw') {
-                mouseUmapPosition = mouseUmapPosition.map(val => val - umapThumbnailSize/2);
-            }
-
-            const coordName = _this.getCoordName();
-            const dists = _this.thumbnailMetadata.map(
-                d => (d[coordName][1] - mouseUmapPosition[0])**2 + (d[coordName][0] - mouseUmapPosition[1])**2
-            );
-            const minDist = d3.min(dists);
-            if (Math.sqrt(minDist) > (umapThumbnailSize/2)) {
-                _this.hoveredThumbnailDiv.style('visibility', 'hidden');
-                return;
-            }
-
-            const thumbnail = _this.thumbnailMetadata[dists.indexOf(minDist)];
-
-            // top-left corner of the hovered thumbnail in client pixel coordinates
-            const thumbnailPosition = transform.apply([
-                _this.umapScale(thumbnail[coordName][1]) / canvasPixelsPerScreenPixel,
-                _this.umapScale(thumbnail[coordName][0]) / canvasPixelsPerScreenPixel,
-            ]);
-
-            // update the position of the hover div
-            _this.hoveredThumbnailDiv
-                .style('width', `${renderedThumbnailSize * transform.k}px`)
-                .style('height', `${renderedThumbnailSize * transform.k}px`)
-                .style('left', `${thumbnailPosition[0]}px`)
-                .style('top', `${thumbnailPosition[1]}px`)
-                .style('visibility', 'visible')
-                .text(thumbnail?.target_name);
-        });
-
-        // add zooming to the canvas
-        this.zoom = d3.zoom()
-            .scaleExtent([0.5, 8])
-            .on('zoom', () => this.onZoom(d3.event.transform));
-
-        d3.select(this.canvas).call(this.zoom);
-        
-        // set the initial transform so that the full UMAP fits and is horizontally centered
-        d3.select(this.canvas).call(
-            this.zoom.transform, 
-            d3.zoomIdentity.translate(window.innerWidth/4, 20).scale(0.6)
+        const coordName = this.getCoordName();
+        const dists = this.thumbnailMetadata.map(
+            d => (d[coordName][1] - mouseUmapPosition[0])**2 + (d[coordName][0] - mouseUmapPosition[1])**2
         );
+        const minDist = d3.min(dists);
 
+        // if the mouse is not over a thumbnail
+        if (Math.sqrt(minDist) > (umapThumbnailSize/2)) {
+            this.hoveredThumbnailDiv.style('visibility', 'hidden');
+            return;
+        }
+
+        // the thumbnail the mouse is hovering over
+        const thumbnail = this.thumbnailMetadata[dists.indexOf(minDist)];
+
+        // the top-left corner of the hovered thumbnail in client pixel coordinates
+        const thumbnailPosition = transform.apply([
+            this.umapScale(thumbnail[coordName][1]) / canvasPixelsPerScreenPixel,
+            this.umapScale(thumbnail[coordName][0]) / canvasPixelsPerScreenPixel,
+        ]);
+
+        // update the position of the hover div
+        this.hoveredThumbnailDiv
+            .style('width', `${renderedThumbnailSize * transform.k}px`)
+            .style('height', `${renderedThumbnailSize * transform.k}px`)
+            .style('left', `${thumbnailPosition[0]}px`)
+            .style('top', `${thumbnailPosition[1]}px`)
+            .style('visibility', 'visible')
+            .text(thumbnail?.target_name);
     }
 
 

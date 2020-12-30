@@ -21,10 +21,15 @@ export default class UMAPContainer extends Component {
         this.state = {
             
             // 'dots' or 'thumbnails'
-            markers: 'thumbnails',
+            markerType: 'thumbnails',
 
             // 'grid' or 'raw' for binned or raw UMAP coordinates
+            // (when markerType is 'thumbnails')
             coordType: 'grid', 
+
+            // 'localization', 'family', etc
+            // (when markerType is 'dots')
+            colorBy: 'localization',
 
             // the size of the grid when umap type is 'grid'
             gridSize: 40,
@@ -40,25 +45,38 @@ export default class UMAPContainer extends Component {
             <div className='relative pa4'>
                 
                 {/* row of controsl */}
-                <div className='pa2 umap-controls-container'>
+                <div className='umap-controls-container'>
+                    <div className='f5 b pb3'>UMAP display controls</div>
                     <div className='pb3'>
                         <ButtonGroup 
-                            label='Snap to grid: ' 
-                            values={['grid', 'raw']}
-                            labels={['Yes', 'No']}
-                            activeValue={this.state.coordType}
-                            onClick={value => this.setState({coordType: value})}
-                            popoverContent={popoverContents.snapUMAPToGrid}
+                            label='Marker type' 
+                            values={['dots', 'thumbnails']}
+                            labels={['Dots', 'Thumbnails']}
+                            activeValue={this.state.markerType}
+                            onClick={value => this.setState({markerType: value})}
+                            popoverContent={popoverContents.umapMarkerType}
                         />
                     </div>
                     <div className='pb3'>
                         <ButtonGroup 
-                            label='Grid size: ' 
+                            label='Snap thumbnails to grid' 
+                            values={['grid', 'raw']}
+                            labels={['Yes', 'No']}
+                            activeValue={this.state.coordType}
+                            onClick={value => this.setState({coordType: value})}
+                            popoverContent={popoverContents.umapSnapToGrid}
+                            disabled={this.state.markerType!=='thumbnails'}
+                        />
+                    </div>
+                    <div className='pb3'>
+                        <ButtonGroup 
+                            label='Grid size' 
                             values={[30, 40, 60]}
                             labels={null}
                             activeValue={this.state.gridSize}
                             onClick={value => this.setState({gridSize: value})}
-                            popoverContent={popoverContents.chooseUMAPGridSize}
+                            popoverContent={popoverContents.umapGridSize}
+                            disabled={this.state.markerType!=='thumbnails' || this.state.coordType!=='grid'}
                         />
                     </div>
 

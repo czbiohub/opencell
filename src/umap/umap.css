@@ -14,10 +14,11 @@
 
 .umap-controls-container {
     position: absolute;
-    width: 150px;
+    width: 200px;
     background-color: white;
     border-radius: 5px;
-    opacity: 0.9;
+    padding: 15px;
+    opacity: 1;
     z-index: 999;
 }
 

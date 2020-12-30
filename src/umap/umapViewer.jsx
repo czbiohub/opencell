@@ -44,7 +44,7 @@ export default class UMAPViewer extends Component {
 
         const container = d3.select(this.node);
 
-        this.canvasRenderedSize = d3.max([window.innerHeight, window.innerWidth]) - 50;
+        this.canvasRenderedSize = d3.max([window.innerHeight, window.innerWidth]) - 0;
 
         // the visible canvas
         const canvas = d3.select(this.node)
@@ -251,7 +251,8 @@ export default class UMAPViewer extends Component {
         this.zoom = d3.zoom()
             .scaleExtent([0.8, 8])
             .on('zoom', () => this.onZoom(d3.event.transform));
-        d3.select(this.canvas).call(this.zoom).call(this.zoom.transform, d3.zoomIdentity);
+
+        d3.select(this.canvas).call(this.zoom).call(this.zoom.transform, d3.zoomIdentity.scale(1));
 
     }
 

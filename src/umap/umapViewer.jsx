@@ -24,31 +24,35 @@ export default class UMAPViewer extends Component {
         // NOTE: the ratio of canvasSize to canvasRenderedSize 
         // should be at least equal to window.devicePixelRatio
         // (which is equal to 2.0 on my macbook pro)
-        this.canvasRenderedSize = 800;
+        this.canvasRenderedSize = undefined;
 
-        // the native size of each thumbnail (in the JPG of tiled thumbnails)
+        // the native size of each thumbnail in the JPG of tiled thumbnails
         this.nativeThumbnailSize = 100;
 
         // HACK: hard-coded paths to the tiled thumbnails JPG and the thumbnail UMAP positions
-        this.thumbnailTileUrl = '/assets/images/2020-12-28_all-thumbnails-100px.jpg';
+        this.thumbnailTileUrl = '/assets/images/2020-12-28_all-thumbnails-100px-circle.jpg';
         this.thumbnailMetadataUrl = '/assets/images/2020-12-28_thumbnail-positions.json';
 
-        this.getCoordName = this.getCoordName.bind(this);
+        this.getCoord = this.getCoord.bind(this);
         this.maybeLoadData = this.maybeLoadData.bind(this);
+        this.updateDerivedConstants = this.updateDerivedConstants.bind(this);
+
+        this.drawThumbnail = this.drawThumbnail.bind(this);
         this.drawThumbnails = this.drawThumbnails.bind(this);
+        this.updateThumbnailRects = this.updateThumbnailRects.bind(this);
+
         this.addCanvasEventHandlers = this.addCanvasEventHandlers.bind(this);
-        this.onZoom = this.onZoom.bind(this);
+        this.onUmapZoom = this.onUmapZoom.bind(this);
         this.onCanvasMouseMove = this.onCanvasMouseMove.bind(this);
     }
 
 
     componentDidMount() {
 
-        const container = d3.select(this.node);
+        // define the extent of the (square) canvas in client screen pixels
+        this.canvasRenderedSize = d3.max([window.innerHeight, window.innerWidth]);
 
-        this.canvasRenderedSize = d3.max([window.innerHeight, window.innerWidth]) - 0;
-
-        // the visible canvas
+        // create the visible canvas
         const canvas = d3.select(this.node)
             .append('canvas')
             .attr('class', 'umap-canvas')
@@ -58,6 +62,14 @@ export default class UMAPViewer extends Component {
             .style('height', `${this.canvasRenderedSize}px`);
 
         this.canvas = canvas.node();
+
+        // create the overlaid SVG
+        this.svg = d3.select(this.node)
+            .append('svg')
+            .attr('class', 'umap-svg')
+            .style('width', `${this.canvasRenderedSize}px`)
+            .style('height', `${this.canvasRenderedSize}px`);
+
 
         // off-screen canvas for 'holding' the rendered canvas while applying zoom transforms
         this.shadowCanvas = document.createElement('canvas');
@@ -81,6 +93,21 @@ export default class UMAPViewer extends Component {
     componentDidUpdate (prevProps) {
         this.drawThumbnails();
         this.addCanvasEventHandlers();
+    }
+
+
+    updateDerivedConstants () {
+        // update constants that depend on the rendered canvas size
+        // and the thumbnail size (in canvas pixels)
+
+        // the ratio of canvas pixels to screen pixels
+        // (this is needed because the transform coordinates are in screen pixels, 
+        // but the canvas translation is done in canvas pixels)
+        this.canvasPixelsPerScreenPixel = this.canvasSize/this.canvasRenderedSize;
+
+        // thumbnail size in client screen pixels
+        this.renderedThumbnailSize = this.canvasThumbnailSize/this.canvasPixelsPerScreenPixel;
+
     }
 
 
@@ -127,9 +154,9 @@ export default class UMAPViewer extends Component {
     }
 
 
-    getCoordName () {
-        if (this.props.coordType==='raw') return 'umap_pos';
-        if (this.props.coordType==='grid') return 'umap_grid_pos';
+    getCoord (d) {
+        if (this.props.coordType==='raw') return d.umap_pos;
+        if (this.props.coordType==='grid') return d.umap_grid_pos;
     }
 
 
@@ -137,7 +164,8 @@ export default class UMAPViewer extends Component {
 
         if (this.props.coordType==='raw') {
 
-            // hard-coded thumbnail size (since in raw coords, it is not constrained by the grid)
+            // hard-coded thumbnail size in canvas pixels
+            // (in raw coords, this is not constrained by the grid)
             this.canvasThumbnailSize = 100;
 
             // resize the canvas to avoid downsampling the thumbnails
@@ -152,41 +180,91 @@ export default class UMAPViewer extends Component {
         if (this.props.coordType==='grid') {
             this.umapScale = d3.scaleLinear()
                 .rangeRound([0, this.canvasSize])
-                .domain([0, d3.max(this.thumbnailMetadata, d => d3.max(d[this.getCoordName()])) + 1]);
+                .domain([0, d3.max(this.thumbnailMetadata, d => d3.max(this.getCoord(d))) + 1]);
             this.canvasThumbnailSize = this.umapScale(1) - this.umapScale(0);
         }
 
-        const context = this.shadowCanvas.getContext('2d');
+        this.updateDerivedConstants();
+
+        let context = this.shadowCanvas.getContext('2d');
 
         // set the background to black
         context.fillStyle = 'black';
         context.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        this.thumbnailMetadata.map(thumbnail => {
-            context.drawImage(
-                this.tiledThumbnailCanvas,
-                
-                // source x, y (note the col, row order is reversed)
-                thumbnail.tile_pos[1] * this.nativeThumbnailSize, 
-                thumbnail.tile_pos[0] * this.nativeThumbnailSize,
-                
-                // source width, height 
-                this.nativeThumbnailSize, this.nativeThumbnailSize,
-                
-                // destination x, y
-                this.umapScale(thumbnail[this.getCoordName()][1]), 
-                this.umapScale(thumbnail[this.getCoordName()][0]), 
+        // copy the thumbnail images from the tiled thumbnail canvas to the off-screen umap canvas
+        this.thumbnailMetadata.map(thumbnail => this.drawThumbnail(context, thumbnail));
 
-                // destination width, height
-                this.canvasThumbnailSize, this.canvasThumbnailSize,
-            );
-        });
+        // create the SVG thumbnail rects
+        const rects = this.svg.selectAll('.thumbnail-rect')
+            .data(this.thumbnailMetadata, d => d.cell_line_id);
+        
+        rects.exit().remove();
+
+        rects.enter().append('rect')
+            .merge(rects)
+            .attr('class', 'thumbnail-rect')
+            .attr('id', d => d.target_name)
+            .on('mouseover', function (d) {
+
+                // bring the hovered rect to the front (using .raise)
+                d3.select(this).classed('thumbnail-rect-hover', true).raise();
+
+                // TODO: if displaying the raw umap coords, 
+                // redraw the thumbnail on the canvas to bring it to the front
+                // notes about why this is tricky:
+                // 1) this requires drawing to the shadowCanvas and then calling onCanvasZoom;
+                // 2) for rounded thumbnails, this will require masking the corners somehow,
+                // possibly by creating an in-memory per-thumbnail PNG with transparent corners, 
+                // then drawing this PNG to the canvas for each thumbnail
+                // (a PNG version of the tiled thumbnail JPG would be too large, 
+                // but context.drawImage does apparently use the alpha channel of 24-bit PNGs)
+            })
+            .on('mouseout', function (d) {
+                d3.select(this).classed('thumbnail-rect-hover', false);
+            });
+
+    }
+
+
+    drawThumbnail(context, thumbnail) {
+        context.drawImage(
+            this.tiledThumbnailCanvas,
+            
+            // top-left corner of the source ROI (note that the col, row order is switched)
+            thumbnail.tile_pos[1] * this.nativeThumbnailSize, 
+            thumbnail.tile_pos[0] * this.nativeThumbnailSize,
+            
+            // source ROI width and height 
+            this.nativeThumbnailSize, this.nativeThumbnailSize,
+            
+            // top-left corner of the destination ROI
+            this.umapScale(this.getCoord(thumbnail)[1]), 
+            this.umapScale(this.getCoord(thumbnail)[0]), 
+
+            // destination ROI width height
+            this.canvasThumbnailSize, this.canvasThumbnailSize,
+        );
+    }
+
+
+    updateThumbnailRects(transform) {
+
+        const scaleX = x => transform.applyX(this.umapScale(x) / this.canvasPixelsPerScreenPixel);
+        const scaleY = y => transform.applyY(this.umapScale(y) / this.canvasPixelsPerScreenPixel);
+
+        this.svg.selectAll('.thumbnail-rect')
+            .attr('x', d => scaleX(this.getCoord(d)[1]))
+            .attr('y', d => scaleY(this.getCoord(d)[0]))
+            .attr('width', this.renderedThumbnailSize*transform.k)
+            .attr('height', this.renderedThumbnailSize*transform.k)
+            .style('stroke-width', `${0.5 + transform.k/2}px`);
     }
 
 
     addCanvasEventHandlers () {
 
-        // highlight the hovered thumbnail
+        // highlight the hovered thumbnail (currently unused)
         const onCanvasMouseMove = this.onCanvasMouseMove;
         d3.select(this.canvas)
             .on('mousemove', function () { 
@@ -194,32 +272,30 @@ export default class UMAPViewer extends Component {
             })
             .on('mouseout', () => this.hoveredThumbnailDiv.style('visibility', 'hidden'));
 
-        // add zooming to the canvas
+        // add zooming to the overlaid SVG element
         const zoom = d3.zoom()
             .scaleExtent([0.5, 4])
-            .on('zoom', () => this.onZoom(d3.event.transform));
-        d3.select(this.canvas).call(zoom);
+            .on('zoom', () => this.onUmapZoom(d3.event.transform));
+        
+        this.svg.call(zoom);
 
         // set the initial transform so that the full UMAP fits and is horizontally centered
         const initialTransform = d3.zoomIdentity.translate(window.innerWidth/4, 20).scale(0.6);
-        d3.select(this.canvas).call(zoom.transform, initialTransform);
+        this.svg.call(zoom.transform, initialTransform);
 
     }
 
 
     onCanvasMouseMove (mousePosition, transform) {
         // Draw a div around the thumbnail the mouse is hovered over
+        // NOTE: currently unused; mouseover events on the overlaid SVG rects 
+        // are used for this purpose instead
         //
         // mousePosition : the current mouse position on the canvas (in client pixel coordinates)
         // transform : the current d3.zoomTransform applied to the canvas
 
-        const canvasPixelsPerScreenPixel = this.canvasSize/this.canvasRenderedSize;
-
         // thumbnail size in UMAP coordinates
         const umapThumbnailSize = this.umapScale.invert(this.canvasThumbnailSize) - this.umapScale.domain()[0];
-
-        // thumbnail size in client screen pixels
-        const renderedThumbnailSize = this.canvasThumbnailSize/canvasPixelsPerScreenPixel;
 
         // the mouse position in rendered canvas pixel coordinates 
         // (that is, relative to the 800x800 rendered canvas)
@@ -227,8 +303,8 @@ export default class UMAPViewer extends Component {
 
         // the mouse position in UMAP coordinates (either a grid cell or the normalized position)
         let mouseUmapPosition = [
-            this.umapScale.invert(mouseRenderedPosition[0] * canvasPixelsPerScreenPixel), 
-            this.umapScale.invert(mouseRenderedPosition[1] * canvasPixelsPerScreenPixel)
+            this.umapScale.invert(mouseRenderedPosition[0] * this.canvasPixelsPerScreenPixel), 
+            this.umapScale.invert(mouseRenderedPosition[1] * this.canvasPixelsPerScreenPixel)
         ];
 
         // clamp the mouse position to the grid coordinates
@@ -242,10 +318,13 @@ export default class UMAPViewer extends Component {
             mouseUmapPosition = mouseUmapPosition.map(val => val - umapThumbnailSize/2);
         }
 
-        const coordName = this.getCoordName();
-        const dists = this.thumbnailMetadata.map(
-            d => (d[coordName][1] - mouseUmapPosition[0])**2 + (d[coordName][0] - mouseUmapPosition[1])**2
-        );
+        const dists = this.thumbnailMetadata.map(d => {
+            const thumbnailPosition = this.getCoord(d);
+            return (
+                (thumbnailPosition[1] - mouseUmapPosition[0])**2 + 
+                (thumbnailPosition[0] - mouseUmapPosition[1])**2
+            );
+        });
         const minDist = d3.min(dists);
 
         // if the mouse is not over a thumbnail
@@ -259,14 +338,14 @@ export default class UMAPViewer extends Component {
 
         // the top-left corner of the hovered thumbnail in client pixel coordinates
         const thumbnailPosition = transform.apply([
-            this.umapScale(thumbnail[coordName][1]) / canvasPixelsPerScreenPixel,
-            this.umapScale(thumbnail[coordName][0]) / canvasPixelsPerScreenPixel,
+            this.umapScale(this.getCoord(thumbnail)[1]) / this.canvasPixelsPerScreenPixel,
+            this.umapScale(this.getCoord(thumbnail)[0]) / this.canvasPixelsPerScreenPixel,
         ]);
 
         // update the position of the hover div
         this.hoveredThumbnailDiv
-            .style('width', `${renderedThumbnailSize * transform.k}px`)
-            .style('height', `${renderedThumbnailSize * transform.k}px`)
+            .style('width', `${this.renderedThumbnailSize * transform.k}px`)
+            .style('height', `${this.renderedThumbnailSize * transform.k}px`)
             .style('left', `${thumbnailPosition[0]}px`)
             .style('top', `${thumbnailPosition[1]}px`)
             .style('visibility', 'visible')
@@ -274,14 +353,9 @@ export default class UMAPViewer extends Component {
     }
 
 
-    onZoom(transform) {
+    onUmapZoom(transform) {
 
         this.hoveredThumbnailDiv.style('visibility', 'hidden');
-
-        // the ratio of canvas pixels to screen pixels
-        // (this is needed because the transform coordinates are in screen pixels, 
-        // but the canvas translation is done in canvas pixels)
-        const canvasPixelsPerScreenPixel = this.canvasSize/this.canvasRenderedSize;
 
         // clear the visible canvas
         const context = this.canvas.getContext('2d');
@@ -290,7 +364,8 @@ export default class UMAPViewer extends Component {
 
         // apply the transform
         context.translate(
-            transform.x*canvasPixelsPerScreenPixel, transform.y*canvasPixelsPerScreenPixel
+            transform.x*this.canvasPixelsPerScreenPixel, 
+            transform.y*this.canvasPixelsPerScreenPixel
         );
         context.scale(transform.k, transform.k);
 
@@ -298,8 +373,10 @@ export default class UMAPViewer extends Component {
         // context.imageSmoothingEnabled = false;
         context.drawImage(this.shadowCanvas, 0, 0, this.canvas.width, this.canvas.height);
         context.restore();
+        
+        // update the thumbnail rects
+        this.updateThumbnailRects(transform);
 
-        this.transform = transform;
     }
 
 

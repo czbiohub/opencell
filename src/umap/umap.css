@@ -14,6 +14,16 @@
     /* border: 1px solid red; */
     background-color: black;
     overflow-y: hidden;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.umap-svg {
+    /* pointer-events: none; */
+    position: absolute;
+    top: 0;
+    left: 0;
 }
 
 .umap-controls-container {
@@ -34,4 +44,17 @@
     height: 95vh;
     background-color: black;
     overflow: hidden;
+}
+
+.thumbnail-rect {
+    rx: 100;
+    fill: white;
+    stroke: #999;
+    fill-opacity: 0;   
+}
+
+.thumbnail-rect-hover {
+    /* stroke: rgb(255, 90, 90); */
+    fill: white;
+    fill-opacity: 0.3;
 }

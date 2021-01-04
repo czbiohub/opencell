@@ -26,8 +26,17 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 
 
-def all_hits_get_fdrs(pvals):
-    """ get dynamic FDR values and recompute new hits from all_hits table"""
+def all_hits_get_fdrs(pvals, perc=10):
+    """
+    compute dynamic FDR for each plate-bait group in all_hits table
+        all_hits: DataFrame, output of hit_calling_validations.get_all_interactors
+        perc: threshold for get_fdr5_seed specifying how much % of false positives
+            are allowed before calling a FDR threshold
+        RETURN:
+        DataFrame, dataframe containing all the major and minor FDR thresholds
+            for each bait-plate group
+        DataFrame, all_hits df with fdr threshold columns added
+    """
 
     pvals = pvals.copy()
     # baits = list(pvals['target'].unique())
@@ -49,7 +58,7 @@ def all_hits_get_fdrs(pvals):
 
     fdr1_full = [[3, seed] for seed in fdr1_seeds]
 
-    fdr5_args = zip(selects, fdr1_seeds)
+    fdr5_args = zip(selects, fdr1_seeds, repeat(perc))
 
     p = Pool()
     fdr5_seeds = p.starmap(get_fdr5_seed, fdr5_args)
@@ -96,6 +105,66 @@ def all_hits_get_fdrs(pvals):
     pvals = pd.concat(selects)
 
     return fdr_df, pvals
+
+
+def all_interactors_set_hits(pvals, fdr1, fdr5):
+    pvals = pvals.copy()
+
+    pvals['fdr1'] = pvals['fdr1'].apply(lambda x: fdr1)
+    pvals['fdr5'] = pvals['fdr5'].apply(lambda x: fdr5)
+
+
+    bait_pval = pvals['pvals']
+    enrichment = pvals['enrichment']
+
+    # 1% thresh
+    first_thresh = enrichment.apply(hp.calc_thresh,
+        args=[fdr1[0], fdr1[1]])
+
+    # 5% thresh
+    second_thresh = enrichment.apply(hp.calc_thresh,
+        args=[fdr5[0], fdr5[1]])
+
+    pvals['hits'] = np.where(
+        (bait_pval > first_thresh), True, False)
+
+    pvals['minor_hits'] = np.where(
+        ((bait_pval < first_thresh) & (bait_pval > second_thresh)), True, False)
+
+    return pvals
+
+
+def bait_set_hits(pvals, bait, plate, fdr1, fdr5):
+    pvals = pvals.copy()
+
+    section = pvals[(pvals['plate'] == plate) & (pvals['target'] == bait)]
+    rest = pvals[(pvals['plate'] != plate) | (pvals['target'] != bait)]
+
+
+    section['fdr1'] = section['fdr1'].apply(lambda x: fdr1)
+    section['fdr5'] = section['fdr5'].apply(lambda x: fdr5)
+
+
+    bait_pval = section['pvals']
+    enrichment = section['enrichment']
+
+    # 1% thresh
+    first_thresh = enrichment.apply(hp.calc_thresh,
+        args=[fdr1[0], fdr1[1]])
+
+    # 5% thresh
+    second_thresh = enrichment.apply(hp.calc_thresh,
+        args=[fdr5[0], fdr5[1]])
+
+    section['hits'] = np.where(
+        (bait_pval > first_thresh), True, False)
+
+    section['minor_hits'] = np.where(
+        ((bait_pval < first_thresh) & (bait_pval > second_thresh)), True, False)
+
+    pvals = pd.concat([rest, section])
+
+    return pvals
 
 
 def get_fdrs(pvals):
@@ -166,7 +235,6 @@ def get_fdrs(pvals):
     return fdr_df, pvals
 
 
-
 def get_fdr1_seed(select, bait):
     # print(bait)
     neg_select = select[select['enrichment'] < 0]
@@ -177,9 +245,11 @@ def get_fdr1_seed(select, bait):
     hit = hit_count(neg_select, 3, seed)
 
     if hit > 0:
-        # while hit > 0 and seed < 4.4:
-        while hit > 0:
-            seed += 0.1
+        while hit > 0 and seed < 10:
+            if seed > 4.2:
+                seed += 0.2
+            else:
+                seed += 0.1
             hit = hit_count(neg_select, 3, seed)
 
     else:
@@ -190,7 +260,7 @@ def get_fdr1_seed(select, bait):
     return round(seed, 2)
 
 
-def get_fdr5_seed(select, fdr1_seed):
+def get_fdr5_seed(select, fdr1_seed, perc=10):
     neg_select = select[select['enrichment'] < 0]
     # neg_select = neg_select[neg_select['pvals'] < 15]
     # neg_select = neg_select[neg_select['enrichment'] > -4.5]
@@ -206,18 +276,17 @@ def get_fdr5_seed(select, fdr1_seed):
     pos_perc = 100 * neg_hit / pos_hit
 
     # while (neg_hit < 2 or pos_perc < 10) and seed > 0.1:
-    while (neg_hit < 2 or pos_perc < 10) and seed > 0.1:
+    while (neg_hit < 2 or pos_perc < perc) and seed > 0.1:
 
         seed -= 0.1
         neg_hit = hit_count(neg_select, 3, seed)
         pos_hit = hit_count(pos_select, 3, seed)
         pos_perc = 100 * neg_hit / pos_hit
 
-    if pos_perc > 10:
+    if pos_perc > perc:
         seed += 0.1
 
     return round(seed, 2)
-
 
 
 def hit_count(bait_series, fdr1, fdr2):

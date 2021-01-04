@@ -22,11 +22,22 @@ from scipy.stats import percentileofscore
 
 def process_raw_file(file_name, filter_rows=True, fix_col_names=True,
         remove_dup_baits=True, find_gene_names=True, verbose=True):
-    """ Reads the raw data file, remove unnecessary columns,
-    filter rows that have been flagged as questionable,
-    merge duplicate bait columns using max function
-    and return a streamlined data frame
-    rtype: pd DataFrame"""
+    """
+    wrapper script that filters only important metadata and intensity columns,
+    and filters rows with MaxQuant QC flags.
+
+        file_name: str, directory of the protein groups file
+        filter_rows: bool, filter rows based on ‘Potential Contaminant’,
+            ‘Only Identified by site’, and ‘Reverse’ flags
+        fix_col_names: bool, should be deprecated, as it is replaced
+            by new_col_names function
+        remove_dup_baits: bool, for any duplicate intensity columns,
+            keep only column with max value
+        find_gene_names: bool, access Uniprot online to retrieve
+            gene names for any protein groups that are lacking gene names.
+
+        RETURN: DataFrame – minimally processed DataFrame containing metadata and intensity columns
+    """
 
     # convert raw file to a DataFrame
     if verbose:
@@ -425,9 +436,14 @@ def convert_pg_to_primary(pg_id, change_dict):
 
 def consolidate_pgs(raw_df, change_dict):
     """
-    To address multiple protein groups representing the same gene_name in graph views
-    this function consolidates synonymous proteingroups into one and sums up
-    the intensities
+    to address multiple protein groups (rows) representing the same gene name / ENSG id
+    in graph representation, this fx consolidates protein groups into one and sum up all
+    their intensities using a prepared consolidation proteingroup table
+
+        raw_df: DataFrame, output of the process_raw_file fx
+        change_dict: DataFrame, precomputed dictionary of all pgs to consolidate
+        RETURN: DataFrame, new df that has protein groups consolidated
+
     """
     raw_df = raw_df.copy()
     change_dict = change_dict.copy()
@@ -479,11 +495,18 @@ def select_intensity_cols(orig_cols, intensity_type):
 
 
 def new_col_names(col_names, RE, replacement_RE, repl_search=False):
-    """A better version of fix_cols that has exact regular expression
-    search and output that can be customized. Inputs are a list of REs
-    and replacement REs
+    """
+    change intensity column names to a readable format. More specifically,
+    search a column name from an input RE and substitute matches with another
+    input substitute strings or REs.
+        col_names: list, a list of column names from raw_df
+        RE: list, a list of regular expressions to search in column names
+        replacement_RE: list, a list of strs/REs that substitute the original expression
+        repl_search: boolean, if True, elements in replacement_RE are treated as regular
+            expressions used in search, and all specified groups are used in substitution
 
-    rtype: new_cols, list"""
+        RETURN: list, a list of renamed columns
+    """
 
     # start a new col list
     new_cols = []
@@ -652,14 +675,17 @@ def find_missing_names(raw_df, verbose=True):
 
 
 def multi_impute(filtered_df, distance=1.8, width=0.3):
-    """To test for enrichment, preys with that were undetected in some baits
-    need to be assigned some baseline values. This function imputes
-    a value from a normal distribution of the left-tail of a bait's
-    capture distribution for the undetected preys.
-
-    This process is for multiprocessing
-
-    rtype df: pd dataframe"""
+    """
+    bait-imputation for sets of data without enough samples.
+    This fx imputes a value from a normal distribution of the left-tail
+    of a bait’s capture distribution for the undetected preys using
+    multi-processing.
+        filtered_df: DataFrame, precomputed from filter_valids
+        distance: float, distance in standard deviation from the
+            mean of the sample distribution upon which to impute. Default = 0
+        width: float, width of the distribution to impute in standard deviations. Default = 0.3
+        RETURN: DataFrame, df of imputed values ready for p-val/enrichment calculations
+    """
 
     imputed = filtered_df.copy()
 
@@ -680,15 +706,22 @@ def multi_impute(filtered_df, distance=1.8, width=0.3):
     return imputed
 
 
-def multi_impute_prey(filtered_df, distance=1.8, width=0.3):
-    """To test for enrichment, preys with that were undetected in some baits
-    need to be assigned some baseline values. This function imputes
-    a value from a normal distribution of the left-tail of a bait's
-    capture distribution for the undetected preys.
+def multi_impute_prey(filtered_df, distance=0, width=0.3, threshold=100):
+    """
+    default mode of imputation. For protein groups with less than threshold number
+    of sample number, impute a value from a normal distribution of the prey’s capture
+    distribution using multi-processing. Note- most protein groups do not need imputation
+    with 12-plate MBR
 
-    This process is for multiprocessing
+        filtered_df: DataFrame, precomputed from filter_valids
+        distance: float, distance in standard deviation from the mean of the
+            sample distribution upon which to impute. Default = 0
+        width: float, width of the distribution to impute in standard deviations.
+            Default = 0.3
+        threshold: int, max number of samples required for imputation
 
-    rtype df: pd dataframe"""
+        RETURN: DataFrame, df of imputed values ready for p-val/enrichment calculations
+    """
 
     imputed = filtered_df.copy()
     imputed.drop(columns='Info', inplace=True)

@@ -412,10 +412,9 @@ def convert_to_sparse_matrix(double_df, metric='distance'):
     for target in targets:
         matrix[target] = [0] * matrix.shape[0]
         sample = double_df[double_df['target'] == target][['prey', metric]]
-        sample.set_index('prey', drop=True, inplace=True)
+        sample = sample.groupby('prey').max()
         sample.rename(columns={metric: target}, inplace=True)
         matrix.update(sample, join='left')
-
 
     return matrix
 

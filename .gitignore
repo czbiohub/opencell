@@ -109,3 +109,15 @@ ENV/
 # mypy
 .mypy_cache/
 notebooks/mass_spec/er_04_13.png
+data/mass_spec/20201002_ms_plates.csv
+data/mass_spec/migrated_pulldowns_1012.pkl
+data/mass_spec/migrated_pulldowns_1012.xlsx
+data/mass_spec/pulldown_metadata_1002.csv
+data/mass_spec/pulldown_metadata_1002.xlsx
+notebooks/mass_spec/db_add_clusters.ipynb
+notebooks/mass_spec/db_add_hits.ipynb
+notebooks/mass_spec/ms_manual_flag.ipynb
+notebooks/mass_spec/db_add_clusters.ipynb
+notebooks/mass_spec/db_add_hits.ipynb
+notebooks/mass_spec/ms_manual_flag.ipynb
+opencell/mass_spec/powergrasp.ipynb

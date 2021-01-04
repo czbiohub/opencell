@@ -24,12 +24,25 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 
 def hack_remove_significants(imputed_df, thresh, fc_vars2, human_corum):
-    """ Calculate enrichment and pvals for each bait, but remove baits that
-    show up as significant hits and iterate continuously until
-    no more removable baits are found.
+    """
+    wrapper script for pval/enrichment calculation. Drops statistically significant outliers
+    from the prey pool on the first round, and uses the distribution with dropped outliers
+    to calculate bootstrapped null distribution. The null distribution of the preys are then
+    used in the second round for pval and enrichment calculation.
+    Uses multi-processing for faster runtime
 
-    rtype enrichment_df: pd DataFrame
-    rtype pval_df: pd DataFrame"""
+    imputed_df: DataFrame, output of multi_impute_prey or multi_impute
+    thresh: float, initial p-value cutoff for calling outliers on a student’s t-test in the first round
+    fc_vars2: list of floats, FDR cutoffs to call hits after second round
+        p-val/enrichment calculation. Should be deprecated because dynamic FDR
+        calculation / manual FDR setting has been developed.
+    human_corum: dataframe, CORUM complex list is used to remove baits that
+        occur in the same complex for any bait triplicate. This minimizes
+        batch effects in the sample set.
+    RETURN:
+    DataFrame, df of p-val/enrichment calculated values in separate columns
+    DataFrame, df of sample set with exclusion of significant outliers
+"""
 
     imputed_df = imputed_df.copy()
 
@@ -108,19 +121,21 @@ def first_round_pval(bait, df, num, total, thresh, human_corum):
     n_baits = list(set([x[0] for x in list(neg_control)]))
 
     # n_bait_list composed of (real_col_name, gene_name)
-    n_bait_list = [(x, x.split('_')[1]) for x in n_baits]
+    n_bait_list = [(x, x.split('_', 1)[1]) for x in n_baits]
 
     # filter every gene that shares the same root
-    bait_name = bait.split('_')[1]
+    bait_name = bait.split('_', 1)[1]
     root = find_root(bait_name)
 
     # identify all the genes that are in a corum set
     corums = corum_genes(bait_name, human_corum)
 
+
+
     same_group = []
     for gene in n_bait_list:
         gene_root = find_root(gene[1])
-        if gene_root == root or gene in corums:
+        if gene_root == root or gene[1] in corums:
             same_group.append(gene[0])
 
         # Exception hack for POLR and MEDs
@@ -130,6 +145,7 @@ def first_round_pval(bait, df, num, total, thresh, human_corum):
         if root == 'POLR':
             if gene_root == 'MED':
                 same_group.append(gene[0])
+
 
 
 
@@ -208,19 +224,20 @@ def second_round_pval(bait, df, neg_control, num, total, fc_var1, fc_var2, human
     n_baits = list(set([x[0] for x in list(neg_control)]))
 
     # n_bait_list composed of (real_col_name, gene_name)
-    n_bait_list = [(x, x.split('_')[1]) for x in n_baits]
+    n_bait_list = [(x, x.split('_', 1)[1]) for x in n_baits]
 
     # filter every gene that shares the same root
-    bait_name = bait.split('_')[1]
+    bait_name = bait.split('_', 1)[1]
     root = find_root(bait_name)
 
     # identify all the genes that are in a corum set
     corums = corum_genes(bait_name, human_corum)
 
     same_group = []
+    same_group.append(bait)
     for gene in n_bait_list:
         gene_root = find_root(gene[1])
-        if gene_root == root or gene in corums:
+        if gene_root == root or gene[1] in corums:
             same_group.append(gene[0])
 
         # Exception hack for POLR and MEDs
@@ -338,6 +355,7 @@ def get_pvals_bagging(x, control_df):
 
         # calculate enrichment
         enrichment = (np.median(sample) - np.median(neg_con)) / std
+        # enrichment = (np.median(sample) - np.median(neg_con))
 
         return [pval, enrichment]
 
@@ -378,7 +396,15 @@ def corum_genes(gene, human_corum):
 
 
 def penalty_factor(pvals, master_neg, m_imputed):
-    """Apply Marco's penalty factors to enrichments"""
+    """
+    Normalization calculation used in Hein 2016 to standardize the shape of
+    enrichment distribution, so that very wide volcanoes are corrected for.
+        pvals: DataFrame, output of hack_remove_significants
+        master_neg: DataFrame, second output of hack_remove_significants
+        m_imputed: DataFrame, output of pool_impute_prey
+
+        RETURN: DataFrame, pval/enrichment output with enrichment values normalized at bait basis.
+    """
 
     pvals = pvals.copy()
     master_neg = master_neg.copy()

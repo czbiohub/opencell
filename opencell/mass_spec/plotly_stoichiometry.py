@@ -63,13 +63,13 @@ def stoich_plot(v_df, bait, target_re=r'P\d{3}_(.*)'):
     fig.show()
 
 
-def hits_stoich_plot(v_df, bait, labels=True, target_re=r'P\d{3}_(.*)'):
+def hits_stoich_plot(v_df, bait, labels=True):
     """plot the volcano plot of a given bait"""
     v_df = v_df.copy()
-    v_df = v_df.set_index(('gene_names', 'gene_names'))
+    v_df = v_df.set_index(('prey'))
 
     # get only hits
-    v_df = v_df[bait]
+    v_df = v_df[v_df['target'] == bait]
     v_df = v_df[(v_df['hits']) | (v_df['minor_hits'])]
     major_hits = v_df[v_df['hits']]
     minor_hits = v_df[v_df['minor_hits']]
@@ -109,6 +109,6 @@ def hits_stoich_plot(v_df, bait, labels=True, target_re=r'P\d{3}_(.*)'):
             yaxis_title='Abundance Stoichiometry',
             showlegend=False,
             margin={'l': 30, 'r': 30, 'b': 20, 't': 40})
-    fig.update_xaxes(range=[-5.2, 1.2])
+    fig.update_xaxes(range=[-6.2, 3.2])
     fig.update_yaxes(range=[-3.2, 3.2])
     fig.show()

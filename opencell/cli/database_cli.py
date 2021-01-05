@@ -21,7 +21,7 @@ logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s %(levelname)s in %(name)s: %(message)s"
 )
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('opencell.cli.database_cli')
 
 
 def parse_args():
@@ -173,6 +173,8 @@ def insert_resorted_lines(session, resorts_snapshot):
         line_operations = metadata_operations.PolyclonalLineOperations.from_plate_well(
             session, row.plate_id, row.pipeline_well_id, sort_count=1
         )
+        if not line_operations:
+            continue
         line_operations.insert_resorted_line(
             session, sort_count=2, sort_date=row.resorting_date
         )
@@ -197,14 +199,10 @@ def insert_facs(session, facs_results_dir):
     facs_histograms = d
 
     for _, row in facs_properties.iterrows():
-        plate_id = row.plate_id
-        well_id = utils.format_well_id(row.well_id)
-        try:
-            line_ops = metadata_operations.PolyclonalLineOperations.from_plate_well(
-                session, plate_id, well_id, sort_count=1
-            )
-        except ValueError:
-            logger.error('No polyclonal line for (%s, %s)' % (plate_id, well_id))
+        line_ops = metadata_operations.PolyclonalLineOperations.from_plate_well(
+            session, row.plate_id, utils.format_well_id(row.well_id), sort_count=1
+        )
+        if not line_ops:
             continue
 
         # the histograms are dicts of 'x', 'y_sample', 'y_fitted_ref'

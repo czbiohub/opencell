@@ -44,8 +44,7 @@ sys.path.append(DRAGONFLY_REPO)
 try:
     from dragonfly_automation.fov_models import PipelineFOVScorer
 except (ImportError, ModuleNotFoundError):
-    logger.warning('dragonfly_automation package not found')
-
+    logger.warning('The dragonfly_automation package is required but was not found')
 
 
 def parse_args():
@@ -170,11 +169,10 @@ def insert_plate_microscopy_fovs(session, cache_dir=None):
         plate_id, well_id = group
         group_metadata = metadata.get_group(group)
 
-        try:
-            line_ops = metadata_operations.PolyclonalLineOperations.from_plate_well(
-                session, plate_id, well_id, sort_count=sort_count
-            )
-        except Exception:
+        line_ops = metadata_operations.PolyclonalLineOperations.from_plate_well(
+            session, plate_id, well_id, sort_count=sort_count
+        )
+        if not line_ops:
             logger.warning(
                 'Cannot insert PlateMicroscopy FOVs for (%s, %s) because no cell line exists'
                 % group
@@ -218,11 +216,10 @@ def insert_raw_pipeline_microscopy_fovs(session, root_dir, pml_id):
     for group in metadata.groups:
         plate_id, well_id, sort_count = group
         group_metadata = metadata.get_group(group)
-        try:
-            line_ops = metadata_operations.PolyclonalLineOperations.from_plate_well(
-                session, plate_id, well_id, sort_count
-            )
-        except ValueError:
+        line_ops = metadata_operations.PolyclonalLineOperations.from_plate_well(
+            session, plate_id, well_id, sort_count
+        )
+        if not line_ops:
             logger.warning('Cannot insert FOVs for %s because no cell line exists' % (group,))
             continue
         line_ops.insert_microscopy_fovs(session, group_metadata)

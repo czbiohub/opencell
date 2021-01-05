@@ -75,7 +75,8 @@ def get_or_create_plate_design(session, design_id, date=None, notes=None, create
             )
             utils.add_and_commit(session, plate_design)
         else:
-            raise ValueError('plate_design %s does not exist')
+            logger.warning('plate_design %s does not exist')
+            return None
 
     return plate_design
 
@@ -123,9 +124,6 @@ def create_crispr_designs(
     # create the crispr designs and insert them one by one
     # (so that an insertion error on one design doesn't prevent attempting to insert the others)
     for _, design in designs.iterrows():
-        logger.info(
-            'Inserting design for well %s on plate %s' % (design.well_id, plate_design.design_id)
-        )
         plate_design.crispr_designs.append(models.CrisprDesign(**design))
         utils.add_and_commit(session, plate_design)
 
@@ -245,13 +243,14 @@ class PolyclonalLineOperations:
         )
 
         if not lines:
-            raise ValueError(
+            logger.warning(
                 "No cell line exists with a sort_count of %s for well %s of plate %s"
                 % (sort_count, well_id, design_id)
             )
+            return None
 
         if len(lines) > 1:
-            raise ValueError(
+            logger.warning(
                 "More than one cell line exists with a sort_count of %s for well %s of plate %s"
                 % (sort_count, well_id, design_id)
             )
@@ -279,7 +278,8 @@ class PolyclonalLineOperations:
                 (len(lines), target_name)
             )
         if not lines:
-            raise ValueError("No cells lines found for target name '%s'" % target_name)
+            logger.warning("No cells lines found for target name '%s'" % target_name)
+            return None
 
         return cls(lines[0])
 

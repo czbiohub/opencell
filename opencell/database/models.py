@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # see https://alembic.sqlalchemy.org/en/latest/naming.html
 metadata = db.MetaData(
     naming_convention={
-        "ix": "ix_%(column_0_label)s",
+        "ix": "idx_%(column_0_label)s",
         "uq": "uq_%(table_name)s_%(column_0_name)s",
         "ck": "ck_%(table_name)s_%(constraint_name)s",
         "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
@@ -588,7 +588,7 @@ class MicroscopyFOV(Base):
     id = db.Column(db.Integer, primary_key=True)
 
     # many FOVs to one cell_line
-    cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'))
+    cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'), index=True)
     cell_line = db.orm.relationship('CellLine', back_populates='fovs', uselist=False)
 
     # many FOVs to one microscopy_dataset
@@ -597,25 +597,22 @@ class MicroscopyFOV(Base):
 
     # one FOV to many FOV results
     results = db.orm.relationship(
-        'MicroscopyFOVResult', back_populates='fov', cascade='all, delete-orphan'
+        'MicroscopyFOVResult', back_populates='fov', passive_deletes='all'
     )
 
     # one FOV to many ROIs
     rois = db.orm.relationship(
-        'MicroscopyFOVROI', back_populates='fov', cascade='all, delete-orphan'
+        'MicroscopyFOVROI', back_populates='fov', passive_deletes='all'
     )
 
     # one FOV to many thumbnails
     thumbnails = db.orm.relationship(
-        'MicroscopyThumbnail', back_populates='fov', cascade='all, delete-orphan'
+        'MicroscopyThumbnail', back_populates='fov', passive_deletes='all'
     )
 
     # one FOV to one FOV annotation
     annotation = db.orm.relationship(
-        'MicroscopyFOVAnnotation',
-        back_populates='fov',
-        uselist=False,
-        cascade='all, delete-orphan'
+        'MicroscopyFOVAnnotation', back_populates='fov', uselist=False, passive_deletes='all'
     )
 
     # round_id is either 'R01' (initial post-sort imaging)
@@ -702,10 +699,10 @@ class MicroscopyFOVResult(Base):
     __tablename__ = 'microscopy_fov_result'
 
     id = db.Column(db.Integer, primary_key=True)
-    fov_id = db.Column(db.Integer, db.ForeignKey('microscopy_fov.id'))
     date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
 
     # many results to one FOV
+    fov_id = db.Column(db.Integer, db.ForeignKey('microscopy_fov.id', ondelete='CASCADE'))
     fov = db.orm.relationship('MicroscopyFOV', back_populates='results', uselist=False)
 
     # the kind or type of the result ('raw-tiff-metadata', 'fov-features', etc)
@@ -732,7 +729,7 @@ class MicroscopyFOVROI(Base):
     __tablename__ = 'microscopy_fov_roi'
 
     id = db.Column(db.Integer, primary_key=True)
-    fov_id = db.Column(db.Integer, db.ForeignKey('microscopy_fov.id'))
+    fov_id = db.Column(db.Integer, db.ForeignKey('microscopy_fov.id', ondelete='CASCADE'))
     date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
 
     # many ROIs to one FOV
@@ -777,8 +774,8 @@ class MicroscopyThumbnail(Base):
     __tablename__ = 'microscopy_thumbnail'
 
     id = db.Column(db.Integer, primary_key=True)
-    fov_id = db.Column(db.Integer, db.ForeignKey('microscopy_fov.id'))
-    roi_id = db.Column(db.Integer, db.ForeignKey('microscopy_fov_roi.id'))
+    fov_id = db.Column(db.Integer, db.ForeignKey('microscopy_fov.id', ondelete='CASCADE'))
+    roi_id = db.Column(db.Integer, db.ForeignKey('microscopy_fov_roi.id', ondelete='CASCADE'))
     date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
 
     fov = db.orm.relationship('MicroscopyFOV', back_populates='thumbnails', uselist=False)
@@ -826,7 +823,7 @@ class MicroscopyFOVAnnotation(Base):
     id = db.Column(db.Integer, primary_key=True)
 
     # one annotation to one FOV
-    fov_id = db.Column(db.Integer, db.ForeignKey('microscopy_fov.id'))
+    fov_id = db.Column(db.Integer, db.ForeignKey('microscopy_fov.id', ondelete='CASCADE'))
     fov = db.orm.relationship('MicroscopyFOV', back_populates='annotation', uselist=False)
 
     date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
@@ -1081,10 +1078,10 @@ class ProteinGroupUniprotMetadataAssociation(Base):
     '''
     __tablename__ = 'protein_group_uniprot_metadata_association'
     uniprot_id = db.Column(
-        db.String, db.ForeignKey('uniprot_metadata.uniprot_id'), primary_key=True
+        db.String, db.ForeignKey('uniprot_metadata.uniprot_id'), primary_key=True, index=True
     )
     protein_group_id = db.Column(
-        db.String, db.ForeignKey('mass_spec_protein_group.id'), primary_key=True
+        db.String, db.ForeignKey('mass_spec_protein_group.id'), primary_key=True, index=True
     )
 
 
@@ -1093,10 +1090,10 @@ class ProteinGroupCrisprDesignAssociation(Base):
     '''
     __tablename__ = 'protein_group_crispr_design_association'
     crispr_design_id = db.Column(
-        db.Integer, db.ForeignKey('crispr_design.id'), primary_key=True
+        db.Integer, db.ForeignKey('crispr_design.id'), primary_key=True, index=True
     )
     protein_group_id = db.Column(
-        db.String, db.ForeignKey('mass_spec_protein_group.id'), primary_key=True
+        db.String, db.ForeignKey('mass_spec_protein_group.id'), primary_key=True, index=True
     )
 
 
@@ -1111,10 +1108,14 @@ class MassSpecHit(Base):
     id = db.Column(db.Integer, primary_key=True)
 
     # hashed string of sorted Uniprot peptide IDs that compose the protein group
-    protein_group_id = db.Column(db.String, db.ForeignKey('mass_spec_protein_group.id'))
+    protein_group_id = db.Column(
+        db.String, db.ForeignKey('mass_spec_protein_group.id'), index=True
+    )
 
     # foreign key of each pulldown target from pulldown table
-    pulldown_id = db.Column(db.Integer, db.ForeignKey('mass_spec_pulldown.id'), nullable=False)
+    pulldown_id = db.Column(
+        db.Integer, db.ForeignKey('mass_spec_pulldown.id'), nullable=False, index=True
+    )
 
     # p-value of the hit's MS intensity
     pval = db.Column(db.Float, nullable=False)
@@ -1123,10 +1124,10 @@ class MassSpecHit(Base):
     enrichment = db.Column(db.Float, nullable=False)
 
     # boolean specifying whether the hit is significant based on FDR threshold
-    is_significant_hit = db.Column(db.Boolean)
+    is_significant_hit = db.Column(db.Boolean, index=True)
 
     # boolean specifying whether the hit is significant based on a lower FDR threshold
-    is_minor_hit = db.Column(db.Boolean)
+    is_minor_hit = db.Column(db.Boolean, index=True)
 
     # interaction stoichiometry of the prey relative to the target
     interaction_stoich = db.Column(db.Float)

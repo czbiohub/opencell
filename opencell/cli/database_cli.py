@@ -185,8 +185,8 @@ def insert_facs(session, facs_results_dir):
     Insert FACS results and histograms for the original polyclonal cell lines from Plates 1-19
     '''
     # hard-coded filenames of the cached FACS results
-    results_filepath = os.path.join(facs_results_dir, '2019-07-16_all-facs-results.csv')
-    histograms_filepath = os.path.join(facs_results_dir, '2019-07-16_all-dists.json')
+    results_filepath = os.path.join(facs_results_dir, 'facs-results.csv')
+    histograms_filepath = os.path.join(facs_results_dir, 'facs-histograms.json')
 
     facs_properties = pd.read_csv(results_filepath)
     with open(histograms_filepath, 'r') as file:

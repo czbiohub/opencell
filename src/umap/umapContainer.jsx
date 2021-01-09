@@ -34,7 +34,9 @@ export default class UMAPContainer extends Component {
             // the size of the grid when umap type is 'grid'
             gridSize: 40,
 
-            shouldResetZoom: false,
+            showCaptions: false,
+
+            resetZoom: false,
         };
 
     }
@@ -79,18 +81,32 @@ export default class UMAPContainer extends Component {
                             disabled={this.state.markerType!=='thumbnails' || this.state.coordType!=='grid'}
                         />
                     </div>
-
+                    <div className='pb3'>
+                        <ButtonGroup 
+                            label='Show labels' 
+                            values={[true, false]}
+                            labels={['Yes', 'No']}
+                            activeValue={this.state.showCaptions}
+                            onClick={value => this.setState({showCaptions: value})}
+                            disabled={false}
+                        />
+                    </div>
                     <div className='pb3'>
                         <Button
                             className="bp3-button-custom"
                             text={"Reset zoom"}
-                            onClick={() => this.setState({shouldResetZoom: true})}
+                            onClick={() => this.setState({resetZoom: !this.state.resetZoom})}
                         />
                     </div>
                 </div>
 
                 <div className='umap-container'>
-                    <UMAPViewer coordType={this.state.coordType}/>
+                    <UMAPViewer 
+                        markerType={this.state.markerType} 
+                        coordType={this.state.coordType}
+                        showCaptions={this.state.showCaptions}
+                        resetZoom={this.state.resetZoom}
+                    />
                 </div>
             </div>
         )

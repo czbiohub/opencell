@@ -1,5 +1,6 @@
 
 import * as d3 from 'd3';
+import d3tip from 'd3-tip';
 import React, { Component } from 'react';
 
 import 'tachyons';
@@ -40,7 +41,8 @@ export default class UMAPViewer extends Component {
         this.drawThumbnail = this.drawThumbnail.bind(this);
         this.drawThumbnails = this.drawThumbnails.bind(this);
         this.updateThumbnailRects = this.updateThumbnailRects.bind(this);
-
+        this.resetZoom = this.resetZoom.bind(this);
+        
         this.addCanvasEventHandlers = this.addCanvasEventHandlers.bind(this);
         this.onUmapZoom = this.onUmapZoom.bind(this);
         this.onCanvasMouseMove = this.onCanvasMouseMove.bind(this);
@@ -70,6 +72,11 @@ export default class UMAPViewer extends Component {
             .style('width', `${this.canvasRenderedSize}px`)
             .style('height', `${this.canvasRenderedSize}px`);
 
+        this.tip = d3tip()
+            .offset([-15, 0])
+            .attr("class", "umap-tip")
+            .html(d => `<strong>${d.target_name}</strong>`);
+        this.svg.call(this.tip);
 
         // off-screen canvas for 'holding' the rendered canvas while applying zoom transforms
         this.shadowCanvas = document.createElement('canvas');
@@ -90,9 +97,22 @@ export default class UMAPViewer extends Component {
     }
 
 
-    componentDidUpdate (prevProps) {
-        this.drawThumbnails();
-        this.addCanvasEventHandlers();
+    componentDidUpdate (prevProps, prevState) {
+        if (this.state.loaded && !prevState.loaded) {
+            this.drawThumbnails();
+            this.addCanvasEventHandlers();
+            this.resetZoom();
+        } else if (this.props.resetZoom!==prevProps.resetZoom) {
+            this.resetZoom();
+        } else {
+            this.drawThumbnails();
+        }
+        if (this.lastTransform) this.onUmapZoom(this.lastTransform);
+    }
+
+
+    componentWillUnmount () {
+        d3.selectAll(".umap-tip").remove();
     }
 
 
@@ -193,25 +213,29 @@ export default class UMAPViewer extends Component {
         context.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
         // copy the thumbnail images from the tiled thumbnail canvas to the off-screen umap canvas
-        this.thumbnailMetadata.map(thumbnail => this.drawThumbnail(context, thumbnail));
+        if (this.props.markerType==='thumbnails') {
+            this.thumbnailMetadata.map(thumbnail => this.drawThumbnail(context, thumbnail));
+        }
 
         // create the SVG thumbnail rects
-        const rects = this.svg.selectAll('.thumbnail-rect')
+        let g = this.svg.selectAll('.thumbnail-container')
             .data(this.thumbnailMetadata, d => d.cell_line_id);
         
-        rects.exit().remove();
+        g.exit().remove();
+        g = g.enter().append('g').merge(g);
 
-        rects.enter().append('rect')
-            .merge(rects)
+        const tip = this.tip;
+        g.append('rect')
             .attr('class', 'thumbnail-rect')
             .attr('id', d => d.target_name)
             .on('mouseover', function (d) {
 
                 // bring the hovered rect to the front (using .raise)
                 d3.select(this).classed('thumbnail-rect-hover', true).raise();
+                tip.show(d, this);
 
                 // TODO: if displaying the raw umap coords, 
-                // redraw the thumbnail on the canvas to bring it to the front
+                // redraw the hovered thumbnail on the canvas to bring it to the front
                 // notes about why this is tricky:
                 // 1) this requires drawing to the shadowCanvas and then calling onCanvasZoom;
                 // 2) for rounded thumbnails, this will require masking the corners somehow,
@@ -222,8 +246,18 @@ export default class UMAPViewer extends Component {
             })
             .on('mouseout', function (d) {
                 d3.select(this).classed('thumbnail-rect-hover', false);
+                tip.hide(d, this);
             });
-
+        
+            if (this.props.showCaptions) {
+                g.append('text')
+                    .attr('class', 'thumbnail-text')
+                    .attr('x', this.renderedThumbnailSize*this.lastTransform?.k/2 || 20)
+                    .attr('y', 20)
+                    .text(d => d.target_name);
+            } else {
+                this.svg.selectAll('text').remove();
+            }
     }
 
 
@@ -253,42 +287,54 @@ export default class UMAPViewer extends Component {
         const scaleX = x => transform.applyX(this.umapScale(x) / this.canvasPixelsPerScreenPixel);
         const scaleY = y => transform.applyY(this.umapScale(y) / this.canvasPixelsPerScreenPixel);
 
+        this.svg.selectAll('g')
+            .attr('transform', d => `translate(${scaleX(this.getCoord(d)[1])}, ${scaleY(this.getCoord(d)[0])})`);
+
+        // try to reduce lag when the user is dragging and not zooming
+        if (transform.k===this.lastTransform?.k) return;
+
         this.svg.selectAll('.thumbnail-rect')
-            .attr('x', d => scaleX(this.getCoord(d)[1]))
-            .attr('y', d => scaleY(this.getCoord(d)[0]))
             .attr('width', this.renderedThumbnailSize*transform.k)
             .attr('height', this.renderedThumbnailSize*transform.k)
-            .style('stroke-width', `${0.5 + transform.k/2}px`);
+            .style('stroke-width', `${0.5 + transform.k/4}px`);
+
+        if (this.props.showCaptions) {
+            this.svg.selectAll('.thumbnail-text')
+                .attr('x', this.renderedThumbnailSize*transform.k/2);
+                // .attr('opacity', transform.k < 2 ? 0 : 1 - 2/transform.k);
+        }
+    }
+
+
+    resetZoom() {
+        // set the initial transform so that the full UMAP fits and is horizontally centered
+        const initialTransform = d3.zoomIdentity.translate(window.innerWidth/4, 20).scale(0.6);
+        this.svg.call(this.d3zoom.transform, initialTransform);        
     }
 
 
     addCanvasEventHandlers () {
 
-        // highlight the hovered thumbnail (currently unused)
-        const onCanvasMouseMove = this.onCanvasMouseMove;
-        d3.select(this.canvas)
-            .on('mousemove', function () { 
-                onCanvasMouseMove(d3.mouse(this), d3.zoomTransform(this));
-            })
-            .on('mouseout', () => this.hoveredThumbnailDiv.style('visibility', 'hidden'));
+        // // highlight the hovered thumbnail (currently unused)
+        // const onCanvasMouseMove = this.onCanvasMouseMove;
+        // d3.select(this.canvas)
+        //     .on('mousemove', function () { 
+        //         onCanvasMouseMove(d3.mouse(this), d3.zoomTransform(this));
+        //     })
+        //     .on('mouseout', () => this.hoveredThumbnailDiv.style('visibility', 'hidden'));
 
         // add zooming to the overlaid SVG element
-        const zoom = d3.zoom()
-            .scaleExtent([0.5, 4])
+        this.d3zoom = d3.zoom()
+            .scaleExtent([0.5, 8])
             .on('zoom', () => this.onUmapZoom(d3.event.transform));
         
-        this.svg.call(zoom);
-
-        // set the initial transform so that the full UMAP fits and is horizontally centered
-        const initialTransform = d3.zoomIdentity.translate(window.innerWidth/4, 20).scale(0.6);
-        this.svg.call(zoom.transform, initialTransform);
-
+        this.svg.call(this.d3zoom);
     }
 
 
     onCanvasMouseMove (mousePosition, transform) {
         // Draw a div around the thumbnail the mouse is hovered over
-        // NOTE: currently unused; mouseover events on the overlaid SVG rects 
+        // NOTE: this is currently unused; mouseover events on the overlaid SVG rects 
         // are used for this purpose instead
         //
         // mousePosition : the current mouse position on the canvas (in client pixel coordinates)
@@ -376,6 +422,7 @@ export default class UMAPViewer extends Component {
         
         // update the thumbnail rects
         this.updateThumbnailRects(transform);
+        this.lastTransform = transform;
 
     }
 

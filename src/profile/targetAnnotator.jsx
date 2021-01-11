@@ -18,7 +18,7 @@ const localizationLabels = [
     'Nucleoplasm', 'Nuclear membrane', 'Nuclear punctae', 'Chromatin',
     'Nucleolus', 'Nucleolus-GC', 'Nucleolus-FC/DFC', 'Nucleolar ring',
     'Nucleus-cytoplasm variation', 'Membrane', 'Cytoplasmic', 'Cytoskeleton', 
-    'ER', 'Golgi', 'Mitochondria', 'Centrosome', 'Vesicles',
+    'ER', 'Golgi', 'Peri-golgi', 'Mitochondria', 'Centrosome', 'Vesicles', 'Lysosome',
     'Big aggregates', 'Small aggregates', 'Diffuse', 'Textured',
     'Cell contact', 'Cilia', 'Focal adhesions',
 ];

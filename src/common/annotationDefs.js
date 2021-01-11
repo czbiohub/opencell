@@ -26,6 +26,8 @@ export const privateLocalizationCategories = [
     {'name': 'textured', 'num': 149},
     {'name': 'nucleus_cytoplasm_variation', 'num': 117},
     {'name': 'nucleolar_ring', 'num': 17},
+    {'name': 'peri_golgi', 'num': 0},
+    {'name': 'lysosome', 'num': 0},
 ];
 
 export const qcCategories = [

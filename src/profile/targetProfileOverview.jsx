@@ -25,6 +25,7 @@ export default class TargetProfileOverview extends Component {
             fovId: undefined,
             massSpecView: 'network',
         };
+
     }
 
     componentDidMount () {
@@ -81,7 +82,10 @@ export default class TargetProfileOverview extends Component {
                             popoverContent={popoverContents.expressionLevelHeader}
                         />
                         <div className="w-100 pb3 expression-plot-container">
-                            <ExpressionPlot targetName={this.props.cellLine.metadata.target_name}/>
+                            <ExpressionPlot 
+                                cellLines={this.props.allCellLines}
+                                cellLineId={this.props.cellLineId}
+                            />
                         </div>
 
                         {/* FACS plot */}

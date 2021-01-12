@@ -1,5 +1,5 @@
 
-import facsGrades from '../demo/data/facs_grades.json';
+import facsGrades from '../data/facs_grades.json';
 
 
 // column defs for the datatable; also used by header.jsx

@@ -18,8 +18,7 @@ from opencell.database import models, utils, uniprot_utils
 
 import logging
 logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s %(levelname)s in %(name)s: %(message)s"
+    level=logging.DEBUG, format="%(asctime)s %(levelname)s in %(name)s: %(message)s"
 )
 logger = logging.getLogger('opencell.cli.database_cli')
 

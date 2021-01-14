@@ -301,9 +301,8 @@ def uniprot_id_mapper(input_ids, input_type, output_type):
 
 def map_uniprot_to_ensg_using_uniprot(uniprot_id):
     '''
-    Use the uniprot mapping API to map a uniprot_id to an ensg_id
+    Use the uniprot mapping API to look up the ensg_id for a uniprot_id
     '''
-
     try:
         df = uniprot_id_mapper([uniprot_id], input_type='ACC', output_type='ENSEMBL_ID')
     except Exception:
@@ -328,7 +327,7 @@ def map_uniprot_to_ensg_using_uniprot(uniprot_id):
 
 def map_uniprot_to_ensg_using_mygene(uniprot_id):
     '''
-    Use the MyGene API to map a uniprot_id to an ensg_id
+    Use the MyGene API to look up the ensg_id for a uniprot_id
     '''
     params = {
         'q': uniprot_id,

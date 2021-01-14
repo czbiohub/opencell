@@ -391,11 +391,11 @@ class TargetThumbnailTile:
         # the number of rows and column in the tile
         n_rows = 36
         n_cols = int(np.ceil(len(self.thumbnails.keys())/n_rows))
-        thumbnail_tile = np.zeros(
+        tile_image = np.zeros(
             (self.thumbnail_size * n_rows, self.thumbnail_size * n_cols, 3), dtype='uint8'
         )
 
-        thumbnail_tile_positions = []
+        thumbnail_positions = []
         for ind, (cell_line_id, thumbnail) in enumerate(self.thumbnails.items()):
             if thumbnail is None:
                 continue
@@ -405,16 +405,17 @@ class TargetThumbnailTile:
                 thumbnail = thumbnail * circle_mask[:, :, None]
 
             row, col = np.unravel_index(ind, (n_rows, n_cols))
-            thumbnail_tile[
+            tile_image[
                 row*self.thumbnail_size:(row + 1)*self.thumbnail_size,
                 col*self.thumbnail_size:(col + 1)*self.thumbnail_size,
                 :
             ] = thumbnail
 
-            thumbnail_tile_positions.append({
+            thumbnail_positions.append({
                 'row': row,
                 'col': col,
                 'cell_line_id': cell_line_id,
             })
 
-        return thumbnail_tile, thumbnail_tile_positions
+        tile_filename = self.get_tile_filename()
+        return tile_image, tile_filename, thumbnail_positions

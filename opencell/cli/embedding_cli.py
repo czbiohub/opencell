@@ -3,7 +3,7 @@ import os
 import click
 import json
 import logging
-
+import imageio
 import pandas as pd
 import sqlalchemy as sa
 import sqlalchemy.orm
@@ -34,13 +34,13 @@ def scoped_session(engine):
 
 
 @click.group()
-@click.option('--mode', default='dev')
-@click.option('--credentials', type=click.Path(exists=True))
+@click.option('--mode', default='dev', required=True)
+@click.option('--credentials', type=click.Path(exists=True), required=False)
 @click.pass_context
 def cli(ctx, mode, credentials):
     ctx.ensure_object(dict)
-    config = settings.get_config(mode)
-    url = utils.url_from_credentials(credentials or config.DB_CREDENTIALS_FILEPATH)
+    ctx.obj['CONFIG'] = settings.get_config(mode)
+    url = utils.url_from_credentials(credentials or ctx.obj['CONFIG'].DB_CREDENTIALS_FILEPATH)
     engine = sa.create_engine(url)
     ctx.obj['ENGINE'] = engine
 
@@ -58,11 +58,10 @@ def create_image_umap(ctx, adata_filepath, adata_description, grid_size):
     # if we are binning the UMAP coordinates into a grid,
     # first generate a non-clumpy UMAP, then bin its coordinates
     if grid_size:
-        logger.info('Generating a grid-able UMAP embedding')
+        logger.info('Generating a %dx%d gridded UMAP embedding' % (grid_size, grid_size))
         n_neighbors, min_dist = 30, 0.3
         adm.run_umap(n_neighbors=n_neighbors, min_dist=min_dist)
 
-        logger.info('Binning the UMAP coordinates on a %dx%d grid' % (grid_size, grid_size))
         grid = UmapGrid(adata=adm.adata, grid_size=grid_size)
         grid.generate_grid_coords()
         grid_coords_cleaned = grid.clean_up_grid()
@@ -71,7 +70,7 @@ def create_image_umap(ctx, adata_filepath, adata_description, grid_size):
     # if we are not using a grid, then generate a 'normal' clumpy UMAP
     # and manually construct the target_coords array from the 'raw' UMAP coords
     else:
-        logger.info('Generating a normal UMAP embedding')
+        logger.info('Generating an un-gridded UMAP embedding')
         n_neighbors, min_dist = 10, 0.0
         adm.run_umap(n_neighbors=n_neighbors, min_dist=min_dist)
 
@@ -101,28 +100,32 @@ def create_image_umap(ctx, adata_filepath, adata_description, grid_size):
 @click.pass_context
 def create_thumbnail_tile(ctx, thumbnail_scale):
 
+    # directory in which to save the tiled thumbnail images
+    tile_dirpath = os.path.join(ctx.obj['CONFIG'].OPENCELL_MICROSCOPY_DIR, 'thumbnail-tiles')
+    os.makedirs(tile_dirpath, exist_ok=True)
+
     tile = TargetThumbnailTile(thumbnail_scale=thumbnail_scale, thumbnail_shape=None)
 
     with scoped_session(ctx.obj['ENGINE']) as session:
         tile.load_thumbnails_from_database(session)
 
-        logger.info('Creating tile of square thumbnails')
-        tile.thumbnail_shape = 'square'
-        tile_image, thumbnail_positions = tile.construct_tile()
-        embedding_operations.insert_thumbnail_tile(
-            session,
-            filename=tile.get_tile_filename(),
-            thumbnail_positions=thumbnail_positions
-        )
+        for shape in ['circle', 'square']:
+            logger.info('Creating tile of %s thumbnails' % shape)
 
-        logger.info('Creating tile of circular thumbnails')
-        tile.thumbnail_shape = 'circle'
-        tile_image, thumbnail_positions = tile.construct_tile()
-        embedding_operations.insert_thumbnail_tile(
-            session,
-            filename=tile.get_tile_filename(),
-            thumbnail_positions=thumbnail_positions
-        )
+            tile.thumbnail_shape = shape
+            tile_image, tile_filename, thumbnail_positions = tile.construct_tile()
+
+            # add the tile to the database
+            embedding_operations.insert_thumbnail_tile(
+                session,
+                filename=tile.get_tile_filename(),
+                thumbnail_positions=thumbnail_positions
+            )
+
+            # save the tile image
+            tile_filepath = os.path.join(tile_dirpath, tile_filename)
+            imageio.imsave(tile_filepath, tile_image, quality=75)
+            logger.info('Tiled thumbnail image saved to %s' % tile_filepath)
 
 
 if __name__ == '__main__':

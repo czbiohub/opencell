@@ -10,6 +10,41 @@ from opencell import constants
 from opencell.database import models, utils
 from opencell.imaging.processors import FOVProcessor
 
+import logging
+logger = logging.getLogger(__name__)
+
+
+def insert_microscopy_dataset(session, metadata_row, root_directory, update=False):
+    '''
+    metadata_row : a row of the 'pipeline-microscopy-master-key' google sheet
+    root_directory : identifies the root directory in which the dataset appears in ESS;
+        either 'plate_microscopy' or 'raw_pipeline_microscopy'
+
+    Note that the only required columns in the row are 'pml_id' and 'date';
+    the many remaining columns present in the google sheet do not need to be machine-readable
+    and are simply dumped in a json column
+    '''
+    pml_id = metadata_row.pml_id
+    dataset = (
+        session.query(models.MicroscopyDataset)
+        .filter(models.MicroscopyDataset.pml_id == pml_id)
+        .one_or_none()
+    )
+    if dataset:
+        if update:
+            logger.warning('Updating existing entry for %s' % pml_id)
+        else:
+            logger.warning('Microscopy dataset %s already exists and will not be updated' % pml_id)
+            return
+    else:
+        dataset = models.MicroscopyDataset(pml_id=pml_id)
+        logger.info('Inserting new microscopy dataset %s' % pml_id)
+
+    dataset.date = metadata_row.date
+    dataset.root_directory = root_directory
+    dataset.raw_metadata = json.loads(metadata_row.to_json())
+    utils.add_and_commit(session, dataset)
+
 
 class MicroscopyFOVOperations:
     '''
@@ -25,8 +60,13 @@ class MicroscopyFOVOperations:
 
     '''
 
-    def __init__(self, fov_id):
+    def __init__(self, fov_id, errors):
+        '''
+        errors : kwarg passed to add_and_commit; either 'raise' or 'warn'
+        '''
         self.fov_id = fov_id
+        self.errors = errors
+
 
     def insert_nothing(self, session, result):
         '''
@@ -53,13 +93,13 @@ class MicroscopyFOVOperations:
         row = models.MicroscopyFOVResult(
             fov_id=self.fov_id, kind='raw-tiff-metadata', data=metadata
         )
-        utils.add_and_commit(session, row, errors='raise')
+        utils.add_and_commit(session, row, errors=self.errors)
 
         if len(events):
             row = models.MicroscopyFOVResult(
                 fov_id=self.fov_id, kind='raw-tiff-processing-events', data=events
             )
-            utils.add_and_commit(session, row, errors='raise')
+            utils.add_and_commit(session, row, errors=self.errors)
 
 
     def insert_fov_features(self, session, result):
@@ -71,7 +111,7 @@ class MicroscopyFOVOperations:
         row = models.MicroscopyFOVResult(
             fov_id=self.fov_id, kind='fov-features', data=result
         )
-        utils.add_and_commit(session, row, errors='raise')
+        utils.add_and_commit(session, row, errors=self.errors)
 
 
     def insert_fov_thumbnails(self, session, result):
@@ -90,7 +130,7 @@ class MicroscopyFOVOperations:
                 data=encoded_im
             )
             rows.append(row)
-        utils.add_and_commit(session, rows, errors='raise')
+        utils.add_and_commit(session, rows, errors=self.errors)
 
 
     def insert_roi_thumbnails(self, session, result):
@@ -114,7 +154,7 @@ class MicroscopyFOVOperations:
                 data=encoded_im
             )
             rows.append(row)
-        utils.add_and_commit(session, rows, errors='raise')
+        utils.add_and_commit(session, rows, errors=self.errors)
 
 
     def insert_z_profiles(self, session, result):
@@ -126,7 +166,7 @@ class MicroscopyFOVOperations:
         row = models.MicroscopyFOVResult(
             fov_id=self.fov_id, kind='z-profiles', data=result
         )
-        utils.add_and_commit(session, row, errors='raise')
+        utils.add_and_commit(session, row, errors=self.errors)
 
 
     def insert_clean_tiff_metadata(self, session, result):
@@ -137,7 +177,7 @@ class MicroscopyFOVOperations:
         row = models.MicroscopyFOVResult(
             fov_id=self.fov_id, kind='clean-tiff-metadata', data=result
         )
-        utils.add_and_commit(session, row, errors='raise')
+        utils.add_and_commit(session, row, errors=self.errors)
 
 
     def insert_corner_rois(self, session, result):
@@ -171,7 +211,7 @@ class MicroscopyFOVOperations:
         row = models.MicroscopyFOVResult(
             fov_id=self.fov_id, kind=result_kind, data=result
         )
-        utils.add_and_commit(session, row, errors='raise')
+        utils.add_and_commit(session, row, errors=self.errors)
 
         rois = []
         for roi_props in all_roi_props:
@@ -180,4 +220,4 @@ class MicroscopyFOVOperations:
                 fov_id=self.fov_id, kind=roi_kind, props=roi_props
             )
             rois.append(roi)
-        utils.add_and_commit(session, rois, errors='raise')
+        utils.add_and_commit(session, rois, errors=self.errors)

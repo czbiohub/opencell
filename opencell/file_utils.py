@@ -6,6 +6,9 @@ import pandas as pd
 from opencell import constants
 from opencell.database import utils
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 def parseFloat(val):
     try:
@@ -153,11 +156,11 @@ def read_and_validate_platemap(filepath):
     # check for missing/unexpected well_ids
     missing_well_ids = set(constants.RAW_WELL_IDS).difference(platemap.well_id)
     if missing_well_ids:
-        print('Warning: some well_ids are missing: %s' % missing_well_ids)
+        logger.warning('Some well_ids are missing: %s' % missing_well_ids)
 
     unexpected_well_ids = set(platemap.well_id).difference(constants.RAW_WELL_IDS)
     if unexpected_well_ids:
-        print('Warning: unexpected well_ids %s' % unexpected_well_ids)
+        logger.warning('Unexpected well_ids %s' % unexpected_well_ids)
 
     # check for missing target (gene) names
     if pd.isna(platemap.target_name).sum():

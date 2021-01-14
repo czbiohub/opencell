@@ -3,20 +3,25 @@ import json
 import datetime
 import pandas as pd
 
+import logging
+logger = logging.getLogger(__name__)
+
+
+def timestamp():
+    return datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+
 
 def url_from_credentials(credentials_filepath):
     '''
     Generate database URL from credentials in a JSON file
     '''
-
     with open(credentials_filepath) as file:
         credentials = json.load(file)
-
     url = '{driver}://{username}:{password}@{host}:{port}/{dbname}'
     return url.format(**credentials)
 
 
-def add_and_commit(session, instances, errors='raise'):
+def add_and_commit(session, instances, errors='warn'):
     if not isinstance(instances, list):
         instances = [instances]
 
@@ -29,10 +34,10 @@ def add_and_commit(session, instances, errors='raise'):
             if errors == 'raise':
                 raise
             if errors == 'warn':
-                print('Error in add_and_commit: %s' % exception)
+                logger.warning('Error in add_and_commit: %s' % exception)
 
 
-def delete_and_commit(session, instances, errors='raise'):
+def delete_and_commit(session, instances, errors='warn'):
     if not isinstance(instances, list):
         instances = [instances]
 
@@ -45,7 +50,7 @@ def delete_and_commit(session, instances, errors='raise'):
             if errors == 'raise':
                 raise
             if errors == 'warn':
-                print('Error in delete_and_commit: %s' % exception)
+                logger.warning('Error in delete_and_commit: %s' % exception)
 
 
 def to_jsonable(data):
@@ -74,11 +79,9 @@ def format_plate_design_id(design_id):
 
     All of the following examples will yield 'P0001':
     'Plate 1, 'plate1', 'plate01', '01', 1
-
     '''
 
     design_id = str(design_id)
-
     result = re.match(r'^P[0-9]{4}$', design_id)
     if result is None:
         plate_number = None

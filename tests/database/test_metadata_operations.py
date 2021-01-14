@@ -1,12 +1,16 @@
 import os
 import pytest
+import logging
 from opencell import constants, file_utils
-from opencell.database import models, operations
+from opencell.database import models, metadata_operations
 
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 
+logging.basicConfig(filename='test-log.log')
+logger = logging.getLogger(__name__)
 
-@pytest.fixture(scope='module')
+
+@pytest.fixture(scope='function')
 def insert_plates(session):
 
     data_dir = os.path.join(THIS_DIR, '..', '..', 'data')
@@ -15,51 +19,53 @@ def insert_plates(session):
     )
 
     for plate_id in ['P0001', 'P0002']:
-        plate_design = operations.get_or_create_plate_design(session, plate_id, create=True)
-        operations.create_crispr_designs(
-            session, plate_design, library_snapshot, drop_existing=False, errors='raise'
+        plate_design = metadata_operations.get_or_create_plate_design(
+            session, plate_id, create=True
+        )
+        metadata_operations.create_crispr_designs(
+            session, plate_design, library_snapshot, drop_existing=False
         )
 
-    progenitor_line = operations.get_or_create_progenitor_cell_line(
-        session, constants.PARENTAL_LINE_NAME
+    progenitor_line = metadata_operations.get_or_create_progenitor_cell_line(
+        session, constants.PARENTAL_LINE_NAME, create=True
     )
 
     # create cell lines for plate1
-    plate_design = operations.get_or_create_plate_design(session, 'P0001')
-    operations.create_polyclonal_lines(
+    plate_design = metadata_operations.get_or_create_plate_design(session, 'P0001')
+    metadata_operations.create_polyclonal_lines(
         session,
         progenitor_line,
         plate_design,
         date='2020-01-01',
-        errors='raise'
     )
 
     # create cell lines for plate2
-    plate_design = operations.get_or_create_plate_design(session, 'P0002')
-    operations.create_polyclonal_lines(
+    plate_design = metadata_operations.get_or_create_plate_design(session, 'P0002')
+    metadata_operations.create_polyclonal_lines(
         session,
         progenitor_line,
         plate_design,
         date='2020-01-01',
-        errors='raise'
     )
 
 
 def test_get_or_create_progenitor_cell_line(session):
 
     name = constants.PARENTAL_LINE_NAME
-    operations.get_or_create_progenitor_cell_line(session, name, create=True)
+    metadata_operations.get_or_create_progenitor_cell_line(session, name, create=True)
     lines = session.query(models.CellLine).all()
     assert len(lines) == 1
     assert lines[0].name == name
     assert lines[0].line_type.value == 'PROGENITOR'
 
     # test retrieving the line
-    line = operations.get_or_create_progenitor_cell_line(session, name, create=True)
+    line = metadata_operations.get_or_create_progenitor_cell_line(session, name, create=False)
     assert line.name == name
 
     # try to get a non-existent line
-    line = operations.get_or_create_progenitor_cell_line(session, 'nonexistent-name', create=False)
+    line = metadata_operations.get_or_create_progenitor_cell_line(
+        session, 'nonexistent-name', create=False
+    )
     assert line is None
 
 
@@ -68,15 +74,15 @@ def test_get_or_create_plate_design(session):
 
     # check that we can retrieve the plate1 design
     plate_id = session.query(models.PlateDesign).first().design_id
-    plate_design = operations.get_or_create_plate_design(session, plate_id)
+    plate_design = metadata_operations.get_or_create_plate_design(session, plate_id)
     assert plate_design.design_id == plate_id
 
     # retrieve the plate1 design
-    plate_design = operations.get_or_create_plate_design(session, 'P0001')
+    plate_design = metadata_operations.get_or_create_plate_design(session, 'P0001')
     assert plate_design.design_id == 'P0001'
 
     # create a new plate with a fake design_id
-    operations.get_or_create_plate_design(
+    metadata_operations.get_or_create_plate_design(
         session, 'P0000', date='2020-02-02', notes='design notes!', create=True
     )
     plate_design = (
@@ -86,9 +92,9 @@ def test_get_or_create_plate_design(session):
     )
     assert plate_design.design_id == 'P0000'
 
-    # retrieving a non-existent plate_id should raise an error
-    with pytest.raises(ValueError):
-        operations.get_or_create_plate_design(session, 'P001', create=False)
+    # retrieving a non-existent plate_id should issue a warning but return None
+    result = metadata_operations.get_or_create_plate_design(session, 'P001', create=False)
+    assert result is None
 
 
 @pytest.mark.usefixtures('insert_plates')
@@ -112,7 +118,6 @@ def test_create_polyclonal_lines(session):
     Note that there is no need to call the fixture again, since pytest called it above,
     when the TestPolyclonalLines class was executed
     '''
-
     # check that we inserted the correct number of lines
     lines = session.query(models.CellLine).filter(models.CellLine.line_type == 'POLYCLONAL').all()
     assert len(lines) == 96*2

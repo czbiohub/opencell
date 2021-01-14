@@ -12,7 +12,7 @@ from flask_restful import Resource, reqparse
 from opencell.imaging import utils
 from opencell.api import payloads
 from opencell.api.cache import cache
-from opencell.database import models, operations, uniprot_utils, cytoscape_networks
+from opencell.database import models, metadata_operations, uniprot_utils, cytoscape_networks
 from opencell.database import utils as db_utils
 from opencell.imaging.processors import FOVProcessor
 
@@ -47,7 +47,7 @@ class Search(Resource):
         )
 
         if publication_ready_only:
-            cell_line_ids = operations.get_lines_by_annotation(
+            cell_line_ids = metadata_operations.get_lines_by_annotation(
                 engine=flask.current_app.Session.get_bind(), annotation='publication_ready'
             )
             query = query.filter(models.CellLine.id.in_(cell_line_ids))
@@ -116,7 +116,7 @@ class CellLines(Resource):
         cell_line_ids = [int(_id) for _id in cell_line_ids.split(',')] if cell_line_ids else []
 
         if publication_ready_only:
-            cell_line_ids = operations.get_lines_by_annotation(
+            cell_line_ids = metadata_operations.get_lines_by_annotation(
                 engine=flask.current_app.Session.get_bind(), annotation='publication_ready'
             )
 
@@ -788,7 +788,7 @@ class MicroscopyFOVAnnotation(Resource):
         if annotation is None:
             annotation = models.MicroscopyFOVAnnotation(fov_id=fov_id)
         else:
-            db_utils.delete_and_commit(flask.current_app.Session, fov.rois, errors='warn')
+            db_utils.delete_and_commit(flask.current_app.Session, fov.rois)
 
         annotation.categories = data.get('categories')
         annotation.client_metadata = data.get('client_metadata')

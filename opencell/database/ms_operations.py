@@ -9,7 +9,7 @@ import sqlalchemy as db
 from contextlib import contextmanager
 
 from opencell import constants
-from opencell.database import operations
+from opencell.database import metadata_operations
 from opencell.database import models, utils
 from opencell.database import ms_utils
 from opencell.imaging import processors
@@ -23,7 +23,8 @@ def insert_protein_group_manual_gene_name(session, protein_group_id, manual_name
     protein_group = (
         session.query(models.MassSpecProteinGroup)
         .filter(models.MassSpecProteinGroup.id == protein_group_id)
-        .one_or_none())
+        .one_or_none()
+    )
 
     # add manual gene name to the queried protein group
     if protein_group:
@@ -34,6 +35,7 @@ def insert_protein_group_manual_gene_name(session, protein_group_id, manual_name
     # if protein group not found, print the protein group id and manual name
     else:
         print(protein_group_id + ' ' + manual_name)
+
 
 def bulk_insert_ensg_protein_group_association(session, association_table, errors='warn'):
     """
@@ -46,8 +48,8 @@ def bulk_insert_ensg_protein_group_association(session, association_table, error
 
         ensg_pg_association = models.EnsgProteinGroupAssociation(
             ensg_id=row.ensg_id,
-            protein_group_id=row.protein_group_id)
-
+            protein_group_id=row.protein_group_id
+        )
         associations.append(ensg_pg_association)
 
     # bulk append associations
@@ -60,7 +62,6 @@ def bulk_insert_ensg_protein_group_association(session, association_table, error
             raise
         if errors == 'warn':
             print('Error in bulk_insert_ensg_pg_associations: %s' % exception)
-
 
 
 def bulk_insert_cluster_heatmap(session, cluster_table, cluster_str, errors='warn'):
@@ -156,7 +157,7 @@ def insert_protein_group(session, row, errors='warn'):
     utils.add_and_commit(session, protein_group, errors=errors)
 
 
-class MassSpecPolyclonalOperations(operations.PolyclonalLineOperations):
+class MassSpecPolyclonalOperations(metadata_operations.PolyclonalLineOperations):
     '''
     '''
     def insert_pulldown(self, session, row, errors='warn'):

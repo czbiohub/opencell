@@ -36,9 +36,6 @@ def generate_cell_line_payload(cell_line, included_fields):
         'hek_tpm': design.hek_tpm,
     }
 
-    if not design.uniprot_metadata:
-        print(design.target_name)
-
     uniprot_metadata = {
         'uniprot_id': design.uniprot_metadata.uniprot_id,
         'gene_names': design.uniprot_metadata.gene_names.split(' '),

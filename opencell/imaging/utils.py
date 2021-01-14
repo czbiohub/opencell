@@ -93,9 +93,10 @@ def remove_edge_regions(mask, conn=1):
     '''
     Remove regions in the mask that touch one or more edges of the image
     '''
+    mask_out = mask.copy()
     mask_label = skimage.measure.label(mask, connectivity=conn)
     props = skimage.measure.regionprops(mask_label)
     for prop in props:
         if min(prop.bbox) == 0 or prop.bbox[2] == mask.shape[0] or prop.bbox[3] == mask.shape[1]:
-            mask[mask_label == prop.label] = False
-    return mask > 0
+            mask_out[mask_label == prop.label] = False
+    return mask_out > 0

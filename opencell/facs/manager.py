@@ -28,7 +28,7 @@ SAMPLE_DIRNAMES = {
 
 # the remaining plates (plate5-plate19) have consistent directory names
 # that we can generate programmatically
-plate_nums = range(5, 20)
+plate_nums = list(range(5, 20)) + [21, 22]
 for plate_num in plate_nums:
     plate_id = plate_id_from_number(plate_num)
     SAMPLE_DIRNAMES[plate_id] = 'plate%d_FCS' % plate_num
@@ -40,13 +40,11 @@ CONTROL_DIRNAMES['P0018'] = CONTROL_DIRNAMES['P0017']
 
 class FACSManager(object):
 
-    def __init__(self, box_root):
+    def __init__(self, facs_data_dir):
         '''
-        box_root : local path to the Box 'root' directory
+        facs_data_dir : local path to the 'FACS_data' directory
         '''
-
-        self.box_root = box_root
-        self.facs_data_root = os.path.join(self.box_root, 'FACS_data')
+        self.facs_data_dir = facs_data_dir
 
 
     def _get_dirpath(self, plate_id, data_type=None):
@@ -59,7 +57,7 @@ class FACSManager(object):
         if not dirnames.get(plate_id):
             raise ValueError('No %s data dirname for plate %s' % (data_type, plate_id))
 
-        path = os.path.join(self.facs_data_root, dirnames[plate_id])
+        path = os.path.join(self.facs_data_dir, dirnames[plate_id])
         if data_type == 'sample':
             path = os.path.join(path, 'profile_data')
 

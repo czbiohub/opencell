@@ -92,9 +92,9 @@ def test_get_or_create_plate_design(session):
     )
     assert plate_design.design_id == 'P0000'
 
-    # retrieving a non-existent plate_id should raise an error
-    with pytest.raises(ValueError):
-        metadata_operations.get_or_create_plate_design(session, 'P001', create=False)
+    # retrieving a non-existent plate_id should issue a warning but return None
+    result = metadata_operations.get_or_create_plate_design(session, 'P001', create=False)
+    assert result is None
 
 
 @pytest.mark.usefixtures('insert_plates')

@@ -84,7 +84,8 @@ class UmapGrid:
         for cell_line_id in self.target_labels.cell_line_id:
             row = [d for d in thumbnails if d['metadata']['cell_line_id'] == cell_line_id]
             target_thumbnails[cell_line_id] = (
-                self.b64decode_image(row[0]['best_fov']['thumbnails']['data']) if row else None
+                TargetThumbnailTile.b64decode_image(row[0]['best_fov']['thumbnails']['data'])
+                if row else None
             )
         self.target_thumbnails = target_thumbnails
 

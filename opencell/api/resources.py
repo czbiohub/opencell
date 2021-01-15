@@ -872,3 +872,76 @@ class SavedPulldownNetwork(PulldownResource):
         except Exception as error:
             flask.abort(500, str(error))
         return ('', 204)
+
+
+class EmbeddingPositions(Resource):
+
+    def get(self, description):
+        grid_size = int(flask.request.args.get('grid_size')) or 0
+        n_neighbors = int(flask.request.args.get('n_neighbors'))
+        min_dist = float(flask.request.args.get('min_dist'))
+
+        # hack: construct the name of the embedding manually (and hard-code 'kind=umap')
+        name = (
+            '%s--kind=umap--n_neighbors=%d--min_dist=%0.1f' %
+            (description, n_neighbors, min_dist)
+        )
+
+        embedding = (
+            flask.current_app.Session.query(models.CellLineEmbedding)
+            .filter(models.CellLineEmbedding.name == name)
+            .filter(models.CellLineEmbedding.grid_size == grid_size)
+            .options(db.orm.joinedload(models.CellLineEmbedding.positions))
+            .one_or_none()
+        )
+        if not embedding:
+            return flask.abort(404, "No embedding found for name '%s'" % name)
+
+        payload = [
+            {
+                'x': position.position_x,
+                'y': position.position_y,
+                'cell_line_id': position.cell_line_id
+            } for position in embedding.positions
+        ]
+        return flask.jsonify(payload)
+
+
+class ThumbnailTileImage(Resource):
+
+    def get(self):
+        filename = flask.request.args.get('filename')
+        microscopy_dir = flask.current_app.config.get('OPENCELL_MICROSCOPY_DIR')
+        filepath = os.path.join(microscopy_dir, 'thumbnail-tiles', filename)
+        if microscopy_dir.startswith('http'):
+            return flask.redirect(filepath)
+        else:
+            return flask.send_file(
+                open(filepath, 'rb'),
+                as_attachment=True,
+                attachment_filename=filepath.split(os.sep)[-1]
+            )
+
+
+class ThumbnailTilePositions(Resource):
+
+    def get(self):
+
+        filename = flask.request.args.get('filename')
+        tile = (
+            flask.current_app.Session.query(models.ThumbnailTile)
+            .filter(models.ThumbnailTile.filename == filename)
+            .options(db.orm.joinedload(models.ThumbnailTile.positions))
+            .one_or_none()
+        )
+        if not tile:
+            return flask.abort(404, "No tile found with filename '%s'" % filename)
+
+        payload = [
+            {
+                'row': position.tile_row,
+                'col': position.tile_column,
+                'cell_line_id': position.cell_line_id
+            } for position in tile.positions
+        ]
+        return flask.jsonify(payload)

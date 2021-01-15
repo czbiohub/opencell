@@ -87,7 +87,7 @@ def create_image_umap(ctx, adata_filepath, adata_description, grid_size):
         grid_size = 0
 
     # append the umap parameters to the embedding name
-    name = '%s--umap--n_neighbors=%d--min_dist=%0.1f' % (adata_description, n_neighbors, min_dist)
+    name = '%s--kind=umap--n_neighbors=%d--min_dist=%0.1f' % (adata_description, n_neighbors, min_dist)
 
     with scoped_session(ctx.obj['ENGINE']) as session:
         embedding_operations.insert_embedding(

@@ -1,3 +1,4 @@
+import * as d3 from 'd3';
 import React, { Component } from 'react';
 import { Button, MenuItem, Slider, RangeSlider, Tooltip, Popover, Icon } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
@@ -19,13 +20,15 @@ export default class UMAPContainer extends Component {
         super(props);
 
         this.state = {
+
+            loaded: false,
             
             // 'dots' or 'thumbnails'
             markerType: 'thumbnails',
 
-            // 'grid' or 'raw' for binned or raw UMAP coordinates
+            // 'gridded' or 'raw' for binned or raw UMAP coordinates
             // (when markerType is 'thumbnails')
-            coordType: 'grid', 
+            coordType: 'gridded', 
 
             // 'localization', 'family', etc
             // (when markerType is 'dots')
@@ -38,7 +41,17 @@ export default class UMAPContainer extends Component {
 
             resetZoom: false,
         };
+    }
 
+    componentDidMount (props) { 
+        d3.json(`${settings.apiUrl}/embedding_positions`).then(data => {
+            this.positions = data.positions;
+            this.positions.forEach(position => {
+                position.raw = [position.raw_x, position.raw_y];
+                position.gridded = [position.grid_x, position.grid_y];
+            });
+            this.setState({thumbnailTileFilename: data.tile_filename, loaded: true});
+        });
     }
 
 
@@ -62,7 +75,7 @@ export default class UMAPContainer extends Component {
                     <div className='pb3'>
                         <ButtonGroup 
                             label='Snap thumbnails to grid' 
-                            values={['grid', 'raw']}
+                            values={['gridded', 'raw']}
                             labels={['Yes', 'No']}
                             activeValue={this.state.coordType}
                             onClick={value => this.setState({coordType: value})}
@@ -102,8 +115,11 @@ export default class UMAPContainer extends Component {
 
                 <div className='umap-container'>
                     <UMAPViewer 
+                        positions={this.state.loaded ? this.positions : undefined}
+                        thumbnailTileFilename={this.state.thumbnailTileFilename}
                         markerType={this.state.markerType} 
                         coordType={this.state.coordType}
+                        gridSize={this.state.gridSize}
                         showCaptions={this.state.showCaptions}
                         resetZoom={this.state.resetZoom}
                     />

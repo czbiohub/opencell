@@ -5,6 +5,7 @@ import React, { Component } from 'react';
 
 import 'tachyons';
 import './umap.css';
+import settings from '../common/settings.js';
 
 
 export default class UMAPViewer extends Component {
@@ -28,13 +29,9 @@ export default class UMAPViewer extends Component {
         this.canvasRenderedSize = undefined;
 
         // the native size of each thumbnail in the JPG of tiled thumbnails
+        // HACK: this is hard-coded for now, but depends on props.thumbnailTileFilename
         this.nativeThumbnailSize = 100;
 
-        // HACK: hard-coded paths to the tiled thumbnails JPG and the thumbnail UMAP positions
-        this.thumbnailTileUrl = '/assets/images/2020-12-28_all-thumbnails-100px-circle.jpg';
-        this.thumbnailMetadataUrl = '/assets/images/2020-12-28_thumbnail-positions.json';
-
-        this.getCoord = this.getCoord.bind(this);
         this.maybeLoadData = this.maybeLoadData.bind(this);
         this.updateDerivedConstants = this.updateDerivedConstants.bind(this);
 
@@ -92,21 +89,32 @@ export default class UMAPViewer extends Component {
             .append('div')
             .attr('class', 'thumbnail-hover-container');
 
-        // load the JPG image of tiled thumbnails and the JSON array of thumbnail positions
-        this.maybeLoadData();
     }
 
 
     componentDidUpdate (prevProps, prevState) {
+
+        // load the JPG image of tiled thumbnails and the JSON array of thumbnail positions
+        this.maybeLoadData();
+        
         if (this.state.loaded && !prevState.loaded) {
+
+            // copy the positions and normalize the raw positions
+            this.positions = [...this.props.positions];
+            this.normalizeCoords(this.positions, 'raw');
+
             this.drawThumbnails();
             this.addCanvasEventHandlers();
             this.resetZoom();
+
         } else if (this.props.resetZoom!==prevProps.resetZoom) {
             this.resetZoom();
+
         } else {
             this.drawThumbnails();
         }
+        
+        // re-apply the last transform
         if (this.lastTransform) this.onUmapZoom(this.lastTransform);
     }
 
@@ -127,7 +135,6 @@ export default class UMAPViewer extends Component {
 
         // thumbnail size in client screen pixels
         this.renderedThumbnailSize = this.canvasThumbnailSize/this.canvasPixelsPerScreenPixel;
-
     }
 
 
@@ -146,16 +153,9 @@ export default class UMAPViewer extends Component {
             // draw the image on the 'raw' canvas
             let context = this.tiledThumbnailCanvas.getContext('2d');
             context.drawImage(img, 0, 0);
-
-            // HACK: here we load the JSON thumbnail positions within the img onload callback
-            d3.json(this.thumbnailMetadataUrl).then(data => {
-                this.thumbnailMetadata = data;
-                this.normalizeCoords(data, 'umap_pos');
-                this.setState({loaded: true});
-            });
-
+            this.setState({loaded: true});
         }
-        img.src = this.thumbnailTileUrl;
+        img.src = `${settings.apiUrl}/thumbnail_tiles/${this.props.thumbnailTileFilename}`;
     }
 
 
@@ -174,13 +174,12 @@ export default class UMAPViewer extends Component {
     }
 
 
-    getCoord (d) {
-        if (this.props.coordType==='raw') return d.umap_pos;
-        if (this.props.coordType==='grid') return d.umap_grid_pos;
-    }
-
-
     drawThumbnails () {
+
+        if (!this.positions) return;
+
+        // HACK: delete all of the existing thumbnail containers
+        this.svg.selectAll('.thumbnail-container').remove();
 
         if (this.props.coordType==='raw') {
 
@@ -194,13 +193,17 @@ export default class UMAPViewer extends Component {
             d3.select(this.shadowCanvas).attr('width', this.canvasSize).attr('height', this.canvasSize);
 
             // WARNING: assumes the raw coordinates have been normalized to [0, 1]
-            this.umapScale = d3.scaleLinear().rangeRound([0, this.canvasSize]).domain([-0.01, 1.03]);
-        }
-
-        if (this.props.coordType==='grid') {
             this.umapScale = d3.scaleLinear()
                 .rangeRound([0, this.canvasSize])
-                .domain([0, d3.max(this.thumbnailMetadata, d => d3.max(this.getCoord(d))) + 1]);
+                .domain([-0.01, 1.03]);
+        }
+
+        if (this.props.coordType==='gridded') {
+            this.umapScale = d3.scaleLinear()
+                .rangeRound([0, this.canvasSize])
+                .domain([0, this.props.gridSize + 1]);
+
+            // the size of the thumbnail in canvas pixels
             this.canvasThumbnailSize = this.umapScale(1) - this.umapScale(0);
         }
 
@@ -214,12 +217,12 @@ export default class UMAPViewer extends Component {
 
         // copy the thumbnail images from the tiled thumbnail canvas to the off-screen umap canvas
         if (this.props.markerType==='thumbnails') {
-            this.thumbnailMetadata.map(thumbnail => this.drawThumbnail(context, thumbnail));
+            this.props.positions.map(position => this.drawThumbnail(context, position));
         }
 
         // create the SVG thumbnail rects
         let g = this.svg.selectAll('.thumbnail-container')
-            .data(this.thumbnailMetadata, d => d.cell_line_id);
+            .data(this.positions, d => d.cell_line_id);
         
         g.exit().remove();
         g = g.enter().append('g').merge(g);
@@ -261,20 +264,20 @@ export default class UMAPViewer extends Component {
     }
 
 
-    drawThumbnail(context, thumbnail) {
+    drawThumbnail(context, position) {
         context.drawImage(
             this.tiledThumbnailCanvas,
             
             // top-left corner of the source ROI (note that the col, row order is switched)
-            thumbnail.tile_pos[1] * this.nativeThumbnailSize, 
-            thumbnail.tile_pos[0] * this.nativeThumbnailSize,
+            position.tile_column * this.nativeThumbnailSize, 
+            position.tile_row * this.nativeThumbnailSize,
             
             // source ROI width and height 
             this.nativeThumbnailSize, this.nativeThumbnailSize,
             
             // top-left corner of the destination ROI
-            this.umapScale(this.getCoord(thumbnail)[1]), 
-            this.umapScale(this.getCoord(thumbnail)[0]), 
+            this.umapScale(position[this.props.coordType][1]), 
+            this.umapScale(position[this.props.coordType][0]), 
 
             // destination ROI width height
             this.canvasThumbnailSize, this.canvasThumbnailSize,
@@ -288,7 +291,9 @@ export default class UMAPViewer extends Component {
         const scaleY = y => transform.applyY(this.umapScale(y) / this.canvasPixelsPerScreenPixel);
 
         this.svg.selectAll('g')
-            .attr('transform', d => `translate(${scaleX(this.getCoord(d)[1])}, ${scaleY(this.getCoord(d)[0])})`);
+            .attr('transform', d => {
+                return `translate(${scaleX(d[this.props.coordType][1])}, ${scaleY(d[this.props.coordType][0])})`;
+            });
 
         // try to reduce lag when the user is dragging and not zooming
         if (transform.k===this.lastTransform?.k) return;
@@ -354,7 +359,7 @@ export default class UMAPViewer extends Component {
         ];
 
         // clamp the mouse position to the grid coordinates
-        if (this.props.coordType==='grid') {
+        if (this.props.coordType==='gridded') {
             mouseUmapPosition = mouseUmapPosition.map(val => Math.floor(val));
         }
 
@@ -364,8 +369,8 @@ export default class UMAPViewer extends Component {
             mouseUmapPosition = mouseUmapPosition.map(val => val - umapThumbnailSize/2);
         }
 
-        const dists = this.thumbnailMetadata.map(d => {
-            const thumbnailPosition = this.getCoord(d);
+        const dists = this.positions.map(d => {
+            const thumbnailPosition = d[this.props.coordType];
             return (
                 (thumbnailPosition[1] - mouseUmapPosition[0])**2 + 
                 (thumbnailPosition[0] - mouseUmapPosition[1])**2
@@ -380,12 +385,12 @@ export default class UMAPViewer extends Component {
         }
 
         // the thumbnail the mouse is hovering over
-        const thumbnail = this.thumbnailMetadata[dists.indexOf(minDist)];
+        const thumbnail = this.positions[dists.indexOf(minDist)];
 
         // the top-left corner of the hovered thumbnail in client pixel coordinates
         const thumbnailPosition = transform.apply([
-            this.umapScale(this.getCoord(thumbnail)[1]) / this.canvasPixelsPerScreenPixel,
-            this.umapScale(this.getCoord(thumbnail)[0]) / this.canvasPixelsPerScreenPixel,
+            this.umapScale(thumbnail[this.props.coordType][1]) / this.canvasPixelsPerScreenPixel,
+            this.umapScale(thumbnail[this.props.coordType][0]) / this.canvasPixelsPerScreenPixel,
         ]);
 
         // update the position of the hover div

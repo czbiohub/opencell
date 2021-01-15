@@ -90,9 +90,8 @@ def create_app(config=None):
     # FOV annotations (always one annotation per FOV)
     api.add_resource(resources.MicroscopyFOVAnnotation, '/fovs/<int:fov_id>/annotation')
 
-    api.add_resource(resources.EmbeddingPositions, '/embedding_positions/<string:description>')
-    api.add_resource(resources.ThumbnailTilePositions, '/thumbnail_tile_positions')
-    api.add_resource(resources.ThumbnailTileImage, '/thumbnail_tile_image')
+    api.add_resource(resources.EmbeddingPositions, '/embedding_positions')
+    api.add_resource(resources.ThumbnailTileImage, '/thumbnail_tiles/<string:filename>')
 
     api.init_app(app)
 

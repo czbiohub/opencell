@@ -876,41 +876,88 @@ class SavedPulldownNetwork(PulldownResource):
 
 class EmbeddingPositions(Resource):
 
-    def get(self, description):
-        grid_size = int(flask.request.args.get('grid_size')) or 0
-        n_neighbors = int(flask.request.args.get('n_neighbors'))
-        min_dist = float(flask.request.args.get('min_dist'))
+    def get(self):
+        '''
+        Get the positions of all cell lines in a gridded and ungridded embedding,
+        along with the positions of their thumbnails in a thumbnail tile
 
-        # hack: construct the name of the embedding manually (and hard-code 'kind=umap')
+        NOTE: for now, the names of the gridded and ungridded embeddings are hard-coded
+        '''
+        thumbnail_size = int(flask.request.args.get('thumbnail_size') or 100)
+        thumbnail_shape = flask.request.args.get('thumbnail_shape') or 'circle'
+
+        # generic query for embedding positions
+        query = (
+            flask.current_app.Session.query(
+                models.CellLineEmbeddingPosition.cell_line_id,
+                models.CellLineEmbeddingPosition.position_x,
+                models.CellLineEmbeddingPosition.position_y,
+            )
+            .join(models.CellLineEmbedding)
+        )
+
+        # get the gridded embedding positions
+        # hack: assume there's only one kind of embedding for a non-zero grid size
+        grid_size = 40
+        gridded_positions = pd.DataFrame(
+            query.filter(models.CellLineEmbedding.grid_size == grid_size).all()
+        )
+        gridded_positions.rename(
+            columns={'position_x': 'grid_x', 'position_y': 'grid_y'}, inplace=True
+        )
+
+        # get the ungridded (or 'raw') embedding positions
+        # hack: hard-code the name of the embedding
+        grid_size = 0
         name = (
-            '%s--kind=umap--n_neighbors=%d--min_dist=%0.1f' %
-            (description, n_neighbors, min_dist)
+            'december-results-full-median-vq2-target-vectors'
+            '--kind=umap--n_neighbors=10--min_dist=0.1'
+        )
+        ungridded_positions = pd.DataFrame(
+            (
+                query.filter(models.CellLineEmbedding.grid_size == grid_size)
+                .filter(models.CellLineEmbedding.name == name)
+                .all()
+            )
+        )
+        ungridded_positions.rename(
+            columns={'position_x': 'raw_x', 'position_y': 'raw_y'}, inplace=True
         )
 
-        embedding = (
-            flask.current_app.Session.query(models.CellLineEmbedding)
-            .filter(models.CellLineEmbedding.name == name)
-            .filter(models.CellLineEmbedding.grid_size == grid_size)
-            .options(db.orm.joinedload(models.CellLineEmbedding.positions))
-            .one_or_none()
+        # get the thumbnail tile positions
+        # hack: construct the filename of the thumbnail tile manually
+        tile_filename = f'tiled-cell-line-thumbnails--{thumbnail_size}px--{thumbnail_shape}.jpg'
+        tile_positions = pd.DataFrame(
+            flask.current_app.Session.query(
+                models.ThumbnailTilePosition.cell_line_id,
+                models.ThumbnailTilePosition.tile_row,
+                models.ThumbnailTilePosition.tile_column
+            )
+            .join(models.ThumbnailTile)
+            .filter(models.ThumbnailTile.filename == tile_filename)
+            .all()
         )
-        if not embedding:
-            return flask.abort(404, "No embedding found for name '%s'" % name)
+        if not tile_positions.shape[0]:
+            return flask.abort(404, "No thumbnail tile found with filename '%s'" % tile_filename)
 
-        payload = [
-            {
-                'x': position.position_x,
-                'y': position.position_y,
-                'cell_line_id': position.cell_line_id
-            } for position in embedding.positions
-        ]
-        return flask.jsonify(payload)
+        positions = (
+            tile_positions
+            .merge(gridded_positions, on='cell_line_id', how='left')
+            .merge(ungridded_positions, on='cell_line_id', how='left')
+        )
+
+        return flask.jsonify({
+            'tile_filename': tile_filename,
+            'positions': json.loads(positions.to_json(orient='records'))
+        })
 
 
 class ThumbnailTileImage(Resource):
 
-    def get(self):
-        filename = flask.request.args.get('filename')
+    def get(self, filename):
+        '''
+        Redirect to, or load, a thumbnail tile image
+        '''
         microscopy_dir = flask.current_app.config.get('OPENCELL_MICROSCOPY_DIR')
         filepath = os.path.join(microscopy_dir, 'thumbnail-tiles', filename)
         if microscopy_dir.startswith('http'):
@@ -921,27 +968,3 @@ class ThumbnailTileImage(Resource):
                 as_attachment=True,
                 attachment_filename=filepath.split(os.sep)[-1]
             )
-
-
-class ThumbnailTilePositions(Resource):
-
-    def get(self):
-
-        filename = flask.request.args.get('filename')
-        tile = (
-            flask.current_app.Session.query(models.ThumbnailTile)
-            .filter(models.ThumbnailTile.filename == filename)
-            .options(db.orm.joinedload(models.ThumbnailTile.positions))
-            .one_or_none()
-        )
-        if not tile:
-            return flask.abort(404, "No tile found with filename '%s'" % filename)
-
-        payload = [
-            {
-                'row': position.tile_row,
-                'col': position.tile_column,
-                'cell_line_id': position.cell_line_id
-            } for position in tile.positions
-        ]
-        return flask.jsonify(payload)

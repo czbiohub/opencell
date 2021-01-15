@@ -71,7 +71,7 @@ def create_image_umap(ctx, adata_filepath, adata_description, grid_size):
     # and manually construct the target_coords array from the 'raw' UMAP coords
     else:
         logger.info('Generating an un-gridded UMAP embedding')
-        n_neighbors, min_dist = 10, 0.0
+        n_neighbors, min_dist = 10, 0.1
         adm.run_umap(n_neighbors=n_neighbors, min_dist=min_dist)
 
         raw_umap_coords = adm.adata.obsm['X_umap']
@@ -87,8 +87,10 @@ def create_image_umap(ctx, adata_filepath, adata_description, grid_size):
         grid_size = 0
 
     # append the umap parameters to the embedding name
-    name = '%s--kind=umap--n_neighbors=%d--min_dist=%0.1f' % (adata_description, n_neighbors, min_dist)
-
+    name = (
+        '%s--kind=umap--n_neighbors=%d--min_dist=%0.1f'
+        % (adata_description, n_neighbors, min_dist)
+    )
     with scoped_session(ctx.obj['ENGINE']) as session:
         embedding_operations.insert_embedding(
             session, name=name, grid_size=grid_size, positions=target_coords

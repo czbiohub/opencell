@@ -329,7 +329,6 @@ class TargetThumbnailTile:
         self.thumbnails = thumbnails
 
 
-    @classmethod
     def load_thumbnails_from_database(self, session):
         '''
         '''

@@ -940,8 +940,22 @@ class EmbeddingPositions(Resource):
         if not tile_positions.shape[0]:
             return flask.abort(404, "No thumbnail tile found with filename '%s'" % tile_filename)
 
+        # get the target names and localization annotations
+        targets = pd.DataFrame(
+            (
+                flask.current_app.Session.query(
+                    models.CellLine.id.label('cell_line_id'),
+                    models.CellLineAnnotation.categories,
+                    models.CrisprDesign.target_name,
+                )
+                .join(models.CellLineAnnotation)
+                .join(models.CrisprDesign)
+                .all()
+            )
+        )
         positions = (
             tile_positions
+            .merge(targets, on='cell_line_id', how='left')
             .merge(gridded_positions, on='cell_line_id', how='left')
             .merge(ungridded_positions, on='cell_line_id', how='left')
         )

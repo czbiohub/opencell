@@ -51,6 +51,8 @@ def create_app(config=None):
     # search by gene name, ENSG ID, etc
     api.add_resource(resources.Search, '/search/<string:search_string>')
 
+    api.add_resource(resources.TargetNames, '/target_names')
+
     # plate designs
     api.add_resource(resources.Plate, '/plates/<string:plate_id>')
 

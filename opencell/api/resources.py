@@ -79,6 +79,21 @@ class Search(Resource):
         return flask.jsonify(payload)
 
 
+class TargetNames(Resource):
+
+    @cache.cached(timeout=3600, key_prefix=cache_key)
+    def get(self):
+        df = pd.read_sql(
+            '''
+            select target_name, max(protein_names) as protein_name from uniprot_metadata md
+            inner join crispr_design cd on cd.uniprot_id = md.uniprot_id
+            group by target_name
+            ''',
+            flask.current_app.Session.get_bind()
+        )
+        df['protein_name'] = df.protein_name.apply(uniprot_utils.prettify_uniprot_protein_name)
+        return flask.jsonify(json.loads(df.to_json(orient='records')))
+
 
 class Plate(Resource):
 

@@ -7,6 +7,7 @@ import { Suggest } from "@blueprintjs/select";
 import 'tachyons';
 import 'react-table/react-table.css';
 import "@blueprintjs/core/lib/css/blueprint.css";
+import "@blueprintjs/select/lib/css/blueprint-select.css";
 
 import settings from './settings.js';
 
@@ -23,7 +24,6 @@ export default class SearchBar extends Component {
         this.renderItem = this.renderItem.bind(this);
         this.selectItem = this.selectItem.bind(this);
         this.filterItems = this.filterItems.bind(this);
-        this.handleItemSelect = this.handleItemSelect.bind(this);
     }
 
     componentDidMount (props) {
@@ -34,7 +34,8 @@ export default class SearchBar extends Component {
                 item.protein_name_words = item.protein_name.toLowerCase()
                     .replace(',', '')
                     .replace('-', ' ')
-                    .split(' ');
+                    .split(' ')
+                    .filter(word => word.length > 3);
             });
             this.setState({loaded: true});
         })
@@ -47,18 +48,13 @@ export default class SearchBar extends Component {
     }
 
 
-    handleItemSelect (item) {
-        console.log(item);
-    }
-
-
     renderItem (item, {modifiers, handleClick}) {
         if (!modifiers.matchesPredicate) return null;
         return (
-            <div className='pa1 pb2 searchbar-item' key={item.target_name} onClick={handleClick}>
+            <li className='pa1 pb2 searchbar-item' key={item.target_name} onClick={handleClick}>
                 <div className='b'>{`${item.target_name.toUpperCase()}`}</div>
                 <div className='f6 silver' style={{fontWeight: 100}}>{item.protein_name}</div>
-            </div>
+            </li>
         );
     };
 
@@ -68,15 +64,20 @@ export default class SearchBar extends Component {
         const targetNameMatches = items.filter(item => {
             return item.target_name.startsWith(query);
         });
-        if (targetNameMatches.length > 10) return targetNameMatches.slice(0, 10);
+        
+        // if there are lots of matching target names, don't search the full protein names
+        if (targetNameMatches.length > 25) return targetNameMatches;
 
         const matchingItems = [];
         items.forEach(item => {
-            if (matchingItems.length > 10) return;
-            if (item.protein_name_words.indexOf(query) > -1) matchingItems.push(item);
+            if (matchingItems.length > 25) return;
+            if (item.target_name.startsWith(query)) return;
+            if (item.protein_name_words.filter(word => word.startsWith(query)).length) {
+                matchingItems.push(item);
+            }
         });
 
-        return [...targetNameMatches, ...matchingItems.slice(0, 10)];
+        return [...targetNameMatches, ...matchingItems];
     }
 
 
@@ -84,6 +85,7 @@ export default class SearchBar extends Component {
 
         return (
             <Suggest
+                minimal
                 initialContent={'Search for a protein'}
                 items={this.state.loaded ? this.items : []}
                 itemListPredicate={this.filterItems}

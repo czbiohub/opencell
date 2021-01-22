@@ -1,7 +1,10 @@
 
+import { Suggest } from '@blueprintjs/select';
 import React, { useState, useEffect, useContext } from 'react';
 import {Link} from 'react-router-dom';
-import settings from '../common/settings.js';
+
+import SearchBar from './searchBar.jsx';
+import settings from './settings.js';
 
 export default function Navbar (props) {
     const modeContext = useContext(settings.ModeContext);
@@ -55,18 +58,8 @@ export default function Navbar (props) {
                 {publicNavbarLinks}
                 {modeContext==='private' ? privateNavbarLinks : null}
                 <div className='pl3'>
-                    <input 
-                        type='text' 
-                        className='navbar-search-textbox' 
-                        defaultValue={''}
-                        onKeyPress={(event) => {
-                            if (event.charCode===13) {
-                                const query = event.currentTarget.value
-                                props.handleGeneNameSearch(query);
-                                event.currentTarget.value = '';
-                            }
-                        }}
-                        placeholder="Search for a protein"
+                    <SearchBar 
+                        handleGeneNameSearch={props.handleGeneNameSearch}
                     />
                 </div>
             </div>

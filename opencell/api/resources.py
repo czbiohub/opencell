@@ -33,17 +33,19 @@ class ClearCache(Resource):
         return flask.jsonify({'result': 'cache cleared'})
 
 
-class Search(Resource):
-    def get(self, search_string):
-
+class GeneNameSearch(Resource):
+    '''
+    A list of cell_line_ids and ensg_ids that match a given gene name
+    '''
+    def get(self, gene_name):
         payload = {}
-        search_string = search_string.upper()
+        gene_name = gene_name.upper()
         publication_ready_only = flask.request.args.get('publication_ready') == 'true'
 
         # search for opencell targets
         query = (
             flask.current_app.Session.query(models.CellLine).join(models.CellLine.crispr_design)
-            .filter(db.func.upper(models.CrisprDesign.target_name) == search_string)
+            .filter(db.func.upper(models.CrisprDesign.target_name) == gene_name)
         )
 
         if publication_ready_only:
@@ -53,7 +55,7 @@ class Search(Resource):
             query = query.filter(models.CellLine.id.in_(cell_line_ids))
 
         # hack for the positive controls
-        if search_string in ['CLTA', 'BCAP31']:
+        if gene_name in ['CLTA', 'BCAP31']:
             query = query.filter(models.CrisprDesign.plate_design_id == 'P0001')
 
         targets = query.all()
@@ -69,7 +71,7 @@ class Search(Resource):
                 select *, string_to_array(gene_names, ' ') as gene_names_array
                 from uniprot_metadata
             ) tmp
-            where '{search_string}' = any(gene_names_array)
+            where '{gene_name}' = any(gene_names_array)
             ''',
             flask.current_app.Session.get_bind()
         )
@@ -79,9 +81,78 @@ class Search(Resource):
         return flask.jsonify(payload)
 
 
-class TargetNames(Resource):
+class FullTextSearch(Resource):
+    '''
+    Full-text search of all opencell targets and interactors
 
-    @cache.cached(timeout=3600, key_prefix=cache_key)
+    This is conducted in two steps:
+    First, a full-text search of the uniprot protein_names field is attempted;
+    this will only yield results if the query is some common word or phrase
+    (e.g., 'actin', 'membrane', 'nuclear lamina', etc).
+
+    If this search finds no results, we assume the query is a portion of a gene name,
+    and we search the uniprot gene_names field for all gene names
+    that start with, or exactly match, the query.
+
+    NOTE: the queries in this method rely on a materialized view called 'ensg_uniprot_metadata'
+    that is not defined or managed by the ORM.
+    '''
+    def get(self, query):
+        engine = flask.current_app.Session.get_bind()
+
+        # full-text search of uniprot protein_names
+        results = pd.read_sql(
+            '''
+            select * from (
+                select ensg_id, crispr_design_id, gene_names, protein_names,
+                ts_rank_cd(content, query) as relevance from (
+                    select *, to_tsvector(protein_names) as content from ensg_uniprot_metadata
+                ) md, plainto_tsquery(%(query)s) as query
+                where content @@ query
+            ) as hits
+            order by relevance desc limit 100
+            ''',
+            engine,
+            params=dict(query=query)
+        )
+
+        # look for gene names that start with the query
+        if not results.shape[0]:
+            results = pd.read_sql(
+                '''
+                select ensg_id, crispr_design_id, gene_names, protein_names
+                from ensg_uniprot_metadata
+                where ensg_id in (
+                    select distinct(ensg_id) from (
+                        select *, unnest(string_to_array(gene_names, ' ', null)) as gene_name
+                        from ensg_uniprot_metadata
+                    ) as tmp
+                    where gene_name like %(query)s
+                )
+                ''',
+                engine,
+                params=dict(query=('%s%%' % query.upper()))
+            )
+            # there's no way of ranking these results
+            results['relevance'] = None
+
+        # clean up the uniprot protein names
+        results['protein_name'] = results.protein_names.apply(
+            uniprot_utils.prettify_uniprot_protein_name
+        )
+        results.drop(labels=['protein_names'], axis=1, inplace=True)
+
+        # keep the full list of gene name synonyms
+        results['gene_names'] = results.gene_names.str.split(' ')
+
+        return flask.jsonify(json.loads(results.to_json(orient='records')))
+
+
+class TargetNames(Resource):
+    '''
+    A list of the target names and uniprot protein names for all crispr designs
+    '''
+    @cache.cached(key_prefix=cache_key)
     def get(self):
         df = pd.read_sql(
             '''
@@ -115,7 +186,7 @@ class CellLines(Resource):
     A list of cell line metadata for all cell lines,
     possibly filtered by plate_id and target name
     '''
-    @cache.cached(timeout=3600, key_prefix=cache_key)
+    @cache.cached(key_prefix=cache_key)
     def get(self):
 
         Session = flask.current_app.Session
@@ -485,7 +556,7 @@ class PulldownNetwork(PulldownResource):
     The cytoscape interaction network for a pulldown
     (see comments in cytoscape_networks.construct_network for details)
     '''
-    @cache.cached(timeout=3600, key_prefix=cache_key)
+    @cache.cached(key_prefix=cache_key)
     def get(self, pulldown_id):
 
         pulldown = self.get_pulldown(pulldown_id)

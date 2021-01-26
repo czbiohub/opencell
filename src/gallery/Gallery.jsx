@@ -38,8 +38,9 @@ function Lightbox (props) {
             }}>
             <div 
                 className='pa3 br3 ba b--black-70' 
-                style={{margin: 'auto', width: '650px', backgroundColor: 'white'}}>
-                <div className='f3'>{`FOVs for ${props.targetName}`}</div>
+                style={{margin: 'auto', width: '650px', backgroundColor: 'white', overflowX: 'scroll'}}
+            >
+                <div className='f3'>{`Microscopy images for ${props.targetName}`}</div>
                 <ViewerContainer
                     cellLineId={props.cellLineId}
                     fovs={props.fovs}

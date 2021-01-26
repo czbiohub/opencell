@@ -6,6 +6,8 @@
     bottom: 0;
     right: 0;
 
+    padding-top: 25px;
+
     /* these properties vertically center text content */
     display: flex;
     justify-content: center;

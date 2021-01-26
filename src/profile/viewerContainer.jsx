@@ -184,7 +184,7 @@ export default class ViewerContainer extends Component {
         if (!this.props.rois.length) {
             return (
                 <div className="relative" style={{height: "500px"}}>
-                    <div className="f2 tc loading-overlay">No ROIs found</div>
+                    <div className="f2 tc loading-overlay">No images found</div>
                 </div>
             );
         }

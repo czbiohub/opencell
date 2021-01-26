@@ -46,6 +46,8 @@ export default function SearchResults (props) {
 
     const maxPageSize = 50;
     const [data, setData] = useState([]);
+    const [loaded, setLoaded] = useState(false);
+    const [queryIsValidGeneName, setQueryIsValidGeneName] = useState(false);
 
     // load the search results
     useEffect(() => {
@@ -56,15 +58,39 @@ export default function SearchResults (props) {
                 return a.gene_names[0] > b.gene_names[0] ? 1 : -1;
             });
             setData(data); 
-        }, error => setData([]));
+            setLoaded(true);
+        }, error => setLoaded(true));
     }, [props.match]);
+
+    // if the search results, check to see if the query is a valid gene name, using the mygene API
+    useEffect(() => {
+        if (data.length || !loaded) return;
+        const query = props.match.params.query.toUpperCase();
+        d3.json(`http://mygene.info/v3/query?q=${query}&species=human&ensemblonly=true&limit=1`)
+            .then(result => {
+                setQueryIsValidGeneName(result.hits.length && result.hits[0].symbol===query);
+            });
+    });
 
     if (!data.length) {
         return (
-            <div className='pl5 pr5 pt4 flex justify-center'>
-                <span className='f4'>
-                    {`Sorry, no results found for search term "${props.match.params.query}"`}
-                </span>
+            <div className='pl5 pr5 pt4 w-80 flex flex-column justify-center'>
+                <div className='f3 pb2'>
+                    {`Sorry, no results found for the search term "${props.match.params.query}"`}
+                </div>
+                {(queryIsValidGeneName && !data.length) ? (
+                    <div className='f5'>
+                    <div>
+                        {`It looks like you may be searching for the human gene ${props.match.params.query.toUpperCase()}. `}
+                        Unfortunately, this gene has not yet been tagged as part of the OpenCell library 
+                        and is also not found among the interaction partners of any of our existing OpenCell targets.
+                        If you feel this may indicate a data quality issue, or if you would like to see us tag this gene, 
+                        please <a href='mailto:opencell@czbiohub.org'>get in touch</a>!
+                    </div>
+                    <div>
+                    </div>
+                    </div>
+                ) : null}
             </div>
         );
     }
@@ -72,7 +98,7 @@ export default function SearchResults (props) {
     return (
         <div className='pl5 pr5 pt3 pb3'>
             <SectionHeader 
-                title={`${data.length} genes found for search term "${props.match.params.query}"`}
+                title={`${data.length} genes found for the search term "${props.match.params.query}"`}
             />
             <div className='pt3'/>
 

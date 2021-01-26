@@ -24,6 +24,7 @@ import InteractorProfile from './profile/interactorProfile.jsx';
 import Gallery from './gallery/Gallery.jsx';
 import UMAPContainer from './umap/umapContainer.jsx';
 import About from './about/About.jsx';
+import SearchResults from './common/searchResults.jsx';
 import FOVOverview from './microscopy/FOVOverview.jsx';
 import settings from './common/settings.js';
 
@@ -50,7 +51,9 @@ function useCellLineId () {
             let page = match?.params.page || 'target';
 
             // if we are on a target-non-specific page, redirect to the profile page
-            const targetNonSpecificPages = ['gallery', 'dashboard', 'microscopy', 'interactor'];
+            const targetNonSpecificPages = [
+                'gallery', 'dashboard', 'microscopy', 'interactor', 'search'
+            ];
             page = targetNonSpecificPages.includes(page) ? 'target' : page;
             
             const newUrl = `/${page}/${newCellLineId}${history.location.search}`;
@@ -181,6 +184,16 @@ function App() {
                 <InteractorProfile 
                     {...props} 
                     setCellLineId={setCellLineId}
+                    handleGeneNameSearch={handleGeneNameSearch} 
+                />
+            )}
+        />,
+        <Route 
+            key='search'
+            path="/search/:query"
+            render={props => (
+                <SearchResults 
+                    {...props} 
                     handleGeneNameSearch={handleGeneNameSearch} 
                 />
             )}

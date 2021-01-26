@@ -1,12 +1,16 @@
 
 import { Suggest } from '@blueprintjs/select';
 import React, { useState, useEffect, useContext } from 'react';
+import { useHistory } from 'react-router-dom';
+
 import {Link} from 'react-router-dom';
 
 import SearchBar from './searchBar.jsx';
 import settings from './settings.js';
 
 export default function Navbar (props) {
+
+    const history = useHistory();
     const modeContext = useContext(settings.ModeContext);
 
     const publicNavbarLinks = [
@@ -37,7 +41,7 @@ export default function Navbar (props) {
             className="flex items-center justify-between w-100 pr3 pl3 navbar-container" 
             style={{
                 backgroundColor: "#eee",
-                minWidth: 1400,
+                minWidth: 1500,
             }}
         >
             {/* left-side content */}
@@ -60,6 +64,7 @@ export default function Navbar (props) {
                 <div className='pl3'>
                     <SearchBar 
                         handleGeneNameSearch={props.handleGeneNameSearch}
+                        history={history}
                     />
                 </div>
             </div>

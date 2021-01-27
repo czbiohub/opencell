@@ -97,10 +97,53 @@ class FullTextSearch(Resource):
     NOTE: the queries in this method rely on a materialized view called 'ensg_uniprot_metadata'
     that is not defined or managed by the ORM.
     '''
-    def get(self, query):
-        engine = flask.current_app.Session.get_bind()
 
-        # full-text search of uniprot protein_names
+    @staticmethod
+    def get_approved_gene_name_from_query(session, query):
+        '''
+        '''
+        query_is_valid_gene_name = False
+        query_is_legacy_gene_name = False
+        approved_gene_name = None
+
+        # first determine if the query is an exact HGNC-approved gene name
+        exact_matches = (
+            session.query(models.HGNCMetadata)
+            .filter(models.HGNCMetadata.symbol == query.upper())
+            .one_or_none()
+        )
+        query_is_valid_gene_name = exact_matches is not None
+        if query_is_valid_gene_name:
+            approved_gene_name = query.upper()
+
+        # check if the query is an exact legacy gene name
+        else:
+            result = pd.read_sql(
+                '''
+                select * from (
+                    select symbol, ensg_id, unnest(
+                        string_to_array(prev_symbol, '|') || string_to_array(alias_symbol, '|')
+                    ) as alias_or_prev
+                    from hgnc_metadata
+                ) tmp
+                where alias_or_prev = %(query)s
+                ''',
+                session.get_bind(),
+                params=dict(query=query.upper())
+            )
+            if len(result):
+                query_is_legacy_gene_name = True
+                approved_gene_name = result.iloc[0].symbol
+
+        return query_is_valid_gene_name, query_is_legacy_gene_name, approved_gene_name
+
+
+    @staticmethod
+    def search_protein_names(engine, query):
+        '''
+        Full-text search of uniprot protein names for all opencell targets and interactors
+        (this relies on a materialized view called searchable_uniprot_metadata)
+        '''
         results = pd.read_sql(
             '''
             select * from (
@@ -114,37 +157,88 @@ class FullTextSearch(Resource):
             engine,
             params=dict(query=query)
         )
+        return results
 
-        # look for gene names that start with the query
-        if not results.shape[0]:
-            results = pd.read_sql(
-                '''
-                select ensg_id, crispr_design_id, gene_names, protein_names
-                from searchable_uniprot_metadata
-                where ensg_id in (
-                    select distinct(ensg_id) from (
-                        select *, unnest(string_to_array(gene_names, ' ', null)) as gene_name
-                        from searchable_uniprot_metadata
-                    ) as tmp
-                    where gene_name like %(query)s
-                )
-                ''',
-                engine,
-                params=dict(query=('%s%%' % query.upper()))
+
+    @staticmethod
+    def search_gene_names(engine, query):
+        '''
+        Search for opencell targets and interactors whose primary gene name starts with the query
+        '''
+        results = pd.read_sql(
+            '''
+            select ensg_id, crispr_design_id, gene_names, protein_names
+            from searchable_uniprot_metadata
+            where ensg_id in (
+                select distinct(ensg_id) from (
+                    select *, unnest(string_to_array(gene_names, ' ', null)) as gene_name
+                    from searchable_uniprot_metadata
+                ) as tmp
+                where gene_name like %(query)s
             )
-            # there's no way of ranking these results
-            results['relevance'] = None
+            ''',
+            engine,
+            params=dict(query=('%s%%' % query.upper()))
+        )
+        # there's no way of ranking these results, but create a relevance column
+        # with a relevance greater than the
+        results['relevance'] = 1.0
+        return results
 
-        # clean up the uniprot protein names
-        results['protein_name'] = results.protein_names.apply(
+
+    def get(self, query):
+        engine = flask.current_app.Session.get_bind()
+
+        # eliminate trailing spaces
+        query = query.strip()
+
+        # attempt to look up the approved gene name from the query,
+        # in the even that the query is an exact alias or previous gene name
+        (
+            query_is_valid_gene_name, query_is_legacy_gene_name, approved_gene_name
+        ) = self.get_approved_gene_name_from_query(flask.current_app.Session, query)
+
+        # search for partial gene name matches
+        partial_gene_name_matches = self.search_gene_names(engine, query)
+
+        # if there are no partial matches but the query is an exact legacy gene name,
+        # try again using the approved gene name
+        if query_is_legacy_gene_name and not partial_gene_name_matches.shape[0]:
+            partial_gene_name_matches = self.search_gene_names(engine, approved_gene_name)
+
+        # always search the protein names with the original query
+        protein_name_matches = self.search_protein_names(engine, query)
+
+        # combine the results from both searches
+        all_results = pd.concat((partial_gene_name_matches, protein_name_matches), axis=0)
+
+        # prettify the uniprot protein names
+        all_results['protein_name'] = all_results.protein_names.apply(
             uniprot_utils.prettify_uniprot_protein_name
         )
-        results.drop(labels=['protein_names'], axis=1, inplace=True)
+        all_results.drop(labels=['protein_names'], axis=1, inplace=True)
 
         # keep the full list of gene name synonyms
-        results['gene_names'] = results.gene_names.str.split(' ')
+        all_results['gene_names'] = all_results.gene_names.str.split(' ')
 
-        return flask.jsonify(json.loads(results.to_json(orient='records')))
+        # eliminate duplicates
+        all_results = all_results.groupby('ensg_id').max().reset_index()
+
+        # if the query was a valid (approved or legacy) gene name,
+        # set the relevance of its exact match, if there was one, to 10
+        if approved_gene_name is not None:
+            mask = all_results.gene_names.apply(lambda names: approved_gene_name in names)
+            all_results.loc[mask, 'relevance'] = 10
+
+        return flask.jsonify({
+            'is_valid_gene_name': query_is_valid_gene_name,
+            'is_legacy_gene_name': query_is_legacy_gene_name,
+            'approved_gene_name': approved_gene_name,
+            'exact_match_found': (
+                query.upper() in all_results.explode('gene_names').gene_names.values
+            ),
+            'hits': json.loads(all_results.to_json(orient='records')),
+        })
 
 
 class TargetNames(Resource):

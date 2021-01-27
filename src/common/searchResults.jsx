@@ -1,6 +1,7 @@
 import * as d3 from 'd3';
 import React, { useState, useEffect } from 'react';
 import ReactTable from 'react-table';
+import { Callout } from '@blueprintjs/core';
 
 import 'tachyons';
 import 'react-table/react-table.css';
@@ -70,25 +71,26 @@ export default function SearchResults (props) {
             .then(result => {
                 setQueryIsValidGeneName(result.hits.length && result.hits[0].symbol===query);
             });
-    });
+    }, [data, loaded]);
 
     if (!data.length) {
         return (
             <div className='pl5 pr5 pt4 w-80 flex flex-column justify-center'>
-                <div className='f3 pb2'>
-                    {`Sorry, no results found for the search term "${props.match.params.query}"`}
-                </div>
+                <Callout 
+                    intent='warning'
+                    title={`Sorry, no results found for the search term "${props.match.params.query}"`}
+                />
                 {(queryIsValidGeneName && !data.length) ? (
-                    <div className='f5'>
-                    <div>
-                        {`It looks like you may be searching for the human gene ${props.match.params.query.toUpperCase()}. `}
-                        Unfortunately, this gene has not yet been tagged as part of the OpenCell library 
-                        and is also not found among the interaction partners of any of our existing OpenCell targets.
-                        If you feel this may indicate a data quality issue, or if you would like to see us tag this gene, 
-                        please <a href='mailto:opencell@czbiohub.org'>get in touch</a>!
-                    </div>
-                    <div>
-                    </div>
+                    <div className='pt3'>
+                        <Callout 
+                            intent='primary' 
+                            title={`Are you looking for the human gene ${props.match.params.query.toUpperCase()}?`}
+                        >
+                            Unfortunately, this gene has not yet been tagged as part of the OpenCell library 
+                            and is also not found among the interaction partners of any of our existing OpenCell targets.
+                            If you feel this may indicate a data quality issue, or if you would like to see us tag this gene, 
+                            please <a href='mailto:opencell@czbiohub.org'>get in touch</a>!
+                        </Callout>
                     </div>
                 ) : null}
             </div>
@@ -96,7 +98,7 @@ export default function SearchResults (props) {
     }
 
     return (
-        <div className='pl5 pr5 pt3 pb3'>
+        <div className='pl5 pr5 pt3 pb3 w-80'>
             <SectionHeader 
                 title={`${data.length} genes found for the search term "${props.match.params.query}"`}
             />

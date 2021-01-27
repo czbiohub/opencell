@@ -444,6 +444,32 @@ class UniprotMetadata(Base):
         )
 
 
+class HGNCMetadata(Base):
+    '''
+    Cached metadata for all human genes from the HGNC
+    This includes only the approved, alias, and previous 'symbols' (the gene names)
+    and the approved and previous 'names' (what UniProt calls protein names)
+
+    Note that the column names were chosen to match those that appear in the CSV download
+    of the complete HGNC dataset on 2021-01-27.
+    '''
+    __tablename__ = 'hgnc_metadata'
+    id = db.Column(db.Integer, primary_key=True)
+
+    symbol = db.Column(db.String)
+    prev_symbol = db.Column(db.String)
+    alias_symbol = db.Column(db.String)
+
+    name = db.Column(db.String)
+    prev_name = db.Column(db.String)
+    alias_name = db.Column(db.String)
+
+    hgnc_id = db.Column(db.String)
+    ensg_id = db.Column(db.String)
+
+    date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
+
+
 class FACSDataset(Base):
     '''
     A single FACS dataset, consisting of

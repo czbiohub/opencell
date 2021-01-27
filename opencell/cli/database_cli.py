@@ -68,6 +68,7 @@ def parse_args():
         'insert_uniprot_metadata_for_protein_groups',
         'insert_ensg_ids',
         'generate_protein_group_associations',
+        'insert_hgnc_metadata',
     ]
 
     for dest in action_arg_dests:
@@ -367,6 +368,8 @@ def main():
         uniprot_operations.generate_protein_group_uniprot_metadata_associations(Session)
         uniprot_operations.generate_protein_group_crispr_design_associations(Session)
 
+    if args.insert_hgnc_metadata:
+        uniprot_operations.insert_all_hgnc_metadata(Session, args.snapshot_filepath)
 
 if __name__ == '__main__':
     main()

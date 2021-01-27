@@ -229,14 +229,13 @@ class FullTextSearch(Resource):
         if approved_gene_name is not None:
             mask = all_results.gene_names.apply(lambda names: approved_gene_name in names)
             all_results.loc[mask, 'relevance'] = 10
+            exact_match_found = bool(mask.sum() > 0)
 
         return flask.jsonify({
             'is_valid_gene_name': query_is_valid_gene_name,
             'is_legacy_gene_name': query_is_legacy_gene_name,
             'approved_gene_name': approved_gene_name,
-            'exact_match_found': (
-                query.upper() in all_results.explode('gene_names').gene_names.values
-            ),
+            'exact_match_found': exact_match_found,
             'hits': json.loads(all_results.to_json(orient='records')),
         })
 

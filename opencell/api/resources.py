@@ -105,9 +105,8 @@ class FullTextSearch(Resource):
             '''
             select * from (
                 select ensg_id, crispr_design_id, gene_names, protein_names,
-                ts_rank_cd(content, query) as relevance from (
-                    select *, to_tsvector(protein_names) as content from ensg_uniprot_metadata
-                ) md, plainto_tsquery(%(query)s) as query
+                ts_rank_cd(content, query) as relevance
+                from searchable_uniprot_metadata, plainto_tsquery(%(query)s) as query
                 where content @@ query
             ) as hits
             order by relevance desc limit 100
@@ -121,11 +120,11 @@ class FullTextSearch(Resource):
             results = pd.read_sql(
                 '''
                 select ensg_id, crispr_design_id, gene_names, protein_names
-                from ensg_uniprot_metadata
+                from searchable_uniprot_metadata
                 where ensg_id in (
                     select distinct(ensg_id) from (
                         select *, unnest(string_to_array(gene_names, ' ', null)) as gene_name
-                        from ensg_uniprot_metadata
+                        from searchable_uniprot_metadata
                     ) as tmp
                     where gene_name like %(query)s
                 )

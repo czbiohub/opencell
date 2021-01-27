@@ -226,6 +226,7 @@ class FullTextSearch(Resource):
 
         # if the query was a valid (approved or legacy) gene name,
         # set the relevance of its exact match, if there was one, to 10
+        exact_match_found = False
         if approved_gene_name is not None:
             mask = all_results.gene_names.apply(lambda names: approved_gene_name in names)
             all_results.loc[mask, 'relevance'] = 10

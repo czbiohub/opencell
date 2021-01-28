@@ -32,11 +32,6 @@ export default class SearchBar extends Component {
             this.items = data;
             this.items.forEach(item => {
                 item.target_name = item.target_name.toLowerCase();
-                item.protein_name_words = item.protein_name.toLowerCase()
-                    .replace(',', '')
-                    .replace('-', ' ')
-                    .split(' ')
-                    .filter(word => word.length > 3);
             });
             this.setState({loaded: true});
         })
@@ -71,31 +66,13 @@ export default class SearchBar extends Component {
     }
 
     filterItems (query, items) {
-
-        query = query.toLowerCase(); //.replace(' ', '');
-        const targetNameMatches = items.filter(item => {
-            return item.target_name.startsWith(query);
+        let targetNameMatches = items.filter(item => {
+            return item.target_name.startsWith(query.toLowerCase());
         });
-        
-        // if there are lots of matching target names, don't search the full protein names
-        if (targetNameMatches.length > 25) return targetNameMatches;
-
-        const proteinNameMatches = [];
-        items.forEach(item => {
-            if (proteinNameMatches.length > 25) return;
-            if (item.target_name.startsWith(query)) return;
-            if (item.protein_name_words.filter(word => word.startsWith(query)).length) {
-                proteinNameMatches.push(item);
-            }
-        });        
-
-        let allMatches = [...targetNameMatches, ...proteinNameMatches];
-
         // if there were no matches, return a dummy item so that onActiveItemChange 
         // can be used to detect enter keypresses
-        if (!allMatches.length) allMatches = [{target_name: ''}];
-    
-        return allMatches;
+        if (!targetNameMatches.length) targetNameMatches = [{target_name: ''}];
+        return targetNameMatches;
     }
 
 

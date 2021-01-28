@@ -13,6 +13,7 @@
 .thumbnail-container-active,
 .thumbnail-container-active:hover {
     border: 1px solid #111;
+    border-radius: 5px;
 }
 
 .thumbnail-flagged {
@@ -20,7 +21,8 @@
 }
 
 .thumbnail-annotated {
-    border: 2px solid #db3737;
+    border: 4px solid #db3737;
+    border-radius: 5px;
 }
 
 .thumbnail-caption {

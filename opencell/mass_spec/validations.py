@@ -38,147 +38,11 @@ def create_null_edg(source_df, target_col, edge_col, save_name):
     source_df.to_csv(save_name, header=False, index=False, sep='\t')
 
 
-def get_plate_interactors(pvals, metrics=['pvals'], just_hits=False):
-    """
-    Return a dataframe that has all hits or interactions in 3-column (target, prey, metric) format
-    """
-
-    protein_ids = pvals.index.to_list()
-    pvals = pvals.copy()
-
-    pvals.set_index(('gene_names', 'gene_names'), inplace=True)
-    pvals.index.name = 'gene_names'
-    targets = pvals.columns.get_level_values('baits')
-    targets = list(set(targets))
-
-    all_hits = []
-    # Get all hits and minor hits along with the metric data
-    for target in targets:
-        target_pvs = pvals[target]
-        target_pvs['protein_ids'] = protein_ids
-
-        # return target_pvs
-        # just_hits bool will return all hits, else it will only return interactors
-        if just_hits:
-            hits = target_pvs
-            hits.reset_index(inplace=True)
-        else:
-            selection = ['hits', 'minor_hits'] + metrics
-            hits = target_pvs[target_pvs['hits'] | target_pvs['minor_hits']][selection]
-            hits.reset_index(inplace=True)
-
-
-        # # expand where there are multiple entries in gene names
-        # multiples = hits[hits['gene_names'].map(lambda x: ';' in x)]
-        # multiples_idxs = multiples.index.to_list()
-
-        # for multiple in multiples_idxs:
-        #     copy_row = hits.iloc[multiple]
-        #     genes = copy_row['gene_names'].split(';')
-        #     for gene in genes:
-        #         add_row = copy_row.copy()
-        #         add_row['gene_names'] = gene
-        #         hits = hits.append(add_row, ignore_index=True)
-        #     hits.drop(multiple, inplace=True)
-
-        hits['target'] = target.upper()
-        hits.rename(columns={'gene_names': 'prey'}, inplace=True)
-        hits.reset_index(drop=True, inplace=True)
-        all_hits.append(hits)
-
-    all_hits = pd.concat(all_hits, axis=0)
-    return all_hits
-
-
-def get_all_interactors(plates, root, date, metrics=['pvals'], name='_pval_and_stoich_',
-        just_hits=False):
-    """
-    Convenience function to combine interactions from different experiments into one DF
-    """
-    pval_plates = []
-    for plate in plates:
-        df_name = root + plate + name + date + '.pkl'
-        pvals = pd.read_pickle(df_name)
-        pval_plates.append(pvals)
-
-    multi_args = zip(pval_plates, repeat(metrics), repeat(just_hits))
-
-    # multi processing
-    p = Pool()
-    plate_hits = p.starmap(get_plate_interactors, multi_args)
-    p.close()
-    p.join()
-
-    all_hits = pd.concat(plate_hits, axis=0)
-    all_hits.reset_index(drop=True, inplace=True)
-
-    # return hit/minor_hits information if just_hits is flagged False
-    if just_hits:
-        selection = ['target', 'prey'] + metrics
-        all_hits = all_hits[selection]
-    else:
-        selection = ['target', 'prey', 'hits', 'minor_hits'] + metrics
-        all_hits = all_hits[selection]
-    # all_hits = all_hits.dropna()
-    all_hits = all_hits.sort_values(by='target')
-
-    # separate out the plate and target information from plate_target format
-    all_hits['plate'] = all_hits['target'].apply(lambda x: x.split('_', 1)[0])
-    all_hits['target'] = all_hits['target'].apply(lambda x: x.split('_', 1)[1])
-
-    return all_hits
-
-
-def fdr_all_interactors(plates, root, date, fdr1, fdr5, dynamic=False,
-     metric=['pvals'], name='_pval_and_stoich_', just_hits=False):
-    """
-    Similar to get_all_interactors, but process interactions with
-    dynamic FDR and include the fdrs too
-    """
-    pval_plates = []
-    all_fdrs = []
-    for plate in plates:
-        df_name = root + plate + name + date + '.pkl'
-        pvals = pd.read_pickle(df_name)
-        if not dynamic:
-            pvals = pval.two_fdrs(pvals, fdr1, fdr5)
-        else:
-            fdrs, pvals = dfdr.get_fdrs(pvals)
-            # concatenate fdrs to pvals table
-            all_fdrs.append(fdrs)
-        pval_plates.append(pvals)
-
-    multi_args = zip(pval_plates, repeat(metric), repeat(just_hits))
-
-    # multi processing
-    p = Pool()
-    plate_hits = p.starmap(get_plate_interactors, multi_args)
-    p.close()
-    p.join()
-
-    all_hits = pd.concat(plate_hits, axis=0)
-    all_hits.reset_index(drop=True, inplace=True)
-    selected_cols = ['target', 'prey', 'hits', 'minor_hits'] + metric
-    all_hits = all_hits[selected_cols]
-    all_hits = all_hits.sort_values(by='target')
-    all_hits['plate'] = all_hits['target'].apply(lambda x: x.split('_', 1)[0])
-    all_hits['target'] = all_hits['target'].apply(lambda x: x.split('_', 1)[1])
-    all_hits['target'] = all_hits['target'].apply(lambda x: x.upper())
-    if dynamic:
-        fdrs = pd.concat(all_fdrs)
-        fdrs.reset_index(inplace=True)
-        fdrs['target'] = fdrs['bait'].apply(lambda x: x.split('_', 1)[1])
-        fdrs['plate'] = fdrs['bait'].apply(lambda x: x.split('_', 1)[0])
-        fdrs['target'] = fdrs['target'].apply(lambda x: x.upper())
-        fdrs.drop(columns=['bait'], inplace=True)
-        all_hits = all_hits.merge(fdrs, on=['target', 'plate'], how='left')
-
-    return all_hits
-
-
 def hit_bool_cat(distance):
+
     if distance == np.inf:
         return 0.2
+
     elif distance < 0.01:
         return 0.2
     elif distance > 0:
@@ -480,10 +344,6 @@ def aux_corum_precision(target_prey, corum):
     return False
 
 
-
-
-
-
 def corum_interaction_coverage_2(network_df, corum, target_col, prey_col,
         distance=True, directional=False):
     """
@@ -641,3 +501,39 @@ def convert_to_node2vec(interactions, dimensions, target_col, prey_col, edge_col
     node_vectors = pd.DataFrame(model.wv.syn0[term_indices, :], index=ordered_terms)
 
     return node_vectors
+
+
+def return_circle_uniques(all_hits, major_circle=0.2, minor_circle=0.05, unique=False):
+    """make circle parameters for all hits table for clustering purposes"""
+
+    all_hits = all_hits.copy()
+    all_hits['circle'] = (all_hits['abundance_stoi'] > 0.1) & (
+        all_hits['abundance_stoi'] < 10) & (
+        all_hits['interaction_stoi'] > major_circle)
+    all_hits['circle'] = all_hits['circle'].apply(lambda x:
+        10 if x else 0)
+
+
+    all_hits['lg_circle'] = (all_hits['abundance_stoi'] > 0.1) & (
+        all_hits['abundance_stoi'] < 10) & (
+        all_hits['interaction_stoi'] > 0.05) & (
+        all_hits['interaction_stoi'] < 0.2)
+    all_hits['lg_circle'] = all_hits['lg_circle'].apply(lambda x:
+        4 if x else 0)
+
+
+    all_hits['circle_stoi'] = all_hits['circle'] + all_hits['lg_circle']
+    all_hits['circle_stoi'] = all_hits['circle_stoi'].apply(
+        lambda x: 0.2 if x == 0 else x)
+
+    all_hits['target'] = all_hits['target'].astype(str)
+    all_hits['prey'] = all_hits['prey'].astype(str)
+
+
+    if unique:
+        circle = convert_to_unique_interactions(all_hits, 'target', 'prey', get_edge=True,
+            edge='circle_stoi')
+
+        return circle
+    else:
+        return all_hits

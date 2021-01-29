@@ -187,6 +187,7 @@ def mcl_mcl(first_mcl, network_df, target_col, prey_col, first_thresh, mcl_thres
     # New MCL cluster
     m_clusters = []
     for idx, cluster in enumerate(clusters):
+
         # original clusterone cluster number
         idx += 1
 
@@ -211,7 +212,8 @@ def mcl_mcl(first_mcl, network_df, target_col, prey_col, first_thresh, mcl_thres
 
             # Run MCL with a given inflation parameter
             result = mc.run_mcl(c_mat, inflation=mcl_inflation)
-            mcl_clusters = mc.get_clusters(result)
+            mcl_clusters = mc.get_clusters(result, keep_overlap=False)
+
             for mcl_cluster in mcl_clusters:
                 if len(mcl_cluster) >= mcl_thresh:
                     mcl_nodes = [nodes[x] for x in mcl_cluster]
@@ -446,6 +448,7 @@ def cluster_matrix_to_sql_table(mcl, network, method='single', metric='cosine', 
                     # identify subcluster
                     sub_bait = mcl[mcl['gene_names'] == bait][subcluster].item()
                     sub_prey = mcl[mcl['gene_names'] == prey][subcluster].item()
+
                     # subcluster_entry
                     if sub_bait == sub_prey:
                         subcluster_col.append(sub_bait)
@@ -659,3 +662,70 @@ def aux_poor_interactors(prey, network, target_col, prey_col):
         interactors += right[target_col].to_list()
 
     return interactors
+
+
+def split_mcl(summary, network_df, target_col, prey_col, mcl_thresh, mcl_inflation,
+        edge='', raw_return=False):
+    """
+    If MCL cluster has two core clusters, try to split it into two
+    """
+    network_df = network_df.copy()
+    summary = summary.copy()
+
+    clusters = summary.groupby(
+        'super_cluster')['gene_name'].apply(list).to_list()
+
+    num_cores = pd.DataFrame(summary.groupby(
+        'super_cluster')['core_cluster'].nunique()).reset_index()
+    change_list = num_cores[num_cores[
+        'core_cluster'] >= 2]['super_cluster'].to_list()
+
+    # first clustering id
+    c_clusters = []
+
+    # New MCL cluster
+    m_clusters = []
+    for idx, cluster in enumerate(clusters):
+
+        # original clusterone cluster number
+        idx += 1
+        if idx not in change_list:
+            m_clusters.append(cluster)
+            c_clusters.append(idx)
+            continue
+
+        # go thru the MCL second cluster
+        else:
+            cluster_network = retrieve_cluster_df(
+                network_df, cluster, target_col, prey_col)
+            if not edge:
+                edge = None
+            # NetworkX transformation of pandas interactions to sparse matrix
+            c_graph = nx.convert_matrix.from_pandas_edgelist(
+                cluster_network, target_col, prey_col, edge_attr=edge)
+            nodes = list(c_graph.nodes)
+            c_mat = nx.to_scipy_sparse_matrix(c_graph)
+
+            # Run MCL with a given inflation parameter
+            result = mc.run_mcl(c_mat, inflation=mcl_inflation)
+            mcl_clusters = mc.get_clusters(result, keep_overlap=False)
+
+            for mcl_cluster in mcl_clusters:
+                if len(mcl_cluster) >= mcl_thresh:
+                    mcl_nodes = [nodes[x] for x in mcl_cluster]
+                    c_clusters.append(idx)
+                    m_clusters.append(mcl_nodes)
+    mcl_df = pd.DataFrame()
+    mcl_df['super_cluster'] = c_clusters
+    mcl_df['gene_name'] = m_clusters
+
+    if raw_return:
+        return mcl_df
+
+    new = mcl_df.explode('gene_name').reset_index().rename(
+        columns={'index': 'renewed_super_cluster'})
+    new['renewed_super_cluster'] = new['renewed_super_cluster'].apply(lambda x: x+1)
+    masters = summary.merge(new, on=['super_cluster', 'gene_name'], how='left')
+    masters = masters.sort_values(
+        ['renewed_super_cluster', 'core_cluster', 'gene_name']).reset_index(drop=True)
+    return masters

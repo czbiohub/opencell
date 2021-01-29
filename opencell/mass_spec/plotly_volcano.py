@@ -273,14 +273,17 @@ def all_hits_two_fdrs(pval_df, fdr1, fdr2):
     return pval_df
 
 
-def comparison_volcano_temp(v_df, bait, width=800, height=400):
+def comparison_volcano_temp(v_df, bait, width=800, height=400, show=False):
     """plot volcano plots from two analyses for qualitative comparisons"""
 
     # initiate dfs
     sel_df = v_df.copy()
     sel_df = v_df.set_index('prey')
+    # plates = list(set(sel_df[
+    #     sel_df['target'].apply(lambda x: x.split('_')[0]) == bait]['plate'].to_list()))
+
     plates = list(set(sel_df[
-        sel_df['target'].apply(lambda x: x.split('_')[0]) == bait]['plate'].to_list()))
+        sel_df['target'] == bait]['plate'].to_list()))
 
     plates.sort()
     num_plates = len(plates)
@@ -288,7 +291,7 @@ def comparison_volcano_temp(v_df, bait, width=800, height=400):
     subplot_titles = [bait + ' ' + plate for plate in plates]
 
     # start a subplot
-    fig = make_subplots(rows=math.ceil(num_plates/2), cols=2,
+    fig = make_subplots(rows=math.ceil(num_plates/2), cols=1,
         subplot_titles=subplot_titles, vertical_spacing=0.125)
     # layout
     fig.update_layout(
@@ -302,8 +305,11 @@ def comparison_volcano_temp(v_df, bait, width=800, height=400):
     hit_counts = []
     minor_hit_counts = []
     for i, plate in enumerate(plates):
+        # bait_vals = sel_df[
+        #     (sel_df['target'].apply(lambda x: x.split('_')[0]) == bait) & (sel_df['plate'] == plate)]
+
         bait_vals = sel_df[
-            (sel_df['target'].apply(lambda x: x.split('_')[0]) == bait) & (sel_df['plate'] == plate)]
+            (sel_df['target'] == bait) & (sel_df['plate'] == plate)]
 
 
         hits = bait_vals[bait_vals['hits']]
@@ -365,14 +371,19 @@ def comparison_volcano_temp(v_df, bait, width=800, height=400):
             line=dict(color='firebrick', dash='dash')), row=row_num, col=col_num)
         # axis customization
         fig.update_xaxes(title_text='Enrichment (log2)', row=row_num, col=col_num,
-            range=[-1 * xmax, xmax])
+            range=[-1 * xmax, xmax * 1.2])
         fig.update_yaxes(title_text='p-value (-log10)', row=row_num, col=col_num,
             range=[-1, ymax])
+    if show:
+        fig.show()
+    return fig
+    # fig.write_image('ignore/old_pickles/1201/' + bait +'.pdf')
 
-
-    fig.show()
-    counts = pd.DataFrame()
-    counts['plate'] = plates
-    counts['major_hits'] = hit_counts
-    counts['minor_hits'] = minor_hit_counts
-    return counts
+    # # fig.show()
+    # counts = pd.DataFrame()
+    # counts['plate'] = plates
+    # counts['major_hits'] = hit_counts
+    # counts['minor_hits'] = minor_hit_counts
+    # # return counts
+    # # fig.write_image('/ignore/old_pickles/1201/' + bait +'.png')
+    # return fig

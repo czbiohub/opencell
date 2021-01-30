@@ -1,11 +1,26 @@
 
 import * as d3 from 'd3';
 import d3tip from 'd3-tip';
+import chroma from 'chroma-js';
 import React, { Component } from 'react';
 
 import 'tachyons';
 import './umap.css';
 import settings from '../common/settings.js';
+import annotationDefs from '../common/annotationDefs.js';
+import { zoom } from 'd3';
+
+
+const colors = {
+    green: chroma([102., 194., 165.]).hex(),
+    orange: chroma([252., 141.,  98.]).hex(),
+    blue: chroma([141., 160., 203.]).hex(),
+    pink: chroma([231., 138., 195.]).hex(),
+    lime: chroma([166., 216.,  84.]).hex(),
+    yellow: chroma([255., 217.,  47.]).hex(),
+    tan: chroma([229., 196., 148.]).hex(),
+    gray: chroma([179., 179., 179.]).hex(),
+};
 
 
 export default class UMAPViewer extends Component {
@@ -38,11 +53,13 @@ export default class UMAPViewer extends Component {
         this.drawThumbnail = this.drawThumbnail.bind(this);
         this.drawThumbnails = this.drawThumbnails.bind(this);
         this.updateThumbnailRects = this.updateThumbnailRects.bind(this);
-        this.resetZoom = this.resetZoom.bind(this);
         
         this.addCanvasEventHandlers = this.addCanvasEventHandlers.bind(this);
         this.onUmapZoom = this.onUmapZoom.bind(this);
         this.onCanvasMouseMove = this.onCanvasMouseMove.bind(this);
+        this.resetZoom = this.resetZoom.bind(this);
+        
+        this.calcDotColor = this.calcDotColor.bind(this);
     }
 
 
@@ -72,7 +89,11 @@ export default class UMAPViewer extends Component {
         this.tip = d3tip()
             .offset([-15, 0])
             .attr("class", "umap-tip")
-            .html(d => `<strong>${d.target_name}</strong>`);
+            .html(d => (`
+                <strong>${d.target_name}</strong><br>
+                Grade 3: ${d.grade3.join(', ')}<br>
+                Grade 2: ${d.grade2.join(', ')}
+            `));
         this.svg.call(this.tip);
 
         // off-screen canvas for 'holding' the rendered canvas while applying zoom transforms
@@ -159,6 +180,42 @@ export default class UMAPViewer extends Component {
     }
 
 
+    calcDotColor (position) {
+
+        let color = this.getColorFromCategories(position.grade3);
+        if (!color) color = this.getColorFromCategories([...position.grade3, ...position.grade2]);
+        if (!color) color = '#999';
+        return color;
+    }
+
+    getColorFromCategories (categories) {
+
+        // a separate color for things that are both cytoplasmic and nucleoplasmic
+        if (categories.includes('cytoplasmic') && categories.includes('nucleoplasm')) {
+            return chroma.mix(chroma(colors.green).darken(), chroma(colors.blue).brighten());
+        }
+
+        if (categories.includes('er')) return colors.pink;
+        if (categories.includes('golgi')) return colors.orange;
+        if (categories.includes('vesicles')) return colors.yellow;
+        if (categories.includes('mitochondria')) return colors.lime;
+
+        if (categories.includes('membrane')) return chroma(colors.yellow).darken(1.5);
+        if (categories.includes('nuclear_membrane')) return chroma(colors.tan).darken(1.5);
+
+        // all nucleolus categories in one color
+        if (
+            categories.includes('nuclear_punctae') ||
+            categories.filter(s => s.startsWith('nucleolus')).length
+        ) return colors.tan;
+
+        if (categories.includes('chromatin')) return chroma(colors.blue).darken();
+        if (categories.includes('nucleoplasm')) return chroma(colors.blue).brighten();
+        if (categories.includes('cytoplasmic')) return chroma(colors.green).darken();
+
+    }
+
+
     normalizeCoords(data, coord) {
         const xScale = d3.scaleLinear().range([0, 1]).domain([
             d3.min(data, d => d[coord][0]),
@@ -177,9 +234,6 @@ export default class UMAPViewer extends Component {
     drawThumbnails () {
 
         if (!this.positions) return;
-
-        // HACK: delete all of the existing thumbnail containers
-        this.svg.selectAll('.thumbnail-container').remove();
 
         if (this.props.coordType==='raw') {
 
@@ -208,6 +262,7 @@ export default class UMAPViewer extends Component {
         }
 
         this.updateDerivedConstants();
+        const inDotMode = this.props.markerType!=='thumbnails';
 
         let context = this.shadowCanvas.getContext('2d');
 
@@ -216,27 +271,27 @@ export default class UMAPViewer extends Component {
         context.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
         // copy the thumbnail images from the tiled thumbnail canvas to the off-screen umap canvas
-        if (this.props.markerType==='thumbnails') {
+        if (!inDotMode) {
             this.props.positions.map(position => this.drawThumbnail(context, position));
         }
 
-        // create the SVG thumbnail rects
+        // create the SVG thumbnail containers
         let g = this.svg.selectAll('.thumbnail-container')
             .data(this.positions, d => d.cell_line_id);
-        
-        g.exit().remove();
-        g = g.enter().append('g').merge(g);
 
         const tip = this.tip;
-        g.append('rect')
-            .attr('class', 'thumbnail-rect')
+        g.exit().remove();
+        g.enter().append('g')
+            .attr('class', 'thumbnail-container')
+            .append('circle')
+            .attr('class', 'thumbnail-circle')
             .attr('id', d => d.target_name)
             .on('mouseover', function (d) {
 
                 // bring the hovered rect to the front (using .raise)
-                d3.select(this).classed('thumbnail-rect-hover', true).raise();
+                d3.select(this).classed('thumbnail-circle-hover', true).raise();
                 tip.show(d, this);
-
+                
                 // TODO: if displaying the raw umap coords, 
                 // redraw the hovered thumbnail on the canvas to bring it to the front
                 // notes about why this is tricky:
@@ -248,10 +303,15 @@ export default class UMAPViewer extends Component {
                 // but context.drawImage does apparently use the alpha channel of 24-bit PNGs)
             })
             .on('mouseout', function (d) {
-                d3.select(this).classed('thumbnail-rect-hover', false);
+                d3.select(this).classed('thumbnail-circle-hover', false);
                 tip.hide(d, this);
             });
         
+        g.select('circle')
+            .style('fill', d => this.calcDotColor(d))
+            .style('fill-opacity', inDotMode ? 0.9 : 0)
+            .style('stroke', d => inDotMode ? chroma(this.calcDotColor(d)).darken(2) : '#999');
+
             if (this.props.showCaptions) {
                 g.append('text')
                     .attr('class', 'thumbnail-text')
@@ -287,6 +347,7 @@ export default class UMAPViewer extends Component {
 
     updateThumbnailRects(transform) {
 
+        const inDotMode = this.props.markerType!=='thumbnails';
         const scaleX = x => transform.applyX(this.umapScale(x) / this.canvasPixelsPerScreenPixel);
         const scaleY = y => transform.applyY(this.umapScale(y) / this.canvasPixelsPerScreenPixel);
 
@@ -295,19 +356,48 @@ export default class UMAPViewer extends Component {
                 return `translate(${scaleX(d[this.props.coordType][1])}, ${scaleY(d[this.props.coordType][0])})`;
             });
 
-        // try to reduce lag when the user is dragging and not zooming
+        // try to reduce lag when the user is only dragging and not zooming
         if (transform.k===this.lastTransform?.k) return;
-
-        this.svg.selectAll('.thumbnail-rect')
-            .attr('width', this.renderedThumbnailSize*transform.k)
-            .attr('height', this.renderedThumbnailSize*transform.k)
-            .style('stroke-width', `${0.5 + transform.k/4}px`);
+        
+        const zoomedThumbnailSize = this.renderedThumbnailSize*transform.k;
+        this.svg.selectAll('.thumbnail-circle')
+            .attr('r', inDotMode ? 6 : zoomedThumbnailSize/2)
+            .attr('cx', zoomedThumbnailSize/2)
+            .attr('cy', zoomedThumbnailSize/2)
+            .style('stroke-width', inDotMode ? '1.5px' : `${0.7 + transform.k/4}px`);
 
         if (this.props.showCaptions) {
             this.svg.selectAll('.thumbnail-text')
-                .attr('x', this.renderedThumbnailSize*transform.k/2);
-                // .attr('opacity', transform.k < 2 ? 0 : 1 - 2/transform.k);
+                .attr('x', zoomedThumbnailSize/2)
+                //.attr('opacity', transform.k < 2 ? 0 : 1 - 2/transform.k);
         }
+    }
+
+
+    onUmapZoom(transform) {
+
+        this.hoveredThumbnailDiv.style('visibility', 'hidden');
+
+        // clear the visible canvas
+        const context = this.canvas.getContext('2d');
+        context.save();
+        context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // apply the transform
+        context.translate(
+            transform.x*this.canvasPixelsPerScreenPixel, 
+            transform.y*this.canvasPixelsPerScreenPixel
+        );
+        context.scale(transform.k, transform.k);
+
+        // re-draw the image (without smoothing, to show the true pixels when zoomed in)
+        // context.imageSmoothingEnabled = false;
+        context.drawImage(this.shadowCanvas, 0, 0, this.canvas.width, this.canvas.height);
+        context.restore();
+        
+        // update the thumbnail rects
+        this.updateThumbnailRects(transform);
+        this.lastTransform = transform;
     }
 
 
@@ -330,7 +420,7 @@ export default class UMAPViewer extends Component {
 
         // add zooming to the overlaid SVG element
         this.d3zoom = d3.zoom()
-            .scaleExtent([0.5, 8])
+            .scaleExtent([0.5, 4])
             .on('zoom', () => this.onUmapZoom(d3.event.transform));
         
         this.svg.call(this.d3zoom);
@@ -401,34 +491,6 @@ export default class UMAPViewer extends Component {
             .style('top', `${thumbnailPosition[1]}px`)
             .style('visibility', 'visible')
             .text(thumbnail?.target_name);
-    }
-
-
-    onUmapZoom(transform) {
-
-        this.hoveredThumbnailDiv.style('visibility', 'hidden');
-
-        // clear the visible canvas
-        const context = this.canvas.getContext('2d');
-        context.save();
-        context.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-        // apply the transform
-        context.translate(
-            transform.x*this.canvasPixelsPerScreenPixel, 
-            transform.y*this.canvasPixelsPerScreenPixel
-        );
-        context.scale(transform.k, transform.k);
-
-        // re-draw the image (without smoothing, to show the true pixels when zoomed in)
-        // context.imageSmoothingEnabled = false;
-        context.drawImage(this.shadowCanvas, 0, 0, this.canvas.width, this.canvas.height);
-        context.restore();
-        
-        // update the thumbnail rects
-        this.updateThumbnailRects(transform);
-        this.lastTransform = transform;
-
     }
 
 

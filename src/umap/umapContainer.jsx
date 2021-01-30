@@ -43,13 +43,39 @@ export default class UMAPContainer extends Component {
         };
     }
 
+    parseAnnotations (annotations) {        
+        // parse the grade from the annotation categories 
+        // and retain only the grade-2 or -3 annotations
+        if (!annotations) return [];
+        const validGrades = ['2', '3'];
+        const grade3 = [];
+        const grade2 = [];
+        annotations.forEach(annotation => {
+            const grade = annotation.split('_').slice(-1)[0];
+            const name = annotation.replace(`_${grade}`, '');
+            if (grade==='2') grade3.push(name);
+            if (grade==='3') grade2.push(name);
+        });
+        return {grade2, grade3};
+    }
+
+
     componentDidMount (props) { 
         d3.json(`${settings.apiUrl}/embedding_positions`).then(data => {
-            this.positions = data.positions;
-            this.positions.forEach(position => {
+            let positions = data.positions;
+
+            // some minor reformatting and parse the localization annotations
+            positions.forEach(position => {
                 position.raw = [position.raw_x, position.raw_y];
                 position.gridded = [position.grid_x, position.grid_y];
+                Object.assign(position, this.parseAnnotations(position.categories));
             });
+            
+            // drop targets with a missing grid position
+            positions = positions.filter(
+                position => ((!!position.grid_x) && (!!position.grid_y))
+            );
+            this.positions = positions;
             this.setState({thumbnailTileFilename: data.tile_filename, loaded: true});
         });
     }
@@ -80,7 +106,7 @@ export default class UMAPContainer extends Component {
                             activeValue={this.state.coordType}
                             onClick={value => this.setState({coordType: value})}
                             popoverContent={popoverContents.umapSnapToGrid}
-                            disabled={this.state.markerType!=='thumbnails'}
+                            disabled={false}
                         />
                     </div>
                     <div className='pb3'>

@@ -16,10 +16,13 @@ const colors = {
     orange: chroma([252., 141.,  98.]).hex(),
     blue: chroma([141., 160., 203.]).hex(),
     pink: chroma([231., 138., 195.]).hex(),
-    lime: chroma([166., 216.,  84.]).hex(),
+    lime: chroma('#49e037').desaturate(0.2).hex(), 
+    //lime: chroma([166., 216.,  84.]).hex(),
     yellow: chroma([255., 217.,  47.]).hex(),
     tan: chroma([229., 196., 148.]).hex(),
     gray: chroma([179., 179., 179.]).hex(),
+    purple: '#bb73d8',
+    brightBlue: chroma('#3ea8e6').desaturate(0.2).hex(),
 };
 
 
@@ -182,36 +185,90 @@ export default class UMAPViewer extends Component {
 
     calcDotColor (position) {
 
-        let color = this.getColorFromCategories(position.grade3);
-        if (!color) color = this.getColorFromCategories([...position.grade3, ...position.grade2]);
-        if (!color) color = '#999';
-        return color;
+        let color;
+        const otherColor = '#999';
+
+        if (position.grade3.length) {
+            return this.getColorFromCategories(position.grade3) || otherColor;
+        }
+        if (position.grade2.length) {
+            return this.getColorFromCategories(position.grade2) || otherColor;
+        }
+        return '#333';
     }
 
     getColorFromCategories (categories) {
 
-        // a separate color for things that are both cytoplasmic and nucleoplasmic
-        if (categories.includes('cytoplasmic') && categories.includes('nucleoplasm')) {
-            return chroma.mix(chroma(colors.green).darken(), chroma(colors.blue).brighten());
+        const colorDefs = {
+            er: colors.pink,
+            golgi: colors.orange,
+            mitochondria: colors.purple,
+            vesicles: chroma(colors.yellow),
+            membrane: chroma(colors.lime),
+            chromatin: chroma(colors.blue).darken(),
+            nucleoplasm: chroma(colors.blue).brighten(),
+            nuclear_membrane: colors.brightBlue,
+            nucleolus: chroma(colors.tan),
+            cytoplasmic: chroma(colors.green).darken(),
+            aggregates: chroma(colors.tan).darken(1.5),
+        };
+
+        colorDefs.nuclear_and_cytoplasmic = chroma.mix(colorDefs.cytoplasmic, colorDefs.nucleoplasm);
+        colorDefs.membrane_and_vesicles = chroma.mix(colorDefs.membrane, colorDefs.vesicles);        
+        colorDefs.multiNuclear = chroma.mix(colorDefs.chromatin, colorDefs.nucleoplasm);
+
+        // targets that are both cytoplasmic and nucleoplasmic
+        if (
+            (categories.length===1 && categories[0]==='nucleus_cytoplasm_variation') ||
+            categories.filter(cat => ['cytoplasmic', 'nucleoplasm'].includes(cat)).length===2
+        ) {
+            return colorDefs.nuclear_and_cytoplasmic;
         }
 
-        if (categories.includes('er')) return colors.pink;
-        if (categories.includes('golgi')) return colors.orange;
-        if (categories.includes('vesicles')) return colors.yellow;
-        if (categories.includes('mitochondria')) return colors.lime;
+        // targets that are both membrane and vesicles
+        if (categories.filter(cat => ['membrane', 'vesicles'].includes(cat)).length===2) {
+            return colorDefs.membrane_and_vesicles;
+        }
+    
+        // all aggregates categories
+        const aggregateCats = ['big_aggregates', 'small_aggregates'];
+        if (categories.every(cat => aggregateCats.includes(cat))) return colorDefs.aggregates;
+        
+        // nucleolus categories
+        const nucleolusCats = ['nucleolus_gc', 'nucleolus_fc_dfc'];
+        if (categories.every(cat => nucleolusCats.includes(cat))) return colorDefs.nucleolus;
 
-        if (categories.includes('membrane')) return chroma(colors.yellow).darken(1.5);
-        if (categories.includes('nuclear_membrane')) return chroma(colors.tan).darken(1.5);
+        // targets with multiple, but only, nuclear annotations
+        const allNuclearCats = [
+            'chromatin', 'nucleoplasm', 'nuclear_punctae', 'nucleolar_ring', ...nucleolusCats
+        ];
+        if (categories.length > 1 && categories.every(cat => allNuclearCats.includes(cat))) {
+            return colorDefs.multiNuclear;
+        }
 
-        // all nucleolus categories in one color
-        if (
-            categories.includes('nuclear_punctae') ||
-            categories.filter(s => s.startsWith('nucleolus')).length
-        ) return colors.tan;
+        if (categories.length > 1) return undefined;
+        
+        // targets with a single category with its own color
+        const orderedCats = [
+            'nuclear_membrane', 
+            'er', 
+            'golgi', 
+            'mitochondria', 
+            'vesicles', 
+            'membrane',
+            'chromatin', 
+            'nucleoplasm', 
+            'cytoplasmic'
+        ];
+        for (let cat of orderedCats) {
+            if (categories.includes(cat)) return colorDefs[cat];
+        }
 
-        if (categories.includes('chromatin')) return chroma(colors.blue).darken();
-        if (categories.includes('nucleoplasm')) return chroma(colors.blue).brighten();
-        if (categories.includes('cytoplasmic')) return chroma(colors.green).darken();
+        for (let cat of allNuclearCats) {
+            if (categories.includes(cat)) return colorDefs.multiNuclear;
+        }
+
+        // TODO: a color for big_aggregates and small_aggregates
 
     }
 

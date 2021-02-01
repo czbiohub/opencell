@@ -8,22 +8,51 @@ import 'tachyons';
 import './umap.css';
 import settings from '../common/settings.js';
 import annotationDefs from '../common/annotationDefs.js';
-import { zoom } from 'd3';
 
 
 const colors = {
+    
     green: chroma([102., 194., 165.]).hex(),
-    orange: chroma([252., 141.,  98.]).hex(),
     blue: chroma([141., 160., 203.]).hex(),
     pink: chroma([231., 138., 195.]).hex(),
-    lime: chroma('#49e037').desaturate(0.2).hex(), 
-    //lime: chroma([166., 216.,  84.]).hex(),
     yellow: chroma([255., 217.,  47.]).hex(),
     tan: chroma([229., 196., 148.]).hex(),
     gray: chroma([179., 179., 179.]).hex(),
+    
+    //orange: chroma([252., 141.,  98.]).hex(),
+    orange: '#ff6c33',
+    
+    //lime: chroma([166., 216.,  84.]).hex(),
+    lime: '#5dde49',
+
+    brightBlue: '#5bb1ea',
     purple: '#bb73d8',
-    brightBlue: chroma('#3ea8e6').desaturate(0.2).hex(),
+    red: '#f32f2f',
 };
+
+
+const getColorDefs = () => {
+    const colorDefs = {
+        er: chroma(colors.orange),
+        golgi: chroma(colors.lime),
+        mitochondria: chroma(colors.yellow),
+        vesicles: chroma(colors.purple),
+        membrane: chroma(colors.pink),
+        chromatin: chroma(colors.blue).darken(),
+        nucleoplasm: chroma(colors.blue).brighten(),
+        nuclear_membrane: chroma(colors.brightBlue),
+        nucleolus: chroma(colors.tan),
+        cytoplasmic: chroma(colors.green).darken(),
+        aggregates: chroma(colors.tan).darken(1.5),
+        other: '#aaa',
+        unannotated: '#555',
+    };
+
+    // interpolate dark and light blue for multi-localizing in the nucleus
+    colorDefs.multiNuclear = chroma.mix(colorDefs.chromatin, colorDefs.nucleoplasm);
+
+    return colorDefs;
+}
 
 
 export default class UMAPViewer extends Component {
@@ -50,6 +79,8 @@ export default class UMAPViewer extends Component {
         // HACK: this is hard-coded for now, but depends on props.thumbnailTileFilename
         this.nativeThumbnailSize = 100;
 
+        this.colorDefs = getColorDefs();
+
         this.maybeLoadData = this.maybeLoadData.bind(this);
         this.updateDerivedConstants = this.updateDerivedConstants.bind(this);
 
@@ -63,6 +94,8 @@ export default class UMAPViewer extends Component {
         this.resetZoom = this.resetZoom.bind(this);
         
         this.calcDotColor = this.calcDotColor.bind(this);
+
+        this.getOrCreatePattern = this.getOrCreatePattern.bind(this);
     }
 
 
@@ -92,11 +125,11 @@ export default class UMAPViewer extends Component {
         this.tip = d3tip()
             .offset([-15, 0])
             .attr("class", "umap-tip")
-            .html(d => (`
+            .html(d => `
                 <strong>${d.target_name}</strong><br>
                 Grade 3: ${d.grade3.join(', ')}<br>
                 Grade 2: ${d.grade2.join(', ')}
-            `));
+            `);
         this.svg.call(this.tip);
 
         // off-screen canvas for 'holding' the rendered canvas while applying zoom transforms
@@ -113,6 +146,42 @@ export default class UMAPViewer extends Component {
             .append('div')
             .attr('class', 'thumbnail-hover-container');
 
+        // create the patterns for common combinations of localization categories 
+        this.svg.append('defs');
+        this.getOrCreatePattern('nucleoplasm', 'cytoplasmic', true);
+        this.getOrCreatePattern('membrane', 'vesicles', true);
+
+    }
+
+
+    getOrCreatePattern (categoryA, categoryB, create = false) {
+        // create a cross-hatched SVG pattern using the colors associated with the two categories
+
+        const patternId = `${categoryA}-${categoryB}-pattern`;
+        const url = `url(#${patternId})`;
+        if (!create) return url;
+
+        const pattern =  this.svg.select('defs')
+            .append('pattern')
+            .attr('patternUnits', 'userSpaceOnUse')
+            .attr('patternTransform', 'rotate(45)')
+            .attr('id', patternId)
+            .attr('width', 4)
+            .attr('height', 4);
+        
+        pattern.append('rect')
+            .attr('width', '2')
+            .attr('height', '4')
+            .attr('transform', 'translate(0, 0)')
+            .attr('fill', this.colorDefs[categoryA]);
+
+        pattern.append('rect')
+            .attr('width', '2')
+            .attr('height', '4')
+            .attr('transform', 'translate(2, 0)')
+            .attr('fill', this.colorDefs[categoryB]);
+
+        return url;
     }
 
 
@@ -183,51 +252,50 @@ export default class UMAPViewer extends Component {
     }
 
 
-    calcDotColor (position) {
+    calcDotColor (position, type = 'fill') {
+        // Determine the dot fill color from the target localization categories
 
-        let color;
-        const otherColor = '#999';
+        const colorDefs = getColorDefs();
 
+        // try using only the grade-3 categories
         if (position.grade3.length) {
-            return this.getColorFromCategories(position.grade3) || otherColor;
+            return this.getColorFromCategories(position.grade3, type);
         }
+        // if there are no grade-3 categories, try using grade-2
         if (position.grade2.length) {
-            return this.getColorFromCategories(position.grade2) || otherColor;
+            return this.getColorFromCategories(position.grade2, type);
         }
-        return '#333';
+        // if we're still here, there were no categories of any grade
+        return colorDefs.unannotated;
     }
 
-    getColorFromCategories (categories) {
 
-        const colorDefs = {
-            er: colors.pink,
-            golgi: colors.orange,
-            mitochondria: colors.purple,
-            vesicles: chroma(colors.yellow),
-            membrane: chroma(colors.lime),
-            chromatin: chroma(colors.blue).darken(),
-            nucleoplasm: chroma(colors.blue).brighten(),
-            nuclear_membrane: colors.brightBlue,
-            nucleolus: chroma(colors.tan),
-            cytoplasmic: chroma(colors.green).darken(),
-            aggregates: chroma(colors.tan).darken(1.5),
-        };
-
-        colorDefs.nuclear_and_cytoplasmic = chroma.mix(colorDefs.cytoplasmic, colorDefs.nucleoplasm);
-        colorDefs.membrane_and_vesicles = chroma.mix(colorDefs.membrane, colorDefs.vesicles);        
-        colorDefs.multiNuclear = chroma.mix(colorDefs.chromatin, colorDefs.nucleoplasm);
+    getColorFromCategories (categories, type) {
+        // type : 'fill' or 'stroke'
+    
+        const colorDefs = getColorDefs();
 
         // targets that are both cytoplasmic and nucleoplasmic
         if (
             (categories.length===1 && categories[0]==='nucleus_cytoplasm_variation') ||
             categories.filter(cat => ['cytoplasmic', 'nucleoplasm'].includes(cat)).length===2
         ) {
-            return colorDefs.nuclear_and_cytoplasmic;
+            // return colorDefs.nuclear_and_cytoplasmic;
+            return (
+                type==='fill' ? 
+                this.getOrCreatePattern('nucleoplasm', 'cytoplasmic') : 
+                chroma.mix(colorDefs.nucleoplasm, colorDefs.cytoplasmic)
+            );
         }
 
         // targets that are both membrane and vesicles
         if (categories.filter(cat => ['membrane', 'vesicles'].includes(cat)).length===2) {
-            return colorDefs.membrane_and_vesicles;
+            // return colorDefs.membrane_and_vesicles;
+            return (
+                type==='fill' ? 
+                this.getOrCreatePattern('membrane', 'vesicles') : 
+                chroma.mix(colorDefs.membrane, colorDefs.vesicles)
+            );
         }
     
         // all aggregates categories
@@ -246,10 +314,11 @@ export default class UMAPViewer extends Component {
             return colorDefs.multiNuclear;
         }
 
-        if (categories.length > 1) return undefined;
+        // we cannot handle any other category combinations
+        if (categories.length > 1) return colorDefs.other;
         
-        // targets with a single category with its own color
-        const orderedCats = [
+        // remaining categories that are assigned to a color
+        const catsWithColorDef = [
             'nuclear_membrane', 
             'er', 
             'golgi', 
@@ -260,16 +329,16 @@ export default class UMAPViewer extends Component {
             'nucleoplasm', 
             'cytoplasmic'
         ];
-        for (let cat of orderedCats) {
+        for (let cat of catsWithColorDef) {
             if (categories.includes(cat)) return colorDefs[cat];
         }
 
+        // handle the nuclear categories that are not assigned their own color
         for (let cat of allNuclearCats) {
             if (categories.includes(cat)) return colorDefs.multiNuclear;
         }
 
-        // TODO: a color for big_aggregates and small_aggregates
-
+        return colorDefs.other;
     }
 
 
@@ -323,7 +392,7 @@ export default class UMAPViewer extends Component {
 
         let context = this.shadowCanvas.getContext('2d');
 
-        // set the background to black
+        // reset the entire canvas to black
         context.fillStyle = 'black';
         context.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -336,8 +405,9 @@ export default class UMAPViewer extends Component {
         let g = this.svg.selectAll('.thumbnail-container')
             .data(this.positions, d => d.cell_line_id);
 
-        const tip = this.tip;
         g.exit().remove();
+
+        const tip = this.tip;
         g.enter().append('g')
             .attr('class', 'thumbnail-container')
             .append('circle')
@@ -367,7 +437,7 @@ export default class UMAPViewer extends Component {
         g.select('circle')
             .style('fill', d => this.calcDotColor(d))
             .style('fill-opacity', inDotMode ? 0.9 : 0)
-            .style('stroke', d => inDotMode ? chroma(this.calcDotColor(d)).darken(2) : '#999');
+            .style('stroke', d => inDotMode ? chroma(this.calcDotColor(d, 'stroke')).darken(2) : '#999');
 
             if (this.props.showCaptions) {
                 g.append('text')

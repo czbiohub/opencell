@@ -47,7 +47,6 @@ export default class UMAPContainer extends Component {
         // parse the grade from the annotation categories 
         // and retain only the grade-2 or -3 annotations
         if (!annotations) return [];
-        const validGrades = ['2', '3'];
         const grade3 = [];
         const grade2 = [];
         annotations.forEach(annotation => {
@@ -85,7 +84,6 @@ export default class UMAPContainer extends Component {
         return (
             <div className='relative pa4'>
                 
-                {/* row of controsl */}
                 <div className='umap-controls-container'>
                     <div className='f5 b pb3'>UMAP display controls</div>
                     <div className='pb3'>
@@ -139,6 +137,11 @@ export default class UMAPContainer extends Component {
                     </div>
                 </div>
 
+                <div 
+                    className='umap-legend-container' 
+                    ref={node => this.legendNode = node}
+                    style={{visibility: this.state.markerType==='dots' ? 'visible' : 'hidden'}}
+                />
                 <div className='umap-container'>
                     <UMAPViewer 
                         positions={this.state.loaded ? this.positions : undefined}
@@ -148,6 +151,7 @@ export default class UMAPContainer extends Component {
                         gridSize={this.state.gridSize}
                         showCaptions={this.state.showCaptions}
                         resetZoom={this.state.resetZoom}
+                        legendNode={this.legendNode}
                     />
                 </div>
             </div>

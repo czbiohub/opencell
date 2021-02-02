@@ -83,19 +83,18 @@ export default class UMAPViewer extends Component {
 
         this.maybeLoadData = this.maybeLoadData.bind(this);
         this.updateDerivedConstants = this.updateDerivedConstants.bind(this);
+        this.getOrCreatePattern = this.getOrCreatePattern.bind(this);
+        this.calcDotColor = this.calcDotColor.bind(this);
 
+        this.redrawLegend = this.redrawLegend.bind(this);
         this.drawThumbnail = this.drawThumbnail.bind(this);
-        this.drawThumbnails = this.drawThumbnails.bind(this);
-        this.updateThumbnailRects = this.updateThumbnailRects.bind(this);
-        
+        this.redrawThumbnails = this.redrawThumbnails.bind(this);
+        this.updateThumbnailDots = this.updateThumbnailDots.bind(this);
+
         this.addCanvasEventHandlers = this.addCanvasEventHandlers.bind(this);
         this.onUmapZoom = this.onUmapZoom.bind(this);
         this.onCanvasMouseMove = this.onCanvasMouseMove.bind(this);
         this.resetZoom = this.resetZoom.bind(this);
-        
-        this.calcDotColor = this.calcDotColor.bind(this);
-
-        this.getOrCreatePattern = this.getOrCreatePattern.bind(this);
     }
 
 
@@ -151,6 +150,11 @@ export default class UMAPViewer extends Component {
         this.getOrCreatePattern('nucleoplasm', 'cytoplasmic', true);
         this.getOrCreatePattern('membrane', 'vesicles', true);
 
+        // container for the legend (in dot mode)
+        this.legendContainer = this.svg.append('g')
+            .attr('id', 'legend-container')
+            .attr('transform', 'translate(50, 500)');
+
     }
 
 
@@ -185,6 +189,133 @@ export default class UMAPViewer extends Component {
     }
 
 
+    redrawLegend () {
+
+        const legendDefs = {
+            er: {
+                name: 'Endoplasmic reticulum',
+                categories: ['er'],
+            },
+            golgi: {
+                name: 'Golgi apparatus',
+                categories: ['golgi'],
+            },
+            mitochondria: {
+                name: 'Mitochondria',
+                categories: ['mitochondria'],
+            },
+            aggregates: {
+                name: 'Cytoplasmic aggregates',
+                categories: ['small_aggregates'],
+            },
+            vesicles: {
+                name: 'Vesicles',
+                categories: ['vesicles'],
+            },
+            membrane: {
+                name: 'Cell membrane',
+                categories: ['membrane'],
+            },
+            membraneAndVesicles: {
+                name: 'Cell membrane and vesicles',
+                categories: ['membrane', 'vesicles'],
+            },
+            nuclearMembrane: {
+                name: 'Nuclear membrane',
+                categories: ['nuclear_membrane'],
+            },
+            nucleolus: {
+                name: 'Nucleolus',
+                categories: ['nucleolus_gc'],
+            },
+            chromatin: {
+                name: 'Chromatin',
+                categories: ['chromatin'],
+            },
+            multiNuclear: {
+                name: 'Nucleus (multi-localized)',
+                categories: ['nuclear_punctae'],
+            },
+            nucleoplasm: {
+                name: 'Nucleoplasmic',
+                categories: ['nucleoplasm'],
+            },
+            cytoplasmic: {
+                name: 'Cytoplasmic',
+                categories: ['cytoplasmic'],
+            },
+            cytoplasmicAndNucleoplasmic: {
+                name: 'Cytoplasmic and nucleoplasmic',
+                categories: ['cytoplasmic', 'nucleoplasm'],
+            },
+            other: {
+                name: 'Other and/or multi-localized',
+                categories: ['cilia'],
+            },
+            unannotated: {
+                name: 'Unannotated',
+                categories: [],
+            },
+        };
+
+        // keys of legendDefs in order
+        const orderedLegendDefNames = [
+            'er', 
+            'golgi', 
+            'mitochondria', 
+            'aggregates',
+            'membrane', 
+            'vesicles', 
+            'membraneAndVesicles',
+            'nuclearMembrane', 
+            'nucleolus',
+            'chromatin', 
+            'multiNuclear',
+            'nucleoplasm', 
+            'cytoplasmic',
+            'cytoplasmicAndNucleoplasmic',
+            'other',
+            'unannotated',
+        ];
+
+        const dotSize = 6,
+            padLeft = 30,
+            padTop = 20,
+            textOffset = 15,
+            lineHeight = 20,
+            fontSize = "13px";
+
+        const numLines = 16;
+
+        d3.select(this.props.legendNode).select('svg').remove();
+        const legend = d3.select(this.props.legendNode).append('svg')
+            .attr('height', (numLines  + 1) * lineHeight)
+            .attr('width', '250px');
+
+        const drawLegendItem = (legendDef, lineNum) => {
+            // mock the position object expected by this.calcDotColor
+            const d = {grade3: legendDef.categories, grade2: []};
+
+            legend.append("circle")
+                .attr("cx", padLeft)
+                .attr("cy", padTop + lineNum * lineHeight)
+                .attr("r", dotSize)
+                .attr("fill", this.calcDotColor(d))
+                .attr("stroke", chroma(this.calcDotColor(d, 'stroke')).darken(2));
+
+            legend.append("text")
+                .attr("x", padLeft + textOffset)
+                .attr("y", padTop + lineNum * lineHeight + 1)
+                .attr("alignment-baseline", "middle")
+                .style("font-size", fontSize)
+                .style('fill', 'white')
+                .text(legendDef.name);
+        }
+
+        orderedLegendDefNames.map((name, ind) => drawLegendItem(legendDefs[name], ind));
+
+    }
+
     componentDidUpdate (prevProps, prevState) {
 
         // load the JPG image of tiled thumbnails and the JSON array of thumbnail positions
@@ -196,7 +327,8 @@ export default class UMAPViewer extends Component {
             this.positions = [...this.props.positions];
             this.normalizeCoords(this.positions, 'raw');
 
-            this.drawThumbnails();
+            this.redrawLegend();
+            this.redrawThumbnails();
             this.addCanvasEventHandlers();
             this.resetZoom();
 
@@ -204,11 +336,13 @@ export default class UMAPViewer extends Component {
             this.resetZoom();
 
         } else {
-            this.drawThumbnails();
+            this.redrawThumbnails();
         }
         
         // re-apply the last transform
-        if (this.lastTransform) this.onUmapZoom(this.lastTransform);
+        if (this.lastTransform) this.onUmapZoom(this.lastTransform, 'all');
+
+        console.log(this.svg.selectAll('text').data().length);
     }
 
 
@@ -357,33 +491,24 @@ export default class UMAPViewer extends Component {
     }
 
 
-    drawThumbnails () {
-
+    redrawThumbnails () {
         if (!this.positions) return;
 
         if (this.props.coordType==='raw') {
-
-            // hard-coded thumbnail size in canvas pixels
-            // (in raw coords, this is not constrained by the grid)
-            this.canvasThumbnailSize = 100;
-
-            // resize the canvas to avoid downsampling the thumbnails
-            this.canvasSize = 4000;
-            d3.select(this.canvas).attr('width', this.canvasSize).attr('height', this.canvasSize);
-            d3.select(this.shadowCanvas).attr('width', this.canvasSize).attr('height', this.canvasSize);
-
-            // WARNING: assumes the raw coordinates have been normalized to [0, 1]
+            // NOTE: this assumes the raw coordinates have been normalized to [0, 1]
             this.umapScale = d3.scaleLinear()
                 .rangeRound([0, this.canvasSize])
                 .domain([-0.01, 1.03]);
-        }
 
+            // hard-coded thumbnail size in canvas pixels (this is empirically chosen)
+            this.canvasThumbnailSize = 100;
+        }
         if (this.props.coordType==='gridded') {
             this.umapScale = d3.scaleLinear()
                 .rangeRound([0, this.canvasSize])
                 .domain([0, this.props.gridSize + 1]);
 
-            // the size of the thumbnail in canvas pixels
+            // the size of the thumbnail in canvas pixels in determined by the grid size
             this.canvasThumbnailSize = this.umapScale(1) - this.umapScale(0);
         }
 
@@ -401,13 +526,15 @@ export default class UMAPViewer extends Component {
             this.props.positions.map(position => this.drawThumbnail(context, position));
         }
 
-        // create the SVG thumbnail containers
+        // bind the thumbnail containers to the positions
         let g = this.svg.selectAll('.thumbnail-container')
             .data(this.positions, d => d.cell_line_id);
 
         g.exit().remove();
 
         const tip = this.tip;
+    
+        // create the thumbnail containers and their circle elements (that is, the scatterplot dots)
         g.enter().append('g')
             .attr('class', 'thumbnail-container')
             .append('circle')
@@ -434,20 +561,42 @@ export default class UMAPViewer extends Component {
                 tip.hide(d, this);
             });
         
-        g.select('circle')
+        // update the dots
+        this.svg.selectAll('.thumbnail-circle')
             .style('fill', d => this.calcDotColor(d))
-            .style('fill-opacity', inDotMode ? 0.9 : 0)
+            .style('fill-opacity', inDotMode ? 1 : 0)
             .style('stroke', d => inDotMode ? chroma(this.calcDotColor(d, 'stroke')).darken(2) : '#999');
+        
+        // explicitly destroy the captions to reduce lag when zooming or panning
+        // (rather than setting their visibility to 'hidden')
+        this.svg.selectAll('.thumbnail-text').remove();
+        if (this.props.showCaptions) {
+            g.append('text')
+                .attr('class', 'thumbnail-text')
+                .attr('y', 20)
+                .text(d => d.target_name);                
+        }
+    }
 
-            if (this.props.showCaptions) {
-                g.append('text')
-                    .attr('class', 'thumbnail-text')
-                    .attr('x', this.renderedThumbnailSize*this.lastTransform?.k/2 || 20)
-                    .attr('y', 20)
-                    .text(d => d.target_name);
-            } else {
-                this.svg.selectAll('text').remove();
-            }
+
+    updateThumbnailDots (transform) {
+        // update the translation-independent but scale-dependent properties of the thumbnail dots
+        
+        const inDotMode = this.props.markerType!=='thumbnails';
+        const zoomedThumbnailSize = this.renderedThumbnailSize*transform.k;
+
+        this.svg.selectAll('.thumbnail-circle')
+            .attr('r', inDotMode ? 6 + transform.k/1.5 : zoomedThumbnailSize/2)
+            .attr('cx', zoomedThumbnailSize/2)
+            .attr('cy', zoomedThumbnailSize/2)
+            .style('stroke-width', inDotMode ? '1.5px' : `${0.7 + transform.k/4}px`);
+
+        if (this.props.showCaptions) {
+            this.svg.selectAll('.thumbnail-text')
+                .attr('x', zoomedThumbnailSize/2)
+                .attr('y', inDotMode ? 10 + 4 * transform.k : 20 + 1 * transform.k)
+                //.attr('opacity', transform.k < 2 ? 0 : 1 - 2/transform.k);
+        }
     }
 
 
@@ -472,38 +621,12 @@ export default class UMAPViewer extends Component {
     }
 
 
-    updateThumbnailRects(transform) {
+    onUmapZoom(transform, update = 'minimal') {
 
-        const inDotMode = this.props.markerType!=='thumbnails';
-        const scaleX = x => transform.applyX(this.umapScale(x) / this.canvasPixelsPerScreenPixel);
-        const scaleY = y => transform.applyY(this.umapScale(y) / this.canvasPixelsPerScreenPixel);
+        console.log(update);
 
-        this.svg.selectAll('g')
-            .attr('transform', d => {
-                return `translate(${scaleX(d[this.props.coordType][1])}, ${scaleY(d[this.props.coordType][0])})`;
-            });
-
-        // try to reduce lag when the user is only dragging and not zooming
-        if (transform.k===this.lastTransform?.k) return;
-        
-        const zoomedThumbnailSize = this.renderedThumbnailSize*transform.k;
-        this.svg.selectAll('.thumbnail-circle')
-            .attr('r', inDotMode ? 6 : zoomedThumbnailSize/2)
-            .attr('cx', zoomedThumbnailSize/2)
-            .attr('cy', zoomedThumbnailSize/2)
-            .style('stroke-width', inDotMode ? '1.5px' : `${0.7 + transform.k/4}px`);
-
-        if (this.props.showCaptions) {
-            this.svg.selectAll('.thumbnail-text')
-                .attr('x', zoomedThumbnailSize/2)
-                //.attr('opacity', transform.k < 2 ? 0 : 1 - 2/transform.k);
-        }
-    }
-
-
-    onUmapZoom(transform) {
-
-        this.hoveredThumbnailDiv.style('visibility', 'hidden');
+        // hovered thumbnail div used only in onCanvasMouseMove
+        //this.hoveredThumbnailDiv.style('visibility', 'hidden');
 
         // clear the visible canvas
         const context = this.canvas.getContext('2d');
@@ -522,8 +645,21 @@ export default class UMAPViewer extends Component {
         context.drawImage(this.shadowCanvas, 0, 0, this.canvas.width, this.canvas.height);
         context.restore();
         
-        // update the thumbnail rects
-        this.updateThumbnailRects(transform);
+        // update the thumbnail containers
+        const scaleX = x => transform.applyX(this.umapScale(x) / this.canvasPixelsPerScreenPixel);
+        const scaleY = y => transform.applyY(this.umapScale(y) / this.canvasPixelsPerScreenPixel);
+        this.svg.selectAll('.thumbnail-container')
+            .attr('transform', d => {
+                return `
+                    translate(${scaleX(d[this.props.coordType][1])}, ${scaleY(d[this.props.coordType][0])})
+                `;
+            });
+        
+        // try to reduce lag when the user is only dragging and not zooming
+        // by skipping the scale-dependent properties of the thumbnail circles
+        if (transform.k!==this.lastTransform?.k || update==='all') {
+            this.updateThumbnailDots(transform);
+        }
         this.lastTransform = transform;
     }
 
@@ -531,7 +667,7 @@ export default class UMAPViewer extends Component {
     resetZoom() {
         // set the initial transform so that the full UMAP fits and is horizontally centered
         const initialTransform = d3.zoomIdentity.translate(window.innerWidth/4, 20).scale(0.6);
-        this.svg.call(this.d3zoom.transform, initialTransform);        
+        this.svg.call(this.d3zoom.transform, initialTransform);     
     }
 
 

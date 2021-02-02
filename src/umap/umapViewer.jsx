@@ -123,12 +123,8 @@ export default class UMAPViewer extends Component {
 
         this.tip = d3tip()
             .offset([-15, 0])
-            .attr("class", "umap-tip")
-            .html(d => `
-                <strong>${d.target_name}</strong><br>
-                Grade 3: ${d.grade3.join(', ')}<br>
-                Grade 2: ${d.grade2.join(', ')}
-            `);
+            .attr("class", "umap-tip");
+
         this.svg.call(this.tip);
 
         // off-screen canvas for 'holding' the rendered canvas while applying zoom transforms
@@ -154,7 +150,6 @@ export default class UMAPViewer extends Component {
         this.legendContainer = this.svg.append('g')
             .attr('id', 'legend-container')
             .attr('transform', 'translate(50, 500)');
-
     }
 
 
@@ -342,7 +337,6 @@ export default class UMAPViewer extends Component {
         // re-apply the last transform
         if (this.lastTransform) this.onUmapZoom(this.lastTransform, 'all');
 
-        console.log(this.svg.selectAll('text').data().length);
     }
 
 
@@ -533,6 +527,7 @@ export default class UMAPViewer extends Component {
         g.exit().remove();
 
         const tip = this.tip;
+        const thumbnailModeStrokeColor = '#999';
     
         // create the thumbnail containers and their circle elements (that is, the scatterplot dots)
         g.enter().append('g')
@@ -540,11 +535,50 @@ export default class UMAPViewer extends Component {
             .append('circle')
             .attr('class', 'thumbnail-circle')
             .attr('id', d => d.target_name)
+        
+        // update the dot styles and their mouseover callbacks
+        this.svg.selectAll('.thumbnail-circle')
+            .style('fill', d => this.calcDotColor(d))
+            .style('fill-opacity', inDotMode ? 1 : 0)
+            .style('stroke', d => {
+                return (
+                    inDotMode ? 
+                    chroma(this.calcDotColor(d, 'stroke')).darken(2) : 
+                    thumbnailModeStrokeColor
+                );
+            })
             .on('mouseover', function (d) {
 
-                // bring the hovered rect to the front (using .raise)
-                d3.select(this).classed('thumbnail-circle-hover', true).raise();
+                // bring the hovered dot to the front (using .raise)
+                if (inDotMode) {
+                    d3.select(this).attr('r', d3.select(this).attr('r') * 1.5);
+                } else {
+                    const width = parseFloat(d3.select(this).style('stroke-width').slice(0, -2));
+                    d3.select(this)
+                        .style('stroke-width', `${width*2}px`)
+                        .style('stroke', 'white');
+                }
+
+                // raise the thumbnail container (g element) to the top
+                d3.select(this.parentNode).raise();
                 tip.show(d, this);
+
+                // update the tip content
+                d3.json(`${settings.apiUrl}/lines/${d.cell_line_id}?fields=best-fov`).then(data => {
+                    tip.html(
+                        `
+                        <img class='umap-tip-image' src='data:image/jpg;base64,${data.best_fov?.thumbnails?.data}'/>
+                        <div class='umap-tip-content'>
+                            <span class='f4 b'>${d.target_name}</span><br>
+                            <span class='f6 black-70'>${data.uniprot_metadata?.protein_name}</span>
+                        </div>
+                    `);
+                    //     <div>
+                    //         Grade 3: ${d.grade3.join(', ')}<br>
+                    //         Grade 2: ${d.grade2.join(', ')}
+                    //     </div>
+                    // `);
+                });
                 
                 // TODO: if displaying the raw umap coords, 
                 // redraw the hovered thumbnail on the canvas to bring it to the front
@@ -557,16 +591,21 @@ export default class UMAPViewer extends Component {
                 // but context.drawImage does apparently use the alpha channel of 24-bit PNGs)
             })
             .on('mouseout', function (d) {
-                d3.select(this).classed('thumbnail-circle-hover', false);
+                if (inDotMode) {
+                    d3.select(this).attr('r', d3.select(this).attr('r')/1.5);
+                } else {
+                    const width = parseFloat(d3.select(this).style('stroke-width').slice(0, -2));
+                    d3.select(this)
+                        .style('stroke-width', `${width/2}px`)
+                        .style('stroke', thumbnailModeStrokeColor);
+                }
                 tip.hide(d, this);
+            })
+            .on('click', d => {
+                window.open(`http://${window.location.host}/target/${d.cell_line_id}`);
             });
         
-        // update the dots
-        this.svg.selectAll('.thumbnail-circle')
-            .style('fill', d => this.calcDotColor(d))
-            .style('fill-opacity', inDotMode ? 1 : 0)
-            .style('stroke', d => inDotMode ? chroma(this.calcDotColor(d, 'stroke')).darken(2) : '#999');
-        
+
         // explicitly destroy the captions to reduce lag when zooming or panning
         // (rather than setting their visibility to 'hidden')
         this.svg.selectAll('.thumbnail-text').remove();
@@ -594,7 +633,7 @@ export default class UMAPViewer extends Component {
         if (this.props.showCaptions) {
             this.svg.selectAll('.thumbnail-text')
                 .attr('x', zoomedThumbnailSize/2)
-                .attr('y', inDotMode ? 10 + 4 * transform.k : 20 + 1 * transform.k)
+                .attr('y', inDotMode ? 10 + 2*transform.k**2 : 20 + 1 * transform.k)
                 //.attr('opacity', transform.k < 2 ? 0 : 1 - 2/transform.k);
         }
     }
@@ -622,8 +661,6 @@ export default class UMAPViewer extends Component {
 
 
     onUmapZoom(transform, update = 'minimal') {
-
-        console.log(update);
 
         // hovered thumbnail div used only in onCanvasMouseMove
         //this.hoveredThumbnailDiv.style('visibility', 'hidden');

@@ -72,13 +72,23 @@
 }
 
 .umap-tip {
-    background-color: white;
+    width: 250px;
+    background-color: #eee;
     padding: 10px;
     color: black;
-    border-radius: 4px;
+    border-radius: 5px;
     pointer-events: none;
-    width: fit-content;
 }
+
+.umap-tip-image {
+    border-radius: 5px;
+    width: 100%;
+}
+
+.umap-tip-content {
+    text-align: center;
+}
+
 
 /* Creates a small triangle extender for the tooltip */
 .umap-tip:after {

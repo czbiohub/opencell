@@ -79,6 +79,8 @@ export default class UMAPViewer extends Component {
         // HACK: this is hard-coded for now, but depends on props.thumbnailTileFilename
         this.nativeThumbnailSize = 100;
 
+        this.clickTipVisibleValue = false;
+
         this.colorDefs = getColorDefs();
 
         this.maybeLoadData = this.maybeLoadData.bind(this);
@@ -90,6 +92,7 @@ export default class UMAPViewer extends Component {
         this.drawThumbnail = this.drawThumbnail.bind(this);
         this.redrawThumbnails = this.redrawThumbnails.bind(this);
         this.updateThumbnailDots = this.updateThumbnailDots.bind(this);
+        this.clickTipVisible = this.clickTipVisible.bind(this);
 
         this.addCanvasEventHandlers = this.addCanvasEventHandlers.bind(this);
         this.onUmapZoom = this.onUmapZoom.bind(this);
@@ -121,11 +124,21 @@ export default class UMAPViewer extends Component {
             .style('width', `${this.canvasRenderedSize}px`)
             .style('height', `${this.canvasRenderedSize}px`);
 
-        this.tip = d3tip()
+        this.mouseoverTip = d3tip()
             .offset([-15, 0])
-            .attr("class", "umap-tip");
+            .attr('class', 'mouseover-umap-tip')
+            .html(d => `
+                <strong>${d.target_name}</strong><br>
+                Grade 3: ${d.grade3.join(', ')}<br>
+                Grade 2: ${d.grade2.join(', ')}
+            `);
 
-        this.svg.call(this.tip);
+        this.clickTip = d3tip()
+            .offset([-15, 0])
+            .attr('class', 'click-umap-tip');
+
+        this.svg.call(this.clickTip);
+        this.svg.call(this.mouseoverTip);
 
         // off-screen canvas for 'holding' the rendered canvas while applying zoom transforms
         this.shadowCanvas = document.createElement('canvas');
@@ -526,7 +539,9 @@ export default class UMAPViewer extends Component {
 
         g.exit().remove();
 
-        const tip = this.tip;
+        const clickTip = this.clickTip;
+        const mouseoverTip = this.mouseoverTip;
+        const clickTipVisible = this.clickTipVisible;
         const thumbnailModeStrokeColor = '#999';
     
         // create the thumbnail containers and their circle elements (that is, the scatterplot dots)
@@ -548,6 +563,8 @@ export default class UMAPViewer extends Component {
                 );
             })
             .on('mouseover', function (d) {
+                if (clickTipVisible()) return;
+                mouseoverTip.show(d, this);
 
                 // bring the hovered dot to the front (using .raise)
                 if (inDotMode) {
@@ -561,25 +578,7 @@ export default class UMAPViewer extends Component {
 
                 // raise the thumbnail container (g element) to the top
                 d3.select(this.parentNode).raise();
-                tip.show(d, this);
 
-                // update the tip content
-                d3.json(`${settings.apiUrl}/lines/${d.cell_line_id}?fields=best-fov`).then(data => {
-                    tip.html(
-                        `
-                        <img class='umap-tip-image' src='data:image/jpg;base64,${data.best_fov?.thumbnails?.data}'/>
-                        <div class='umap-tip-content'>
-                            <span class='f4 b'>${d.target_name}</span><br>
-                            <span class='f6 black-70'>${data.uniprot_metadata?.protein_name}</span>
-                        </div>
-                    `);
-                    //     <div>
-                    //         Grade 3: ${d.grade3.join(', ')}<br>
-                    //         Grade 2: ${d.grade2.join(', ')}
-                    //     </div>
-                    // `);
-                });
-                
                 // TODO: if displaying the raw umap coords, 
                 // redraw the hovered thumbnail on the canvas to bring it to the front
                 // notes about why this is tricky:
@@ -591,6 +590,7 @@ export default class UMAPViewer extends Component {
                 // but context.drawImage does apparently use the alpha channel of 24-bit PNGs)
             })
             .on('mouseout', function (d) {
+                mouseoverTip.hide(d, this);
                 if (inDotMode) {
                     d3.select(this).attr('r', d3.select(this).attr('r')/1.5);
                 } else {
@@ -599,12 +599,35 @@ export default class UMAPViewer extends Component {
                         .style('stroke-width', `${width/2}px`)
                         .style('stroke', thumbnailModeStrokeColor);
                 }
-                tip.hide(d, this);
             })
-            .on('click', d => {
-                window.open(`http://${window.location.host}/target/${d.cell_line_id}`);
+            .on('click', function (d) {
+                mouseoverTip.hide();
+
+                // stop the click event from propagating to the window-level click event listener
+                // defined in this.clickTipVisible
+                window.event.stopPropagation();
+
+                // hide the onclick tooltip if it is currently visible
+                if (clickTipVisible()) {
+                    clickTipVisible(false);
+                    return;
+                }
+
+                // update the tip content
+                d3.json(`${settings.apiUrl}/lines/${d.cell_line_id}?fields=best-fov`).then(data => {
+                    clickTip.html(`
+                        <img class='umap-tip-image' src='data:image/jpg;base64,${data.best_fov?.thumbnails?.data}'/>
+                        <div class='umap-tip-content'>
+                            <span class='f4 b'>
+                                <a href='http://${window.location.host}/target/${d.cell_line_id}' target='_blank'>${d.target_name}</a>
+                            </span><br>
+                            <span class='f6 black-70'>${data.uniprot_metadata?.protein_name}</span>
+                        </div>
+                    `);
+                    clickTip.show(d, this);
+                    clickTipVisible(true);
+                });
             });
-        
 
         // explicitly destroy the captions to reduce lag when zooming or panning
         // (rather than setting their visibility to 'hidden')
@@ -614,6 +637,24 @@ export default class UMAPViewer extends Component {
                 .attr('class', 'thumbnail-text')
                 .attr('y', 20)
                 .text(d => d.target_name);                
+        }
+    }
+
+
+    clickTipVisible (visible) {
+        if (!arguments.length) return this.clickTipVisibleValue;
+        const onWindowClick = event => {
+            event.stopPropagation();
+            this.clickTip.hide();
+            this.clickTipVisibleValue = false;
+            //this.svg.selectAll('.thumbnail-circle').dispatch('mouseout');
+        }
+        if (visible) {
+            this.clickTipVisibleValue = true;
+            window.addEventListener('click', onWindowClick);
+        } else {
+            onWindowClick(window.event);
+            window.removeEventListener('click', onWindowClick)
         }
     }
 
@@ -661,6 +702,9 @@ export default class UMAPViewer extends Component {
 
 
     onUmapZoom(transform, update = 'minimal') {
+
+        this.clickTipVisible(false);
+        this.mouseoverTip.hide();
 
         // hovered thumbnail div used only in onCanvasMouseMove
         //this.hoveredThumbnailDiv.style('visibility', 'hidden');

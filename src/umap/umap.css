@@ -71,13 +71,27 @@
     text-anchor: middle;
 }
 
-.umap-tip {
-    width: 250px;
+.mouseover-umap-tip {
     background-color: #eee;
     padding: 10px;
     color: black;
     border-radius: 5px;
     pointer-events: none;
+    width: fit-content;
+}
+
+.click-umap-tip {
+    width: 250px;
+    height: 325px;
+    padding: 10px;
+    color: black;
+    background-color: #eee;
+    border-radius: 5px;
+    pointer-events: none;
+}
+
+.click-umap-tip a {
+    color: black;
 }
 
 .umap-tip-image {

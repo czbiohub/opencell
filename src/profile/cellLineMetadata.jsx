@@ -22,7 +22,10 @@ export function CellLineMetadata (props) {
             id: 'hdr_all',
             width: 24,
         },{
-            id: 'hdr_modified',
+            id: 'other_all',
+            width: 24,
+        },{
+            id: 'wt_all',
             width: 24,
         },{
             id: 'facs_grade',

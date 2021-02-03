@@ -52,23 +52,28 @@ const cellLineMetadataDefinitions = [
         units: 'tpm',
     },{
         id: 'facs_intensity',
-        accessor: row => row.scalars?.facs_intensity?.toFixed(2),
+        accessor: row => row.facs?.intensity?.toFixed(2),
         Header: 'FACS intensity (log a.u.)',
         units: 'log a.u.',
     },{
         id: 'facs_area',
-        accessor: row => Math.round(row.scalars?.facs_area*100),
+        accessor: row => Math.round(row.facs?.area*100),
         Header: 'FACS area (%)',
         units: '%',
     },{
         id: 'hdr_all',
-        accessor: row => Math.round(100*row.scalars?.hdr_all),
+        accessor: row => Math.round(100*row.sequencing?.hdr),
         Header: 'HDR/all',
         units: '%',
     },{
-        id: 'hdr_modified',
-        accessor: row => Math.round(100*row.scalars?.hdr_modified),
-        Header: 'HDR/mod',
+        id: 'other_all',
+        accessor: row => Math.round(100*(row.sequencing?.nhej + row.sequencing?.mixed)),
+        Header: 'other/all',
+        units: '%',
+    },{
+        id: 'wt_all',
+        accessor: row => Math.round(100*row.sequencing?.unmodified),
+        Header: 'wt/all',
         units: '%',
     },{
         id: 'facs_grade',

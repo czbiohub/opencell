@@ -94,7 +94,7 @@ class ExpressionPlot extends Component {
                 'targetName': line.metadata.target_name,
 
                 // this the 'rel_median_log' intensity
-                'fluorescence': line.scalars.facs_intensity,
+                'fluorescence': line.facs?.intensity,
 
                 // tpm needs to be log'd
                 'tpm': Math.log10(line.metadata.hek_tpm),

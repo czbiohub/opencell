@@ -47,20 +47,17 @@ def generate_cell_line_payload(cell_line, included_fields):
         ),
     }
 
-    # the sequencing percentages
-    scalars = {}
-    if cell_line.sequencing_dataset:
-        scalars.update({
-            'hdr_all': cell_line.sequencing_dataset.scalars.get('hdr_all'),
-            'hdr_modified': cell_line.sequencing_dataset.scalars.get('hdr_modified')
-        })
-
-    # the FACS area and relative median intensity
+    # the FACS area and relative median log intensity
+    facs_results = {}
     if cell_line.facs_dataset:
-        scalars.update({
-            'facs_area': cell_line.facs_dataset.scalars.get('area'),
-            'facs_intensity': cell_line.facs_dataset.scalars.get('rel_median_log')
-        })
+        facs_results = {
+            'area': cell_line.facs_dataset.scalars.get('area'),
+            'intensity': cell_line.facs_dataset.scalars.get('rel_median_log')
+        }
+
+    sequencing_results = {}
+    if cell_line.sequencing_dataset:
+        sequencing_results = cell_line.sequencing_dataset.scalars
 
     # all of the manual annotation categories
     categories = cell_line.annotation.categories if cell_line.annotation else []
@@ -77,10 +74,11 @@ def generate_cell_line_payload(cell_line, included_fields):
 
     payload = {
         'metadata': metadata,
-        'scalars': scalars,
-        'annotation': annotation,
+        'facs': facs_results,
+        'sequencing': sequencing_results,
         'uniprot_metadata': uniprot_metadata,
-        'best_pulldown': {'id': pulldown_id}
+        'best_pulldown': {'id': pulldown_id},
+        'annotation': annotation,
     }
 
     # get the thumbnail of the annotated ROI from the 'best' FOV

@@ -44,7 +44,8 @@ class GeneNameSearch(Resource):
 
         # search for opencell targets
         query = (
-            flask.current_app.Session.query(models.CellLine).join(models.CellLine.crispr_design)
+            flask.current_app.Session.query(models.CellLine)
+            .join(models.CellLine.crispr_design)
             .filter(db.func.upper(models.CrisprDesign.target_name) == gene_name)
         )
 

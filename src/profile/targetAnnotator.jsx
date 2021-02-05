@@ -24,7 +24,7 @@ const localizationLabels = [
 ];
 
 const qcLabels = [
-    'Publication ready', 'Heterogeneous GFP', 'Salvageable re-sort', 'Re-image',
+    'Publication ready', 'Do not publish', 'Heterogeneous GFP', 'Salvageable re-sort', 'Re-image',
     'No GFP', 'Low GFP', 'Low HDR',
     'Over-exposed', 'Disk artifact', 'Confluency off',
     'Cross-contamination', 'Re-sort',

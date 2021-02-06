@@ -70,8 +70,8 @@ export default class SearchBar extends Component {
             return item.target_name.startsWith(query.toLowerCase());
         });
         // if there were no matches, return a dummy item so that onActiveItemChange 
-        // can be used to detect enter keypresses
-        if (!targetNameMatches.length) targetNameMatches = [{target_name: ''}];
+        // is still called and can be used to detect enter keypresses
+        if (!targetNameMatches.length) targetNameMatches = [{target_name: '', protein_name: 'Hit enter to see search results'}];
         return targetNameMatches;
     }
 

@@ -194,6 +194,7 @@ function App() {
             render={props => (
                 <SearchResults 
                     {...props} 
+                    setCellLineId={setCellLineId}
                     handleGeneNameSearch={handleGeneNameSearch} 
                 />
             )}

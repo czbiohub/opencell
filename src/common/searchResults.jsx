@@ -31,7 +31,7 @@ const columnDefs = [
         width: 450,
     },{   
         id: 'status',
-        accessor: row => row.crispr_design_id ? 'Target' : 'Interactor',
+        accessor: row => row.status,
         Header: 'Status',
         width: 80,
     },
@@ -65,10 +65,6 @@ export default function SearchResults (props) {
     useEffect(() => {
         if (!props.match.params.query) return;
         d3.json(`${settings.apiUrl}/fsearch/${props.match.params.query}`).then(data => {
-            data.hits.sort((a, b) => {
-                if (a.relevance) return a.relevance < b.relevance ? 1 : -1;
-                return -1;
-            });
             setData(data); 
             setLoaded(true);
         }, error => setLoaded(true));
@@ -110,7 +106,13 @@ export default function SearchResults (props) {
                 data={data.hits}
                 getTrProps={(state, rowInfo, column) => {
                     return {
-                        onClick: () => props.handleGeneNameSearch(rowInfo.original.gene_names[0]),
+                        onClick: () => {
+                            if (rowInfo.original.published_cell_line_id) {
+                                props.setCellLineId(rowInfo.original.published_cell_line_id);
+                            } else {
+                                props.handleGeneNameSearch(rowInfo.original.gene_names[0]);
+                            }
+                        }
                     }
                 }}
                 getPaginationProps={(state, rowInfo, column) => ({style: {fontSize: 16}})}

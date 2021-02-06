@@ -148,7 +148,7 @@ class FullTextSearch(Resource):
         results = pd.read_sql(
             '''
             select * from (
-                select ensg_id, crispr_design_id, gene_names, protein_names,
+                select ensg_id, published_cell_line_id, gene_names, protein_names,
                 ts_rank_cd(content, query) as relevance
                 from searchable_uniprot_metadata, plainto_tsquery(%(query)s) as query
                 where content @@ query
@@ -168,7 +168,7 @@ class FullTextSearch(Resource):
         '''
         results = pd.read_sql(
             '''
-            select ensg_id, crispr_design_id, gene_names, protein_names
+            select ensg_id, published_cell_line_id, gene_names, protein_names
             from searchable_uniprot_metadata
             where ensg_id in (
                 select distinct(ensg_id) from (
@@ -224,6 +224,13 @@ class FullTextSearch(Resource):
 
         # eliminate duplicates
         all_results = all_results.groupby('ensg_id').max().reset_index()
+
+        all_results['status'] = all_results.published_cell_line_id.apply(
+            lambda s: 'Interactor' if pd.isna(s) else 'Target'
+        )
+
+        # force the targets to the top of the search results, then sort by relevance
+        all_results.sort_values(['status', 'relevance'], inplace=True, ascending=False)
 
         # if the query was a valid (approved or legacy) gene name,
         # set the relevance of its exact match, if there was one, to 10

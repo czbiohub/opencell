@@ -12,6 +12,7 @@ import settings from './settings.js';
 
 
 export default class SearchBar extends Component {
+    static contextType = settings.ModeContext;
 
     constructor (props) {
         super(props);
@@ -28,13 +29,14 @@ export default class SearchBar extends Component {
     }
 
     componentDidMount (props) {
-        d3.json(`${settings.apiUrl}/target_names`).then(data => {
-            this.items = data;
-            this.items.forEach(item => {
-                item.target_name = item.target_name.toLowerCase();
-            });
-            this.setState({loaded: true});
-        })
+        d3.json(`${settings.apiUrl}/target_names?publication_ready=${this.context==='public'}`)
+            .then(data => {
+                this.items = data;
+                this.items.forEach(item => {
+                    item.target_name = item.target_name.toLowerCase();
+                });
+                this.setState({loaded: true});
+            })
     }
 
 
@@ -69,10 +71,11 @@ export default class SearchBar extends Component {
         let targetNameMatches = items.filter(item => {
             return item.target_name.startsWith(query.toLowerCase());
         });
+        if (targetNameMatches.length) return targetNameMatches;
+
         // if there were no matches, return a dummy item so that onActiveItemChange 
         // is still called and can be used to detect enter keypresses
-        if (!targetNameMatches.length) targetNameMatches = [{target_name: '', protein_name: 'Hit enter to see search results'}];
-        return targetNameMatches;
+        return [{target_name: '', protein_name: 'Hit enter to search'}];
     }
 
 

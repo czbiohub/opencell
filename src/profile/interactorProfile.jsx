@@ -39,7 +39,11 @@ export default function InteractorProfile (props) {
 
             <div className='pl5 pr5 pt3 pb1 flex justify-center'>
                 <div className='w-80'>
-                    <Callout intent='warning' title='This is an OpenCell interactor page' showHeader={true}>
+                    <Callout 
+                        title='This is an OpenCell interactor page' 
+                        intent='warning' 
+                        showHeader={true}
+                    >
                         This page represents a protein that has not yet been tagged as part of OpenCell.
                         The interaction network and list of interactors shown below 
                         consist <b>only</b> of the OpenCell targets that we have observed to interact 

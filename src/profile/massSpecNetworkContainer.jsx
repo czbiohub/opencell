@@ -280,7 +280,6 @@ export default class MassSpecNetworkContainer extends Component {
                 event.target.connectedEdges().removeClass('hovered-node-edge');
             })
             .on('click', event => {
-                console.log('Node clicked');
                 const geneName = event.target.data().uniprot_gene_names[0];
                 handleGeneNameSearch(geneName);
             });
@@ -290,7 +289,6 @@ export default class MassSpecNetworkContainer extends Component {
         // (assuming that the nodes are wider than the labels)
         d3.selectAll(".cy-node-label")
             .on("click", function () {
-                console.log('Node label clicked');
                 const geneName = d3.select(this).text();
                 handleGeneNameSearch(geneName);
             });

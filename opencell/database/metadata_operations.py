@@ -185,14 +185,15 @@ def get_lines_by_annotation(engine, annotation):
     Get the ids of all cell lines with a particular manual annotation category
     '''
     result = pd.read_sql(
-        f'''
+        '''
         select cell_line_id from(
             select cell_line_id, json_array_elements_text(categories::json) as cat
             from cell_line_annotation
         ) tmp
-        where cat = '{annotation}'
+        where cat = %(annotation)s
         ''',
-        engine
+        engine,
+        params=dict(annotation=annotation)
     )
     return result.cell_line_id.tolist()
 

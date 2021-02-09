@@ -255,15 +255,33 @@ class TargetNames(Resource):
     '''
     @cache.cached(key_prefix=cache_key)
     def get(self):
-        df = pd.read_sql(
-            '''
-            select target_name, max(protein_names) as protein_name from uniprot_metadata md
-            inner join crispr_design cd on cd.uniprot_id = md.uniprot_id
-            group by target_name
-            ''',
-            flask.current_app.Session.get_bind()
+
+        publication_ready_only = flask.request.args.get('publication_ready') == 'true'
+        cell_line_ids = None
+        if publication_ready_only:
+            cell_line_ids = metadata_operations.get_lines_by_annotation(
+                engine=flask.current_app.Session.get_bind(), annotation='publication_ready'
+            )
+
+        query = (
+            flask.current_app.Session.query(
+                models.CrisprDesign.target_name,
+                models.UniprotMetadata.protein_names.label('protein_name'),
+            )
+            .join(models.CrisprDesign.uniprot_metadata)
         )
+        if cell_line_ids is not None:
+            query = (
+                query.join(models.CrisprDesign.cell_lines)
+                .filter(models.CellLine.id.in_(cell_line_ids))
+            )
+
+        df = pd.DataFrame(data=query.all())
         df['protein_name'] = df.protein_name.apply(uniprot_utils.prettify_uniprot_protein_name)
+
+        # eliminate duplicates
+        df = df.groupby('target_name').first().reset_index()
+
         return flask.jsonify(json.loads(df.to_json(orient='records')))
 
 
@@ -285,7 +303,7 @@ class Plate(Resource):
 class CellLines(Resource):
     '''
     A list of cell line metadata for all cell lines,
-    possibly filtered by plate_id and target name
+    possibly filtered by plate_id and the publication_ready annotation
     '''
     @cache.cached(key_prefix=cache_key)
     def get(self):

@@ -89,7 +89,10 @@ function useGeneNameSearch (setCellLineId) {
         // hack: remove slashes, which are used in some cytoscape node labels
         const sanitizedGeneName = geneName.split('/')[0]
 
-        const url = `${settings.apiUrl}/search/${sanitizedGeneName}?publication_ready=${modeContext==='public'}`; 
+        const url = `
+            ${settings.apiUrl}/search/${sanitizedGeneName}
+            ?publication_ready=${modeContext==='public'}
+        `;
         d3.json(url).then(result => {
             if (result.oc_ids) {
                 setCellLineId(result.oc_ids[0].replace('OPCT', ''));

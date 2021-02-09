@@ -12,7 +12,8 @@ import * as utils from '../common/utils.js';
 
 import '../common/common.css';
 import '../profile/Profile.css';
-import '../about/About.css';
+import './About.css';
+import CellGraphic from './CellGraphic.jsx';
 
 const Link = props => <a className='about-page-link' target='_blank' href={props.href}>{props.children}</a>
 
@@ -44,7 +45,8 @@ export default function About (props) {
 
                 {/* large opencell logo */}
                 <div className='' style={{width: '220px'}}>
-                    <img src='/assets/images/opencell_logo_v2.png'/>
+                    <CellGraphic/>
+                    {/* <img src='/assets/images/opencell_logo_v2.png'/> */}
                 </div>
 
                 {/* welcome blurb */}

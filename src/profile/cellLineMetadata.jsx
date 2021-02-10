@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useContext } from 'react';
+import chroma from 'chroma-js';
+
 import {cellLineMetadataDefinitions} from './metadataDefinitions.js';
 import { MetadataItem } from './common.jsx';
 import settings from '../common/settings.js';
 import * as annotationDefs from '../common/annotationDefs.js';
 
 
-export function CellLineMetadata (props) {
+export function CellLineMetadataTable (props) {
     const modeContext = useContext(settings.ModeContext);
 
     // metadata items to display in the header for opencell targets
@@ -181,6 +183,75 @@ export function LocalizationAnnotations (props) {
                     grade={category.grade}
                 />
             })}
+        </div>
+    );
+}
+
+
+export function SequencingPlot (props) {
+
+    const data = {
+        HDR: props.data.hdr,
+        Other: props.data.nhej + props.data.mixed,
+        WT: props.data.unmodified,
+    };
+
+    if (props.data.hdr===undefined) {
+        return <div className='pt2 pb3 f5 gray'>No sequencing data found</div>
+    }
+
+    const styles = {
+        'HDR': {backgroundColor: '#86BCE3'},
+        'WT': {backgroundColor: '#aaa'},
+    };
+
+    // cross-hatched pattern for the 'other' category
+    styles['Other'] = {
+        background: `
+            repeating-linear-gradient(
+                45deg,
+                #ccc,
+                #ccc 3px,
+                #aaa 3px,
+                #aaa 6px
+            )
+    `};
+
+    const bars = Object.keys(data).map(category => {
+        return <div 
+            className='f6 b pl2'
+            key={category} 
+            style={{
+                flexBasis: `${Math.round(100*data[category])}%`, 
+                ...styles[category],
+            }}>
+        </div>
+    });
+
+    const legend = Object.keys(data).map(category => {
+        return <div key={category} className='pr3 flex'>
+            <div style={{
+                width: '11px', 
+                height: '11px', 
+                borderRadius: '3px',
+                ...styles[category],
+            }}/>
+            <div className='f7 pl1'>{category}</div>
+        </div>
+    });
+
+    return (
+        <div className='w-100 pt2 pb3'>
+            <div className='f7 b flex flex-row justify-between'>
+                <div>{`${Math.round(100*props.data.hdr)}% HDR`}</div>
+            </div>
+            <div className='w-100 flex flex-row' style={{height: '15px'}}>
+                {bars}
+            </div>
+            <div className='w-100 flex flex-row pt2'>
+                {legend}
+            </div>
+
         </div>
     );
 }

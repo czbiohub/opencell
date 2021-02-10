@@ -8,7 +8,7 @@ import 'tachyons';
 import 'react-table/react-table.css';
 import "@blueprintjs/core/lib/css/blueprint.css";
 
-import { CellLineMetadata, ExternalLinks } from './cellLineMetadata.jsx';
+import { CellLineMetadataTable, ExternalLinks } from './cellLineMetadata.jsx';
 import { SectionHeader } from './common.jsx';
 import MassSpecContainer from './massSpecContainer.jsx';
 import settings from '../common/settings.js';
@@ -57,7 +57,7 @@ export default function InteractorProfile (props) {
 
                 {/* Left column */}
                 <div className="w-25 pl2 pr2">
-                    <CellLineMetadata data={data} isInteractor/>
+                    <CellLineMetadataTable data={data} isInteractor/>
                     <div className='pb4'>
                         <SectionHeader title='About this protein'/>
                         <div className='pt2 about-this-protein-container'>

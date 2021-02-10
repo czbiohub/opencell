@@ -11,7 +11,12 @@ import { SectionHeader } from './common.jsx';
 import settings from '../common/settings.js';
 import * as popoverContents from '../common/popoverContents.jsx';
 import * as utils from '../common/utils.js';
-import { CellLineMetadata, ExternalLinks, LocalizationAnnotations } from './cellLineMetadata.jsx';
+import { 
+    CellLineMetadataTable, 
+    ExternalLinks, 
+    LocalizationAnnotations,
+    SequencingPlot,
+} from './cellLineMetadata.jsx';
 
 
 export default class TargetProfileOverview extends Component {
@@ -56,7 +61,13 @@ export default class TargetProfileOverview extends Component {
                     {/* Left column - about box and expression and facs plots*/}
                     <div className="pl3 pr4" style={{width: '350px'}}>
 
-                        <CellLineMetadata data={this.props.cellLine}/>
+                        <CellLineMetadataTable data={this.props.cellLine}/>
+
+                        <SectionHeader 
+                            title='Allele frequency' 
+                            popoverContent={popoverContents.aboutSequencing}
+                        />
+                        <SequencingPlot data={this.props.cellLine.sequencing}/>
 
                         {/* 'About' textbox */}
                         <div>

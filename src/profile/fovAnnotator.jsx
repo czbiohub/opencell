@@ -12,7 +12,7 @@ import settings from '../common/settings.js';
 import * as utils from '../common/utils.js';
 import { SectionHeader, MetadataContainer } from './common.jsx';
 import {fovMetadataDefinitions} from './metadataDefinitions.js';
-import { CellLineMetadata, ExternalLinks } from './cellLineMetadata.jsx';
+import { CellLineMetadataTable, ExternalLinks } from './cellLineMetadata.jsx';
 
 import '../common/common.css';
 import '../profile/Profile.css';
@@ -301,7 +301,7 @@ export default class FovAnnotator extends Component {
 
                     {/* left panel: FOV metadata */}
                     <div className="w-20 pr3">
-                        <CellLineMetadata data={this.props.cellLine}/>
+                        <CellLineMetadataTable data={this.props.cellLine}/>
 
                         <SectionHeader title='FOV metadata'/>
                         <MetadataContainer

@@ -90,8 +90,7 @@ function useGeneNameSearch (setCellLineId) {
         const sanitizedGeneName = geneName.split('/')[0]
 
         const url = `
-            ${settings.apiUrl}/search/${sanitizedGeneName}
-            ?publication_ready=${modeContext==='public'}
+            ${settings.apiUrl}/search/${sanitizedGeneName}?publication_ready=${modeContext==='public'}
         `;
         d3.json(url).then(result => {
             if (result.oc_ids) {

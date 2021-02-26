@@ -9,7 +9,7 @@ const cellLineMetadataDefinitions = [
     {   
         id: 'protein_name',
         accessor: row => row.uniprot_metadata?.protein_name,
-        Header: 'Protein name',
+        Header: 'Gene description',
     },{
         id: 'target_family',
         accessor: row => {

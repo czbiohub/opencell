@@ -27,7 +27,7 @@ const columnDefs = [
     },{   
         id: 'protein_name',
         accessor: row => row.protein_name,
-        Header: 'Protein name',
+        Header: 'Gene description',
         width: 450,
     },{   
         id: 'status',

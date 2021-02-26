@@ -236,14 +236,13 @@ export function SequencingPlot (props) {
                 borderRadius: '3px',
                 ...styles[category],
             }}/>
-            <div className='f7 pl1'>{category}</div>
+            <div className='f7 pl1'>{`${Math.round(100*data[category])}% ${category}`}</div>
         </div>
     });
 
     return (
         <div className='w-100 pt2 pb3'>
             <div className='f7 b flex flex-row justify-between'>
-                <div>{`${Math.round(100*props.data.hdr)}% HDR`}</div>
             </div>
             <div className='w-100 flex flex-row' style={{height: '15px'}}>
                 {bars}

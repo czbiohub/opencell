@@ -913,11 +913,14 @@ class MicroscopyFOVROI(Resource):
         if microscopy_dir.startswith('http'):
             return flask.redirect(filepath)
         else:
-            return flask.send_file(
-                open(filepath, 'rb'),
-                as_attachment=True,
-                attachment_filename=filepath.split(os.sep)[-1]
-            )
+            if os.path.isfile(filepath):
+                return flask.send_file(
+                    open(filepath, 'rb'),
+                    as_attachment=True,
+                    attachment_filename=filepath.split(os.sep)[-1]
+                )
+            else:
+                return flask.abort(404, 'Filepath %s does not exist' % filepath)
 
 
 class CellLineAnnotation(CellLineResource):

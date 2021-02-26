@@ -114,6 +114,7 @@ export default class TargetProfileOverview extends Component {
                     
                     <div className="pt4" style={{width: '620px'}}>
                         <SectionHeader 
+                            border={true}
                             title='Fluorescence microscopy' 
                             popoverContent={popoverContents.microscopyHeader}
                         />

@@ -4,11 +4,12 @@ import { H5, Icon, Popover } from "@blueprintjs/core";
 
 
 function SectionHeader (props) {
+    const className = classNames('flex items-center b--black-10', {'bb': props.border});
     return (
-        <div className="flex items-center bb b--black-10">
+        <div className={className}>
             <div className="pr2 f4 section-header">{props.title}</div>
             <Popover>
-                <Icon icon='info-sign' iconSize={14} color="#bbb"/>
+                <Icon icon='info-sign' iconSize={12} color="#bbb" style={{marginTop: '-2px'}}/>
                 {props.popoverContent}
             </Popover>
         </div>
@@ -35,7 +36,7 @@ function Tabs (props) {
                 </div>
                 {child.props.popoverContent ? (
                     <Popover>
-                        <Icon icon='info-sign' iconSize={14} color="#bbb"/>
+                        <Icon icon='info-sign' iconSize={12} color="#bbb"/>
                         {child.props.popoverContent}
                     </Popover>
                 ) : null}

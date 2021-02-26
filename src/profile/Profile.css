@@ -71,6 +71,26 @@
     text-overflow: ellipsis;
 }
 
+.sequencing-bar-container {
+    height: 12px;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.sequencing-bar {
+    margin-right: 2px;
+}
+.sequencing-bar:last-child {
+    margin-right: 0px;
+}
+
+.sequencing-legend-dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 6px;
+}
+
+
 .about-this-protein-container {
     height: auto;
     max-height: 150px;

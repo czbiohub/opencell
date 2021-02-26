@@ -192,8 +192,8 @@ export function SequencingPlot (props) {
 
     const data = {
         HDR: props.data.hdr,
-        Other: props.data.nhej + props.data.mixed,
         WT: props.data.unmodified,
+        Other: props.data.nhej + props.data.mixed,
     };
 
     if (props.data.hdr===undefined) {
@@ -202,7 +202,7 @@ export function SequencingPlot (props) {
 
     const styles = {
         'HDR': {backgroundColor: '#86BCE3'},
-        'WT': {backgroundColor: '#aaa'},
+        'WT': {backgroundColor: '#ccc'},
     };
 
     // cross-hatched pattern for the 'other' category
@@ -218,39 +218,30 @@ export function SequencingPlot (props) {
     `};
 
     const bars = Object.keys(data).map(category => {
-        return <div 
-            className='f6 b pl2'
+        return <span 
+            className='sequencing-bar'
             key={category} 
             style={{
                 flexBasis: `${Math.round(100*data[category])}%`, 
                 ...styles[category],
             }}>
-        </div>
+        </span>
     });
 
     const legend = Object.keys(data).map(category => {
         return <div key={category} className='pr3 flex'>
-            <div style={{
-                width: '11px', 
-                height: '11px', 
-                borderRadius: '3px',
-                ...styles[category],
-            }}/>
-            <div className='f7 pl1'>{`${Math.round(100*data[category])}% ${category}`}</div>
+            <div className='sequencing-legend-dot' style={styles[category]}/>
+            <div className='f7 pl1'>
+                <span className='b pr1'>{`${category}`}</span>
+                <span className='black-50'>{`${Math.round(100*data[category])}%`}</span>
+            </div>
         </div>
     });
 
     return (
         <div className='w-100 pt2 pb3'>
-            <div className='f7 b flex flex-row justify-between'>
-            </div>
-            <div className='w-100 flex flex-row' style={{height: '15px'}}>
-                {bars}
-            </div>
-            <div className='w-100 flex flex-row pt2'>
-                {legend}
-            </div>
-
+            <span className='w-100 flex flex-row sequencing-bar-container'>{bars}</span>
+            <div className='w-100 flex flex-row pt2'>{legend}</div>
         </div>
     );
 }

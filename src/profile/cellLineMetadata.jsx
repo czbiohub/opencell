@@ -218,13 +218,12 @@ export function SequencingPlot (props) {
     `};
 
     const bars = Object.keys(data).map(category => {
+        const width = Math.round(100 * data[category]);
+        if (width === 0) return null;
         return <span 
             className='sequencing-bar'
             key={category} 
-            style={{
-                flexBasis: `${Math.round(100*data[category])}%`, 
-                ...styles[category],
-            }}>
+            style={{flexBasis: `${width}%`, ...styles[category]}}>
         </span>
     });
 

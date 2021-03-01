@@ -15,18 +15,17 @@ import {
  } from "react-router-dom";
 
 import 'tachyons';
-import './common/common.css';
+import './components/common.css';
 
-import Navbar from './common/navbar.jsx';
-import Dashboard from './dashboard/Dashboard';
-import TargetProfile from './profile/targetProfile.jsx';
-import InteractorProfile from './profile/interactorProfile.jsx';
-import Gallery from './gallery/Gallery.jsx';
-import UMAPContainer from './umap/umapContainer.jsx';
-import About from './about/About.jsx';
-import SearchResults from './common/searchResults.jsx';
-import FOVOverview from './microscopy/FOVOverview.jsx';
-import settings from './common/settings.js';
+import Navbar from './components/navbar.jsx';
+import Dashboard from './views/dashboard/Dashboard';
+import TargetProfile from './views/targetProfile/targetProfile.jsx';
+import InteractorProfile from './views/interactorProfile/interactorProfile.jsx';
+import Gallery from './views/gallery/Gallery.jsx';
+import UMAPContainer from './views/umap/umapContainer.jsx';
+import About from './views/about/About.jsx';
+import SearchResults from './views/searchResults/searchResults.jsx';
+import settings from './settings/settings.js';
 
 
 function useCellLineId () {

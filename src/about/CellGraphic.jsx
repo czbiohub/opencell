@@ -10,7 +10,7 @@ import settings from '../common/settings.js';
 import * as utils from '../common/utils.js';
 
 import '../common/common.css';
-import './About.css';
+import './About.scss';
 
 
 const labels = [

@@ -12,7 +12,7 @@ import * as utils from '../common/utils.js';
 
 import '../common/common.css';
 import '../profile/Profile.css';
-import './About.css';
+import './About.scss';
 import CellGraphic from './CellGraphic.jsx';
 
 const Link = props => <a className='about-page-link' target='_blank' href={props.href}>{props.children}</a>

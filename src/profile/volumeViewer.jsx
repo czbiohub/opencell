@@ -8,7 +8,7 @@ import settings from '../common/settings.js';
 
 // imports required for volume renderings from three.js examples
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { VolumeRenderShader1 } from './VolumeShader.js';
+import { VolumeRenderShader1 } from './volumeShader.js';
 
 import 'tachyons';
 import './Profile.css';

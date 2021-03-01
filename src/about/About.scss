@@ -1,6 +1,8 @@
 
+$primary-blue: #106ba3;
+
 .about-page-link, .about-page-link:visited {
-    color: #106ba3;
+    color: $primary-blue;
 }
 
 .about-page-bullets li {

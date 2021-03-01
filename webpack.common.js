@@ -17,10 +17,11 @@ const config = {
                 exclude: /node_modules/,
                 use: ['babel-loader']
             },{
-                test: /\.css$/,
+                test: /\.(scss|css)$/,
                 use: [
                     MiniCssExtractPlugin.loader,
-                    'css-loader' // why is this here?
+                    'css-loader',
+                    'sass-loader',
                 ]
             }
         ]

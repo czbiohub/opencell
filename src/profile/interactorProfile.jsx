@@ -12,7 +12,6 @@ import { CellLineMetadataTable, ExternalLinks } from './cellLineMetadata.jsx';
 import { SectionHeader } from './common.jsx';
 import MassSpecContainer from './massSpecContainer.jsx';
 import settings from '../common/settings.js';
-import * as utils from '../common/utils.js';
 
 import '../common/common.css';
 import './Profile.css';
@@ -36,7 +35,6 @@ export default function InteractorProfile (props) {
 
     return (
         <div>
-
             <div className='pl5 pr5 pt3 pb1 flex justify-center'>
                 <div className='w-80'>
                     <Callout 

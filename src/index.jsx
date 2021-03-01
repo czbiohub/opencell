@@ -244,16 +244,9 @@ function App() {
                 <Route path="/umap" component={UMAPContainer}/>
                 <Route path="/dashboard" component={Dashboard}/>
 
-                {/* TODO: fix this - FOVOverview needs a plateId prop */}
-                {/* <Route path="/microscopy" component={FOVOverview}/>, */}
-
-                <Route>
-                    <div className="f2 pa3 w-100 ma">Page not found</div>
-                </Route>
+                <Route><div className="f2 pa3 w-100 ma">Page not found</div></Route>
             </Switch>
-
             {searchAlert}
-
         </div>
     )
 }

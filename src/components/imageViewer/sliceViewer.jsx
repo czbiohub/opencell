@@ -4,7 +4,6 @@ import * as d3 from 'd3';
 import React, { Component } from 'react';
 
 import 'tachyons';
-import '../Profile.css';
 
 
 export default class SliceViewer extends Component {

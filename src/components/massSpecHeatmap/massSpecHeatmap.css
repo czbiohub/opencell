@@ -1,0 +1,9 @@
+
+/* --------------------- cluster heatmaps --------------------- */
+.cluster-heatmap-container .tick text {
+    cursor: pointer;
+}
+
+.cluster-heatmap-container .tick text:hover {
+    color: gray;
+}

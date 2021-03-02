@@ -7,11 +7,7 @@ import 'tachyons';
 import 'react-table/react-table.css';
 import "@blueprintjs/core/lib/css/blueprint.css";
 
-import { SectionHeader } from '../../components/common.jsx';
 import settings from '../../settings/settings.js';
-import * as utils from '../../utils/utils.js';
-
-import '../../components/common.css';
 
 const columnDefs = [
     {   

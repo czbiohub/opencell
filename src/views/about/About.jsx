@@ -7,10 +7,8 @@ import 'tachyons';
 import 'react-table/react-table.css';
 import "@blueprintjs/core/lib/css/blueprint.css";
 
-import '../../components/common.css';
-import '../../components/Profile.css';
-import './About.scss';
 import CellGraphic from './CellGraphic.jsx';
+import './About.scss';
 
 const Link = props => <a className='about-page-link' target='_blank' href={props.href}>{props.children}</a>
 

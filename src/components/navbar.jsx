@@ -7,6 +7,8 @@ import {Link} from 'react-router-dom';
 
 import SearchBar from './searchBar.jsx';
 import settings from '../settings/settings.js';
+import './navbar.css';
+
 
 export default function Navbar (props) {
 

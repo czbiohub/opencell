@@ -5,7 +5,6 @@ import ReactDOM from 'react-dom';
 import chroma from 'chroma-js';
 
 import 'tachyons';
-import '../../components/common.css';
 import './About.scss';
 
 

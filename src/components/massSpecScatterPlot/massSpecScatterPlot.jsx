@@ -6,7 +6,8 @@ import ReactDOM from 'react-dom';
 import chroma from 'chroma-js';
 
 import 'tachyons';
-import '../Profile.css';
+import './massSpecScatterPlot.css';
+
 import settings from '../../settings/settings.js';
 
 

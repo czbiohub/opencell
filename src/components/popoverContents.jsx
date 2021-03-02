@@ -1,7 +1,9 @@
 import React, { Component } from 'react';
 import { H3, H4, H5 } from '@blueprintjs/core';
+import { LocalizationAnnotation } from './localizationAnnotations.jsx';
 
-import {LocalizationAnnotation} from './cellLineMetadata.jsx';
+import './popoverContents.css';
+
 
 const VSpace = props => <div style={{'height': '15px', width: '100%'}}/>;
 

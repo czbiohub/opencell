@@ -8,13 +8,11 @@ import 'tachyons';
 import 'react-table/react-table.css';
 import "@blueprintjs/core/lib/css/blueprint.css";
 
-import { CellLineMetadataTable, ExternalLinks } from '../../components/cellLineMetadata.jsx';
-import { SectionHeader } from '../../components/common.jsx';
 import MassSpecContainer from '../../components/massSpecContainer.jsx';
+import CellLineMetadataTable from '../../components/cellLineMetadataTable.jsx';
+import ExternalLinks from '../../components/externalLinks.jsx';
+import SectionHeader from '../../components/sectionHeader.jsx';
 import settings from '../../settings/settings.js';
-
-import '../../components/common.css';
-import '../../components/Profile.css';
 
 
 export default function InteractorProfile (props) {

@@ -6,15 +6,16 @@ import classNames from 'classnames';
 import SliceViewer from './sliceViewer.jsx';
 import VolumeViewer from './volumeViewer.jsx';
 import ButtonGroup from '../buttonGroup.jsx';
+import SectionHeader from '../sectionHeader.jsx';
 import * as popoverContents from '../popoverContents.jsx';
-import { SectionHeader, MetadataContainer } from '../../components/common.jsx';
+import { MetadataContainer } from '../metadata.jsx';
 
 import * as utils from '../../utils/utils.js';
 import settings from '../../settings/settings.js';
 import { fovMetadataDefinitions } from '../../settings/metadataDefinitions.js';
 
 import 'tachyons';
-import '../Profile.css';
+import './imageViewer.css';
 
 
 function Thumbnail (props) {

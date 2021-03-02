@@ -9,9 +9,6 @@ import "@blueprintjs/core/lib/css/blueprint.css";
 import * as utils from '../../utils/utils.js';
 import settings from '../../settings/settings.js';
 
-import '../../components/common.css';
-import '../../components/Profile.css';
-
 
 /// human-readable category labels
 // (the categories themselves are lower_camel_case versions of these labels)

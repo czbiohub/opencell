@@ -10,12 +10,11 @@ import "@blueprintjs/core/lib/css/blueprint.css";
 
 import settings from '../../settings/settings.js';
 import * as utils from '../../utils/utils.js';
-import { SectionHeader, MetadataContainer } from '../../components/common.jsx';
-import {fovMetadataDefinitions} from '../../settings/metadataDefinitions.js';
-import { CellLineMetadataTable, ExternalLinks } from '../../components/cellLineMetadata.jsx';
+import SectionHeader from '../../components/sectionHeader.jsx';
+import { MetadataContainer } from '../../components/metadata.jsx';
+import { fovMetadataDefinitions } from '../../settings/metadataDefinitions.js';
+import CellLineMetadataTable from '../../components/cellLineMetadataTable.jsx';
 
-import '../../components/common.css';
-import '../../components/Profile.css';
 import './fovAnnotator.css';
 
 

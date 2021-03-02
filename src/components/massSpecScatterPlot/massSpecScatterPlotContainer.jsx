@@ -7,7 +7,7 @@ import MassSpecScatterPlot from './massSpecScatterPlot.jsx';
 import settings from '../../settings/settings.js';
 
 import 'tachyons';
-import '../Profile.css';
+import './massSpecScatterPlot.css';
 
 
 export default class MassSpecScatterPlotContainer extends Component {

@@ -16,8 +16,6 @@ import * as utils from '../../utils/utils.js';
 import * as annotationDefs from '../../settings/annotationDefs.js';
 import {cellLineMetadataDefinitions} from '../../settings/metadataDefinitions.js';
 
-import '../../components/common.css';
-import '../../components/Profile.css';
 import './gallery.css';
 
 

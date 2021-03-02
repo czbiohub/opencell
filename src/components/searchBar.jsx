@@ -9,6 +9,7 @@ import "@blueprintjs/core/lib/css/blueprint.css";
 import "@blueprintjs/select/lib/css/blueprint-select.css";
 
 import settings from '../settings/settings.js';
+import './searchBar.css';
 
 
 export default class SearchBar extends Component {

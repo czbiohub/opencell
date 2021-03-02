@@ -9,7 +9,6 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { VolumeRenderShader1 } from './volumeShader.js';
 
 import 'tachyons';
-import '../Profile.css';
 
 
 export default class VolumeViewer extends Component {

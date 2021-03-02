@@ -20,7 +20,7 @@ import networkLayouts from './massSpecNetworkLayouts.js';
 import networkStylesheet from './massSpecNetworkStylesheet.js';
 
 import 'tachyons';
-import '../Profile.css';
+import './massSpecNetwork.css';
 
 cytoscape.use(cola);
 cytoscape.use(cise);

@@ -5,7 +5,6 @@ import classNames from 'classnames';
 import { H5, Icon, Popover } from "@blueprintjs/core";
 
 import 'tachyons';
-import './Profile.css';
 
 
 function SimpleButton(props) {

@@ -1,13 +1,53 @@
 import * as d3 from 'd3';
 import React, { useState, useEffect, useContext } from 'react';
 import classNames from 'classnames';
+import { H5, Icon, Popover } from "@blueprintjs/core";
 
 import MassSpecScatterPlotContainer from './massSpecScatterPlot/massSpecScatterPlotContainer.jsx';
 import MassSpecNetworkContainer from './massSpecNetwork/massSpecNetworkContainer.jsx';
 import MassSpecTableContainer from './massSpecTableContainer.jsx';
-
-import { SectionHeader, Tab, Tabs } from './common.jsx';
+import SectionHeader from './sectionHeader.jsx';
 import * as popoverContents from './popoverContents.jsx';
+
+import './massSpecContainer.css'
+
+function Tab (props) {
+    return props.component;
+}
+
+function Tabs (props) {
+
+    const [activeTabId, setActiveTabId] = useState(props.activeTabId);
+    const tabs = props.children.map(child => {
+        const className = classNames(
+            'f4', 'mr4', 'pt1', 'pl2', 'pr2', 'flex', 'items-center', 'tab-header', 
+            {'tab-header-active': child.props.id===activeTabId}
+        );
+        return (
+            <div key={child.props.id} className={className} >
+                <div className='pr2' onClick={() => setActiveTabId(child.props.id)}>
+                    {child.props.title}
+                </div>
+                {child.props.popoverContent ? (
+                    <Popover>
+                        <Icon icon='info-sign' iconSize={12} color="#bbb"/>
+                        {child.props.popoverContent}
+                    </Popover>
+                ) : null}
+            </div>
+        );
+    });
+
+    const ActiveTab = props.children.filter(child => child.props.id===activeTabId)[0];
+    return (
+        <div>
+            <div className="flex bb b--black-10">
+                {tabs}
+            </div>
+            {ActiveTab}
+        </div>
+    );
+}
 
 
 export default function MassSpecContainer (props) {

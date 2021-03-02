@@ -2,7 +2,7 @@ import * as d3 from 'd3';
 import chroma from 'chroma-js';
 import React, { Component } from 'react';
 
-import FACSPlot from '../../components/facsPlot/facsPlot.jsx';
+import FACSPlot from '../../components/facsPlot.jsx';
 
 
 // style a scalar react-table cell

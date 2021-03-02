@@ -1,0 +1,8 @@
+
+.searchbar-item {
+    cursor: pointer;
+}
+
+.searchbar-item:hover {
+    background-color:rgba(231, 231, 232, 0.7);
+}

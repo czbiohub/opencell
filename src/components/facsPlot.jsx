@@ -5,7 +5,7 @@ import chroma from 'chroma-js';
 import XYFrame from "semiotic/lib/XYFrame"
 import ResponsiveXYFrame from "semiotic/lib/ResponsiveXYFrame"
 
-import settings from '../../settings/settings.js';
+import settings from '../settings/settings.js';
 
 
 class FACSPlot extends Component {

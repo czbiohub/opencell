@@ -10,7 +10,6 @@ import * as popoverContents from '../../components/popoverContents.jsx';
 import settings from '../../settings/settings.js';
 
 import 'tachyons';
-import '../../components/Profile.css';
 
 export default class UMAPContainer extends Component {
 

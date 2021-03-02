@@ -1,22 +1,19 @@
-import * as d3 from 'd3';
 import React, { Component } from 'react';
 
-import ExpressionPlot from './expressionPlot.jsx';
-import FacsPlotContainer from '../../components/facsPlot/facsPlotContainer.jsx';
-import ViewerContainer from '../../components/imageViewer/viewerContainer.jsx';
-
-import MassSpecContainer from '../../components/massSpecContainer.jsx';
+import FacsPlotContainer from './facsPlotContainer.jsx';
 import TargetAnnotator from './targetAnnotator.jsx';
-import { SectionHeader } from '../../components/common.jsx';
-import settings from '../../settings/settings.js';
+import ExpressionPlot from '../../components/expressionPlot.jsx';
+import ViewerContainer from '../../components/imageViewer/viewerContainer.jsx';
+import MassSpecContainer from '../../components/massSpecContainer.jsx';
+import SectionHeader from '../../components/sectionHeader.jsx';
+import { LocalizationAnnotations } from '../../components/localizationAnnotations.jsx';
+import SequencingPlot from '../../components/sequencingPlot.jsx';
+import CellLineMetadataTable from '../../components/cellLineMetadataTable.jsx';
+import ExternalLinks from '../../components/externalLinks.jsx';
+
 import * as popoverContents from '../../components/popoverContents.jsx';
 import * as utils from '../../utils/utils.js';
-import { 
-    CellLineMetadataTable, 
-    ExternalLinks, 
-    LocalizationAnnotations,
-    SequencingPlot,
-} from '../../components/cellLineMetadata.jsx';
+import settings from '../../settings/settings.js';
 
 
 export default class TargetProfileOverview extends Component {

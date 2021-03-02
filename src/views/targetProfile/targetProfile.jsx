@@ -5,16 +5,14 @@ import React, { useState, useEffect, useContext } from 'react';
 import TargetProfileOverview from './targetProfileOverview.jsx';
 import FovAnnotator from './fovAnnotator.jsx';
 import CellLineTable from '../../components/cellLineTable.jsx';
-import { SectionHeader } from '../../components/common.jsx';
+import SectionHeader from '../../components/sectionHeader.jsx';
 import * as popoverContents from '../../components/popoverContents.jsx';
 import settings from '../../settings/settings.js';
 
 import 'tachyons';
 import 'react-table/react-table.css';
 import "@blueprintjs/core/lib/css/blueprint.css";
-
-import '../../components/common.css';
-import '../../components/Profile.css';
+import './targetProfile.scss';
 
 
 export default function TargetProfile (props) {

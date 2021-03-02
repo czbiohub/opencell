@@ -6,8 +6,7 @@ import ButtonGroup from '../buttonGroup.jsx';
 import MassSpecHeatmap from './massSpecHeatmap.jsx';
 
 import 'tachyons';
-import '../Profile.css';
-
+import './massSpecHeatmap.css';
 
 export default class MassSpecHeatmapContainer extends Component {
 

@@ -1,10 +1,9 @@
 
 import React, { Component } from 'react';
-import ButtonGroup from '../buttonGroup.jsx';
-import FACSPlot from './facsPlot.jsx';
+import ButtonGroup from '../../components/buttonGroup.jsx';
+import FACSPlot from '../../components/facsPlot.jsx';
 
 import 'tachyons';
-import '../Profile.css';
 
 
 export default class FacsPlotContainer extends Component {

@@ -17,12 +17,7 @@ import "@blueprintjs/core/lib/css/blueprint.css";
 // import "blueprintjs/select/lib/css/blueprint-select.css";
 
 import settings from '../../settings/settings.js';
-
-import '../../components/common.css';
 import './Dashboard.css';
-
-// debugging
-let _APP = {d3};
 
 
 export default class Dashboard extends Component {

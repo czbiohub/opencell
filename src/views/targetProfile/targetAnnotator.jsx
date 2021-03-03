@@ -65,10 +65,10 @@ function CheckboxGroup (props) {
     });
 
     return (
-        <div>
+        <>
             <div className="pb2 f4">{props.title}</div>
             {checkboxRows}
-        </div>
+        </>
     );
 }
 

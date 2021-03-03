@@ -26,8 +26,7 @@ export default class FacsPlotContainer extends Component {
     render () {
 
         return (
-            <div>
-
+            <>
                 {/* FACS plot controls */}
                 <div className='w-100 pt3 pr4'>
                     <ButtonGroup 
@@ -49,7 +48,7 @@ export default class FacsPlotContainer extends Component {
                         showGFP={this.state.facsShowGFP==='On'}
                     />
                 </div>
-            </div>
+            </>
         );
     }
 }

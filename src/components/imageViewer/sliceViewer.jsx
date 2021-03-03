@@ -284,9 +284,7 @@ export default class SliceViewer extends Component {
 
     render() {
         return (
-            <div>
-                <div ref={node => this.node = node} style={{backgroundColor: 'black'}}/>
-            </div>
+            <div ref={node => this.node = node} style={{backgroundColor: 'black'}}/>
         );
     }
 }

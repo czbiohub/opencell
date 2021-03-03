@@ -53,7 +53,7 @@ export default class TargetProfileOverview extends Component {
 
     render () {
         return (
-            <div>
+            <>
                 <div className="flex" style={{minWidth: '1600px'}}>
 
                     {/* Left column - about box and expression and facs plots*/}
@@ -63,7 +63,7 @@ export default class TargetProfileOverview extends Component {
 
                         <SectionHeader 
                             title='Allele frequency' 
-                            popoverContent={popoverContents.aboutSequencing}
+                            popoverContent={popoverContents.sequencingHeader}
                         />
                         <SequencingPlot data={this.props.cellLine.sequencing}/>
 
@@ -96,17 +96,16 @@ export default class TargetProfileOverview extends Component {
 
                         {/* FACS plot */}
                         {this.context==='private' ? (
-                            <div>
+                            <>
                                 <SectionHeader title='FACS histograms'/>
                                 <FacsPlotContainer cellLineId={this.props.cellLineId}/>
-                            </div>
+                            </>
                         ) : null}
 
                     </div>
 
                     {/* Center column - sliceViewer and volumeViewer */}
                     {/* note the hard-coded width (because the ROIs are always 600px */}
-                    
                     <div className="pt4" style={{width: '620px'}}>
                         <SectionHeader 
                             border={true}
@@ -128,13 +127,13 @@ export default class TargetProfileOverview extends Component {
                     {/* Right column - cell line annotations or mass spec container */}
                     <div className="pt4 pl4 pr4" style={{width: '750px'}}>
                         {this.props.showTargetAnnotator ? (
-                            <div>
+                            <>
                                 <SectionHeader title='Annotations'/>    
                                 <TargetAnnotator 
                                     cellLineId={this.props.cellLineId} 
                                     fovIds={this.state.fovs.map(fov => fov.metadata.id)}
                                 />
-                            </div>
+                            </>
                         ) : (
                             <MassSpecContainer 
                                 layout='tabs'
@@ -146,7 +145,7 @@ export default class TargetProfileOverview extends Component {
                         )}
                     </div>
                 </div>
-            </div>
+            </>
         );
     }
 }

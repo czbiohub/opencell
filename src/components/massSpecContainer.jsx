@@ -40,12 +40,12 @@ function Tabs (props) {
 
     const ActiveTab = props.children.filter(child => child.props.id===activeTabId)[0];
     return (
-        <div>
+        <>
             <div className="flex bb b--black-10">
                 {tabs}
             </div>
             {ActiveTab}
-        </div>
+        </>
     );
 }
 

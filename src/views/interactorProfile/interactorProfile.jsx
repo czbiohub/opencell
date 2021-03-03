@@ -33,7 +33,7 @@ export default function InteractorProfile (props) {
     }, [props.match]);
 
     return (
-        <div>
+        <>
             <div className='pl5 pr5 pt3 pb1 flex justify-center'>
                 <div className='w-80'>
                     <Callout 
@@ -71,7 +71,7 @@ export default function InteractorProfile (props) {
                 </div>
             </div>
         {loaded ? (null) : (<div className='loading-overlay'/>)}
-        </div>
+        </>
     );
 }
 

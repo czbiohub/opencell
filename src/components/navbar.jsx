@@ -7,7 +7,7 @@ import {Link} from 'react-router-dom';
 
 import SearchBar from './searchBar.jsx';
 import settings from '../settings/settings.js';
-import './navbar.css';
+import './navbar.scss';
 
 
 export default function Navbar (props) {
@@ -37,15 +37,9 @@ export default function Navbar (props) {
     ];
 
     return (
-        <div>
-        {/* 'space-between' left- and right-justifies the two children divs */}
-        <div 
-            className="flex items-center justify-between w-100 pr3 pl3 navbar-container" 
-            style={{
-                backgroundColor: "#eee",
-                minWidth: 1500,
-            }}
-        >
+        // the 'justify-between' class here left- and right-justifies the two children divs
+        <div className="flex items-center justify-between w-100 pr3 pl3 navbar-container">
+
             {/* left-side content */}
             <div className="flex items-center">
                 <div style={{flex: '1 1 100%', marginBottom: '-4px'}}>
@@ -59,7 +53,7 @@ export default function Navbar (props) {
                 <div className="pl3 blue navbar-opencell-title">OpenCell</div>
             </div>
 
-            {/* right-justified content */}
+            {/* right-side content */}
             <div className='flex items-center'>
                 {publicNavbarLinks}
                 {modeContext==='private' ? privateNavbarLinks : null}
@@ -70,7 +64,7 @@ export default function Navbar (props) {
                     />
                 </div>
             </div>
-        </div>
+
         </div>
     );
 }

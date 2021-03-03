@@ -59,7 +59,7 @@ export default function TargetProfile (props) {
 
     const tableWidthClass = 'w-90'; //modeContext==='public'? 'w-70' : 'w-100';
     return (
-        <div>
+        <>
             {/* main container */}
             <div className="pl3 pr3" style={{width: '2000px'}}>
                 {cellLine ? content : null}
@@ -80,7 +80,7 @@ export default function TargetProfile (props) {
             </div>
 
             {allCellLines.length ? (null) : (<div className='f2 tc loading-overlay'>Loading...</div>)}
-        </div>
+        </>
     );
 }
 

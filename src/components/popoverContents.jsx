@@ -7,7 +7,7 @@ import './popoverContents.css';
 
 const VSpace = props => <div style={{'height': '15px', width: '100%'}}/>;
 
-export const aboutThisProteinHeader = (
+const aboutThisProteinHeader = (
     <div className='popover-container-narrow'>
     <p>
     This is the functional annotation from UniprotKB for the currently selected protein.
@@ -15,7 +15,7 @@ export const aboutThisProteinHeader = (
     </div>
 );
 
-export const localizationHeader = (
+const localizationHeader = (
     <div className='popover-container-wide'>
     <p>
         These are protein localization categories determined by a human observer 
@@ -31,7 +31,7 @@ export const localizationHeader = (
     </div>
 );
 
-export const expressionLevelHeader = (
+const expressionLevelHeader = (
     <div className='popover-container-wide'>
         <p>
         This scatterplot compares two different measurements of protein expression 
@@ -45,7 +45,7 @@ export const expressionLevelHeader = (
     </div>
 );
 
-export const cellLineTableHeader = (
+const cellLineTableHeader = (
     <div className='popover-container-wide'>
         <p>
         This table lists all of the ~1200 genes that have been successfully tagged as part of OpenCell. 
@@ -59,7 +59,7 @@ export const cellLineTableHeader = (
     </div>
 );
 
-export const microscopyHeader = (
+const microscopyHeader = (
     <div className='popover-container-wide'>
         <p>
             Opencell targets are imaged in live cells using a spinning-disk 
@@ -79,7 +79,7 @@ export const microscopyHeader = (
     </div>
 );
 
-export const microscopyChannel = (
+const microscopyChannel = (
     <div className='popover-container-narrow'>
     <p>
         The <b>'Nucleus' channel</b> shows the signal from the Hoechst stain used to label the DNA.
@@ -92,7 +92,7 @@ export const microscopyChannel = (
     </div>
 );
 
-export const microscopyImageQuality = (
+const microscopyImageQuality = (
     <div className='popover-container-narrow'>
     <p>
         In <b>'auto' mode</b>, the images are heavily compressed to ensure fast loading times.
@@ -104,7 +104,7 @@ export const microscopyImageQuality = (
     </div>
 );
 
-export const microscopyFovSelection = (
+const microscopyFovSelection = (
     <div className='popover-container-narrow'>
     <p>
         Select the image to view from among all available images of the selected target. 
@@ -116,7 +116,7 @@ export const microscopyFovSelection = (
     </div>
 );
 
-export const interactionNetworkHeader = (
+const interactionNetworkHeader = (
     <div className='popover-container-wide'>
     <p>
         The protein-protein interactions for the selected target, displayed 
@@ -145,7 +145,7 @@ export const interactionNetworkHeader = (
     </div>
 );
 
-export const scatterplotsHeader = (
+const scatterplotsHeader = (
     <div className='popover-container-wide'>
     <p>
     Scatter plots contain quantitative information about each protein-protein interaction (PPI) we measured. 
@@ -182,7 +182,7 @@ export const scatterplotsHeader = (
     </div>
 );
 
-export const interactionTableHeader = (
+const interactionTableHeader = (
     <div className='popover-container-wide'>
     <p>
     This table summarizes the quantitative properties of each interaction involving the selected target. 
@@ -206,12 +206,38 @@ export const interactionTableHeader = (
     </div>
 );
 
-export const _ = (
+const sequencingHeader = null;
+const umapGridSize = null;
+const umapMarkerType = null;
+const umapSnapToGrid = null;
+
+
+// template
+const _ = (
     <div className='popover-container-narrow'>
     <p>
-        
-    </p><p>
-        
     </p>
     </div>
 );
+
+
+export {
+    aboutThisProteinHeader,
+    sequencingHeader,
+    localizationHeader,
+    expressionLevelHeader,
+    cellLineTableHeader,
+
+    microscopyHeader,
+    microscopyChannel,
+    microscopyFovSelection,
+    microscopyImageQuality,
+
+    interactionNetworkHeader,
+    scatterplotsHeader,
+    interactionTableHeader,
+
+    umapGridSize,
+    umapSnapToGrid,
+    umapMarkerType,
+}

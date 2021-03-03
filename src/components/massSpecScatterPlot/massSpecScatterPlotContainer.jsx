@@ -35,7 +35,7 @@ export default class MassSpecScatterPlotContainer extends Component {
 
     render () {
         return (
-            <div>
+            <>
                 {/* display controls */}
                 <div className="flex pt3 pb2">
 
@@ -75,11 +75,8 @@ export default class MassSpecScatterPlotContainer extends Component {
                         colorMode={this.state.plotColorMode}
                     />
                 </div>
-            </div>
-
+            </>
         );
-
     }
-
 }
 

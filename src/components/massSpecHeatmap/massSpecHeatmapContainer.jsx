@@ -24,7 +24,7 @@ export default class MassSpecHeatmapContainer extends Component {
 
     render () {
         return (
-            <div>
+            <>
                 {/* display controls */}
                 <div className="flex pt3 pb2">
 
@@ -54,11 +54,8 @@ export default class MassSpecHeatmapContainer extends Component {
                         colorMode={this.state.plotColorMode}
                     />
                 </div>
-            </div>
-
+            </>
         );
-
     }
-
 }
 

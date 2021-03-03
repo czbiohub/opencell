@@ -249,12 +249,10 @@ export default class ViewerContainer extends Component {
                     <div className="roi-thumbnail-select-container pr3">
                         <div className='flex'>
                             <div className="pr1 simple-button-group-label">Select image</div>
-                            <div>
-                                <Popover>
-                                    <Icon icon='info-sign' iconSize={12} color="#bbb"/>
-                                    {popoverContents.microscopyFovSelection}
-                                </Popover>
-                            </div>
+                            <Popover>
+                                <Icon icon='info-sign' iconSize={12} color="#bbb"/>
+                                {popoverContents.microscopyFovSelection}
+                            </Popover>
                         </div>
                         <Select 
                             className={'roi-select'}
@@ -444,7 +442,7 @@ export default class ViewerContainer extends Component {
             </div>
             
             {this.props.showMetadata ? (
-                <div>
+                <>
                     <SectionHeader title='FOV metadata'/>
                     <MetadataContainer
                         className='pt2'
@@ -453,7 +451,7 @@ export default class ViewerContainer extends Component {
                         orientation='row'
                         scale={4}
                     />
-                </div>
+                </>
             ) : (
                 null
             )}

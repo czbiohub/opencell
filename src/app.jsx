@@ -230,7 +230,7 @@ function App() {
     ];
 
     return (
-        <div>
+        <>
             <Navbar handleGeneNameSearch={handleGeneNameSearch}/>
             <Switch>
                 <Route path="/" exact={true} component={About}/>
@@ -246,7 +246,7 @@ function App() {
                 <Route><div className="f2 pa3 w-100 ma">Page not found</div></Route>
             </Switch>
             {searchAlert}
-        </div>
+        </>
     )
 }
 

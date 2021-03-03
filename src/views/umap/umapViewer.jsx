@@ -7,7 +7,7 @@ import React, { Component } from 'react';
 import 'tachyons';
 import './umap.css';
 import settings from '../../settings/settings.js';
-import annotationDefs from '../../settings/annotationDefs.js';
+import * as annotationDefs from '../../settings/annotationDefinitions.js';
 
 
 const colors = {

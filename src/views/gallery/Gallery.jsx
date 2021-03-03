@@ -13,7 +13,7 @@ import ButtonGroup from '../../components/buttonGroup.jsx';
 
 import settings from '../../settings/settings.js';
 import * as utils from '../../utils/utils.js';
-import * as annotationDefs from '../../settings/annotationDefs.js';
+import * as annotationDefs from '../../settings/annotationDefinitions.js';
 import {cellLineMetadataDefinitions} from '../../settings/metadataDefinitions.js';
 
 import './gallery.css';

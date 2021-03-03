@@ -51,14 +51,6 @@ button:focus {
     flex: 0 0 auto;
 }
 
-.about-this-protein-container {
-    height: auto;
-    max-height: 150px;
-    overflow: auto;
-    line-height: 1.33;
-}
-
-
 
 /* --------------------- custom div-based buttons --------------------- */
 /* used by both buttonGroup.jsx and other ad-hoc standalone buttons */
@@ -80,10 +72,6 @@ button:focus {
     background-color: #d1d4d64d;
 }
 
-.simple-button-group-label {
-    font-size: 14px;
-    color: #777;
-}
 
 
 /* --------------------- d3-tip styles --------------------- */
@@ -215,6 +203,10 @@ label.bp3-label {
 
 
 /* --------------------- react-table overrides --------------------- */
+.ReactTable {
+	font-size: 14px;
+}
+
 /* eliminate shadow under the header and footer */
 .ReactTable .rt-thead.-header {
 	box-shadow: none !important;
@@ -225,20 +217,25 @@ label.bp3-label {
 	box-shadow: none !important;
 }
 
-.ReactTable {
-	font-size: 14px;
-}
-
 .ReactTable .rt-thead {
 	font-size: 16px;
 	font-weight: bolder;
 }
 
-  /* turn off horizontal borders between table rows */
+/* turn off horizontal borders between table rows */
 .ReactTable .rt-tbody .rt-tr-group {
+    /* border: none; */
 	cursor: pointer;
 }
 
 .ReactTable .rt-tbody .rt-tr-group:hover {
 	background-color: #eee;
+}
+
+/* table cells */
+.ReactTable .rt-tbody .rt-td {
+	vertical-align: middle;
+	text-align: left;
+	border: none;
+	min-height: 25px;
 }

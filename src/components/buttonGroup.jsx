@@ -5,7 +5,7 @@ import classNames from 'classnames';
 import { H5, Icon, Popover } from "@blueprintjs/core";
 
 import 'tachyons';
-
+import './buttonGroup.css';
 
 function SimpleButton(props) {
     const className = classNames(
@@ -37,7 +37,7 @@ export default function ButtonGroup (props) {
     return (
         <div className={className}>
             <div className='flex items-center'>
-                <div className='pr1 simple-button-group-label'>{props.label}</div>
+                <div className='pr1 button-group-label'>{props.label}</div>
                     {props.popoverContent ? (
                     <div>
                         <Popover>

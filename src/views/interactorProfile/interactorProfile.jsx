@@ -12,6 +12,7 @@ import MassSpecContainer from '../../components/massSpecContainer.jsx';
 import CellLineMetadataTable from '../../components/cellLineMetadataTable.jsx';
 import ExternalLinks from '../../components/externalLinks.jsx';
 import SectionHeader from '../../components/sectionHeader.jsx';
+import FunctionalAnnotation from '../../components/functionalAnnotation.jsx';
 import settings from '../../settings/settings.js';
 
 
@@ -54,12 +55,8 @@ export default function InteractorProfile (props) {
                 {/* Left column */}
                 <div className="w-25 pl2 pr2">
                     <CellLineMetadataTable data={data} isInteractor/>
-                    <div className='pb4'>
-                        <SectionHeader title='About this protein'/>
-                        <div className='pt2 about-this-protein-container'>
-                            <p>{data.uniprot_metadata?.annotation}</p>
-                        </div>
-                    </div>
+                    <SectionHeader title='About this protein'/>
+                    <FunctionalAnnotation content={data.uniprot_metadata?.annotation}/>
                     <ExternalLinks data={data}/>
                 </div>
 

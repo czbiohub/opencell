@@ -8,7 +8,7 @@ import "@blueprintjs/core/lib/css/blueprint.css";
 
 import * as utils from '../../utils/utils.js';
 import settings from '../../settings/settings.js';
-
+import './targetAnnotator.css';
 
 /// human-readable category labels
 // (the categories themselves are lower_camel_case versions of these labels)
@@ -60,7 +60,7 @@ function CheckboxGroup (props) {
             );
         });
         return (
-            <div className='flex flex-row bb b--dashed b--black-30 pt2'>{checkboxes}</div>
+            <div className='flex flex-row pt2 annotation-checkbox-row'>{checkboxes}</div>
         );
     });
 

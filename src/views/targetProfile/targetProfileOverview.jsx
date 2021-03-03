@@ -10,6 +10,7 @@ import { LocalizationAnnotations } from '../../components/localizationAnnotation
 import SequencingPlot from '../../components/sequencingPlot.jsx';
 import CellLineMetadataTable from '../../components/cellLineMetadataTable.jsx';
 import ExternalLinks from '../../components/externalLinks.jsx';
+import FunctionalAnnotation from '../../components/functionalAnnotation.jsx';
 
 import * as popoverContents from '../../components/popoverContents.jsx';
 import * as utils from '../../utils/utils.js';
@@ -66,16 +67,13 @@ export default class TargetProfileOverview extends Component {
                         />
                         <SequencingPlot data={this.props.cellLine.sequencing}/>
 
-                        {/* 'About' textbox */}
-                        <div>
-                            <SectionHeader 
-                                title='About this protein' 
-                                popoverContent={popoverContents.aboutThisProteinHeader}
-                            />
-                            <div className='pt2 about-this-protein-container'>
-                                <p>{this.props.cellLine.uniprot_metadata?.annotation}</p>
-                            </div>
-                        </div>
+                        <SectionHeader 
+                            title='About this protein' 
+                            popoverContent={popoverContents.aboutThisProteinHeader}
+                        />
+                        <FunctionalAnnotation 
+                            content={this.props.cellLine.uniprot_metadata?.annotation}
+                        />
                         <ExternalLinks data={this.props.cellLine}/>
 
                         <SectionHeader 

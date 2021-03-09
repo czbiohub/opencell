@@ -315,7 +315,7 @@ export default class ViewerContainer extends Component {
                         <ButtonGroup 
                             label='' 
                             values={['Proj', 'Slice', 'Volume']}
-                            labels={['Z-projection', 'Z-slice', 'Volume rendering']}
+                            labels={['2D projection', '2D slice', '3D rendering']}
                             activeValue={this.state.mode}
                             onClick={value => this.setState({mode: value})}
                         />
@@ -359,7 +359,7 @@ export default class ViewerContainer extends Component {
                 <div className='w-100 flex flex-0-0-auto pr3'>
                     <div className={classNames('w-30', {'black-30': this.state.mode!=='Slice'})}>
                         <b>
-                        {`Z-position: ${zIndexToMicrons(this.state.zIndex)}`}
+                        {`Slice position: ${zIndexToMicrons(this.state.zIndex)}`}
                         <span>&micro;m</span>
                         </b>
                     </div>
@@ -367,7 +367,7 @@ export default class ViewerContainer extends Component {
                         <Tooltip 
                             intent='warning'
                             targetClassName='w-100'
-                            content='Please switch to z-slice mode to scroll through z-slices'
+                            content='Please switch to 2D-slice mode to scroll through slices'
                             disabled={this.state.mode==='Slice'}
                         >
                             <Slider 

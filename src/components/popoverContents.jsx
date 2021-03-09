@@ -63,18 +63,22 @@ const microscopyHeader = (
     <div className='popover-container-wide'>
         <p>
             Opencell targets are imaged in live cells using a spinning-disk 
-            confocal microscope with a 63x 1.45NA objective to acquire three-dimensional (z-stack) images. 
-            Three different ways of visualizing these images are available.
+            confocal microscope and a 63x high-NA objective. 
+            Cells are imaged in 3D by acquiring a stack of 2D confocal slices
+            to compose a three-dimensional image of the cell layer. 
+            There are three different ways of visualizing these 3D images:
         </p><p>
-            <b>Z-projection mode</b>: the maximum-intensity projection through the z-stack 
-            (along the z-axis) is displayed.
+            <b>2D projection mode</b>: this mode displays the maximum-intensity projection 
+            through the stack of confocal slices (along the z-axis). 
+            It provides a quick overview of the full 3D image.
         </p><p>
-            <b>Z-slice mode</b>: a single z-slice from the z-stack is displayed.
-            The horizontal slider below the image controls position of the displayed z-slice 
-            and can be used to 'scroll' through the z-stack.
+            <b>2D slice mode</b>: this mode displays a single confocal slice from the stack.
+            Use the horizontal slider below the image viewer to scroll through the slices in the stack.
         </p><p>
-            <b>Volume rendering:</b> this visualizes the entire z-stack at once 
-            using a three-dimensional volume rendering.
+            <b>3D rendering:</b> this mode displays the full 3D image using a volume rendering.
+            This kind of rendering reveals the 3D structure in the image by displaying bright regions in the image
+            as partially opaque 3D shapes. The degree of transparency is proportional to the intensity;
+            black (bakground) regions are completely transparent. 
         </p>
     </div>
 );

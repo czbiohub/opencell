@@ -1,0 +1,18 @@
+
+@import '../variables';
+
+.tab-header {
+    color: #333;
+    cursor: pointer;
+    border-radius: 5px;
+    /* border-top-left-radius: 5px;
+    border-top-right-radius: 5px; */
+}
+
+.tab-header:hover {
+    background-color: $button-color-hover;
+}
+
+.tab-header-active {
+    font-weight: bold;
+}

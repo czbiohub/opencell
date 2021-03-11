@@ -106,7 +106,7 @@ export default class TargetProfileOverview extends Component {
 
                     {/* Center column - sliceViewer and volumeViewer */}
                     {/* note the hard-coded width (because the ROIs are always 600px */}
-                    <div className="pt4" style={{width: '600px'}}>
+                    <div className="pt3" style={{width: '600px'}}>
                         <SectionHeader 
                             title='Fluorescence microscopy' 
                             popoverContent={popoverContents.microscopyHeader}
@@ -124,7 +124,7 @@ export default class TargetProfileOverview extends Component {
                     </div>
 
                     {/* Right column - cell line annotations or mass spec container */}
-                    <div className="pt4 pl4 pr4" style={{width: '750px'}}>
+                    <div className="pt3 pl4 pr4" style={{width: '700px'}}>
                         {this.props.showTargetAnnotator ? (
                             <>
                                 <SectionHeader title='Annotations'/>    
@@ -134,13 +134,16 @@ export default class TargetProfileOverview extends Component {
                                 />
                             </>
                         ) : (
-                            <MassSpecContainer 
-                                layout='tabs'
-                                ensgId={this.props.cellLine.metadata.ensg_id}
-                                pulldownId={this.props.cellLine.best_pulldown?.id}
-                                geneName={this.props.cellLine.metadata?.target_name}
-                                handleGeneNameSearch={this.props.handleGeneNameSearch}
-                            />
+                            <>
+                                <SectionHeader title='Mass spectrometry'/>
+                                <MassSpecContainer 
+                                    layout='tabs'
+                                    ensgId={this.props.cellLine.metadata.ensg_id}
+                                    pulldownId={this.props.cellLine.best_pulldown?.id}
+                                    geneName={this.props.cellLine.metadata?.target_name}
+                                    handleGeneNameSearch={this.props.handleGeneNameSearch}
+                                />
+                            </>
                         )}
                     </div>
                 </div>

@@ -361,7 +361,7 @@ export default class ViewerContainer extends Component {
                             <SimpleSelect 
                                 label='Channel' 
                                 values={['405', '488', 'Both']}
-                                labels={['Nucleus (Hoechst stain)', 'Target (split-mNeonGreen)', 'Both channels']}
+                                labels={['Nucleus', 'Target', 'Both channels']}
                                 activeValue={this.state.channel}
                                 onClick={value => this.setState({channel: value})}
                                 popoverContent={popoverContents.microscopyChannel}
@@ -379,20 +379,16 @@ export default class ViewerContainer extends Component {
 
                 {/* scale bar label */}
                 <div 
-                    className='w-100 flex flex-column' 
-                    style={{
-                        marginTop: -55, 
-                        marginLeft: 20, 
-                        zIndex: 999, 
-                        visibility: this.state.mode==='Volume' ? 'hidden' : 'visible'
-                    }}
+                    className='scale-bar-label' 
+                    style={{visibility: this.state.mode==='Volume' ? 'hidden' : 'visible'}}
                 >
-                    <div className='white b'>10 <span>&micro;m</span></div>
+                    10<span>&micro;m</span>
                 </div>
 
 
                 {/* bottom row of controls */}
-                <div className='w-100 pr2 flex flex-row justify-end'>
+                <div className='w-100 flex flex-row justify-end reset-buttons-container'>
+                    <div>
                         <Button
                             className="bp3-button-custom"
                             text={"Reset zoom"}
@@ -403,6 +399,7 @@ export default class ViewerContainer extends Component {
                             text={"Reset settings"}
                             onClick={() => this.setState({...this.defaultDisplayState})}
                         />
+                    </div>
                 </div>
 
 

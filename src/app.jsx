@@ -15,7 +15,7 @@ import {
  } from "react-router-dom";
 
 import 'tachyons';
-import './app.css';
+import './app.scss';
 
 import Navbar from './components/navbar.jsx';
 import Dashboard from './views/dashboard/Dashboard';

@@ -7,13 +7,16 @@ import { H5, Icon, Popover } from "@blueprintjs/core";
 import 'tachyons';
 import './buttonGroup.css';
 
-function SimpleButton(props) {
+export function SimpleButton(props) {
     const className = classNames(
         'pr2',
         'simple-button', 
         {'simple-button-active': props.active}
     );
-    return <div className={className} onClick={props.onClick}>{props.text}</div>;
+    return <div className={className} onClick={props.onClick}>
+        <span>{props.text}</span>
+        {props.children}
+        </div>;
 }
 
 

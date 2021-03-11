@@ -1,4 +1,6 @@
 
+@import "variables";
+
 html {
 	margin-left: 0%;
 	background-color: #fff;
@@ -55,16 +57,18 @@ button:focus {
 /* --------------------- custom div-based buttons --------------------- */
 /* used by both buttonGroup.jsx and other ad-hoc standalone buttons */
 .simple-button {
+    display: flex;
+    align-items: center;
     cursor: pointer;
     padding: 4px 8px 4px 8px;
     margin-right: 10px;
     line-height: 1.42;
     border-radius: 5px;
-    background-color: rgba(209, 212, 214, 0.3) !important;
+    background-color: $button-color !important;
 }
 
 .simple-button:hover {
-    background-color :rgba(209, 212, 214, 0.7) !important;
+    background-color: $button-color-hover !important;
 }
 
 .simple-button-active, .simple-button-active:hover {
@@ -167,11 +171,11 @@ label.bp3-label {
 	background-image: none !important;
 	box-shadow: none !important;
 	-webkit-box-shadow: none !important;
-	background-color: rgba(209, 212, 214, 0.3) !important; /* color from bp3-menu-item:hover */
+	background-color: $button-color !important; /* color from bp3-menu-item:hover */
 }
 
 .bp3-button-custom:hover {
-	background-color: rgba(209, 212, 214, 0.7) !important;
+	background-color: $button-color-hover !important;
 }
 
 /* the height of the blueprint sliders is hard-coded to 40px, which is a bit too much */

@@ -4,6 +4,7 @@ import React, { useState, useContext, useEffect } from 'react';
 import ReactTable from 'react-table';
 
 import * as utils from '../utils/utils.js';
+import './massSpecTableContainer.scss';
 
 
 const safeLog10 = value => {
@@ -143,7 +144,7 @@ export default function MassSpecTable (props) {
                 <ReactTable 
                     defaultPageSize={20}
                     showPageSizeOptions={true}
-                    filterable={true}
+                    filterable={false}
                     columns={columnDefs}
                     data={data}
                     getTrProps={(state, rowInfo, column) => {

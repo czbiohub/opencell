@@ -33,7 +33,7 @@ const columnDefs = [
         accessor: row => parseFloat(row.enrichment?.toFixed(2)),
     },{
         id: 'abundance_stoich_log10',
-        Header: 'Abundance stoichiometry (log10)',
+        Header: 'Cellular abundance stoichiometry (log10)',
         accessor: row => parseFloat(safeLog10(row.abundance_stoich).toFixed(2)),
     },{
         id: 'interaction_stoich_log10',

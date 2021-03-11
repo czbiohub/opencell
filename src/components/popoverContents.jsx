@@ -175,7 +175,7 @@ const scatterplotsHeader = (
     as defined <a href='https://www.cell.com/cell/fulltext/S0092-8674(15)01270-2' target='_blank'>here</a>. 
     The <b>interaction stoichiometry</b> (on the x-axis) corresponds to the abundance ratio 
     of an interactor to that of the target protein in triplicate pull-downs.
-    The <b>abundance stoichiometry</b> (on the y-axis) corresponds to the abundance ratio from expression 
+    The <b>cellular abundance stoichiometry</b> (on the y-axis) corresponds to the abundance ratio from expression 
     in the whole cell. The shaded circle in the plot is the 'core-complex zone,' 
     determined empirically to be enriched for stable protein interactions.
     </p><p>
@@ -200,7 +200,7 @@ const interactionTableHeader = (
     Note that an OpenCell target can appear either as a bait or as a prey (or both) in the interactors table. 
     </p><p>
     The quantitative columns include the <b>p-value</b> (-log10) and the <b>relative enrichment </b>
-    from the volcano plot, as well as the <b>abundance stoichiometry</b>
+    from the volcano plot, as well as the <b>cellular abundance stoichiometry</b>
     and the <b>interaction stoichiometry</b> (both in log10) from the stoichiometry plot. 
     (for more details, refer to the scatterplot tab). 
     </p><p>

@@ -86,12 +86,16 @@ const microscopyHeader = (
 const microscopyChannel = (
     <div className='popover-container-narrow'>
     <p>
-        The <b>'Nucleus' channel</b> shows the signal from the Hoechst stain used to label the DNA.
+        Select the imaging channel to display. 
+    </p>
+    <p>
+        The <b>nucleus</b> channel shows the signal from the Hoechst stain used to label the DNA.
     </p><p>
-        The <b>'Target' channel</b> shows the signal from the mNeonGreen-tagged protein.
+        The <b>target</b> channel shows the signal from the split-mNeonGreen-tagged protein.
     </p><p>
-        When <b>both channels</b> are selected, the Hoechst staining is overlaid in blue 
-        on the mNeonGreen signal, which is shown in gray.
+        When the <b>'both channels'</b> option is selected, 
+        the nucleus channel (Hoechst staining) is overlaid in blue 
+        on top of the target channel (split-mNeonGreen signal), which is shown in gray.
     </p>
     </div>
 );
@@ -99,11 +103,14 @@ const microscopyChannel = (
 const microscopyImageQuality = (
     <div className='popover-container-narrow'>
     <p>
-        In <b>'auto' mode</b>, the images are heavily compressed to ensure fast loading times.
+        Select the quality of the 3D images.
+    </p><p>
+        When the quality is set to <b>auto</b>, 
+        the images are substantially compressed to ensure fast loading times.
         Compression artifacts will be visible in some images on this setting. 
     </p><p>
-        In <b>'high-quality' mode</b>, the images are lightly compressed to preserve image quality 
-        at the expense of longer loading times.
+        When the quality is set to <b>high</b>, the images are lightly compressed 
+        to preserve image quality, but at the expense of longer loading times.
     </p>
     </div>
 );
@@ -113,9 +120,6 @@ const microscopyFovSelection = (
     <p>
         Select the image to view from among all available images of the selected target. 
         Each image represents a different position, or field of view (FOV), on the microscope. 
-    </p><p>
-        Please note that the five-digit number identifying each FOV 
-        is not human-readable and is intended only for internal use. 
     </p>
     </div>
 );

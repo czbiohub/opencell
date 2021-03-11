@@ -106,7 +106,7 @@ export default class TargetProfileOverview extends Component {
 
                     {/* Center column - sliceViewer and volumeViewer */}
                     {/* note the hard-coded width (because the ROIs are always 600px */}
-                    <div className="pt4" style={{width: '620px'}}>
+                    <div className="pt4" style={{width: '600px'}}>
                         <SectionHeader 
                             border={true}
                             title='Fluorescence microscopy' 

@@ -44,7 +44,7 @@ export default function SimpleSelect (props) {
 
     const popover = props.popoverContent ? (
             <Popover>
-                <Icon icon='info-sign' iconSize={12} color="#bbb"/>
+                <Icon icon='info-sign' iconSize={10} color="#bbb"/>
                 {props.popoverContent}
             </Popover>
         ) : null;

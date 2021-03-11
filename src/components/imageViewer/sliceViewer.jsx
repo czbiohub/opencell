@@ -113,7 +113,7 @@ export default class SliceViewer extends Component {
             .style('position', 'absolute')
             .style('height', '5px')
             .style('width', '48px')
-            .style('top', '680px')
+            .style('top', '660px')
             .style('left', '20px')
             .style('z-index', 999);
     }

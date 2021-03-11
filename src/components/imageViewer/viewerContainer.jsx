@@ -31,8 +31,8 @@ function Thumbnail (props) {
     return (
         <div className={divClassName} onClick={props.onClick}>
             <img 
-                width={60}
-                height={60}
+                width={66}
+                height={66}
                 src={`data:image/jpg;base64,${props.thumbnail?.data}`}
             />
             {caption}
@@ -284,23 +284,23 @@ export default class ViewerContainer extends Component {
     
         return (
             // use relative position so that the loading-overlay div only overlays this component
-            <div className='relative'>
+            <div className='relative pt0'>
 
             {/* display controls */}
-            <div className="pt3 pb2">
+            <div className="flex flex-row">
 
-                {/* top row */}
-                <div className='flex flex-wrap w-100 pb2'>
+                {/* left column */}
+                <div className='flex flex-wrap'>
 
                     {/* thumbnail selection */}
-                    <div className="pr3">
-                        <div className='flex'>
+                    <div className="flex items-center">
+                        {/* <div className='flex'>
                             <div className="pr1 button-group-label">Field of view</div>
                             <Popover>
                                 <Icon icon='info-sign' iconSize={12} color="#bbb"/>
                                 {popoverContents.microscopyFovSelection}
                             </Popover>
-                        </div>
+                        </div> */}
                         <ROISelector
                             showMenu={false}
                             activeItem={roi}
@@ -319,9 +319,27 @@ export default class ViewerContainer extends Component {
                             }}
                         />
                     </div>
-                    
-                    {/* image quality buttons */}
-                    <div className='pr3'>
+                </div>
+
+                {/* right column */}
+                <div className='pl2'>
+
+                    {/* top row */}
+                    {/* mode buttons */}
+                    <div className='flex'>
+                        <ButtonGroup 
+                            label='' 
+                            values={['Proj', 'Slice', 'Volume']}
+                            labels={['2D projection', '2D slice', '3D']}
+                            activeValue={this.state.mode}
+                            onClick={value => this.setState({mode: value})}
+                        />
+                    </div>
+                        
+                    {/* bottom row */}
+                    <div className='w-100 flex flex-row pt2'>
+
+                        {/* image quality buttons */}
                         <Tooltip 
                             intent='warning'
                             targetClassName='w-100'
@@ -337,50 +355,24 @@ export default class ViewerContainer extends Component {
                                 disabled={this.state.mode==='Proj'}
                             />
                         </Tooltip>
-                    </div>
 
-                    {/* channel buttons */}
-                    <div className='pr3'>
-                        <SimpleSelect 
-                            label='Channel' 
-                            values={['405', '488', 'Both']}
-                            labels={['Nucleus (Hoechst stain)', 'Target (split-mNeonGreen)', 'Both channels']}
-                            activeValue={this.state.channel}
-                            onClick={value => this.setState({channel: value})}
-                            popoverContent={popoverContents.microscopyChannel}
-                        />
-                    </div>
-                </div>
-
-                {/* bottom row of controls */}
-                <div className='flex items-center w-100' style={{justifyContent: 'space-between'}}>
-                    <div className='flex'>
-                        <ButtonGroup 
-                            label='' 
-                            values={['Proj', 'Slice', 'Volume']}
-                            labels={['2D projection', '2D slice', '3D rendering']}
-                            activeValue={this.state.mode}
-                            onClick={value => this.setState({mode: value})}
-                        />
-                    </div>
-                    
-                    <div className='flex' style={{alignSelf: 'flex-end'}}>
-                        <Button
-                            className="bp3-button-custom"
-                            text={"Reset zoom"}
-                            onClick={() => this.resetZoom()}
-                        />
-                        <Button
-                            className="ml2 bp3-button-custom"
-                            text={"Reset settings"}
-                            onClick={() => this.setState({...this.defaultDisplayState})}
-                        />
+                        {/* channel buttons */}
+                        <div className='pr3'>
+                            <SimpleSelect 
+                                label='Channel' 
+                                values={['405', '488', 'Both']}
+                                labels={['Nucleus (Hoechst stain)', 'Target (split-mNeonGreen)', 'Both channels']}
+                                activeValue={this.state.channel}
+                                onClick={value => this.setState({channel: value})}
+                                popoverContent={popoverContents.microscopyChannel}
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
 
             {/* the z-slice viewer or volume rendering */}
-            <div className=''>{viewer}</div>
+            <div className='pt2'>{viewer}</div>
 
             {/* Display settings */}
             <div className='flex flex-wrap w-100 pt2 pb2'>
@@ -397,6 +389,22 @@ export default class ViewerContainer extends Component {
                 >
                     <div className='white b'>10 <span>&micro;m</span></div>
                 </div>
+
+
+                {/* bottom row of controls */}
+                <div className='w-100 pr2 flex flex-row justify-end'>
+                        <Button
+                            className="bp3-button-custom"
+                            text={"Reset zoom"}
+                            onClick={() => this.resetZoom()}
+                        />
+                        <Button
+                            className="ml2 bp3-button-custom"
+                            text={"Reset settings"}
+                            onClick={() => this.setState({...this.defaultDisplayState})}
+                        />
+                </div>
+
 
                 {/* z-index slider */}
                 <div className='w-100 flex flex-0-0-auto pr3'>

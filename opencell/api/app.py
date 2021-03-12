@@ -48,8 +48,14 @@ def create_app(config=None):
     # convenience endpoint to clear the cache
     api.add_resource(resources.ClearCache, '/clear_cache')
 
-    # search by gene name, ENSG ID, etc
-    api.add_resource(resources.Search, '/search/<string:search_string>')
+    # search by exact gene name for cell line ids and ENSG ids
+    api.add_resource(resources.GeneNameSearch, '/search/<string:gene_name>')
+
+    # full-text search
+    api.add_resource(resources.FullTextSearch, '/fsearch/<string:query>')
+
+    # a list of all opencell target names and their uniprot protein names
+    api.add_resource(resources.TargetNames, '/target_names')
 
     # plate designs
     api.add_resource(resources.Plate, '/plates/<string:plate_id>')
@@ -89,6 +95,9 @@ def create_app(config=None):
 
     # FOV annotations (always one annotation per FOV)
     api.add_resource(resources.MicroscopyFOVAnnotation, '/fovs/<int:fov_id>/annotation')
+
+    api.add_resource(resources.EmbeddingPositions, '/embedding_positions')
+    api.add_resource(resources.ThumbnailTileImage, '/thumbnail_tiles/<string:filename>')
 
     api.init_app(app)
 

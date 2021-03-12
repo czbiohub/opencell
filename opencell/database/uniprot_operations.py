@@ -12,6 +12,29 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def insert_all_hgnc_metadata(session, filepath):
+    '''
+    This inserts the complete HGNC dataset from
+    ftp://ftp.ebi.ac.uk/pub/databases/genenames/hgnc/tsv/hgnc_complete_set.txt
+    '''
+    df = pd.read_csv(filepath, sep='\t')
+
+    # these are the only columns we need
+    df = df[[
+        'symbol', 'alias_symbol', 'prev_symbol',
+        'name', 'alias_name', 'prev_name',
+        'ensembl_gene_id', 'hgnc_id',
+    ]]
+    df.rename(columns={'ensembl_gene_id': 'ensg_id'}, inplace=True)
+
+    # coerce np.nan to None
+    rows = json.loads(df.to_json(orient='records'))
+
+    logger.info('Inserting %s rows of HGNC metadata' % len(rows))
+    session.bulk_insert_mappings(models.HGNCMetadata, rows)
+    session.commit()
+
+
 def insert_uniprot_metadata_from_id(session, uniprot_id):
     '''
     Retrieve and insert Uniprot metadata for a given uniprot_id
@@ -105,7 +128,7 @@ def insert_uniprot_metadata_for_crispr_design(session, crispr_design_id, retriev
 def insert_ensg_id(session, uniprot_id):
     '''
     Retrieve and insert the ENSG ID in the uniprot_metadata table for a given uniprot_id
-    (using the Uniprot mapper API to look up the ENSG ID)
+    (using either the MyGene API or the UniProt mapper API)
     '''
 
     uniprot_metadata = (

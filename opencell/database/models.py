@@ -444,6 +444,32 @@ class UniprotMetadata(Base):
         )
 
 
+class HGNCMetadata(Base):
+    '''
+    Cached metadata for all human genes from the HGNC
+    This includes only the approved, alias, and previous 'symbols' (the gene names)
+    and the approved and previous 'names' (what UniProt calls protein names)
+
+    Note that the column names were chosen to match those that appear in the CSV download
+    of the complete HGNC dataset on 2021-01-27.
+    '''
+    __tablename__ = 'hgnc_metadata'
+    id = db.Column(db.Integer, primary_key=True)
+
+    symbol = db.Column(db.String)
+    prev_symbol = db.Column(db.String)
+    alias_symbol = db.Column(db.String)
+
+    name = db.Column(db.String)
+    prev_name = db.Column(db.String)
+    alias_name = db.Column(db.String)
+
+    hgnc_id = db.Column(db.String)
+    ensg_id = db.Column(db.String)
+
+    date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
+
+
 class FACSDataset(Base):
     '''
     A single FACS dataset, consisting of
@@ -1235,3 +1261,68 @@ class EnsgProteinGroupAssociation(Base):
     __tablename__ = 'ensg_protein_group_association'
     ensg_id = db.Column(db.String, primary_key=True)
     protein_group_id = db.Column(db.String, db.ForeignKey('mass_spec_protein_group.id'))
+
+
+class CellLineEmbedding(Base):
+    '''
+    '''
+    __tablename__ = 'cell_line_embedding'
+    id = db.Column(db.Integer, primary_key=True)
+
+    # human-readable name
+    # for now, all of the embedding parameters (e.g., n_neighbors and min_dist for UMAPs)
+    # that uniquely identify an embedding (modulo the grid_size) must be included in the name
+    name = db.Column(db.String, nullable=False)
+
+    # if grid size is null, the positions are assumed to be raw (un-gridded);
+    # otherwise, the positions are the row and column indices of the grid
+    grid_size = db.Column(db.Integer, nullable=True)
+
+    positions = db.orm.relationship('CellLineEmbeddingPosition', back_populates='embedding')
+
+    __table_args__ = (db.UniqueConstraint(name, grid_size),)
+
+
+class CellLineEmbeddingPosition(Base):
+
+    __tablename__ = 'cell_line_embedding_position'
+    id = db.Column(db.Integer, primary_key=True)
+
+    embedding_id = db.Column(
+        db.Integer, db.ForeignKey('cell_line_embedding.id', ondelete='CASCADE')
+    )
+    cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'))
+    position_x = db.Column(db.Float, nullable=False)
+    position_y = db.Column(db.Float, nullable=False)
+
+    embedding = db.orm.relationship('CellLineEmbedding', back_populates='positions', uselist=False)
+
+
+class ThumbnailTile(Base):
+    '''
+    A tiled array of best-fov thumbnails for each cell line
+    '''
+    __tablename__ = 'thumbnail_tile'
+    id = db.Column(db.Integer, primary_key=True)
+
+    # the filename of the tile itself
+    # for now, the tile parameters (thumbnail size and shape, channel, etc)
+    # are embedded in the filename, so that it must be unique
+    filename = db.Column(db.String, nullable=False, unique=True)
+    positions = db.orm.relationship('ThumbnailTilePosition', back_populates='tile')
+
+
+class ThumbnailTilePosition(Base):
+    '''
+    The position of a cell line's thumbnail in a tile
+    '''
+    __tablename__ = 'thumbnail_tile_position'
+    id = db.Column(db.Integer, primary_key=True)
+
+    tile_id = db.Column(db.Integer, db.ForeignKey('thumbnail_tile.id', ondelete='CASCADE'))
+    cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'))
+
+    tile_row = db.Column(db.Integer, nullable=False)
+    tile_column = db.Column(db.Integer, nullable=False)
+
+    tile = db.orm.relationship('ThumbnailTile', back_populates='positions', uselist=False)

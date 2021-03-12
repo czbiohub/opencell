@@ -33,17 +33,20 @@ class ClearCache(Resource):
         return flask.jsonify({'result': 'cache cleared'})
 
 
-class Search(Resource):
-    def get(self, search_string):
-
+class GeneNameSearch(Resource):
+    '''
+    A list of cell_line_ids and ensg_ids that match a given gene name
+    '''
+    def get(self, gene_name):
         payload = {}
-        search_string = search_string.upper()
+        gene_name = gene_name.upper()
         publication_ready_only = flask.request.args.get('publication_ready') == 'true'
 
         # search for opencell targets
         query = (
-            flask.current_app.Session.query(models.CellLine).join(models.CellLine.crispr_design)
-            .filter(db.func.upper(models.CrisprDesign.target_name) == search_string)
+            flask.current_app.Session.query(models.CellLine)
+            .join(models.CellLine.crispr_design)
+            .filter(db.func.upper(models.CrisprDesign.target_name) == gene_name)
         )
 
         if publication_ready_only:
@@ -53,7 +56,7 @@ class Search(Resource):
             query = query.filter(models.CellLine.id.in_(cell_line_ids))
 
         # hack for the positive controls
-        if search_string in ['CLTA', 'BCAP31']:
+        if gene_name in ['CLTA', 'BCAP31']:
             query = query.filter(models.CrisprDesign.plate_design_id == 'P0001')
 
         targets = query.all()
@@ -69,7 +72,7 @@ class Search(Resource):
                 select *, string_to_array(gene_names, ' ') as gene_names_array
                 from uniprot_metadata
             ) tmp
-            where '{search_string}' = any(gene_names_array)
+            where '{gene_name}' = any(gene_names_array)
             ''',
             flask.current_app.Session.get_bind()
         )
@@ -78,6 +81,208 @@ class Search(Resource):
 
         return flask.jsonify(payload)
 
+
+class FullTextSearch(Resource):
+    '''
+    Full-text search of all opencell targets and interactors
+
+    This is conducted in two steps:
+    First, a full-text search of the uniprot protein_names field is attempted;
+    this will only yield results if the query is some common word or phrase
+    (e.g., 'actin', 'membrane', 'nuclear lamina', etc).
+
+    If this search finds no results, we assume the query is a portion of a gene name,
+    and we search the uniprot gene_names field for all gene names
+    that start with, or exactly match, the query.
+
+    NOTE: the queries in this method rely on a materialized view called 'ensg_uniprot_metadata'
+    that is not defined or managed by the ORM.
+    '''
+
+    @staticmethod
+    def get_approved_gene_name_from_query(session, query):
+        '''
+        '''
+        query_is_valid_gene_name = False
+        query_is_legacy_gene_name = False
+        approved_gene_name = None
+
+        # first determine if the query is an exact HGNC-approved gene name
+        exact_matches = (
+            session.query(models.HGNCMetadata)
+            .filter(models.HGNCMetadata.symbol == query.upper())
+            .one_or_none()
+        )
+        query_is_valid_gene_name = exact_matches is not None
+        if query_is_valid_gene_name:
+            approved_gene_name = query.upper()
+
+        # check if the query is an exact legacy gene name
+        else:
+            result = pd.read_sql(
+                '''
+                select * from (
+                    select symbol, ensg_id, unnest(
+                        string_to_array(prev_symbol, '|') || string_to_array(alias_symbol, '|')
+                    ) as alias_or_prev
+                    from hgnc_metadata
+                ) tmp
+                where alias_or_prev = %(query)s
+                ''',
+                session.get_bind(),
+                params=dict(query=query.upper())
+            )
+            if len(result):
+                query_is_legacy_gene_name = True
+                approved_gene_name = result.iloc[0].symbol
+
+        return query_is_valid_gene_name, query_is_legacy_gene_name, approved_gene_name
+
+
+    @staticmethod
+    def search_protein_names(engine, query):
+        '''
+        Full-text search of uniprot protein names for all opencell targets and interactors
+        (this relies on a materialized view called searchable_uniprot_metadata)
+        '''
+        results = pd.read_sql(
+            '''
+            select * from (
+                select ensg_id, published_cell_line_id, gene_names, protein_names,
+                ts_rank_cd(content, query) as relevance
+                from searchable_uniprot_metadata, plainto_tsquery(%(query)s) as query
+                where content @@ query
+            ) as hits
+            order by relevance desc limit 100
+            ''',
+            engine,
+            params=dict(query=query)
+        )
+        return results
+
+
+    @staticmethod
+    def search_gene_names(engine, query):
+        '''
+        Search for opencell targets and interactors whose primary gene name starts with the query
+        '''
+        results = pd.read_sql(
+            '''
+            select ensg_id, published_cell_line_id, gene_names, protein_names
+            from searchable_uniprot_metadata
+            where ensg_id in (
+                select distinct(ensg_id) from (
+                    select *, unnest(string_to_array(gene_names, ' ', null)) as gene_name
+                    from searchable_uniprot_metadata
+                ) as tmp
+                where gene_name like %(query)s
+            )
+            ''',
+            engine,
+            params=dict(query=('%s%%' % query.upper()))
+        )
+        # there's no way of ranking these results, but create a relevance column
+        # with a relevance greater than the
+        results['relevance'] = 1.0
+        return results
+
+
+    def get(self, query):
+        engine = flask.current_app.Session.get_bind()
+
+        # eliminate trailing spaces
+        query = query.strip()
+
+        # attempt to look up the approved gene name from the query,
+        # in the even that the query is an exact alias or previous gene name
+        (
+            query_is_valid_gene_name, query_is_legacy_gene_name, approved_gene_name
+        ) = self.get_approved_gene_name_from_query(flask.current_app.Session, query)
+
+        # search for partial gene name matches
+        partial_gene_name_matches = self.search_gene_names(engine, query)
+
+        # if there are no partial matches but the query is an exact legacy gene name,
+        # try again using the approved gene name
+        if query_is_legacy_gene_name and not partial_gene_name_matches.shape[0]:
+            partial_gene_name_matches = self.search_gene_names(engine, approved_gene_name)
+
+        # always search the protein names with the original query
+        protein_name_matches = self.search_protein_names(engine, query)
+
+        # combine the results from both searches
+        all_results = pd.concat((partial_gene_name_matches, protein_name_matches), axis=0)
+
+        # prettify the uniprot protein names
+        all_results['protein_name'] = all_results.protein_names.apply(
+            uniprot_utils.prettify_uniprot_protein_name
+        )
+        all_results.drop(labels=['protein_names'], axis=1, inplace=True)
+
+        # keep the full list of gene name synonyms
+        all_results['gene_names'] = all_results.gene_names.str.split(' ')
+
+        # eliminate duplicates
+        all_results = all_results.groupby('ensg_id').max().reset_index()
+
+        all_results['status'] = all_results.published_cell_line_id.apply(
+            lambda s: 'Interactor' if pd.isna(s) else 'Target'
+        )
+
+        # force the targets to the top of the search results, then sort by relevance
+        all_results.sort_values(['status', 'relevance'], inplace=True, ascending=False)
+
+        # if the query was a valid (approved or legacy) gene name,
+        # set the relevance of its exact match, if there was one, to 10
+        exact_match_found = False
+        if approved_gene_name is not None:
+            mask = all_results.gene_names.apply(lambda names: approved_gene_name in names)
+            all_results.loc[mask, 'relevance'] = 10
+            exact_match_found = bool(mask.sum() > 0)
+
+        return flask.jsonify({
+            'is_valid_gene_name': query_is_valid_gene_name,
+            'is_legacy_gene_name': query_is_legacy_gene_name,
+            'approved_gene_name': approved_gene_name,
+            'exact_match_found': exact_match_found,
+            'hits': json.loads(all_results.to_json(orient='records')),
+        })
+
+
+class TargetNames(Resource):
+    '''
+    A list of the target names and uniprot protein names for all crispr designs
+    '''
+    @cache.cached(key_prefix=cache_key)
+    def get(self):
+
+        publication_ready_only = flask.request.args.get('publication_ready') == 'true'
+        cell_line_ids = None
+        if publication_ready_only:
+            cell_line_ids = metadata_operations.get_lines_by_annotation(
+                engine=flask.current_app.Session.get_bind(), annotation='publication_ready'
+            )
+
+        query = (
+            flask.current_app.Session.query(
+                models.CrisprDesign.target_name,
+                models.UniprotMetadata.protein_names.label('protein_name'),
+            )
+            .join(models.CrisprDesign.uniprot_metadata)
+        )
+        if cell_line_ids is not None:
+            query = (
+                query.join(models.CrisprDesign.cell_lines)
+                .filter(models.CellLine.id.in_(cell_line_ids))
+            )
+
+        df = pd.DataFrame(data=query.all())
+        df['protein_name'] = df.protein_name.apply(uniprot_utils.prettify_uniprot_protein_name)
+
+        # eliminate duplicates
+        df = df.groupby('target_name').first().reset_index()
+
+        return flask.jsonify(json.loads(df.to_json(orient='records')))
 
 
 class Plate(Resource):
@@ -98,9 +303,9 @@ class Plate(Resource):
 class CellLines(Resource):
     '''
     A list of cell line metadata for all cell lines,
-    possibly filtered by plate_id and target name
+    possibly filtered by plate_id and the publication_ready annotation
     '''
-    @cache.cached(timeout=3600, key_prefix=cache_key)
+    @cache.cached(key_prefix=cache_key)
     def get(self):
 
         Session = flask.current_app.Session
@@ -470,7 +675,7 @@ class PulldownNetwork(PulldownResource):
     The cytoscape interaction network for a pulldown
     (see comments in cytoscape_networks.construct_network for details)
     '''
-    @cache.cached(timeout=3600, key_prefix=cache_key)
+    @cache.cached(key_prefix=cache_key)
     def get(self, pulldown_id):
 
         pulldown = self.get_pulldown(pulldown_id)
@@ -708,11 +913,14 @@ class MicroscopyFOVROI(Resource):
         if microscopy_dir.startswith('http'):
             return flask.redirect(filepath)
         else:
-            return flask.send_file(
-                open(filepath, 'rb'),
-                as_attachment=True,
-                attachment_filename=filepath.split(os.sep)[-1]
-            )
+            if os.path.isfile(filepath):
+                return flask.send_file(
+                    open(filepath, 'rb'),
+                    as_attachment=True,
+                    attachment_filename=filepath.split(os.sep)[-1]
+                )
+            else:
+                return flask.abort(404, 'Filepath %s does not exist' % filepath)
 
 
 class CellLineAnnotation(CellLineResource):
@@ -872,3 +1080,113 @@ class SavedPulldownNetwork(PulldownResource):
         except Exception as error:
             flask.abort(500, str(error))
         return ('', 204)
+
+
+class EmbeddingPositions(Resource):
+
+    def get(self):
+        '''
+        Get the positions of all cell lines in a gridded and ungridded embedding,
+        along with the positions of their thumbnails in a thumbnail tile
+
+        NOTE: for now, the names of the gridded and ungridded embeddings are hard-coded
+        '''
+        thumbnail_size = int(flask.request.args.get('thumbnail_size') or 100)
+        thumbnail_shape = flask.request.args.get('thumbnail_shape') or 'circle'
+
+        # generic query for embedding positions
+        query = (
+            flask.current_app.Session.query(
+                models.CellLineEmbeddingPosition.cell_line_id,
+                models.CellLineEmbeddingPosition.position_x,
+                models.CellLineEmbeddingPosition.position_y,
+            )
+            .join(models.CellLineEmbedding)
+        )
+
+        # get the gridded embedding positions
+        # hack: assume there's only one kind of embedding for a non-zero grid size
+        grid_size = 40
+        gridded_positions = pd.DataFrame(
+            query.filter(models.CellLineEmbedding.grid_size == grid_size).all()
+        )
+        gridded_positions.rename(
+            columns={'position_x': 'grid_x', 'position_y': 'grid_y'}, inplace=True
+        )
+
+        # get the ungridded (or 'raw') embedding positions
+        # hack: hard-code the name of the embedding
+        grid_size = 0
+        name = (
+            'december-results-full-median-vq2-target-vectors'
+            '--kind=umap--n_neighbors=10--min_dist=0.1'
+        )
+        ungridded_positions = pd.DataFrame(
+            (
+                query.filter(models.CellLineEmbedding.grid_size == grid_size)
+                .filter(models.CellLineEmbedding.name == name)
+                .all()
+            )
+        )
+        ungridded_positions.rename(
+            columns={'position_x': 'raw_x', 'position_y': 'raw_y'}, inplace=True
+        )
+
+        # get the thumbnail tile positions
+        # hack: construct the filename of the thumbnail tile manually
+        tile_filename = f'tiled-cell-line-thumbnails--{thumbnail_size}px--{thumbnail_shape}.jpg'
+        tile_positions = pd.DataFrame(
+            flask.current_app.Session.query(
+                models.ThumbnailTilePosition.cell_line_id,
+                models.ThumbnailTilePosition.tile_row,
+                models.ThumbnailTilePosition.tile_column
+            )
+            .join(models.ThumbnailTile)
+            .filter(models.ThumbnailTile.filename == tile_filename)
+            .all()
+        )
+        if not tile_positions.shape[0]:
+            return flask.abort(404, "No thumbnail tile found with filename '%s'" % tile_filename)
+
+        # get the target names and localization annotations
+        targets = pd.DataFrame(
+            (
+                flask.current_app.Session.query(
+                    models.CellLine.id.label('cell_line_id'),
+                    models.CellLineAnnotation.categories,
+                    models.CrisprDesign.target_name,
+                )
+                .join(models.CellLineAnnotation)
+                .join(models.CrisprDesign)
+                .all()
+            )
+        )
+        positions = (
+            tile_positions
+            .merge(targets, on='cell_line_id', how='left')
+            .merge(gridded_positions, on='cell_line_id', how='left')
+            .merge(ungridded_positions, on='cell_line_id', how='left')
+        )
+
+        return flask.jsonify({
+            'tile_filename': tile_filename,
+            'positions': json.loads(positions.to_json(orient='records'))
+        })
+
+
+class ThumbnailTileImage(Resource):
+
+    def get(self, filename):
+        '''
+        Redirect to, or load, a thumbnail tile image
+        '''
+        microscopy_dir = flask.current_app.config.get('OPENCELL_MICROSCOPY_DIR')
+        filepath = os.path.join(microscopy_dir, 'thumbnail-tiles', filename)
+        if microscopy_dir.startswith('http'):
+            return flask.redirect(filepath)
+        else:
+            return flask.send_file(
+                open(filepath, 'rb'),
+                as_attachment=True,
+                attachment_filename=filepath.split(os.sep)[-1]
+            )

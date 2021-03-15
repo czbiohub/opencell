@@ -24,6 +24,7 @@ import InteractorProfile from './views/interactorProfile/interactorProfile.jsx';
 import Gallery from './views/gallery/Gallery.jsx';
 import UMAPContainer from './views/umap/umapContainer.jsx';
 import About from './views/about/About.jsx';
+import Home from './views/home/Home.jsx';
 import SearchResults from './views/searchResults/searchResults.jsx';
 import settings from './settings/settings.js';
 
@@ -137,7 +138,7 @@ function useGoogleAnalytics () {
 function App() {
 
     const modeContext = useContext(settings.ModeContext);
-    if (modeContext==='public') useGoogleAnalytics();
+    //if (modeContext==='public') useGoogleAnalytics();
 
     const [cellLineId, setCellLineId] = useCellLineId();
     const [searchAlert, handleGeneNameSearch] = useGeneNameSearch(setCellLineId);
@@ -233,7 +234,7 @@ function App() {
         <>
             <Navbar handleGeneNameSearch={handleGeneNameSearch}/>
             <Switch>
-                <Route path="/" exact={true} component={About}/>
+                <Route path="/" exact={true} component={Home}/>
 
                 {publicCellLineRoutes}
                 {modeContext==='private' ? privateCellLineRoutes : null}

@@ -1,0 +1,38 @@
+
+.cytoscape-container {
+    border: 1px solid rgba(0, 0, 0, 0.0);
+    border-radius: 10px;
+}
+
+.cy-node-label-container {
+    padding: 2px;
+    border-radius: 3px;
+    font-size: 6px;
+    color: rgb(0, 0, 0);
+    cursor: default;
+    background-color: #d8d8d8;
+    border: 0.5px solid #888;
+}
+
+/* these colors must match the node background colors in massSpecNetworkStylesheet.js */
+.cy-bait-node-label-container {
+    padding: 3px;
+    font-size: 8px;
+    background-color: #a5d2ec;
+    border: 0.5px solid #55839e;
+}
+.cy-hit-node-label-container {
+    /* background-color: #fec8c6; */
+}
+.cy-pulldown-node-label-container {
+    /* background-color: #bcc0c2; */
+}
+
+.cy-node-label-in-opencell {
+    font-weight: bold;
+}
+
+.cy-node-label:hover {
+    text-decoration: underline;
+}
+

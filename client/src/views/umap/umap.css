@@ -1,0 +1,124 @@
+
+.thumbnail-hover-container {
+    position: absolute;
+    visibility: hidden;
+    pointer-events: none;
+    /* background-color: #ffffff33; */
+    color: white;
+    border: 1px solid white;
+    border-radius: 5px;
+    padding: 5px;
+}
+
+.umap-canvas {
+    /* border: 1px solid red; */
+    background-color: black;
+    overflow-y: hidden;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.umap-svg {
+    /* pointer-events: none; */
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.umap-controls-container {
+    position: absolute;
+    width: 200px;
+    background-color: white;
+    border-radius: 5px;
+    padding: 15px;
+    opacity: 1;
+    z-index: 999;
+}
+
+.umap-legend-container {
+    position: absolute;
+    right: 20px;
+    width: 250px;
+    background-color: #222;
+    border-radius: 5px;
+    border-width: 1px;
+    border-color: white;
+    opacity: 1;
+    z-index: 999;
+}
+
+.umap-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 95vh;
+    background-color: black;
+    overflow: hidden;
+}
+
+
+.thumbnail-circle-hover {
+    /* stroke: rgb(255, 90, 90); */
+    fill: white;
+    fill-opacity: 0.3;
+}
+
+.thumbnail-text {
+    font: bold 10px sans-serif;
+    fill: white;
+    text-anchor: middle;
+}
+
+.mouseover-umap-tip {
+    background-color: #eee;
+    padding: 10px;
+    color: black;
+    border-radius: 5px;
+    pointer-events: none;
+    width: fit-content;
+}
+
+.click-umap-tip {
+    width: 250px;
+    height: 325px;
+    padding: 10px;
+    color: black;
+    background-color: #eee;
+    border-radius: 5px;
+    pointer-events: none;
+}
+
+.click-umap-tip a {
+    color: black;
+}
+
+.umap-tip-image {
+    border-radius: 5px;
+    width: 100%;
+}
+
+.umap-tip-content {
+    text-align: center;
+}
+
+
+/* Creates a small triangle extender for the tooltip */
+.umap-tip:after {
+    box-sizing: border-box;
+    display: inline;
+    font-size: 10px;
+    line-height: 1;
+    color: white;
+    position: absolute;
+    pointer-events: none;
+}
+
+.umap-tip.n:after {
+    content: "\25BC";
+    margin: -1px 0 0 0;
+    top: 100%;
+    left: 45%;
+    text-align: center;
+}

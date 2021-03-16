@@ -1,0 +1,41 @@
+
+.thumbnail-grid {
+    display: grid;
+    grid-auto-flow: row;
+    grid-template-rows: auto;
+    grid-template-columns: repeat(auto-fit, 100px);
+}
+
+.thumbnail-container:hover {
+    border: 1px solid #aaa;
+}
+
+.thumbnail-container-active,
+.thumbnail-container-active:hover {
+    border: 1px solid #111;
+    border-radius: 5px;
+}
+
+.thumbnail-flagged {
+    opacity: .5;
+}
+
+.thumbnail-annotated {
+    border: 4px solid #db3737;
+    border-radius: 5px;
+}
+
+.thumbnail-caption {
+    text-align: center;
+    font-size: 12px;
+}
+
+.fov-curator-roi {
+    position: absolute;
+    pointer-events: none;
+    border: 2px solid #db3737;
+}
+
+.fov-curator-roi-new {
+    border-style: dashed;
+}

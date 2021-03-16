@@ -1,0 +1,66 @@
+
+// the menu-item container of the blueprint select component for ROI thumbnails
+.roi-select-menu-container {
+    min-width: auto;
+    display: flex;
+    padding: 5px;
+    margin: 0;
+    border-radius: 3px;
+    color: #182026;
+}
+
+// the container for the ROI thumbnails when displayed as a plain list
+// (without a blueprint select component)
+.roi-list-container {
+    min-width: auto;
+    display: flex;
+    padding: 0px;
+    margin: 0;
+    color: #182026;
+}
+
+.roi-thumbnail-container {
+    cursor: pointer;
+    margin: 0;
+    margin-right: 3px;
+    text-align: center;
+    border-radius: 5px;
+
+    // flip the thumbnails so their orientation matches the volume viewer
+    img {
+        -webkit-transform: scaleY(-1);
+        transform: scaleY(-1);
+        border-radius: 5px;
+        border: 3px solid white;
+    }
+    &-active {
+        img {
+            border-color: #009cd6;
+        }
+    }
+    &:hover {
+        opacity: 0.7;
+    }
+}
+
+.roi-thumbnail-caption {
+    text-align: center;
+    font-size: 12px;
+}
+
+// hack: hard-coded margins to position the label above the scalebar
+// (which is itself positioned hackishly in the sliceViewer component)
+.scale-bar-label {
+    margin-top: -55px;
+    margin-left: 20px;
+    z-index: 999;
+    color: white;
+    font-weight: bold;
+}
+
+.reset-buttons-container {
+    margin-right: 15px;
+    margin-top: -50px;
+    z-index: 999;
+    opacity: 0.7;
+}

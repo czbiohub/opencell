@@ -1,8 +1,17 @@
-
 .idea/
+.vscode/
 .DS_Store
 
-.vscode/
+*.tgz
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+/.changelog
+
+client/.npm/
+client/node_modules/
+client/dist/
+
 ignore/
 output/
 cache/

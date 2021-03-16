@@ -1,0 +1,46 @@
+#plate-table-container {
+	border-top: 1px solid white;
+	border-left: 1px solid white;
+}
+
+.plate-table-row {
+	width: 100%;
+	display: table;
+	table-layout: fixed;
+}
+
+.plate-table-well {
+	cursor: pointer;
+	display: table-cell;
+	border-bottom: 1px solid white;
+	border-right: 1px solid white;
+	color: #333;
+	background-color: #eee;
+}
+
+.plate-table-well:hover {
+	opacity: .7;
+}
+
+.plate-table-well-header {
+	font-size: 10px;
+	background: white;
+	opacity: .7;
+	width: min-content;
+	padding: 3px;
+	position: absolute;
+}
+
+.plate-table-well-content {
+	font-size: 12px;
+	margin-top: 40%; 
+	margin-bottom: 30%;
+	vertical-align: middle;
+	text-align: center;
+}
+
+.dashboard-table {
+	font-size: 12px;
+}
+
+

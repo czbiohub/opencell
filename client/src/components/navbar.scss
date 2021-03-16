@@ -1,0 +1,31 @@
+
+.navbar-container {
+    min-width: 1500px;
+    background-color: #eee;
+    a, a:visited {
+        color: #333;
+        text-decoration: none;
+        font-size: 20px;
+        font-weight: 400;
+        font-variant: all-small-caps;
+    }
+    a:hover, a:visited:hover {
+        color: #999;
+        text-decoration: none;
+    }
+}
+
+.navbar-opencell-title {
+    font-family: "Lato", sans-serif;
+    font-size: 30px;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+.navbar-search-textbox {
+    font-size: 24px;
+    font-weight: bold;
+    padding: 5px;
+    width: 150px;
+    text-transform: uppercase;
+}

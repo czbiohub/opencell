@@ -1,0 +1,8 @@
+
+.functional-annotation-container {
+    height: auto;
+    max-height: 150px;
+    overflow: auto;
+    line-height: 1.33;
+}
+

@@ -1,0 +1,51 @@
+
+
+.scatterplot-container .tick line {
+    stroke: #ddd;
+    stroke-width: 1px;
+    stroke-dasharray: 2;
+}
+
+.scatterplot-container .axis path {
+    stroke: #cccccc00 !important;
+    stroke-width: 1px;
+}
+
+.scatterplot-container .axis text {
+    font-size: 12px;
+}
+
+.bait-dot {
+    fill: #01a2ddb2;
+}
+
+.major-sig-hit-dot {
+    fill: #f9463ab2;
+}
+
+.minor-sig-hit-dot {
+    fill: #ff9b89bf;
+}
+
+.not-sig-hit-dot {
+    fill: #33333334;
+}
+
+.scatter-caption {
+    font-size: 12px;
+    pointer-events: none;
+}
+
+.volcano-fdr-path {
+    fill: none;
+    stroke: #444;
+    stroke-width: 1px;
+    stroke-dasharray: 6;
+}
+
+.core-complex-path {
+    fill: #00000020;
+    stroke: none;
+    stroke-width: 1px;
+}
+

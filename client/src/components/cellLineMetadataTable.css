@@ -1,0 +1,42 @@
+
+/* --------------------- cell line and FOV metadata --------------------- */
+.clm-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    font-family: "Lato";
+}
+
+.clm-target-name {
+    font-size: 60px;
+    font-weight: 400;
+}
+
+.clm-protein-description {
+    font-size: 20px;
+    font-weight: 300;
+}
+
+.clm-opencell-status {
+    font-size: 16px;
+    font-weight: 300;
+    font-style: italic;
+}
+
+.clm-item {
+    border-bottom: none;
+}
+
+.clm-item abbr {
+    text-decoration: none;
+    line-height: 1em;
+    margin-left: 2px;
+    font-size: 14px;
+}
+
+.clm-overflow-hidden {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+

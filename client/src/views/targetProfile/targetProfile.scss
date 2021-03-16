@@ -1,0 +1,22 @@
+
+/* the plot containers should have the same margins
+in order for the plots to be vertically aligned */
+.expression-plot-container, .facs-plot-container {
+    margin-left: -10px;
+    margin-right: 10px;
+    margin-top: 10px;
+    .tick path, .axis line {
+        stroke: #ccc;
+        stroke-width: 1px;
+        stroke-dasharray: 2;
+    }
+    .axis text {
+        font-size: 12px;
+    }
+}
+
+/* the bottom-most horizontal axis line in the FACS plot should be solid and darker */
+.facs-plot-container .axis .bottom line {
+    stroke: #666;
+    stroke-dasharray: none;
+}

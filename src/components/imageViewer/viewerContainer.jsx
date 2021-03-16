@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { Component, useState } from 'react';
 import { Button, MenuItem, Slider, RangeSlider, Tooltip, Popover, Icon } from "@blueprintjs/core";
 import { Select } from "@blueprintjs/select";
 import classNames from 'classnames';
@@ -6,6 +6,7 @@ import classNames from 'classnames';
 import SliceViewer from './sliceViewer.jsx';
 import VolumeViewer from './volumeViewer.jsx';
 import ButtonGroup from '../buttonGroup.jsx';
+import SimpleSelect from '../simpleSelect.jsx';
 import SectionHeader from '../sectionHeader.jsx';
 import * as popoverContents from '../popoverContents.jsx';
 import { MetadataContainer } from '../metadata.jsx';
@@ -15,42 +16,85 @@ import settings from '../../settings/settings.js';
 import { fovMetadataDefinitions } from '../../settings/metadataDefinitions.js';
 
 import 'tachyons';
-import './imageViewer.css';
+import './viewerContainer.scss';
 
 
 function Thumbnail (props) {
     const divClassName = classNames(
-        'pa1 pr2 pl2', 'roi-thumbnail-container',
-        {'roi-thumbnail-container-active': props.active}
+        'roi-thumbnail-container', {'roi-thumbnail-container-active': props.active}
     );
+
+    const caption = props.showCaption ? (
+        <div className='roi-thumbnail-caption'><span>{props.text}</span></div>
+    ) : null;
 
     return (
         <div className={divClassName} onClick={props.onClick}>
             <img 
-                width={60}
-                height={60}
+                width={66}
+                height={66}
                 src={`data:image/jpg;base64,${props.thumbnail?.data}`}
             />
-            <div className='roi-thumbnail-caption'>
-                <span>{props.text}</span>
-            </div>
+            {caption}
         </div>
     );
 }
 
 
-function roiItemRenderer (roi, props) {
-    if (!props.modifiers.matchesPredicate) return null;
+function roiItemRenderer (roi, {handleClick, modifiers}) {
+    // itemRenderer method for blueprint Select component with ROI thumbnails
+    if (!modifiers.matchesPredicate) return null;
     return (
         <Thumbnail
             key={roi.id}
+            showCaption={true}
             text={`FOV ${roi.fov_id}`}
             thumbnail={roi.thumbnail}
-            active={props.modifiers.active}
-            onClick={props.handleClick}
+            active={modifiers.active}
+            onClick={handleClick}
         />
     );
 };
+
+function ROIThumbnailList (props) {
+    // display the ROI thumbnails in a list
+    // for convenience, the props should adhere to the propTypes of the blueprint select component
+
+    // props.activeItem is the initial selected (or 'active') ROI
+    let [activeRoiId, setActiveRoiId] = useState(props.activeItem?.id);
+    const rois = props.items.map(roi => {
+        return (
+            <Thumbnail
+                key={roi.id}
+                showCaption={false}
+                thumbnail={roi.thumbnail}
+                active={roi.id===activeRoiId}
+                onClick={() => {setActiveRoiId(roi.id); props.onItemSelect(roi)}}
+            />
+        );
+    });
+    return (
+        <div className="roi-list-container">{rois}</div>
+    );
+}
+
+
+function ROISelector (props) {
+    // Display and select ROI thumbnails,
+    // using either a blueprint Select component (to show the thumbnails in a pop-up menu)
+    // or the ROIThumbnailList component (to show the thumbnails directly)
+
+    if (props.showMenu) return (
+        <Select filterable={false} {...props}>                     
+            <Button 
+                className="bp3-button-custom"
+                rightIcon="double-caret-vertical"
+                text={`FOV ${props.activeItem.fov_id}`}
+            />
+        </Select>
+    );
+    return <ROIThumbnailList {...props}/>
+}
 
 
 export default class ViewerContainer extends Component {
@@ -196,13 +240,15 @@ export default class ViewerContainer extends Component {
 
         let viewer;
         if (this.state.mode==='Volume') {
-            viewer = <VolumeViewer 
-                {...this.state} 
-                volumes={this.volumes}
-                setCameraZoom={cameraZoom => this.setState({cameraZoom})}
-                setCameraPosition={cameraPosition => this.setState({cameraPosition})}
-                didResetZoom={() => this.setState({shouldResetZoom: false})}
-            />
+            viewer = (
+                <VolumeViewer 
+                    {...this.state} 
+                    volumes={this.volumes}
+                    setCameraZoom={cameraZoom => this.setState({cameraZoom})}
+                    setCameraPosition={cameraPosition => this.setState({cameraPosition})}
+                    didResetZoom={() => this.setState({shouldResetZoom: false})}
+                />
+            );
         }
         else {
             let volumes, loaded;
@@ -238,26 +284,25 @@ export default class ViewerContainer extends Component {
     
         return (
             // use relative position so that the loading-overlay div only overlays this component
-            <div className='relative'>
+            <div className='relative pt0'>
 
             {/* display controls */}
-            <div className="pt3 pb2">
+            <div className="flex flex-row">
 
-                {/* top row */}
-                <div className='flex flex-wrap w-100 pb2'>
+                {/* left column */}
+                <div className='flex flex-wrap'>
 
-                    <div className="roi-thumbnail-select-container pr3">
-                        <div className='flex'>
-                            <div className="pr1 simple-button-group-label">Select image</div>
-                            <div>
-                                <Popover>
-                                    <Icon icon='info-sign' iconSize={12} color="#bbb"/>
-                                    {popoverContents.microscopyFovSelection}
-                                </Popover>
-                            </div>
-                        </div>
-                        <Select 
-                            className={'roi-select'}
+                    {/* thumbnail selection */}
+                    <div className="flex items-center">
+                        {/* <div className='flex'>
+                            <div className="pr1 button-group-label">Field of view</div>
+                            <Popover>
+                                <Icon icon='info-sign' iconSize={12} color="#bbb"/>
+                                {popoverContents.microscopyFovSelection}
+                            </Popover>
+                        </div> */}
+                        <ROISelector
+                            showMenu={false}
                             activeItem={roi}
                             items={this.props.rois} 
                             itemRenderer={roiItemRenderer} 
@@ -268,62 +313,82 @@ export default class ViewerContainer extends Component {
                                     </div>
                                 );
                             }}
-                            filterable={false}
                             onItemSelect={roi => {
                                 this.props.changeRoi(roi.id, roi.fov_id);
                                 this.resetZoom();
                             }}
-                        >                            
-                            <Button 
-                                className="bp3-button-custom"
-                                rightIcon="double-caret-vertical"
-                                text={`FOV ${roi.fov_id}`}
-                            />
-                        </Select>
+                        />
                     </div>
+                </div>
 
-                    <div className='pr3'>
+                {/* right column */}
+                <div className='pl2'>
+
+                    {/* top row */}
+                    {/* mode buttons */}
+                    <div className='flex'>
+                        <ButtonGroup 
+                            label='' 
+                            values={['Proj', 'Slice', 'Volume']}
+                            labels={['2D projection', '2D slice', '3D']}
+                            activeValue={this.state.mode}
+                            onClick={value => this.setState({mode: value})}
+                        />
+                    </div>
+                        
+                    {/* bottom row */}
+                    <div className='w-100 flex flex-row pt2'>
+
+                        {/* image quality buttons */}
                         <Tooltip 
                             intent='warning'
                             targetClassName='w-100'
                             content='Image quality is only adjustable in z-slice and volume-rendering modes'
                             disabled={this.state.mode!=='Proj'}
                         >
-                            <ButtonGroup 
-                                label='Image quality' 
+                            <SimpleSelect 
+                                label='Quality' 
                                 values={['Auto', 'High']}
                                 activeValue={this.state.imageQuality}
                                 onClick={value => this.setState({imageQuality: value})}
-                                disabled={this.state.mode==='Proj'}
                                 popoverContent={popoverContents.microscopyImageQuality}
+                                disabled={this.state.mode==='Proj'}
                             />
                         </Tooltip>
-                    </div>
-                    <div className='pr3'>
-                        <ButtonGroup 
-                            label='Channel' 
-                            values={['405', '488', 'Both']}
-                            labels={['Nucleus', 'Target', 'Both']}
-                            activeValue={this.state.channel}
-                            onClick={value => this.setState({channel: value})}
-                            popoverContent={popoverContents.microscopyChannel}
-                        />
+
+                        {/* channel buttons */}
+                        <div className='pr3'>
+                            <SimpleSelect 
+                                label='Channel' 
+                                values={['405', '488', 'Both']}
+                                labels={['Nucleus', 'Target', 'Both channels']}
+                                activeValue={this.state.channel}
+                                onClick={value => this.setState({channel: value})}
+                                popoverContent={popoverContents.microscopyChannel}
+                            />
+                        </div>
                     </div>
                 </div>
+            </div>
+
+            {/* the z-slice viewer or volume rendering */}
+            <div className='pt2'>{viewer}</div>
+
+            {/* Display settings */}
+            <div className='flex flex-wrap w-100 pt2 pb2'>
+
+                {/* scale bar label */}
+                <div 
+                    className='scale-bar-label' 
+                    style={{visibility: this.state.mode==='Volume' ? 'hidden' : 'visible'}}
+                >
+                    10<span>&micro;m</span>
+                </div>
+
 
                 {/* bottom row of controls */}
-                <div className='flex items-center w-100' style={{justifyContent: 'space-between'}}>
-                    <div className='flex'>
-                        <ButtonGroup 
-                            label='' 
-                            values={['Proj', 'Slice', 'Volume']}
-                            labels={['Z-projection', 'Z-slice', 'Volume rendering']}
-                            activeValue={this.state.mode}
-                            onClick={value => this.setState({mode: value})}
-                        />
-                    </div>
-                    
-                    <div className='flex' style={{alignSelf: 'flex-end'}}>
+                <div className='w-100 flex flex-row justify-end reset-buttons-container'>
+                    <div>
                         <Button
                             className="bp3-button-custom"
                             text={"Reset zoom"}
@@ -331,37 +396,18 @@ export default class ViewerContainer extends Component {
                         />
                         <Button
                             className="ml2 bp3-button-custom"
-                            text={"Reset display settings"}
+                            text={"Reset settings"}
                             onClick={() => this.setState({...this.defaultDisplayState})}
                         />
                     </div>
                 </div>
-            </div>
 
-            {/* the z-slice viewer or volume rendering */}
-            <div className="fl">{viewer}</div>
-
-            {/* Display settings */}
-            <div className='flex flex-wrap w-100 pt2 pb2'>
-
-                {/* scale bar label */}
-                <div 
-                    className='w-100 flex flex-column' 
-                    style={{
-                        marginTop: -55, 
-                        marginLeft: 20, 
-                        zIndex: 999, 
-                        visibility: this.state.mode==='Volume' ? 'hidden' : 'visible'
-                    }}
-                >
-                    <div className='white b'>10 <span>&micro;m</span></div>
-                </div>
 
                 {/* z-index slider */}
                 <div className='w-100 flex flex-0-0-auto pr3'>
                     <div className={classNames('w-30', {'black-30': this.state.mode!=='Slice'})}>
                         <b>
-                        {`Z-position: ${zIndexToMicrons(this.state.zIndex)}`}
+                        {`Slice position: ${zIndexToMicrons(this.state.zIndex)}`}
                         <span>&micro;m</span>
                         </b>
                     </div>
@@ -369,7 +415,7 @@ export default class ViewerContainer extends Component {
                         <Tooltip 
                             intent='warning'
                             targetClassName='w-100'
-                            content='Please switch to z-slice mode to scroll through z-slices'
+                            content='Please switch to 2D-slice mode to scroll through slices'
                             disabled={this.state.mode==='Slice'}
                         >
                             <Slider 
@@ -444,7 +490,7 @@ export default class ViewerContainer extends Component {
             </div>
             
             {this.props.showMetadata ? (
-                <div>
+                <>
                     <SectionHeader title='FOV metadata'/>
                     <MetadataContainer
                         className='pt2'
@@ -453,7 +499,7 @@ export default class ViewerContainer extends Component {
                         orientation='row'
                         scale={4}
                     />
-                </div>
+                </>
             ) : (
                 null
             )}

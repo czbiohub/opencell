@@ -252,7 +252,7 @@ export default class MassSpecScatterPlot extends Component {
             this.maxY = hits => 3 + pad;
 
             this.xAxisLabel = 'Interaction stoichiometry (log10)';
-            this.yAxisLabel = 'Abundance stoichiometry (log10)';
+            this.yAxisLabel = 'Cellular abundance stoichiometry (log10)';
         }
     }
 

@@ -13,7 +13,7 @@ import ButtonGroup from '../../components/buttonGroup.jsx';
 
 import settings from '../../settings/settings.js';
 import * as utils from '../../utils/utils.js';
-import * as annotationDefs from '../../settings/annotationDefs.js';
+import * as annotationDefs from '../../settings/annotationDefinitions.js';
 import {cellLineMetadataDefinitions} from '../../settings/metadataDefinitions.js';
 
 import './gallery.css';
@@ -77,7 +77,7 @@ function Thumbnail (props) {
 }
 
 
-class Gallery extends Component {
+export default class Gallery extends Component {
     static contextType = settings.ModeContext;
 
     constructor (props) {
@@ -262,7 +262,7 @@ class Gallery extends Component {
         ];
 
         return (
-            <div>
+            <>
                 <div className="pa4 w-100">
                     <div className="flex" style={{alignItems: 'flex-start'}}>
                         <div className="pr3 w-33">
@@ -308,13 +308,8 @@ class Gallery extends Component {
                 ) : (
                     null
                 )}
-            </div>
-
+            </>
         );
     }
 }
-
-export default Gallery;
-
-
 

@@ -15,7 +15,7 @@ import {
  } from "react-router-dom";
 
 import 'tachyons';
-import './app.css';
+import './app.scss';
 
 import Navbar from './components/navbar.jsx';
 import Dashboard from './views/dashboard/Dashboard';
@@ -24,6 +24,7 @@ import InteractorProfile from './views/interactorProfile/interactorProfile.jsx';
 import Gallery from './views/gallery/Gallery.jsx';
 import UMAPContainer from './views/umap/umapContainer.jsx';
 import About from './views/about/About.jsx';
+import Home from './views/home/Home.jsx';
 import SearchResults from './views/searchResults/searchResults.jsx';
 import settings from './settings/settings.js';
 
@@ -137,7 +138,7 @@ function useGoogleAnalytics () {
 function App() {
 
     const modeContext = useContext(settings.ModeContext);
-    if (modeContext==='public') useGoogleAnalytics();
+    //if (modeContext==='public') useGoogleAnalytics();
 
     const [cellLineId, setCellLineId] = useCellLineId();
     const [searchAlert, handleGeneNameSearch] = useGeneNameSearch(setCellLineId);
@@ -230,11 +231,14 @@ function App() {
     ];
 
     return (
-        <div>
+        <>
             <Navbar handleGeneNameSearch={handleGeneNameSearch}/>
             <Switch>
-                <Route path="/" exact={true} component={About}/>
-
+                <Route path="/" exact={true} render={props => (
+                        <Home {...props} handleGeneNameSearch={handleGeneNameSearch}/>
+                    )}
+                />
+                
                 {publicCellLineRoutes}
                 {modeContext==='private' ? privateCellLineRoutes : null}
 
@@ -246,7 +250,7 @@ function App() {
                 <Route><div className="f2 pa3 w-100 ma">Page not found</div></Route>
             </Switch>
             {searchAlert}
-        </div>
+        </>
     )
 }
 

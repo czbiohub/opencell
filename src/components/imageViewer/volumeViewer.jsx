@@ -9,7 +9,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { VolumeRenderShader1 } from './volumeShader.js';
 
 import 'tachyons';
-
+import './viewer.scss';
 
 export default class VolumeViewer extends Component {
 
@@ -155,12 +155,7 @@ export default class VolumeViewer extends Component {
         const aspect = width/height;
 
         this.scene = new THREE.Scene();
-        const canvas = d3.select(this.node)
-            .append('canvas')
-            .style('margin', 'auto')
-            .style('display', 'block')
-            .node();
-    
+        const canvas = d3.select(this.node).append('canvas').node();
         const context = canvas.getContext('webgl2');
         this.webGLRenderer = new THREE.WebGLRenderer({canvas, context});
         this.webGLRenderer.setPixelRatio(window.devicePixelRatio);
@@ -297,10 +292,7 @@ export default class VolumeViewer extends Component {
 
     render() {
         return (
-            <div 
-                ref={node => this.node = node}
-                style={{backgroundColor: 'black'}}
-            />
+            <div ref={node => this.node = node} className='canvas-container'/>
         );
     }
 }

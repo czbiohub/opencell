@@ -4,7 +4,7 @@ import * as d3 from 'd3';
 import React, { Component } from 'react';
 
 import 'tachyons';
-
+import './viewer.scss';
 
 export default class SliceViewer extends Component {
 
@@ -89,8 +89,6 @@ export default class SliceViewer extends Component {
         
         const canvas = d3.select(this.node)
                          .append('canvas')
-                         .style('margin', 'auto')
-                         .style('display', 'block')
                          .attr("width", this.imageSize)
                          .attr("height", this.imageSize);
         
@@ -115,7 +113,7 @@ export default class SliceViewer extends Component {
             .style('position', 'absolute')
             .style('height', '5px')
             .style('width', '48px')
-            .style('top', '680px')
+            .style('top', '660px')
             .style('left', '20px')
             .style('z-index', 999);
     }
@@ -284,9 +282,7 @@ export default class SliceViewer extends Component {
 
     render() {
         return (
-            <div>
-                <div ref={node => this.node = node} style={{backgroundColor: 'black'}}/>
-            </div>
+            <div ref={node => this.node = node} className='canvas-container'/>
         );
     }
 }

@@ -4,6 +4,7 @@ import React, { useState, useContext, useEffect } from 'react';
 import ReactTable from 'react-table';
 
 import * as utils from '../utils/utils.js';
+import './massSpecTableContainer.scss';
 
 
 const safeLog10 = value => {
@@ -32,7 +33,7 @@ const columnDefs = [
         accessor: row => parseFloat(row.enrichment?.toFixed(2)),
     },{
         id: 'abundance_stoich_log10',
-        Header: 'Abundance stoichiometry (log10)',
+        Header: 'Cellular abundance stoichiometry (log10)',
         accessor: row => parseFloat(safeLog10(row.abundance_stoich).toFixed(2)),
     },{
         id: 'interaction_stoich_log10',
@@ -143,7 +144,7 @@ export default function MassSpecTable (props) {
                 <ReactTable 
                     defaultPageSize={20}
                     showPageSizeOptions={true}
-                    filterable={true}
+                    filterable={false}
                     columns={columnDefs}
                     data={data}
                     getTrProps={(state, rowInfo, column) => {

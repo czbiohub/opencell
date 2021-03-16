@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import chroma from 'chroma-js';
 
-import * as annotationDefs from '../settings/annotationDefs.js';
+import * as annotationDefs from '../settings/annotationDefinitions.js';
 import './localizationAnnotations.css';
 
 

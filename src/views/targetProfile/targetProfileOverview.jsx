@@ -10,6 +10,7 @@ import { LocalizationAnnotations } from '../../components/localizationAnnotation
 import SequencingPlot from '../../components/sequencingPlot.jsx';
 import CellLineMetadataTable from '../../components/cellLineMetadataTable.jsx';
 import ExternalLinks from '../../components/externalLinks.jsx';
+import FunctionalAnnotation from '../../components/functionalAnnotation.jsx';
 
 import * as popoverContents from '../../components/popoverContents.jsx';
 import * as utils from '../../utils/utils.js';
@@ -52,7 +53,7 @@ export default class TargetProfileOverview extends Component {
 
     render () {
         return (
-            <div>
+            <>
                 <div className="flex" style={{minWidth: '1600px'}}>
 
                     {/* Left column - about box and expression and facs plots*/}
@@ -62,20 +63,17 @@ export default class TargetProfileOverview extends Component {
 
                         <SectionHeader 
                             title='Allele frequency' 
-                            popoverContent={popoverContents.aboutSequencing}
+                            popoverContent={popoverContents.sequencingHeader}
                         />
                         <SequencingPlot data={this.props.cellLine.sequencing}/>
 
-                        {/* 'About' textbox */}
-                        <div>
-                            <SectionHeader 
-                                title='About this protein' 
-                                popoverContent={popoverContents.aboutThisProteinHeader}
-                            />
-                            <div className='pt2 about-this-protein-container'>
-                                <p>{this.props.cellLine.uniprot_metadata?.annotation}</p>
-                            </div>
-                        </div>
+                        <SectionHeader 
+                            title='About this protein' 
+                            popoverContent={popoverContents.aboutThisProteinHeader}
+                        />
+                        <FunctionalAnnotation 
+                            content={this.props.cellLine.uniprot_metadata?.annotation}
+                        />
                         <ExternalLinks data={this.props.cellLine}/>
 
                         <SectionHeader 
@@ -98,20 +96,18 @@ export default class TargetProfileOverview extends Component {
 
                         {/* FACS plot */}
                         {this.context==='private' ? (
-                            <div>
+                            <>
                                 <SectionHeader title='FACS histograms'/>
                                 <FacsPlotContainer cellLineId={this.props.cellLineId}/>
-                            </div>
+                            </>
                         ) : null}
 
                     </div>
 
                     {/* Center column - sliceViewer and volumeViewer */}
                     {/* note the hard-coded width (because the ROIs are always 600px */}
-                    
-                    <div className="pt4" style={{width: '620px'}}>
+                    <div className="pt3" style={{width: '600px'}}>
                         <SectionHeader 
-                            border={true}
                             title='Fluorescence microscopy' 
                             popoverContent={popoverContents.microscopyHeader}
                         />
@@ -128,27 +124,30 @@ export default class TargetProfileOverview extends Component {
                     </div>
 
                     {/* Right column - cell line annotations or mass spec container */}
-                    <div className="pt4 pl4 pr4" style={{width: '750px'}}>
+                    <div className="pt3 pl4 pr4" style={{width: '700px'}}>
                         {this.props.showTargetAnnotator ? (
-                            <div>
+                            <>
                                 <SectionHeader title='Annotations'/>    
                                 <TargetAnnotator 
                                     cellLineId={this.props.cellLineId} 
                                     fovIds={this.state.fovs.map(fov => fov.metadata.id)}
                                 />
-                            </div>
+                            </>
                         ) : (
-                            <MassSpecContainer 
-                                layout='tabs'
-                                ensgId={this.props.cellLine.metadata.ensg_id}
-                                pulldownId={this.props.cellLine.best_pulldown?.id}
-                                geneName={this.props.cellLine.metadata?.target_name}
-                                handleGeneNameSearch={this.props.handleGeneNameSearch}
-                            />
+                            <>
+                                <SectionHeader title='Mass spectrometry'/>
+                                <MassSpecContainer 
+                                    layout='tabs'
+                                    ensgId={this.props.cellLine.metadata.ensg_id}
+                                    pulldownId={this.props.cellLine.best_pulldown?.id}
+                                    geneName={this.props.cellLine.metadata?.target_name}
+                                    handleGeneNameSearch={this.props.handleGeneNameSearch}
+                                />
+                            </>
                         )}
                     </div>
                 </div>
-            </div>
+            </>
         );
     }
 }

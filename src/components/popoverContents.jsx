@@ -7,7 +7,7 @@ import './popoverContents.css';
 
 const VSpace = props => <div style={{'height': '15px', width: '100%'}}/>;
 
-export const aboutThisProteinHeader = (
+const aboutThisProteinHeader = (
     <div className='popover-container-narrow'>
     <p>
     This is the functional annotation from UniprotKB for the currently selected protein.
@@ -15,7 +15,7 @@ export const aboutThisProteinHeader = (
     </div>
 );
 
-export const localizationHeader = (
+const localizationHeader = (
     <div className='popover-container-wide'>
     <p>
         These are protein localization categories determined by a human observer 
@@ -31,7 +31,7 @@ export const localizationHeader = (
     </div>
 );
 
-export const expressionLevelHeader = (
+const expressionLevelHeader = (
     <div className='popover-container-wide'>
         <p>
         This scatterplot compares two different measurements of protein expression 
@@ -45,7 +45,7 @@ export const expressionLevelHeader = (
     </div>
 );
 
-export const cellLineTableHeader = (
+const cellLineTableHeader = (
     <div className='popover-container-wide'>
         <p>
         This table lists all of the ~1200 genes that have been successfully tagged as part of OpenCell. 
@@ -59,64 +59,72 @@ export const cellLineTableHeader = (
     </div>
 );
 
-export const microscopyHeader = (
+const microscopyHeader = (
     <div className='popover-container-wide'>
         <p>
             Opencell targets are imaged in live cells using a spinning-disk 
-            confocal microscope with a 63x 1.45NA objective to acquire three-dimensional (z-stack) images. 
-            Three different ways of visualizing these images are available.
+            confocal microscope and a 63x high-NA objective. 
+            Cells are imaged in 3D by acquiring a stack of 2D confocal slices
+            to compose a three-dimensional image of the cell layer. 
+            There are three different ways of visualizing these 3D images:
         </p><p>
-            <b>Z-projection mode</b>: the maximum-intensity projection through the z-stack 
-            (along the z-axis) is displayed.
+            <b>2D projection mode</b>: this mode displays the maximum-intensity projection 
+            through the stack of confocal slices (along the z-axis). 
+            It provides a quick overview of the full 3D image.
         </p><p>
-            <b>Z-slice mode</b>: a single z-slice from the z-stack is displayed.
-            The horizontal slider below the image controls position of the displayed z-slice 
-            and can be used to 'scroll' through the z-stack.
+            <b>2D slice mode</b>: this mode displays a single confocal slice from the stack.
+            Use the horizontal slider below the image viewer to scroll through the slices in the stack.
         </p><p>
-            <b>Volume rendering:</b> this visualizes the entire z-stack at once 
-            using a three-dimensional volume rendering.
+            <b>3D rendering:</b> this mode displays the full 3D image using a volume rendering.
+            This kind of rendering reveals the 3D structure in the image by displaying bright regions in the image
+            as partially opaque 3D shapes. The degree of transparency is proportional to the intensity;
+            black (bakground) regions are completely transparent. 
         </p>
     </div>
 );
 
-export const microscopyChannel = (
+const microscopyChannel = (
     <div className='popover-container-narrow'>
     <p>
-        The <b>'Nucleus' channel</b> shows the signal from the Hoechst stain used to label the DNA.
+        Select the imaging channel to display. 
+    </p>
+    <p>
+        The <b>nucleus</b> channel shows the signal from the Hoechst stain used to label the DNA.
     </p><p>
-        The <b>'Target' channel</b> shows the signal from the mNeonGreen-tagged protein.
+        The <b>target</b> channel shows the signal from the split-mNeonGreen-tagged protein.
     </p><p>
-        When <b>both channels</b> are selected, the Hoechst staining is overlaid in blue 
-        on the mNeonGreen signal, which is shown in gray.
+        When the <b>'both channels'</b> option is selected, 
+        the nucleus channel (Hoechst staining) is overlaid in blue 
+        on top of the target channel (split-mNeonGreen signal), which is shown in gray.
     </p>
     </div>
 );
 
-export const microscopyImageQuality = (
+const microscopyImageQuality = (
     <div className='popover-container-narrow'>
     <p>
-        In <b>'auto' mode</b>, the images are heavily compressed to ensure fast loading times.
+        Select the quality of the 3D images.
+    </p><p>
+        When the quality is set to <b>auto</b>, 
+        the images are substantially compressed to ensure fast loading times.
         Compression artifacts will be visible in some images on this setting. 
     </p><p>
-        In <b>'high-quality' mode</b>, the images are lightly compressed to preserve image quality 
-        at the expense of longer loading times.
+        When the quality is set to <b>high</b>, the images are lightly compressed 
+        to preserve image quality, but at the expense of longer loading times.
     </p>
     </div>
 );
 
-export const microscopyFovSelection = (
+const microscopyFovSelection = (
     <div className='popover-container-narrow'>
     <p>
         Select the image to view from among all available images of the selected target. 
         Each image represents a different position, or field of view (FOV), on the microscope. 
-    </p><p>
-        Please note that the five-digit number identifying each FOV 
-        is not human-readable and is intended only for internal use. 
     </p>
     </div>
 );
 
-export const interactionNetworkHeader = (
+const interactionNetworkHeader = (
     <div className='popover-container-wide'>
     <p>
         The protein-protein interactions for the selected target, displayed 
@@ -145,7 +153,7 @@ export const interactionNetworkHeader = (
     </div>
 );
 
-export const scatterplotsHeader = (
+const scatterplotsHeader = (
     <div className='popover-container-wide'>
     <p>
     Scatter plots contain quantitative information about each protein-protein interaction (PPI) we measured. 
@@ -167,7 +175,7 @@ export const scatterplotsHeader = (
     as defined <a href='https://www.cell.com/cell/fulltext/S0092-8674(15)01270-2' target='_blank'>here</a>. 
     The <b>interaction stoichiometry</b> (on the x-axis) corresponds to the abundance ratio 
     of an interactor to that of the target protein in triplicate pull-downs.
-    The <b>abundance stoichiometry</b> (on the y-axis) corresponds to the abundance ratio from expression 
+    The <b>cellular abundance stoichiometry</b> (on the y-axis) corresponds to the abundance ratio from expression 
     in the whole cell. The shaded circle in the plot is the 'core-complex zone,' 
     determined empirically to be enriched for stable protein interactions.
     </p><p>
@@ -182,7 +190,7 @@ export const scatterplotsHeader = (
     </div>
 );
 
-export const interactionTableHeader = (
+const interactionTableHeader = (
     <div className='popover-container-wide'>
     <p>
     This table summarizes the quantitative properties of each interaction involving the selected target. 
@@ -192,7 +200,7 @@ export const interactionTableHeader = (
     Note that an OpenCell target can appear either as a bait or as a prey (or both) in the interactors table. 
     </p><p>
     The quantitative columns include the <b>p-value</b> (-log10) and the <b>relative enrichment </b>
-    from the volcano plot, as well as the <b>abundance stoichiometry</b>
+    from the volcano plot, as well as the <b>cellular abundance stoichiometry</b>
     and the <b>interaction stoichiometry</b> (both in log10) from the stoichiometry plot. 
     (for more details, refer to the scatterplot tab). 
     </p><p>
@@ -206,12 +214,38 @@ export const interactionTableHeader = (
     </div>
 );
 
-export const _ = (
+const sequencingHeader = null;
+const umapGridSize = null;
+const umapMarkerType = null;
+const umapSnapToGrid = null;
+
+
+// template
+const _ = (
     <div className='popover-container-narrow'>
     <p>
-        
-    </p><p>
-        
     </p>
     </div>
 );
+
+
+export {
+    aboutThisProteinHeader,
+    sequencingHeader,
+    localizationHeader,
+    expressionLevelHeader,
+    cellLineTableHeader,
+
+    microscopyHeader,
+    microscopyChannel,
+    microscopyFovSelection,
+    microscopyImageQuality,
+
+    interactionNetworkHeader,
+    scatterplotsHeader,
+    interactionTableHeader,
+
+    umapGridSize,
+    umapSnapToGrid,
+    umapMarkerType,
+}

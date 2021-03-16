@@ -7,9 +7,11 @@ import MassSpecScatterPlotContainer from './massSpecScatterPlot/massSpecScatterP
 import MassSpecNetworkContainer from './massSpecNetwork/massSpecNetworkContainer.jsx';
 import MassSpecTableContainer from './massSpecTableContainer.jsx';
 import SectionHeader from './sectionHeader.jsx';
+import {SimpleButton} from './buttonGroup.jsx';
+
 import * as popoverContents from './popoverContents.jsx';
 
-import './massSpecContainer.css'
+import './massSpecContainer.scss'
 
 function Tab (props) {
     return props.component;
@@ -18,34 +20,48 @@ function Tab (props) {
 function Tabs (props) {
 
     const [activeTabId, setActiveTabId] = useState(props.activeTabId);
+
     const tabs = props.children.map(child => {
-        const className = classNames(
-            'f4', 'mr4', 'pt1', 'pl2', 'pr2', 'flex', 'items-center', 'tab-header', 
-            {'tab-header-active': child.props.id===activeTabId}
-        );
-        return (
-            <div key={child.props.id} className={className} >
-                <div className='pr2' onClick={() => setActiveTabId(child.props.id)}>
-                    {child.props.title}
-                </div>
-                {child.props.popoverContent ? (
-                    <Popover>
-                        <Icon icon='info-sign' iconSize={12} color="#bbb"/>
-                        {child.props.popoverContent}
-                    </Popover>
-                ) : null}
+
+        // const className = classNames(
+        //     'f4', 'mr4', 'pt1', 'pl2', 'pr2', 'flex', 'items-center', 'tab-header', 
+        //     {'tab-header-active': child.props.id===activeTabId}
+        // );
+
+        const popover = child.props.popoverContent ? (
+            <div className='pl2'>
+                <Popover>
+                    <Icon icon='info-sign' iconSize={10} color="#bbb"/>
+                    {child.props.popoverContent}
+                </Popover>
             </div>
+        ) : null;
+
+        return (
+            <SimpleButton
+                active={child.props.id===activeTabId}
+                onClick={() => setActiveTabId(child.props.id)}
+                text={child.props.title}
+                key={child.props.id}
+            >
+                {popover}
+            </SimpleButton>
+
+            // <div key={child.props.id} className={className} >
+            //     <div className='pr2' onClick={() => setActiveTabId(child.props.id)}>
+            //         {child.props.title}
+            //     </div>
+            //     {popover}
+            // </div>
         );
     });
 
     const ActiveTab = props.children.filter(child => child.props.id===activeTabId)[0];
     return (
-        <div>
-            <div className="flex bb b--black-10">
-                {tabs}
-            </div>
+        <>
+            <div className="flex">{tabs}</div>
             {ActiveTab}
-        </div>
+        </>
     );
 }
 
@@ -83,7 +99,8 @@ export default function MassSpecContainer (props) {
         />
     );
 
-    if (props.layout==='tabs') return (
+    let content;
+    if (props.layout==='tabs') content = (
         <Tabs activeTabId='network'>
             <Tab 
                 id='network' 
@@ -99,14 +116,14 @@ export default function MassSpecContainer (props) {
             />
             <Tab 
                 id='table' 
-                title='Interactors table' 
+                title='Table of interactors' 
                 component={table}
                 popoverContent={popoverContents.interactionTableHeader}
             />
         </Tabs>
     );
 
-    if (props.layout==='columns') return (
+    if (props.layout==='columns') content = (
         <div className='flex'>
             <div className='w-50 pr3'>
                 <SectionHeader 
@@ -123,5 +140,9 @@ export default function MassSpecContainer (props) {
                 {table}
             </div>
         </div>
+    );
+
+    return (
+        <div className='pt1'>{content}</div>
     );
 }

@@ -234,8 +234,11 @@ function App() {
         <>
             <Navbar handleGeneNameSearch={handleGeneNameSearch}/>
             <Switch>
-                <Route path="/" exact={true} component={Home}/>
-
+                <Route path="/" exact={true} render={props => (
+                        <Home {...props} handleGeneNameSearch={handleGeneNameSearch}/>
+                    )}
+                />
+                
                 {publicCellLineRoutes}
                 {modeContext==='private' ? privateCellLineRoutes : null}
 

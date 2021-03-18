@@ -110,12 +110,12 @@ button:focus {
 }
 
 
-/* 
+/*
 Hacks to set the default style for input placeholder text
 note that pseudo-elements can't be listed, so these blocks are duplicates
 */
 /* firefox 19+ */
-::-moz-placeholder { 
+::-moz-placeholder {
     color: rgb(154, 154, 154);
     font-size: 14px;
     font-weight: normal;
@@ -123,7 +123,7 @@ note that pseudo-elements can't be listed, so these blocks are duplicates
 }
 
 /* Firefox 18- */
-:-moz-placeholder { 
+:-moz-placeholder {
     color: rgb(154, 154, 154);
     font-size: 14px;
     font-weight: normal;
@@ -162,6 +162,10 @@ label.bp3-label {
 
 .bp3-button.bp3-minimal {
 	border-radius: 0px;
+}
+
+.bp3-menu-item.bp3-intent-primary.bp3-active {
+    background-color: #828282 !important;
 }
 
 .bp3-button-custom {

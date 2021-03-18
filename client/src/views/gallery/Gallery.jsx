@@ -117,7 +117,7 @@ export default class Gallery extends Component {
             selectedCellLines: [],
 
             // whether to select lines that have any or all of the selected localization categories
-            selectionMode: 'All',
+            selectionMode: 'Any',
 
             fovs: [],
             rois: [],
@@ -199,9 +199,10 @@ export default class Gallery extends Component {
     componentDidMount () {
         // set the initial localization category (default to cytoskeleton)
         const params = new URLSearchParams(this.props.location.search);
+        const categories = params.get('localization')?.split(',') || ['cytoskeleton'];
         this.setState({
             selectedLocalizationCategories: this.allLocalizationCategories.filter(
-                item => item.name === (params.get('localization') || 'cytoskeleton')
+                item => categories.includes(item.name)
             )
         });
         this.loadMetadata();

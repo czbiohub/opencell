@@ -156,7 +156,7 @@ function App() {
         }
     }, []);
 
-    const publicCellLineRoutes = [
+    const publicRoutes = [
         <Route
             key='target'
             path="/target"
@@ -205,7 +205,7 @@ function App() {
         />
     ];
 
-    const privateCellLineRoutes = [
+    const privateRoutes = [
         <Route
             key='fovs'
             path="/fovs/:cellLineId"
@@ -229,7 +229,9 @@ function App() {
                     showTargetAnnotator
                 />
             )}
-        />
+        />,
+        <Route key='umap' path="/umap" component={UMAPContainer}/>,
+        <Route key='dashboard' path="/dashboard" component={Dashboard}/>
     ];
 
 
@@ -237,15 +239,12 @@ function App() {
         <>
         <Navbar handleGeneNameSearch={handleGeneNameSearch}/>
         <Switch>
-            {publicCellLineRoutes}
-            {modeContext==='private' ? privateCellLineRoutes : null}
+            {publicRoutes}
+            {modeContext==='private' ? privateRoutes : null}
 
             <Route path="/target"></Route>
             <Route path="/gallery" component={Gallery}/>
             <Route path="/about" component={About}/>
-            <Route path="/umap" component={UMAPContainer}/>
-            <Route path="/dashboard" component={Dashboard}/>
-
             <Route><div className="f2 pa3 w-100 ma">Page not found</div></Route>
         </Switch>
         </>

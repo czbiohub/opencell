@@ -25,7 +25,7 @@ const Stat = props => {
 const Thumbnail = props => {
     return (
         <div className='pr3 home-thumbnail-container'>
-            <Link to={`/gallery?localization=${props.label}`}>
+            <Link to={`/gallery?localization=${props.localizationCategory || props.label.toLowerCase()}`}>
                 <img src={props.src}/>
                 <div className='f5 b black-80'>{props.label}</div>
                 <div className='pt0 f6 black-30'>{props.minorLabel}</div>
@@ -113,35 +113,38 @@ export default function Home (props) {
             </div>
             <div className='pt3 flex justify-between'>
                 <Thumbnail
-                    src='/assets/images/home-thumbnails/WEE1.png'
-                    label='Nucleoplasm'
-                    minorLabel='674 proteins'
-                />
-                <Thumbnail
-                    src='/assets/images/home-thumbnails/NPM1.png'
                     label='Nucleolus'
                     minorLabel='137 proteins'
+                    localizationCategory='nucleolus_gc,nucleolus_fc_dfc'
+                    src='/assets/images/home-thumbnails/NPM1.png'
                 />
                 <Thumbnail
-                    src='/assets/images/home-thumbnails/MAP4.png'
-                    label='Cytoskeleton'
-                    minorLabel='60 proteins'
+                    label='Chromatin'
+                    minorLabel='145 proteins'
+                    src='/assets/images/home-thumbnails/H2BC21.png'
                 />
                 <Thumbnail
-                    src='/assets/images/home-thumbnails/BCAP31.png'
                     label='ER'
                     minorLabel='162 proteins'
+                    src='/assets/images/home-thumbnails/BCAP31.png'
                 />
                 <Thumbnail
-                    src='/assets/images/home-thumbnails/GOLGA2.png'
                     label='Golgi'
                     minorLabel='112 proteins'
+                    src='/assets/images/home-thumbnails/GOLGA2.png'
                 />
                 <Thumbnail
-                    src='/assets/images/home-thumbnails/RAC1.png'
+                    label='Cytoskeleton'
+                    minorLabel='60 proteins'
+                    src='/assets/images/home-thumbnails/MAP4.png'
+                />
+                <Thumbnail
                     label='Membrane'
                     minorLabel='191 proteins'
+                    src='/assets/images/home-thumbnails/RAC1.png'
                 />
+
+
             </div>
         </div>
 

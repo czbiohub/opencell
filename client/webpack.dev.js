@@ -22,8 +22,10 @@ const config = {
     },
 
     plugins: [
-        new webpack.DefinePlugin({API_URL: JSON.stringify('http://localhost:5000')}),
-        new webpack.DefinePlugin({DEFAULT_APP_MODE: JSON.stringify('private')}),
+
+        new webpack.DefinePlugin({APP_MODE: JSON.stringify('private')}),
+        new webpack.DefinePlugin({APP_SERVER: JSON.stringify('ess')}),
+        new webpack.DefinePlugin({API_URL: JSON.stringify('localhost:5000')}),
         new webpack.DefinePlugin({GA_TRACKING_ID: JSON.stringify('UA-000000000-0')})
     ]
 };

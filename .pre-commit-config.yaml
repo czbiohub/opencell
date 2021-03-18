@@ -6,5 +6,5 @@ repos:
     -   id: end-of-file-fixer
     -   id: trailing-whitespace
     -   id: flake8
-        exclude: legacy|doc|data|notebooks
+        exclude: legacy|doc|data|notebooks|client
         args: [--statistics]

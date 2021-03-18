@@ -10,7 +10,7 @@ export default function SequencingPlot (props) {
     };
 
     if (props.data.hdr===undefined) {
-        return <div className='pt2 pb3 f5 gray'>No sequencing data found</div>
+        return <div className='pt2 pb3 f5 gray'>No sequencing data available</div>
     }
 
     const styles = {
@@ -33,9 +33,9 @@ export default function SequencingPlot (props) {
     const bars = Object.keys(data).map(category => {
         const width = Math.round(100 * data[category]);
         if (width === 0) return null;
-        return <span 
+        return <span
             className='sequencing-bar'
-            key={category} 
+            key={category}
             style={{flexBasis: `${width}%`, ...styles[category]}}>
         </span>
     });

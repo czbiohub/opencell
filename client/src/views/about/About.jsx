@@ -50,11 +50,11 @@ export default function About (props) {
                     <div className='w-100 pt2'>
                         <p>
                         OpenCell is a collection of localization and interactome measurements
-                        for human proteins. It is a collaboration between 
+                        for human proteins. It is a collaboration between
                         the <Link href='https://www.czbiohub.org/manuel-leonetti-intracellular-architecture/'>Leonetti group</Link> at
-                        the Chan Zuckerberg Biohub and 
-                        the <Link href='https://www.biochem.mpg.de/mann'>Mann Lab</Link> at 
-                        the Max Plank Institute for Biochemistry, along with many other colleagues. 
+                        the Chan Zuckerberg Biohub and
+                        the <Link href='https://www.biochem.mpg.de/mann'>Mann Lab</Link> at
+                        the Max Plank Institute for Biochemistry, along with many other colleagues.
                         </p>
                         <p>
                         This project is still under development. Thanks for being an alpha tester!
@@ -66,14 +66,14 @@ export default function About (props) {
                             </li>
                             <li>
                             We use the canonical gene names defined by Uniprot and other reference databases;
-                            for example, 'CLTA' for clathrin light chain A and 'ACTB' for beta-actin. 
+                            for example, 'CLTA' for clathrin light chain A and 'ACTB' for beta-actin.
                             </li>
                             <li>
                             At the moment, this website is best viewed using either Firefox or Chrome
                             in a wide browser window on a laptop or desktop computer screen.
                             </li>
                             <li>
-                            We need your feedback! Write to us 
+                            We need your feedback! Write to us
                             at <Link href='mailto:opencell@czbiohub.org'>opencell@czbiohub.org</Link> to
                             tell us what you like or dislike.
                             </li>
@@ -81,7 +81,7 @@ export default function About (props) {
                         <p>
                         To get started, use the search box at the top right of the page to search
                         for a protein by name. Alternatively, jump to the page
-                        for one of our (subjectively) favorite proteins: <a href='./target/701'>POLR2F</a>, 
+                        for one of our (subjectively) favorite proteins: <a href='./target/701'>POLR2F</a>,
                         a shared subunit of RNA polymerases.
                         </p>
                     </div>
@@ -97,7 +97,7 @@ export default function About (props) {
 
                     <div className='about-item-container' style={{flex: '1 1 20%'}}>
                         <div className='about-item-icon-container'>
-                            <img src='/assets/images/cells_icon.png'/>
+                            <img src='/assets/images/icon_cells.png'/>
                         </div>
                         <div className='about-item-caption'>
                             All of our endogenous tags are in the <b>HEK293T</b> human cell line
@@ -106,36 +106,36 @@ export default function About (props) {
 
                     <div className='about-item-container' style={{flex: '1 1 35%'}}>
                         <div className='about-item-icon-container'>
-                            <img src='/assets/images/crispr_icon.png'/>
-                            <img src='/assets/images/sfp_tagging_icon.png'/>
+                            <img src='/assets/images/icon_crispr.png'/>
+                            <img src='/assets/images/icon_sfp_tagging.png'/>
                         </div>
                         <div className='about-item-caption'>
                             <p>
-                                Using CRISPR, 
-                                we <Link href='https://www.pnas.org/content/113/25/E3501'>endogenously tag</Link> our 
-                                target proteins 
+                                Using CRISPR,
+                                we <Link href='https://www.pnas.org/content/113/25/E3501'>endogenously tag</Link> our
+                                target proteins
                                 with <Link href='https://www.nature.com/articles/s41467-017-00494-8'>split-mNeonGreen<sub>2</sub></Link>.
                             </p>
                             <p>
-                                Whenever possible, we use existing literature or 3D protein structures 
-                                to determine the tag insertion site (N- or C-terminus). 
+                                Whenever possible, we use existing literature or 3D protein structures
+                                to determine the tag insertion site (N- or C-terminus).
                             </p>
                         </div>
                     </div>
 
                     <div className='about-item-container' style={{flex: '1 1 22%'}}>
                         <div className='about-item-icon-container'>
-                            <img src='/assets/images/microscope_icon.png'/>
+                            <img src='/assets/images/icon_microscope.png'/>
                         </div>
                         <div className='about-item-caption'>
-                            All images are of <b>living cells</b> and were acquired 
-                            using a spinning-disk confocal microscope with a 63x 1.45NA objective. 
+                            All images are of <b>living cells</b> and were acquired
+                            using a spinning-disk confocal microscope with a 63x 1.45NA objective.
                         </div>
                     </div>
 
                     <div className='about-item-container' style={{flex: '1 1 22%'}}>
                         <div className='about-item-icon-container'>
-                            <img src='/assets/images/mass_spec_icon.png'/>
+                            <img src='/assets/images/icon_mass_spec.png'/>
                         </div>
                         <div className='about-item-caption'>
                             We use an anti-mNeonGreen nanobody for immunoprecipitation and mass spectrometry.
@@ -177,7 +177,7 @@ export default function About (props) {
                         </Lightbox>
                         <div className='about-item-caption'>
                             <b>The gallery page</b> displays a tiled array of image thumbnails
-                            representing all of the tagged proteins in OpenCell, 
+                            representing all of the tagged proteins in OpenCell,
                             filtered by a user-selected set of localization annotations.
                         </div>
                     </div>

@@ -1,14 +1,105 @@
 
-div {
-    border: 1px solid #f99;
+.home-container {
+    min-width: 1100px;
+    max-width: 1400px;
 }
 
-.title {
-    font-size: 60px;
+.home-logo-container {
+    img {
+        width: 275px;
+    }
+    margin-top: 50px;
+}
+
+.home-title {
+    font-size: 72px;
     font-weight: bold;
+    font-family: "Lato";
+    //border-bottom: 1px solid #333;
 }
 
-.title-caption {
+.home-title-caption {
     font-size: 20px;
-    font-weight: 100;
+    font-weight: 200;
+    font-family: "Nunito Sans";
+    line-height: 1.5;
+}
+
+.home-menu {
+    border-style: solid;
+    border-color: #eee;
+    border-width: 0px 0 1px 0;
+    font-size: 16px;
+    a, a:visited {
+        color: #999;
+        padding-right: 25px;
+        &:hover {
+            text-decoration: none;
+            color: #333;
+        }
+    }
+}
+
+.search-bar-caption {
+    font-size: 24px;
+    font-weight: 300;
+    font-family: "Lato";
+}
+
+.search-bar-hint {
+    color: #999;
+    font-size: 12px;
+    a {
+        color: inherit;
+        text-decoration: underline;
+        &:hover {
+            color: #333;
+        }
+    }
+}
+
+@mixin input-shadow {
+    //box-shadow: 0 0 5px rgb(167, 167, 167);
+    //-webkit-box-shadow: 0 0 5px rgb(167, 167, 167);
+    border: 1px solid #aaa;
+    box-shadow: none;
+    -webkit-box-shadow: none;
+}
+
+.search-bar-container {
+    input {
+        height: 36px;
+        font-size: 16px;
+        background-color: white;
+        @include input-shadow;
+
+        // remove the blue outline
+        &:focus {
+            @include input-shadow;
+        }
+    }
+    ::placeholder, ::-webkit-input-placeholder {
+        vertical-align: center;
+    }
+    .bp3-popover-arrow {
+        left: 0px !important;
+    }
+}
+
+.home-thumbnail-container {
+    cursor: pointer;
+
+    img {
+        height: 120px;
+        width: 120px;
+        border-radius: 10px;
+    }
+
+    &:hover {
+        opacity: 0.7;
+    }
+
+    a:hover {
+        text-decoration: none;
+    }
 }

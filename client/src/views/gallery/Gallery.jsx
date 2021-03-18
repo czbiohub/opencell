@@ -28,13 +28,13 @@ function appendCategoryLabels (categories) {
 
 function Lightbox (props) {
     return (
-        <div 
-            className='lightbox-container' 
+        <div
+            className='lightbox-container'
             onClick={event => {
                 if (event.target.className==='lightbox-container') props.hideLightbox();
             }}>
-            <div 
-                className='pa3 br3 ba b--black-70' 
+            <div
+                className='pa3 br3 ba b--black-70'
                 style={{margin: 'auto', width: '650px', backgroundColor: 'white', overflowX: 'scroll'}}
             >
                 <div className='f3'>{`Microscopy images for ${props.targetName}`}</div>
@@ -58,13 +58,13 @@ function Thumbnail (props) {
     const metadata = props.cellLine.metadata;
     return (
         <div className='gallery-thumbnail-container'>
-            <img 
+            <img
                 className='thumbnail'
                 onClick={() => props.onThumbnailImageClick(metadata)}
                 src={`data:image/jpg;base64,${props.cellLine.best_fov?.thumbnails?.data}`}
             />
             <div className='gallery-thumbnail-caption'>
-                <span 
+                <span
                     className='f4 gallery-thumbnail-caption-link'
                     onClick={() => props.onThumbnailCaptionClick(metadata)}>
                     {`${metadata.target_name}`}
@@ -85,7 +85,7 @@ export default class Gallery extends Component {
 
         this.allQcCategories = appendCategoryLabels(annotationDefs.qcCategories);
         this.allTargetFamilies = appendCategoryLabels(annotationDefs.targetFamilies);
-        
+
         this.allLocalizationCategories = annotationDefs.publicLocalizationCategories;
         if (this.context==='private') {
             this.allLocalizationCategories = [
@@ -94,12 +94,12 @@ export default class Gallery extends Component {
             ];
         }
         this.allLocalizationCategories = appendCategoryLabels(this.allLocalizationCategories);
-    
+
         this.state = {
             loaded: false,
 
-            // set the default selected QC category to publication_ready 
-            // (note that in 'public' mode, the QC category selection component is hidden, 
+            // set the default selected QC category to publication_ready
+            // (note that in 'public' mode, the QC category selection component is hidden,
             // so only the publication-ready targets will be displayed)
             selectedQcCategories: this.allQcCategories.filter(
                 item => item.name === 'publication_ready'
@@ -150,13 +150,13 @@ export default class Gallery extends Component {
         // simplify the cell line metadata and strip the grades from the annotation categories
         let lines = this.cellLines.map(line => {
             return {
-                id: line.metadata.cell_line_id, 
+                id: line.metadata.cell_line_id,
                 family: line.metadata.target_family,
                 categories: line.annotation.categories?.map(name => name.replace(/_[1,2,3]$/, '')) || [],
             };
         });
 
-        // select the lines with *all* of the selected QC categories 
+        // select the lines with *all* of the selected QC categories
         for (let category of this.state.selectedQcCategories) {
             lines = lines.filter(line => line.categories.includes(category.name));
         }
@@ -197,6 +197,13 @@ export default class Gallery extends Component {
     }
 
     componentDidMount () {
+        // set the initial localization category (default to cytoskeleton)
+        const params = new URLSearchParams(this.props.location.search);
+        this.setState({
+            selectedLocalizationCategories: this.allLocalizationCategories.filter(
+                item => item.name === (params.get('localization') || 'cytoskeleton')
+            )
+        });
         this.loadMetadata();
     }
 
@@ -208,7 +215,7 @@ export default class Gallery extends Component {
         if (prevState.cellLineId!==this.state.cellLineId) {
             utils.getAnnotatedFovMetadata(
                 this.state.cellLineId, fovState => this.setState({...fovState})
-            );    
+            );
         }
     }
 
@@ -220,11 +227,12 @@ export default class Gallery extends Component {
 
         const thumbnails = this.state.selectedCellLines.map(line => {
             return (
-                <Thumbnail 
-                    cellLine={line} 
+                <Thumbnail
+                    key={line.metadata.cell_line_id}
+                    cellLine={line}
                     onThumbnailImageClick={metadata => {
                         this.setState({
-                            cellLineId: metadata.cell_line_id, 
+                            cellLineId: metadata.cell_line_id,
                             targetName: metadata.target_name,
                             showLightbox: true,
                         });
@@ -284,8 +292,8 @@ export default class Gallery extends Component {
                             onClick={value => this.setState({selectionMode: value})}
                         />
                         <div className='pt3'>
-                            <div 
-                                className='f4 pl2 pr2 simple-button' 
+                            <div
+                                className='f4 pl2 pr2 simple-button'
                                 onClick={() => {this.setState({reload: true})}}
                             >
                             {'Load'}
@@ -312,4 +320,3 @@ export default class Gallery extends Component {
         );
     }
 }
-

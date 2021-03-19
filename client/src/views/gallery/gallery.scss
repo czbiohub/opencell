@@ -37,13 +37,14 @@
 .gallery-thumbnail-container {
     margin: 7px;
     height: auto;
+    &:hover {
+        opacity: 0.7;
+    }
     img {
         width: 100%;
+        cursor: pointer;
         border-top-left-radius: 7px;
         border-top-right-radius: 7px;
-    }
-    img:hover {
-        opacity: 70%;
     }
     .gallery-thumbnail-caption {
         color: #ddd;

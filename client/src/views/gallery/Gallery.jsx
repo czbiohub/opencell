@@ -2,6 +2,7 @@
 import * as d3 from 'd3';
 import React, { Component } from 'react';
 import classNames from 'classnames';
+import {Popover, Icon} from '@blueprintjs/core';
 
 import 'tachyons';
 import 'react-table/react-table.css';
@@ -10,6 +11,7 @@ import "@blueprintjs/core/lib/css/blueprint.css";
 import ViewerContainer from '../../components/imageViewer/viewerContainer.jsx';
 import MultiSelectContainer from './multiSelectContainer.jsx';
 import ButtonGroup from '../../components/buttonGroup.jsx';
+import * as popoverContents from '../../components/popoverContents.jsx';
 
 import settings from '../../settings/settings.js';
 import * as utils from '../../utils/utils.js';
@@ -85,15 +87,7 @@ export default class Gallery extends Component {
 
         this.allQcCategories = appendCategoryLabels(annotationDefs.qcCategories);
         this.allTargetFamilies = appendCategoryLabels(annotationDefs.targetFamilies);
-
-        this.allLocalizationCategories = annotationDefs.publicLocalizationCategories;
-        if (this.context==='private') {
-            this.allLocalizationCategories = [
-                ...annotationDefs.publicLocalizationCategories,
-                ...annotationDefs.privateLocalizationCategories,
-            ];
-        }
-        this.allLocalizationCategories = appendCategoryLabels(this.allLocalizationCategories);
+        this.allLocalizationCategories = appendCategoryLabels(annotationDefs.localizationCategories);
 
         this.state = {
             loaded: false,
@@ -105,10 +99,7 @@ export default class Gallery extends Component {
                 item => item.name === 'publication_ready'
             ),
 
-            // set the default localization category to something pretty
-            selectedLocalizationCategories: this.allLocalizationCategories.filter(
-                item => item.name === 'cytoskeleton'
-            ),
+            selectedLocalizationCategories: [],
 
             // no families selected by default (and these are hidden in public mode)
             selectedTargetFamilies: [],
@@ -226,6 +217,13 @@ export default class Gallery extends Component {
 
     render () {
 
+        let localizationCategories = this.allLocalizationCategories;
+        if (this.context==='public') {
+            localizationCategories = this.allLocalizationCategories.filter(
+                cat => cat.status==='public'
+            );
+        }
+
         const thumbnails = this.state.selectedCellLines.map(line => {
             return (
                 <Thumbnail
@@ -273,25 +271,39 @@ export default class Gallery extends Component {
         return (
             <>
                 <div className="pa4 w-100">
-                    <div className="flex" style={{alignItems: 'flex-start'}}>
+                    <div className="pl4 flex items-center">
+
+                        {/* localization annotations multiselect */}
                         <div className="pr3 w-33">
-                            <div className="f4">{"Select localization annotations"}</div>
+                            <div className="f4 flex">
+                                <div className='pr2'>{"Select localization annotations"}</div>
+                                <Popover>
+                                    <Icon icon='info-sign' iconSize={12} color="#bbb"/>
+                                    {popoverContents.gallerySelectLocalization}
+                                </Popover>
+                            </div>
                             <MultiSelectContainer
-                                items={this.allLocalizationCategories}
+                                items={localizationCategories}
                                 selectedItems={this.state.selectedLocalizationCategories}
                                 updateSelectedItems={
                                     items => this.updateCategories('selectedLocalizationCategories', items)
                                 }
                             />
                         </div>
+
                         {this.context==='private' ? privateMultiSelectContainers : null}
+
+                        {/* any/all buttons */}
                         <ButtonGroup
                             className='pr3'
                             label='Selection mode'
                             values={['Any', 'All']}
                             activeValue={this.state.selectionMode}
+                            popoverContent={popoverContents.gallerySelectionMode}
                             onClick={value => this.setState({selectionMode: value})}
                         />
+
+                        {/* load button */}
                         <div className='pt3'>
                             <div
                                 className='f4 pl2 pr2 simple-button'

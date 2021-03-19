@@ -67,7 +67,7 @@ export default function Home (props) {
 
                     <div className='pl5'>
 
-                        <div className='pt1 flex flex-row home-menu'>
+                        <div className='pt1 flex flex-row home-menu-container'>
                             <a href='./target'><SimpleButton>Targets</SimpleButton></a>
                             <a href='./gallery'><SimpleButton>Gallery</SimpleButton></a>
                             <a href='./'><SimpleButton>How to</SimpleButton></a>

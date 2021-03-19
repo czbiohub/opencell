@@ -69,7 +69,7 @@ export default function CellLineMetadataTable (props) {
     });
 
     return (
-        <div className="flex-wrap items-center pt3 pb3 clm-container">
+        <div className="flex-wrap items-center pt2 pb3 clm-container">
 
             {/* protein name */}
             <div className="w-100 blue clm-target-name">
@@ -77,7 +77,7 @@ export default function CellLineMetadataTable (props) {
             </div>
 
             {/* protein descriptoin */}
-            <div className="w-100 clm-protein-description pt2 pb2">
+            <div className="w-100 pt1 pb2 clm-protein-description">
                 {props.data.uniprot_metadata?.protein_name}
             </div>
             {metadataItems}

@@ -1,4 +1,12 @@
 
+.home-banner-container {
+    line-height: 0;
+    background-color: #eee;
+    img {
+        mix-blend-mode: darken;
+    }
+}
+
 .home-container {
     min-width: 1100px;
     max-width: 1400px;
@@ -106,7 +114,7 @@
 }
 
 .see-more-link {
-    font-size: 18px;
+    font-size: 20px;
     font-family: "Lato";
     font-weight: 300;
     a {

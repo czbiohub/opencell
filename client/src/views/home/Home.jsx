@@ -44,6 +44,10 @@ export default function Home (props) {
     useEffect(() => {d3.selectAll('input').attr('placeholder', '')}, []);
 
     return (
+        <>
+        <div className='w-100 home-banner-container'>
+            <img src='/assets/images/home_banner_color.png'/>
+        </div>
 
         <div className='flex justify-center'>
 
@@ -155,5 +159,6 @@ export default function Home (props) {
 
         </div>
     </div>
+    </>
     );
 }

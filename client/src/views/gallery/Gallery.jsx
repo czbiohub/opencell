@@ -18,7 +18,7 @@ import * as utils from '../../utils/utils.js';
 import * as annotationDefs from '../../settings/annotationDefinitions.js';
 import {cellLineMetadataDefinitions} from '../../settings/metadataDefinitions.js';
 
-import './gallery.css';
+import './gallery.scss';
 
 
 function appendCategoryLabels (categories) {
@@ -35,10 +35,7 @@ function Lightbox (props) {
             onClick={event => {
                 if (event.target.className==='lightbox-container') props.hideLightbox();
             }}>
-            <div
-                className='pa3 br3 ba b--black-70'
-                style={{margin: 'auto', width: '650px', backgroundColor: 'white', overflowX: 'scroll'}}
-            >
+            <div className='pa3 lightbox-content-container'>
                 <div className='f3'>{`Microscopy images for ${props.targetName}`}</div>
                 <ViewerContainer
                     cellLineId={props.cellLineId}
@@ -61,18 +58,16 @@ function Thumbnail (props) {
     return (
         <div className='gallery-thumbnail-container'>
             <img
-                className='thumbnail'
                 onClick={() => props.onThumbnailImageClick(metadata)}
                 src={`data:image/jpg;base64,${props.cellLine.best_fov?.thumbnails?.data}`}
             />
             <div className='gallery-thumbnail-caption'>
-                <span
-                    className='f4 gallery-thumbnail-caption-link'
+                <div
+                    className='f5 b gallery-thumbnail-caption-link'
                     onClick={() => props.onThumbnailCaptionClick(metadata)}>
                     {`${metadata.target_name}`}
-                </span>
-                <br/>
-                <span className='f6'>{`${proteinNameDef.accessor(props.cellLine)}`}</span>
+                </div>
+                 <div className='f6'>{`${proteinNameDef.accessor(props.cellLine)}`}</div>
             </div>
         </div>
     );
@@ -314,7 +309,7 @@ export default class Gallery extends Component {
                         </div>
                     </div>
 
-                    <div className='pa3 gallery-thumbnail-grid-container'>{thumbnails}</div>
+                    <div className='pa3 gallery-thumbnail-grid'>{thumbnails}</div>
 
                 </div>
 

@@ -67,22 +67,22 @@ export default function Home (props) {
 
                     <div className='pl5'>
 
-                        <div className='pt1 flex flex-row home-menu-container'>
-                            <a href='./target'><SimpleButton>Targets</SimpleButton></a>
-                            <a href='./gallery'><SimpleButton>Gallery</SimpleButton></a>
-                            <a href='./'><SimpleButton>How to</SimpleButton></a>
-                            <a href='./about'><SimpleButton>About</SimpleButton></a>
-                        </div>
-
                         <div className='home-title'>
                             <span>OpenCell</span>
                         </div>
 
-                        <div className='pt2 home-title-caption'>
+                        <div className='pt1 home-title-caption'>
                             <span>
                                 Proteome-scale measurements<br></br>
                                 of human protein localization and interactions
                             </span>
+                        </div>
+
+                        <div className='pt3 flex flex-row home-menu-container'>
+                            <a href='./target'><SimpleButton>Targets</SimpleButton></a>
+                            <a href='./gallery'><SimpleButton>Gallery</SimpleButton></a>
+                            <a href='./'><SimpleButton>How to</SimpleButton></a>
+                            <a href='./about'><SimpleButton>About</SimpleButton></a>
                         </div>
 
                         <div className='pt4 search-bar-container'>

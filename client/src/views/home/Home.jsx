@@ -10,6 +10,7 @@ import "@blueprintjs/core/lib/css/blueprint.css";
 
 import SearchBar from '../../components/searchBar.jsx';
 import settings from '../../settings/settings.js';
+import { SimpleButton } from '../../components/buttonGroup.jsx';
 
 import './Home.scss';
 
@@ -62,14 +63,15 @@ export default function Home (props) {
 
                     <div className='pl5'>
 
-                        <div className='pt1 home-menu'>
-                            <a href='./target'>Targets</a>
-                            <a href='./gallery'>Gallery</a>
-                            <a href='./about'>About</a>
+                        <div className='pt1 flex flex-row home-menu'>
+                            <a href='./target'><SimpleButton>Targets</SimpleButton></a>
+                            <a href='./gallery'><SimpleButton>Gallery</SimpleButton></a>
+                            <a href='./'><SimpleButton>How to</SimpleButton></a>
+                            <a href='./about'><SimpleButton>About</SimpleButton></a>
                         </div>
 
                         <div className='home-title'>
-                            <span>Opencell</span>
+                            <span>OpenCell</span>
                         </div>
 
                         <div className='pt2 home-title-caption'>
@@ -89,7 +91,7 @@ export default function Home (props) {
                                 {'For example: '}
                                 <a href='./target/828'>MAP4</a>{', '}
                                 <a href='./target/701'>POLR2F</a>{', '}
-                                <a href='./search/golgi'>golgi</a>{', '}
+                                <a href='./search/golgi'>Golgi</a>{', '}
                                 <a href='./search/mediator%20complex'>mediator complex</a>{''}
                             </div>
                         </div>
@@ -143,8 +145,11 @@ export default function Home (props) {
                     minorLabel='191 proteins'
                     src='/assets/images/home-thumbnails/RAC1.png'
                 />
-
-
+            </div>
+            <div className='pt3 flex flex-row justify-center'>
+                <div className='see-more-link'>
+                    <a href='./gallery'>See all 18 localization categories</a>
+                </div>
             </div>
         </div>
 

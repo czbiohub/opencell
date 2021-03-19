@@ -12,6 +12,7 @@
 }
 
 .home-title {
+    color: #05aeef;
     font-size: 72px;
     font-weight: bold;
     font-family: "Lato";
@@ -28,7 +29,7 @@
 .home-menu {
     border-style: solid;
     border-color: #eee;
-    border-width: 0px 0 1px 0;
+    border-width: 0px 0 0px 0;
     font-size: 18px;
     a, a:visited {
         color: #999;
@@ -48,7 +49,7 @@
 
 .search-bar-hint {
     color: #999;
-    font-size: 12px;
+    font-size: 14px;
     a {
         color: inherit;
         text-decoration: underline;
@@ -101,5 +102,17 @@
 
     a:hover {
         text-decoration: none;
+    }
+}
+
+.see-more-link {
+    font-size: 18px;
+    font-family: "Lato";
+    font-weight: 300;
+    a {
+        color: #999;
+        &:hover {
+            color: #333;
+        }
     }
 }

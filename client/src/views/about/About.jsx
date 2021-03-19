@@ -38,36 +38,28 @@ export default function About (props) {
             {/* first row - logo and welcome blurb */}
             <div className='w-100 flex items-center'>
 
-                {/* large opencell logo */}
-                <div className='' style={{width: '220px'}}>
+                {/* large opencell logo - hard-coded width to match the SVG width */}
+                <div className='pr5' style={{width: '300px'}}>
                     <CellGraphic/>
                     {/* <img src='/assets/images/opencell_logo_v2.png'/> */}
                 </div>
 
                 {/* welcome blurb */}
-                <div className='w-70 pl5'>
-                    <div className='w-100 f2'>Welcome to OpenCell!</div>
+                <div className='w-60 pl3'>
+                    <div className='w-100 f2'>About OpenCell</div>
                     <div className='w-100 pt2'>
                         <p>
-                        OpenCell is a collection of localization and interactome measurements
+                        OpenCell is a proteome-scale collection of localization and interactome measurements
                         for human proteins. It is a collaboration between
-                        the <Link href='https://www.czbiohub.org/manuel-leonetti-intracellular-architecture/'>Leonetti group</Link> at
+                        the <Link href='https://www.czbiohub.org/manuel-leonetti-intracellular-architecture/'>
+                            Leonetti group
+                        </Link> at
                         the Chan Zuckerberg Biohub and
                         the <Link href='https://www.biochem.mpg.de/mann'>Mann Lab</Link> at
                         the Max Plank Institute for Biochemistry, along with many other colleagues.
                         </p>
-                        <p>
-                        This project is still under development. Thanks for being an alpha tester!
-                        We ask that you keep in mind a few important points:
-                        </p>
+
                         <ul className='about-page-bullets'>
-                            <li>
-                            <b>Please keep our data confidential and do not share login credentials.</b>
-                            </li>
-                            <li>
-                            We use the canonical gene names defined by Uniprot and other reference databases;
-                            for example, 'CLTA' for clathrin light chain A and 'ACTB' for beta-actin.
-                            </li>
                             <li>
                             At the moment, this website is best viewed using either Firefox or Chrome
                             in a wide browser window on a laptop or desktop computer screen.
@@ -80,9 +72,9 @@ export default function About (props) {
                         </ul>
                         <p>
                         To get started, use the search box at the top right of the page to search
-                        for a protein by name. Alternatively, jump to the page
-                        for one of our (subjectively) favorite proteins: <a href='./target/701'>POLR2F</a>,
-                        a shared subunit of RNA polymerases.
+                        for a protein by name, or check out
+                        the <a href='./target/701'>gallery page</a> to
+                        see collections of tagged proteins filtered by subcellular localization categories.
                         </p>
                     </div>
                 </div>

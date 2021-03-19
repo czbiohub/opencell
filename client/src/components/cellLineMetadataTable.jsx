@@ -53,9 +53,9 @@ export default function CellLineMetadataTable (props) {
     const metadataItems = itemLayouts.map(item => {
         const def = cellLineMetadataDefinitions.filter(def => def.id===item.id)[0];
         return (
-            <div 
-                key={def.id} 
-                className='pr2 pt2 pb2 clm-item clm-overflow-hidden' 
+            <div
+                key={def.id}
+                className='pr2 pt1 pb1 clm-item clm-overflow-hidden'
                 style={{flex: `1 1 ${item.width}%`}}
             >
                 <MetadataItem
@@ -84,4 +84,3 @@ export default function CellLineMetadataTable (props) {
         </div>
     );
 }
-

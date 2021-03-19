@@ -86,7 +86,9 @@ export default class SearchBar extends Component {
                 fill
                 minimal
                 className=''
-                initialContent={this.props.initialContent || 'Enter a protein name or a keyword'}
+                openOnKeyDown
+                initialContent={null}
+                popoverProps={{minimal: true}}
                 items={this.state.loaded ? this.items : []}
                 itemListPredicate={this.filterItems}
                 itemRenderer={this.renderItem}

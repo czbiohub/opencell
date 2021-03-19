@@ -46,9 +46,7 @@ export function LocalizationAnnotations (props) {
     gradedCategories.sort((a, b) => a.grade > b.grade ? -1 : 1);
 
     return (
-        <div className="pt2 pb3">
-            <div className='w-90 flex b pb1'>
-            </div>
+        <div className="pt1 pb3">
             {gradedCategories.map(category => {
                 return <LocalizationAnnotation
                     key={category.name}

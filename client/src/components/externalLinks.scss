@@ -1,0 +1,14 @@
+
+.external-links-container {
+    a {
+        padding-left: 10px;
+        padding-right: 10px;
+        border-right: 1px solid #aaa;
+        &:first-child {
+            padding-left: 0px;
+        }
+        &:last-child {
+            border: none;
+        }
+    }
+}

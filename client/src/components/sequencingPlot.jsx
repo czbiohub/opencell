@@ -51,7 +51,7 @@ export default function SequencingPlot (props) {
     });
 
     return (
-        <div className='w-100 pt2 pb3'>
+        <div className='w-100 pt1 pb3'>
             <span className='w-100 flex flex-row sequencing-bar-container'>{bars}</span>
             <div className='w-100 flex flex-row pt2'>{legend}</div>
         </div>

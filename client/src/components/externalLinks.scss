@@ -3,12 +3,17 @@
     a {
         padding-left: 10px;
         padding-right: 10px;
-        border-right: 1px solid #aaa;
+        border-right: 1px solid #ccc;
+        color: #333;
+        text-decoration: underline;
         &:first-child {
             padding-left: 0px;
         }
         &:last-child {
             border: none;
+        }
+        &:hover {
+            color: #999;
         }
     }
 }

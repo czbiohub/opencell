@@ -15,7 +15,7 @@ class ExpressionPlot extends Component {
         super(props);
 
         // highlight the selected cell line's dot in blue
-        this.selectedCellLineColor = '#86bce3';
+        this.selectedCellLineColor = '#00a1dd';
 
         // y-axis is tpm from RNA-seq
         const yExtent = [0, 4];
@@ -39,7 +39,7 @@ class ExpressionPlot extends Component {
 
         // legend
         const foregroundGraphics = [(
-            <text key={'active'} x={70} y={30} style={{fill: chroma(this.selectedCellLineColor).darken()}}>
+            <text key={'active'} x={70} y={30} style={{fill: chroma(this.selectedCellLineColor)}}>
                 <tspan fontSize="14">{'● Selected cell line'}</tspan>
             </text>
         ),(

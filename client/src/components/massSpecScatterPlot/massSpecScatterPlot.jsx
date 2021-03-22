@@ -19,7 +19,7 @@ export default class MassSpecScatterPlot extends Component {
         this.state = {
             loaded: false,
         };
-        
+
         // the list of mass spec hits populated in constructData from the pulldown/ endpoint
         this.hits = [];
 
@@ -40,7 +40,7 @@ export default class MassSpecScatterPlot extends Component {
         this.enrichmentAccessor = d => parseFloat(d.enrichment);
         this.abundanceStoichAccessor = d => parseFloat(d.abundance_stoich);
         this.interactionStoichAccessor = d => parseFloat(d.interaction_stoich);
-        
+
         this.onZoom = this.onZoom.bind(this);
         this.resetZoom = this.resetZoom.bind(this);
         this.hitIsSignificant = this.hitIsSignificant.bind(this);
@@ -55,7 +55,7 @@ export default class MassSpecScatterPlot extends Component {
         const dx = 0.01;
         const radius = 1;
         const offset = -0.3;
-    
+
         // top and bottom halves of a circular region
         const topArc = d3.range(-radius + offset, radius + offset + dx, dx).map(x => {
             return {x, y: Math.sqrt(radius**2 - (x - offset)**2)}
@@ -77,14 +77,16 @@ export default class MassSpecScatterPlot extends Component {
             const notSigHitColor = chroma('#333').alpha(0.2);
             if (d.is_bait) return baitColor
             if (!this.hitIsSignificant(d)) return notSigHitColor;
-            return d.is_minor_hit ? minorSigHitColor : majorSigHitColor;
+            // return d.is_minor_hit ? minorSigHitColor : majorSigHitColor;
+            return majorSigHitColor;
         }
 
         this.calcDotClass = d => {
             // use this to experiment with the dot colors by editing the css classes in devtools
             if (d.is_bait) return 'bait-dot';
             if (!this.hitIsSignificant(d)) return 'not-sig-hit-dot';
-            return d.is_minor_hit ? 'minor-sig-hit-dot' : 'major-sig-hit-dot';
+            // return d.is_minor_hit ? 'minor-sig-hit-dot' : 'major-sig-hit-dot';
+            return 'major-sig-hit-dot';
         }
 
         this.calcDotStroke = d => {
@@ -93,9 +95,9 @@ export default class MassSpecScatterPlot extends Component {
             if (d.opencell_target_names?.length) return chroma('#333').alpha(.9);
             return chroma(this.calcDotColor(d)).darken(2);
         }
-    
+
         this.calcDotRadius = d => {
-        
+
             const minRadius = 2;
 
             // constant dot size in stoichoimetry mode
@@ -179,7 +181,7 @@ export default class MassSpecScatterPlot extends Component {
                 // construct a label from the gene names (there is one gene name for each ensg_id)
                 hit.label = hit.uniprot_gene_names?.sort().join(', ');
             });
-                        
+
             this.hits = [...sigHits, ...nonSigHits];
 
             // create a unique id for each hit
@@ -208,7 +210,7 @@ export default class MassSpecScatterPlot extends Component {
 
 
     constructFDRCurve (fdrParams) {
-        // 
+        //
         // for reference: parameters for 5% FDR calculated from 2019-08-02 data were
         // fdrParams = {x0: 1.62, c: 4.25};
 
@@ -243,7 +245,7 @@ export default class MassSpecScatterPlot extends Component {
             const log10 = value => value ? Math.log10(value) : undefined;
             this.xAxisAccessor = hit => log10(this.interactionStoichAccessor(hit));
             this.yAxisAccessor = hit => log10(this.abundanceStoichAccessor(hit));
-            
+
             // use hard-coded min/max values
             const pad = 0.25;
             this.minX = hits => -5 - pad;
@@ -264,7 +266,7 @@ export default class MassSpecScatterPlot extends Component {
         // override manuallly defined widths
         p.width = ReactDOM.findDOMNode(this.node).offsetWidth;
         p.height = p.width * p.aspectRatio;
-        
+
         const svg = d3.select(this.node)
             .append('svg')
             .attr('width', p.width)
@@ -275,7 +277,7 @@ export default class MassSpecScatterPlot extends Component {
             .append('div')
             .attr('class', 'f2 tc loading-overlay')
             .style('visibility', 'hidden');
-                
+
         this.xScale = d3.scaleLinear().range([p.padLeft, p.width - p.padRight]);
         this.yScale = d3.scaleLinear().range([p.height - p.padBottom, p.padTop]);
 
@@ -285,7 +287,7 @@ export default class MassSpecScatterPlot extends Component {
 
         this.yAxis = d3.axisLeft(this.yScale)
             .tickSize(-p.width + p.padLeft + p.padRight, 0)
-            .ticks(p.numTicks);  
+            .ticks(p.numTicks);
 
         // y axis container
         svg.append("g")
@@ -349,8 +351,8 @@ export default class MassSpecScatterPlot extends Component {
 
         // define the lines for FDR curves and the core complex circle
         this.fdrLines = {
-            oneLeft: g.append("path").attr("class", "volcano-fdr-path"),
-            oneRight: g.append("path").attr("class", "volcano-fdr-path"),
+            // oneLeft: g.append("path").attr("class", "volcano-fdr-path"),
+            // oneRight: g.append("path").attr("class", "volcano-fdr-path"),
             fiveLeft: g.append("path").attr("class", "volcano-fdr-path"),
             fiveRight: g.append("path").attr("class", "volcano-fdr-path"),
         }
@@ -414,24 +416,24 @@ export default class MassSpecScatterPlot extends Component {
             .attr("r", dotSize)
             .attr("fill", this.calcDotColor(d))
             .attr("stroke", this.calcDotStroke(d));
-        appendText(lineNum, "Major hit");
+        appendText(lineNum, "Significant hit");
 
-        // 'minor' significant hits
-        lineNum = 2;
-        d = {is_bait: false, is_significant_hit: true, is_minor_hit: true};
-        legend.append("circle")
-            .attr("cx", padLeft)
-            .attr("cy", padTop + lineNum * lineHeight)
-            .attr("r", dotSize)
-            .attr("fill", this.calcDotColor(d))
-            .attr("stroke", this.calcDotStroke(d));
-        appendText(lineNum, "Minor hit");
+        // // 'minor' significant hits
+        // lineNum = 2;
+        // d = {is_bait: false, is_significant_hit: true, is_minor_hit: true};
+        // legend.append("circle")
+        //     .attr("cx", padLeft)
+        //     .attr("cy", padTop + lineNum * lineHeight)
+        //     .attr("r", dotSize)
+        //     .attr("fill", this.calcDotColor(d))
+        //     .attr("stroke", this.calcDotStroke(d));
+        // appendText(lineNum, "Minor hit");
 
         // no need for non-sig hits or FDR curves in stoich mode
         if (this.props.mode==="Stoichiometry") return;
 
         // not-significant hits
-        lineNum = 3;
+        lineNum = 2;
         d = {is_bait: false, is_significant_hit: false, is_minor_hit: false};
         legend.append("circle")
             .attr("cx", padLeft)
@@ -442,14 +444,14 @@ export default class MassSpecScatterPlot extends Component {
         appendText(lineNum, "Non-significant hit");
 
         // FDR curves
-        lineNum = 4;
+        lineNum = 3;
         legend.append("line")
             .attr("x1", padLeft - 10)
             .attr("x2", padLeft + 10)
             .attr("y1", padTop + lineNum * lineHeight)
             .attr("y2", padTop + lineNum * lineHeight)
             .attr("class", "volcano-fdr-path");
-        appendText(lineNum, "1% and 5% FDR curves");
+        appendText(lineNum, "Statistical significance threshold");
 
     }
 
@@ -472,8 +474,8 @@ export default class MassSpecScatterPlot extends Component {
         this.loadingDiv.style('visibility', 'hidden');
 
         // update the FDR curve data
-        this.fdrLines.oneLeft.datum(this.onePercentFDRData.left);
-        this.fdrLines.oneRight.datum(this.onePercentFDRData.right);
+        // this.fdrLines.oneLeft.datum(this.onePercentFDRData.left);
+        // this.fdrLines.oneRight.datum(this.onePercentFDRData.right);
         this.fdrLines.fiveLeft.datum(this.fivePercentFDRData.left);
         this.fdrLines.fiveRight.datum(this.fivePercentFDRData.right);
 
@@ -484,7 +486,7 @@ export default class MassSpecScatterPlot extends Component {
         } else {
             hits = this.hits;
         }
-    
+
         // dynamically determine the domain of the plot
         this.xScale.domain([this.minX(hits), this.maxX(hits)]);
         this.yScale.domain([this.minY(hits), this.maxY(hits)]);
@@ -497,16 +499,16 @@ export default class MassSpecScatterPlot extends Component {
             xScale = this.zoomTransform.rescaleX(xScale);
             yScale = this.zoomTransform.rescaleY(yScale);
         }
-    
+
         // update the line generator
         const line = d3.line().x(d => xScale(d.x)).y(d => yScale(d.y));
-    
+
         if (this.props.mode==='Volcano') {
             for (const fdrLine of Object.values(this.fdrLines)) {
                 fdrLine.style('visibility', 'visible').attr('d', line);
             }
             this.coreComplexRegion.style('visibility', 'hidden');
-        } 
+        }
         if (this.props.mode==='Stoichiometry') {
             for (const fdrLine of Object.values(this.fdrLines)) {
                 fdrLine.style('visibility', 'hidden');
@@ -516,7 +518,7 @@ export default class MassSpecScatterPlot extends Component {
 
         // update the scatterplot dots
         const dots = this.g.selectAll('.scatter-dot').data(hits, d => d.id);
-        dots.exit().remove();    
+        dots.exit().remove();
         dots.enter().append('circle')
             .attr('class', 'scatter-dot') //d => 'scatter-dot ' + this.calcDotClass(d))
             .merge(dots)
@@ -531,7 +533,7 @@ export default class MassSpecScatterPlot extends Component {
                 d3.select(this)
                   .attr("r", _this.plotProps.dotRadius + 2)
                   .classed("scatter-dot-hover", true);
-                _this.tip.show(d, this); 
+                _this.tip.show(d, this);
              })
              .on("mouseout", function (d) {
                 d3.select(this)
@@ -611,7 +613,7 @@ export default class MassSpecScatterPlot extends Component {
 
 
     render() {
-        // the relative position is required to correctly position the loading-overlay div 
+        // the relative position is required to correctly position the loading-overlay div
         return (
             <div className="relative" ref={node => this.node = node}/>
         );

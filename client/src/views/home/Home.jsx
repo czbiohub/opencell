@@ -55,35 +55,37 @@ export default function Home (props) {
         <div className='home-container'>
 
         {/* top row - logo, title, search bar */}
-        <div className='w-100 flex justify-center'>
-            <div className='w-70 pt5'>
+        <div className='w-100 pt5 flex justify-center'>
+            <div className='w-70'>
+
+            <div className=''>
+                <div className='home-title'>
+                        <span>OpenCell</span>
+                </div>
+
+                <div className='pt0 pb3 home-title-caption'>
+                    <span>
+                        Proteome-scale measurements
+                        of human protein localization and interactions
+                    </span>
+                </div>
+
+                <div className='flex flex-row justify-around home-menu-container'>
+                    <a href='./target'>Targets</a>
+                    <a href='./gallery'>Gallery</a>
+                    <a href='./'>How to</a>
+                    <a href='./about'>About</a>
+                </div>
+            </div>
 
                 {/* top row */}
-                <div className='flex justify-center'>
+                <div className='pt4 flex justify-center'>
 
-                    <div className='home-logo-container'>
+                    <div className='w-30 flex justify-center home-logo-container'>
                         <img src='/assets/images/opencell_simpler_no_ribosome-with-labels.svg'/>
                     </div>
 
-                    <div className='pl5'>
-
-                        <div className='home-title'>
-                            <span>OpenCell</span>
-                        </div>
-
-                        <div className='pt1 home-title-caption'>
-                            <span>
-                                Proteome-scale measurements<br></br>
-                                of human protein localization and interactions
-                            </span>
-                        </div>
-
-                        <div className='pt3 flex flex-row home-menu-container'>
-                            <a href='./target'><SimpleButton>Targets</SimpleButton></a>
-                            <a href='./gallery'><SimpleButton>Gallery</SimpleButton></a>
-                            <a href='./'><SimpleButton>How to</SimpleButton></a>
-                            <a href='./about'><SimpleButton>About</SimpleButton></a>
-                        </div>
+                    <div className='w-70 pl5'>
 
                         <div className='pt4 search-bar-container'>
                             <div className='search-bar-caption pb2'>Search for a protein</div>
@@ -100,7 +102,7 @@ export default function Home (props) {
                             </div>
                         </div>
 
-                        <div className='pt4 flex justify-between'>
+                        <div className='pt4 flex justify-around'>
                             <Stat label='Tagged proteins' value={'1,311'}/>
                             <Stat label='Protein interactions' value={'25,212'}/>
                             <Stat label='3D images' value={'5,176'}/>
@@ -113,9 +115,9 @@ export default function Home (props) {
         </div>
 
         {/* bottom row - explore by localization */}
-        <div className='w-100 pl6 pr6'>
-            <div className='pt5 search-bar-caption'>
-                Explore by localization
+        <div className='w-100 pl6 pr6 pt4'>
+            <div className='search-bar-caption'>
+                Explore by protein localization
             </div>
             <div className='pt3 flex justify-between'>
                 <Thumbnail
@@ -152,7 +154,7 @@ export default function Home (props) {
             </div>
             <div className='pt3 flex flex-row justify-center'>
                 <div className='see-more-link'>
-                    <a href='./gallery'>See all 18 localization categories</a>
+                    <a href='./gallery'>See all 18 localization categories on the gallery page</a>
                 </div>
             </div>
         </div>

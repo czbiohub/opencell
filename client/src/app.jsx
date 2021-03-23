@@ -18,16 +18,17 @@ import 'tachyons';
 import './app.scss';
 
 import Navbar from './components/navbar.jsx';
+import Footer from './components/footer.jsx';
+import settings from './settings/settings.js';
+
+import Home from './views/home/Home.jsx';
 import Dashboard from './views/dashboard/Dashboard';
+import SearchResults from './views/searchResults/searchResults.jsx';
 import TargetProfile from './views/targetProfile/targetProfile.jsx';
 import InteractorProfile from './views/interactorProfile/interactorProfile.jsx';
 import Gallery from './views/gallery/Gallery.jsx';
 import UMAPContainer from './views/umap/umapContainer.jsx';
-import About from './views/about/About.jsx';
-import Home from './views/home/Home.jsx';
-import SearchResults from './views/searchResults/searchResults.jsx';
-import Footer from './components/footer.jsx';
-import settings from './settings/settings.js';
+import {About, HowTo, Privacy, Contact} from './views/about/About.jsx';
 
 
 function useCellLineId () {
@@ -246,6 +247,9 @@ function App() {
             <Route path="/target"></Route>
             <Route path="/gallery" component={Gallery}/>
             <Route path="/about" component={About}/>
+            <Route path="/howto" component={HowTo}/>
+            <Route path="/privacy" component={Privacy}/>
+            <Route path="/contact" component={Contact}/>
             <Route><div className="f2 pa3 w-100 ma">Page not found</div></Route>
         </Switch>
         </>

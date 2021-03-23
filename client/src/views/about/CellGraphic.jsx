@@ -9,11 +9,11 @@ import './About.scss';
 
 
 const labels = [
-    'er', 
-    'golgi', 
-    'mitochondria', 
-    'centrosome', 
-    'cytoskeleton', 
+    'er',
+    'golgi',
+    'mitochondria',
+    'centrosome',
+    'cytoskeleton',
     'cell_membrane',
     'nucleus',
     'nucleolus',
@@ -38,14 +38,14 @@ export default class CellGraphic extends Component {
 
             labels.forEach(label => {
                 const id = `#${label}`;
-                svg.select(id).each(function (d) { defineEventHandlers(d3.select(this)) });
+                // svg.select(id).each(function (d) { defineEventHandlers(d3.select(this)) });
 
                 // bring the overlays to the front
                 svg.select(id).selectAll('path').filter(function () {
                     return d3.select(this).attr('id')?.startsWith('overlay');
                 })
                 .raise();
-            });    
+            });
         };
         this.node.data = '/assets/images/opencell_simpler_no_ribosome-with-labels.svg';
     }
@@ -76,11 +76,11 @@ export default class CellGraphic extends Component {
 
     render() {
         return (
-             <object 
+             <object
                 type='image/svg+xml'
-                ref={node => this.node = node} 
+                ref={node => this.node = node}
                 style={{width: '300px', height: '300px'}}
-            /> 
+            />
         );
     }
 }

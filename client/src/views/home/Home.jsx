@@ -73,7 +73,7 @@ export default function Home (props) {
                 <div className='flex flex-row justify-around home-menu-container'>
                     <a href='./target'>Targets</a>
                     <a href='./gallery'>Gallery</a>
-                    <a href='./'>How to</a>
+                    <a href='./howto'>How to</a>
                     <a href='./about'>About</a>
                 </div>
             </div>

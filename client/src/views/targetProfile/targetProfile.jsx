@@ -67,11 +67,12 @@ export default function TargetProfile (props) {
 
             {/* table of all targets */}
             <div className={'pl5 pr5 pt3 pb2 ' + tableWidthClass}>
-                <SectionHeader 
-                    title='All OpenCell targets' 
+                <SectionHeader
+                    fontSize={cellLine ? 'f4' : 'f3'}
+                    title='All OpenCell targets'
                     popoverContent={popoverContents.cellLineTableHeader}
                 />
-                <CellLineTable 
+                <CellLineTable
                     cellLines={allCellLines}
                     cellLineId={props.cellLineId}
                     onCellLineSelect={props.setCellLineId}
@@ -83,6 +84,3 @@ export default function TargetProfile (props) {
         </>
     );
 }
-
-
-

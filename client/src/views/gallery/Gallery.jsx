@@ -11,6 +11,7 @@ import "@blueprintjs/core/lib/css/blueprint.css";
 import ViewerContainer from '../../components/imageViewer/viewerContainer.jsx';
 import MultiSelectContainer from './multiSelectContainer.jsx';
 import ButtonGroup from '../../components/buttonGroup.jsx';
+import SectionHeader from '../../components/sectionHeader.jsx';
 import * as popoverContents from '../../components/popoverContents.jsx';
 
 import settings from '../../settings/settings.js';
@@ -246,7 +247,7 @@ export default class Gallery extends Component {
 
         const privateMultiSelectContainers = [
             <div className="pr3 w-20">
-                <div className="f4">{"QC annotations"}</div>
+                <div className="button-group-label">{"QC annotations"}</div>
                 <MultiSelectContainer
                     items={this.allQcCategories}
                     selectedItems={this.state.selectedQcCategories}
@@ -254,7 +255,7 @@ export default class Gallery extends Component {
                 />
             </div>,
             <div className="pr3 w-20">
-                <div className="f4">{"Target families"}</div>
+                <div className="button-group-label">{"Target families"}</div>
                 <MultiSelectContainer
                     items={this.allTargetFamilies}
                     selectedItems={this.state.selectedTargetFamilies}
@@ -266,16 +267,23 @@ export default class Gallery extends Component {
         return (
             <>
                 <div className="pa4 w-100">
+
+                    <div className='pl4 pb2'>
+                    <SectionHeader
+                        title='OpenCell target gallery'
+                        fontSize='f3'
+                        popoverContent={popoverContents.galleryHeader}
+                    />
+                    </div>
+
                     <div className="pl4 flex items-center">
 
                         {/* localization annotations multiselect */}
-                        <div className="pr3 w-33">
-                            <div className="f4 flex">
-                                <div className='pr2'>{"Select localization annotations"}</div>
-                                <Popover>
-                                    <Icon icon='info-sign' iconSize={12} color="#bbb"/>
-                                    {popoverContents.gallerySelectLocalization}
-                                </Popover>
+                        <div className="pr3 w-40">
+                            <div className="f5 flex">
+                                <div className='pr2 button-group-label'>
+                                    Select localization annotations
+                                </div>
                             </div>
                             <MultiSelectContainer
                                 items={localizationCategories}

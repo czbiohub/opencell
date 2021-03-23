@@ -216,7 +216,7 @@ const interactionTableHeader = (
 
 // unwritten popovers
 const sequencingHeader = null;
-const gallerySelectLocalization = null;
+const galleryHeader = null;
 const gallerySelectionMode = null;
 
 const umapGridSize = null;
@@ -249,7 +249,7 @@ export {
     scatterplotsHeader,
     interactionTableHeader,
 
-    gallerySelectLocalization,
+    galleryHeader,
     gallerySelectionMode,
 
     umapGridSize,

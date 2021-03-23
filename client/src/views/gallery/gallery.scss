@@ -45,6 +45,8 @@
         cursor: pointer;
         border-top-left-radius: 7px;
         border-top-right-radius: 7px;
+        // flip thumbnails to match the orientation of the ROI thumbnails in the viewerContainer
+        transform: scaleY(-1);
     }
     .gallery-thumbnail-caption {
         color: #ddd;

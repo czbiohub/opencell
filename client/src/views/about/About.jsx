@@ -121,7 +121,7 @@ export default function About (props) {
                         </div>
                         <div className='about-item-caption'>
                             All images are of <b>living cells</b> and were acquired
-                            using a spinning-disk confocal microscope with a 63x 1.45NA objective.
+                            using a spinning-disk confocal microscope with a 63x 1.47NA objective.
                         </div>
                     </div>
 

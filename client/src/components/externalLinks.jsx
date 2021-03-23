@@ -20,12 +20,18 @@ export default function ExternalLinks (props) {
             label: 'Ensembl',
             url: id => `https://uswest.ensembl.org/Homo_sapiens/Gene/Summary?g=${id}`,
         },{
+            id: 'entrez',
+            defId: 'ensg_id',
+            width: 30,
+            label: 'Entrez',
+            url: id => `https://www.ncbi.nlm.nih.gov/gene/?term=${id}`
+        },{
             id: 'hpa',
             defId: 'ensg_id',
             width: 30,
             label: 'HPA',
             url: id => `https://www.proteinatlas.org/${id}`,
-        },
+        }
     ];
 
     const linkItems = linkLayouts.map(item => {
@@ -44,9 +50,9 @@ export default function ExternalLinks (props) {
     });
 
     return (
-        <div className='pt2 pb3'>
+        <div className='pt1 pb3'>
+            <div className='f6 b'>External references</div>
             <div className="flex items-center external-links-container">
-                <div className='f6 b'>External links:</div>
                 {linkItems}
             </div>
         </div>

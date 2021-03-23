@@ -26,6 +26,7 @@ import UMAPContainer from './views/umap/umapContainer.jsx';
 import About from './views/about/About.jsx';
 import Home from './views/home/Home.jsx';
 import SearchResults from './views/searchResults/searchResults.jsx';
+import Footer from './components/footer.jsx';
 import settings from './settings/settings.js';
 
 
@@ -251,13 +252,15 @@ function App() {
     );
 
     return (
+        <>
         <Switch>
             <Route path="/" exact={true} render={props => (
-                    <Home {...props} handleGeneNameSearch={handleGeneNameSearch}/>
-                )}
-            />
+                <Home {...props} handleGeneNameSearch={handleGeneNameSearch}/>
+            )}/>
             <Route>{mainApp}</Route>
         </Switch>
+        <Footer/>
+        </>
     );
 }
 

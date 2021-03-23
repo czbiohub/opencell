@@ -7,11 +7,16 @@ html {
 	color: rgba(0, 0, 0, .7);
 }
 
-.body {
+#root {
     font-family: "Nunito Sans", sans-serif;
 	color: #333;
 	line-height: 1.15;
+    min-height: 100vh;
+    position: relative;
+    // this is to leave space for the absolutely-positioned footer
+    padding-bottom: 50px;
 }
+
 
 abbr {
     text-decoration: none !important;

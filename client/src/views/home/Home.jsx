@@ -44,7 +44,7 @@ export default function Home (props) {
     useEffect(() => {d3.selectAll('input').attr('placeholder', '')}, []);
 
     return (
-        <>
+        <div className='pb3'>
         <div className='w-100 home-banner-container'>
             <img src='/assets/images/home_banner_color.png'/>
         </div>
@@ -55,7 +55,7 @@ export default function Home (props) {
         <div className='home-container'>
 
         {/* top row - logo, title, search bar */}
-        <div className='w-100 pt5 flex justify-center'>
+        <div className='w-100 pt4 flex justify-center'>
             <div className='w-70'>
 
             <div className=''>
@@ -161,6 +161,6 @@ export default function Home (props) {
 
         </div>
     </div>
-    </>
+    </div>
     );
 }

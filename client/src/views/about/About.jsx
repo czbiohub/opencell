@@ -32,7 +32,7 @@ const Lightbox = props => {
 
 export default function About (props) {
     return (
-        <div className='w-100 pt4 pl5 pr5 f5' style={{minWidth: '1200px'}}>
+        <div className='w-100 pt4 pl5 pr5 pb3 f5' style={{minWidth: '1200px'}}>
 
 
             {/* first row - logo and welcome blurb */}

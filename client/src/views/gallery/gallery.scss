@@ -43,10 +43,13 @@
     img {
         width: 100%;
         cursor: pointer;
-        border-top-left-radius: 7px;
-        border-top-right-radius: 7px;
-        // flip thumbnails to match the orientation of the ROI thumbnails in the viewerContainer
+
+        // flip up/down to match the orientation of the ROI thumbnails in the viewerContainer
         transform: scaleY(-1);
+
+        // border-bottom, not top, because we've flipped the images vertically
+        border-bottom-left-radius: 7px;
+        border-bottom-right-radius: 7px;
     }
     .gallery-thumbnail-caption {
         color: #ddd;

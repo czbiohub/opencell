@@ -75,3 +75,27 @@ $primary-blue: #106ba3;
         max-width: 1000px;
     }
 }
+
+
+.contact-link-container {
+    padding-left: 50px;
+    padding-right: 50px;
+    text-align: center;
+    img {
+        height: 60px;
+        width: 60px;
+    }
+    &:hover {
+        opacity: 0.7;
+        transition-duration: 500ms;
+    }
+    a {
+        color: #333;
+        font-size: 18px;
+        font-family: "Lato";
+        font-weight: 300;
+        &:hover {
+            text-decoration: none;
+        }
+    }
+}

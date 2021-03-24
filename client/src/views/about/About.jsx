@@ -231,7 +231,7 @@ export function Privacy (props) {
 export function Contact (props) {
     return (
         <div className='w-100 pt4 flex justify-center about-page-container'>
-            <div className='w-70'>
+            <div className='w-70 pl5 pr5'>
                 <div className='w-100 f3 bb b--black-30'>Contact us</div>
                 <div className='w-100 f5 pt2'>
                     <p>
@@ -240,12 +240,26 @@ export function Contact (props) {
                         and <b>especially if our data helped you to generate new biological hypotheses or insights. </b>
                     </p>
 
-                    <p>To get in touch:</p>
-                    <ul className='about-page-bullets'>
-                        <li>Email us at <Link href='mailto:opencell@czbiohub.org'>opencell@czbiohub.org</Link></li>
-                        <li>Follow us on <Link new href='https://twitter.com/OpenCellCZB'>Twitter</Link></li>
-                        <li>Report bugs or suggest new features on <Link new href='https://github.com/czbiohub/opencell'>GitHub</Link></li>
-                    </ul>
+                    <div className='pl5 pr5 pt3 flex flex-row justify-center contact-links-container'>
+                        <div className='contact-link-container'>
+                            <a target='_blank' href='mailto:opencell@czbiohub.org'>
+                                <img src='/assets/images/icon-email.svg' style={{opacity: 0.5}}/>
+                                <div className='contact-link-caption'>Email us</div>
+                            </a>
+                        </div>
+                        <div className='contact-link-container'>
+                            <a target='_blank' href='https://twitter.com/OpenCellCZB'>
+                                <img src='/assets/images/icon-twitter.png'/>
+                                <div className='contact-link-caption'>Follow us</div>
+                            </a>
+                        </div>
+                        <div className='contact-link-container'>
+                            <a target='_blank' href='https://github.com/czbiohub/opencell'>
+                                <img src='/assets/images/icon-github.png'/>
+                                <div className='contact-link-caption'>Report bugs</div>
+                            </a>
+                        </div>
+                    </div>
 
                 </div>
             </div>

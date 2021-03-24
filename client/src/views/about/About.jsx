@@ -51,19 +51,21 @@ export function About (props) {
                     <div className='w-100 pt2'>
                         <p>
                             OpenCell is a proteome-scale collection of protein localization and interaction measurements
-                            for human proteins. It is a collaboration between
+                            for a library of endogenously tagged human proteins.
+                            This website provides tools to access and visualize the OpenCell dataset;
+                            our hope is that this will facilitate the use of our data for biological discovery and hypothesis generation
+                            by the broader biomedical research community.
+                        </p>
+                        <p>
+                            OpenCell is a collaboration between
                             the <Link new href='https://www.czbiohub.org/manuel-leonetti-intracellular-architecture/'>
                                 Leonetti group
                             </Link> at
                             the Chan Zuckerberg Biohub and
                             the <Link new href='https://www.biochem.mpg.de/mann'>Mann Lab</Link> at
-                            the Max Plank Institute for Biochemistry.
+                            the Max Plank Institute for Biochemistry, and many other collaborators.
                         </p>
                         <p>
-                            The OpenCell dataset consists of confocal fluorescence microscopy images
-                            and protein interactions detected by IP/MS experiments
-                            for a library of 1,311 human proteins tagged endogenously using a CRISPR-based split-FP system.
-                            This website provides an interactive way to visualize and access this dataset.
                             Please note that the site is best viewed using a modern web browser (e.g., Chrome or Firefox)
                             on a laptop or desktop computer.
                         </p>
@@ -73,16 +75,15 @@ export function About (props) {
                         </p>
                         <ul className='about-page-bullets'>
                         <li>
-                            Use the search box at the top right of the page
-                            to search for a protein by name or keyword (e.g., 'ACTB' or 'actin')
+                            Search for a protein by name or keyword (e.g., 'ACTB' or 'actin')
+                            using the search box in the top right corner of this page
                         </li>
                         <li>
-                            Check out the <Link href='./gallery'>gallery page</Link> to
-                            explore all of the tagged proteins in the dataset,
-                            filtered by subcellular localization
+                            Explore the microscopy images for all tagged proteins in the dataset
+                            on <Link href='./gallery'>the gallery page</Link>
                         </li>
                         <li>
-                            Browser the complete list of tagged proteins <Link href='./target'>here</Link>
+                            Browse <Link href='./target'>a list</Link> of all tagged proteins in the dataset
                         </li>
                         <li>
                             Read the <Link href='./howto'>how-to guide</Link> for
@@ -239,7 +240,7 @@ export function Contact (props) {
                         and <b>especially if our data helped you to generate new biological hypotheses or insights. </b>
                     </p>
 
-                    <p>There are a few ways to get in touch:</p>
+                    <p>To get in touch:</p>
                     <ul className='about-page-bullets'>
                         <li>Email us at <Link href='mailto:opencell@czbiohub.org'>opencell@czbiohub.org</Link></li>
                         <li>Follow us on <Link new href='https://twitter.com/OpenCellCZB'>Twitter</Link></li>

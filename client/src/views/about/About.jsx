@@ -240,7 +240,7 @@ export function Contact (props) {
                         and <b>especially if our data helped you to generate new biological hypotheses or insights. </b>
                     </p>
 
-                    <div className='pl5 pr5 pt3 flex flex-row justify-center contact-links-container'>
+                    <div className='w-100 pt3 flex flex-row justify-around contact-links-container'>
                         <div className='contact-link-container'>
                             <a target='_blank' href='mailto:opencell@czbiohub.org'>
                                 <img src='/assets/images/icon-email.svg' style={{opacity: 0.5}}/>

@@ -336,9 +336,13 @@ class CellLines(Resource):
         cell_line_ids = [int(_id) for _id in cell_line_ids.split(',')] if cell_line_ids else []
 
         if publication_ready_only:
-            cell_line_ids = metadata_operations.get_lines_by_annotation(
+            pr_cell_line_ids = metadata_operations.get_lines_by_annotation(
                 engine=flask.current_app.Session.get_bind(), annotation='publication_ready'
             )
+            if len(cell_line_ids):
+                cell_line_ids = list(set(cell_line_ids).intersection(pr_cell_line_ids))
+            else:
+                cell_line_ids = pr_cell_line_ids
 
         # cell line query with the eager-loading required by generate_cell_line_payload
         query = (

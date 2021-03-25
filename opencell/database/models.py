@@ -1203,34 +1203,28 @@ class MassSpecHit(Base):
 class MassSpecClusterHeatmap(Base):
     """
     This table contains hard-coded cluster memberships of interactions as well as
-    coordinates for hierarchical layout of cluster heatmap. Used for cluster heatmap
-    visualization in OpenCell
+    coordinates for hierarchical layout of cluster heatmap.
+    Used by resources.PulldownClusters and to determine cluster memberships
+    during target network construction in resources.PulldownNetwork
     """
-
     __tablename__ = 'mass_spec_cluster_heatmap'
     id = db.Column(db.Integer, primary_key=True)
 
-    # cluster group id - in a numerical range
+    # cluster, subcluster, and core complex ids
     cluster_id = db.Column(db.Integer, nullable=False)
-
-    # subcluster group id - in a numerical range
     subcluster_id = db.Column(db.Integer, nullable=True)
-
-    # core complex id - in a numerical range
     core_complex_id = db.Column(db.Integer, nullable=True)
 
-    # hit id that the heatmap coordinate refers to in target-prey match
+    # the hit that the heatmap coordinate refers to
     hit_id = db.Column(
         db.Integer, db.ForeignKey('mass_spec_hit.id', ondelete='CASCADE'), nullable=False
     )
 
-    # row index of the heat map
+    # row and column index of the heat map
     row_index = db.Column(db.Integer, nullable=False)
-
-    # col index of the heatmap
     col_index = db.Column(db.Integer, nullable=False)
 
-    # clustering analysis identifier describing the cluster pipeline used.
+    # clustering analysis identifier describing the cluster pipeline used
     analysis_type = db.Column(db.String, nullable=False)
 
     # many cluster rows to one mass spec hit

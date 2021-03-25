@@ -42,6 +42,10 @@ class GeneNameSearch(Resource):
         gene_name = gene_name.upper()
         publication_ready_only = flask.request.args.get('publication_ready') == 'true'
 
+        # hack to force publication-ready to true if we're on AWS
+        if flask.current_app.config.get('ENV') == 'aws':
+            publication_ready_only = True
+
         # search for opencell targets
         query = (
             flask.current_app.Session.query(models.CellLine)
@@ -257,6 +261,11 @@ class TargetNames(Resource):
     def get(self):
 
         publication_ready_only = flask.request.args.get('publication_ready') == 'true'
+
+        # hack to force publication-ready to true if we're on AWS
+        if flask.current_app.config.get('ENV') == 'aws':
+            publication_ready_only = True
+
         cell_line_ids = None
         if publication_ready_only:
             cell_line_ids = metadata_operations.get_lines_by_annotation(
@@ -313,6 +322,10 @@ class CellLines(Resource):
         args = flask.request.args
         plate_id = args.get('plate_id')
         publication_ready_only = args.get('publication_ready') == 'true'
+
+        # hack to force publication-ready to true if we're on AWS
+        if flask.current_app.config.get('ENV') == 'aws':
+            publication_ready_only = True
 
         included_fields = args.get('fields')
         included_fields = included_fields.split(',') if included_fields else []

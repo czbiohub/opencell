@@ -1,0 +1,80 @@
+
+.lightbox-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    padding-top: 25px;
+    display: flex;
+    flex-direction: column;
+    background-color: rgba(0, 0, 0, 0.7);
+    opacity: 1;
+
+    .lightbox-content-container {
+        margin: auto;
+        background-color: white;
+
+        // hard-coded width for the viewerContainer
+        width: 650px;
+
+        // this is needed when the window height is too low
+        // to fit the entire viewerContainer
+        overflow-x: scroll;
+
+        border-radius: 10px;
+    }
+}
+
+
+.gallery-thumbnail-grid {
+    display: grid;
+    grid-auto-flow: row;
+    grid-template-rows: auto;
+    grid-template-columns: repeat(auto-fit, 200px);
+}
+
+.gallery-thumbnail-container {
+    margin: 7px;
+    height: auto;
+    &:hover {
+        opacity: 0.7;
+    }
+    img {
+        width: 100%;
+        cursor: pointer;
+
+        // flip up/down to match the orientation of the ROI thumbnails in the viewerContainer
+        transform: scaleY(-1);
+
+        // border-bottom, not top, because we've flipped the images vertically
+        border-bottom-left-radius: 7px;
+        border-bottom-right-radius: 7px;
+    }
+    .gallery-thumbnail-caption {
+        color: #ddd;
+        background-color: #333;
+        text-align: center;
+
+        // hack to force the caption to fill the remaining height of the thumbnail container
+        // (190px is the height of the thumbnail image)
+        height: calc(100% - 190px);
+
+        // hack to eliminate white space between the img and the caption
+        margin-top: -5px;
+        padding: 5px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+
+        border-bottom-left-radius: 7px;
+        border-bottom-right-radius: 7px;
+
+    }
+}
+
+.gallery-thumbnail-caption-link {
+    cursor: pointer;
+    &:hover {
+        text-decoration: underline;
+    }
+}

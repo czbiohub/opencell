@@ -89,11 +89,10 @@ class StagingConfig(Config):
 
 
 class ProdConfig(Config):
-
-    # TODO: determine how to retrieve database credentials
-    # TODO: figure out caching
-
-    ENV = 'prod'
+    '''
+    Config for prod deployment on ESS (e.g. `cap`)
+    '''
+    ENV = 'ess'
     DEBUG = False
 
     DB_CREDENTIALS_FILEPATH = os.path.join(Config.PROJECT_ROOT, 'db-credentials-docker.json')
@@ -105,8 +104,10 @@ class ProdConfig(Config):
 
 
 class RemoteProdConfig(Config):
-
-    ENV = 'prod'
+    '''
+    Config for running the app locally but with the prod database on ESS
+    '''
+    ENV = 'dev'
     DEBUG = False
 
     DB_CREDENTIALS_FILEPATH = os.path.join(Config.PROJECT_ROOT, 'db-credentials-cap.json')
@@ -122,8 +123,7 @@ class RemoteProdConfig(Config):
 
 class AWSConfig(Config):
 
-    ENV = 'prod'
+    ENV = 'aws'
     DEBUG = False
-
     DB_CREDENTIALS_FILEPATH = '/home/ubuntu/db-credentials.json'
-    OPENCELL_MICROSCOPY_DIR = 'http://opencell.czbiohub.org/data/'
+    OPENCELL_MICROSCOPY_DIR = 'https://opencell.czbiohub.org/data/'

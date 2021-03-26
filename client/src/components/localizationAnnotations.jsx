@@ -6,7 +6,7 @@ import './localizationAnnotations.css';
 
 
 export function LocalizationAnnotation (props) {
-    
+
     const gradeRectangles = []
     for (let grade = 1; grade <= parseInt(props.grade); grade++) {
         gradeRectangles.push(
@@ -29,8 +29,10 @@ export function LocalizationAnnotation (props) {
 export function LocalizationAnnotations (props) {
 
     // the public localization-related cell line annotation categories
-    const allPublicCategories = annotationDefs.publicLocalizationCategories.map(d => d.name);
-    
+    const allPublicCategories = annotationDefs.localizationCategories
+        .filter(d => d.status==='public')
+        .map(d => d.name);
+
     // the public graded categories associated with the current cell line
     let gradedCategories = props.data.annotation.categories?.map(categoryName => {
         const grade = categoryName.slice(-1);
@@ -44,17 +46,14 @@ export function LocalizationAnnotations (props) {
     gradedCategories.sort((a, b) => a.grade > b.grade ? -1 : 1);
 
     return (
-        <div className="pt2 pb3">
-            <div className='w-90 flex b pb1'>
-            </div>
+        <div className="pt1 pb3">
             {gradedCategories.map(category => {
-                return <LocalizationAnnotation 
-                    key={category.name} 
-                    name={category.name} 
+                return <LocalizationAnnotation
+                    key={category.name}
+                    name={category.name}
                     grade={category.grade}
                 />
             })}
         </div>
     );
 }
-

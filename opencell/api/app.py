@@ -45,9 +45,6 @@ def create_app(config=None):
     cache.init_app(app)
     api = Api()
 
-    # convenience endpoint to clear the cache
-    api.add_resource(resources.ClearCache, '/clear_cache')
-
     # search by exact gene name for cell line ids and ENSG ids
     api.add_resource(resources.GeneNameSearch, '/search/<string:gene_name>')
 
@@ -56,9 +53,6 @@ def create_app(config=None):
 
     # a list of all opencell target names and their uniprot protein names
     api.add_resource(resources.TargetNames, '/target_names')
-
-    # plate designs
-    api.add_resource(resources.Plate, '/plates/<string:plate_id>')
 
     # cell line metadata
     api.add_resource(resources.CellLines, '/lines')
@@ -73,11 +67,9 @@ def create_app(config=None):
     # cell-line-related endpoints
     api.add_resource(resources.FACSDataset, '/lines/<int:cell_line_id>/facs')
     api.add_resource(resources.MicroscopyFOVMetadata, '/lines/<int:cell_line_id>/fovs')
-    api.add_resource(resources.CellLineAnnotation, '/lines/<int:cell_line_id>/annotation')
 
     # pulldown-related endpoints
     api.add_resource(resources.PulldownHits, '/pulldowns/<int:pulldown_id>/hits')
-    api.add_resource(resources.PulldownClusters, '/pulldowns/<int:pulldown_id>/clusters')
     api.add_resource(
         resources.PulldownNetwork, '/pulldowns/<int:pulldown_id>/network'
     )
@@ -93,11 +85,22 @@ def create_app(config=None):
         resources.MicroscopyFOVROI, '/rois/<int:roi_id>/<string:roi_kind>/<string:channel>'
     )
 
-    # FOV annotations (always one annotation per FOV)
-    api.add_resource(resources.MicroscopyFOVAnnotation, '/fovs/<int:fov_id>/annotation')
+    # hack to 'block' non-public endpoints on AWS
+    if config.ENV != 'aws':
 
-    api.add_resource(resources.EmbeddingPositions, '/embedding_positions')
-    api.add_resource(resources.ThumbnailTileImage, '/thumbnail_tiles/<string:filename>')
+        # convenience endpoint to clear the cache
+        api.add_resource(resources.ClearCache, '/clear_cache')
+
+        # unused endpoint (was for the mass spec heatmap)
+        api.add_resource(resources.PulldownClusters, '/pulldowns/<int:pulldown_id>/clusters')
+
+        # cell line and FOV annotations
+        api.add_resource(resources.CellLineAnnotation, '/lines/<int:cell_line_id>/annotation')
+        api.add_resource(resources.MicroscopyFOVAnnotation, '/fovs/<int:fov_id>/annotation')
+
+        # endpoints for the UMAP page
+        api.add_resource(resources.EmbeddingPositions, '/embedding_positions')
+        api.add_resource(resources.ThumbnailTileImage, '/thumbnail_tiles/<string:filename>')
 
     api.init_app(app)
 

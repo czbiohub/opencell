@@ -61,7 +61,7 @@ export default class SearchBar extends Component {
     renderItemList (itemListProps) {
         // these are the props passed by blueprint to itemListRenderer
         // activeItem:
-        // filteredItems: 
+        // filteredItems:
         // items:
         // itemsParentRef: ƒ (ref)
         // query: "a"
@@ -74,7 +74,7 @@ export default class SearchBar extends Component {
         });
         if (targetNameMatches.length) return targetNameMatches;
 
-        // if there were no matches, return a dummy item so that onActiveItemChange 
+        // if there were no matches, return a dummy item so that onActiveItemChange
         // is still called and can be used to detect enter keypresses
         return [{target_name: '', protein_name: 'Hit enter to search'}];
     }
@@ -85,7 +85,10 @@ export default class SearchBar extends Component {
             <Suggest
                 fill
                 minimal
-                initialContent={'Search for a gene'}
+                className=''
+                openOnKeyDown
+                initialContent={null}
+                popoverProps={{minimal: true}}
                 items={this.state.loaded ? this.items : []}
                 itemListPredicate={this.filterItems}
                 itemRenderer={this.renderItem}

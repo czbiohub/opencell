@@ -37,10 +37,15 @@ class GeneNameSearch(Resource):
     '''
     A list of cell_line_ids and ensg_ids that match a given gene name
     '''
+    @cache.cached(key_prefix=cache_key)
     def get(self, gene_name):
         payload = {}
         gene_name = gene_name.upper()
         publication_ready_only = flask.request.args.get('publication_ready') == 'true'
+
+        # hack to force publication-ready to true if we're on AWS
+        if flask.current_app.config.get('ENV') == 'aws':
+            publication_ready_only = True
 
         # search for opencell targets
         query = (
@@ -187,6 +192,7 @@ class FullTextSearch(Resource):
         return results
 
 
+    @cache.cached(key_prefix=cache_key)
     def get(self, query):
         engine = flask.current_app.Session.get_bind()
 
@@ -257,6 +263,11 @@ class TargetNames(Resource):
     def get(self):
 
         publication_ready_only = flask.request.args.get('publication_ready') == 'true'
+
+        # hack to force publication-ready to true if we're on AWS
+        if flask.current_app.config.get('ENV') == 'aws':
+            publication_ready_only = True
+
         cell_line_ids = None
         if publication_ready_only:
             cell_line_ids = metadata_operations.get_lines_by_annotation(
@@ -314,6 +325,10 @@ class CellLines(Resource):
         plate_id = args.get('plate_id')
         publication_ready_only = args.get('publication_ready') == 'true'
 
+        # hack to force publication-ready to true if we're on AWS
+        if flask.current_app.config.get('ENV') == 'aws':
+            publication_ready_only = True
+
         included_fields = args.get('fields')
         included_fields = included_fields.split(',') if included_fields else []
 
@@ -321,9 +336,13 @@ class CellLines(Resource):
         cell_line_ids = [int(_id) for _id in cell_line_ids.split(',')] if cell_line_ids else []
 
         if publication_ready_only:
-            cell_line_ids = metadata_operations.get_lines_by_annotation(
+            pr_cell_line_ids = metadata_operations.get_lines_by_annotation(
                 engine=flask.current_app.Session.get_bind(), annotation='publication_ready'
             )
+            if len(cell_line_ids):
+                cell_line_ids = list(set(cell_line_ids).intersection(pr_cell_line_ids))
+            else:
+                cell_line_ids = pr_cell_line_ids
 
         # cell line query with the eager-loading required by generate_cell_line_payload
         query = (
@@ -439,6 +458,7 @@ class CellLine(CellLineResource):
     '''
     The cell line metadata for a single cell line
     '''
+    @cache.cached(key_prefix=cache_key)
     def get(self, cell_line_id):
         line = self.get_cell_line(cell_line_id)
         optional_fields, error = self.parse_listlike_arg('fields', allowed_values=['best-fov'])
@@ -513,6 +533,7 @@ class InteractorTargets(InteractorResource):
     The metadata and the list of interacting opencell targets for an 'interactor'
     (identified by an ensg_id)
     '''
+    @cache.cached(key_prefix=cache_key)
     def get(self, ensg_id):
 
         primary_protein_group = self.get_primary_protein_group(ensg_id)
@@ -533,6 +554,7 @@ class InteractorNetwork(InteractorResource):
     '''
     The cytoscape interaction network for an interactor (identified by an ensg_id)
     '''
+    @cache.cached(key_prefix=cache_key)
     def get(self, ensg_id):
 
         primary_protein_group = self.get_primary_protein_group(ensg_id)
@@ -563,7 +585,7 @@ class InteractorNetwork(InteractorResource):
 
 
 class FACSDataset(CellLineResource):
-
+    @cache.cached(key_prefix=cache_key)
     def get(self, cell_line_id):
         line = self.get_cell_line(cell_line_id)
         if not line.facs_dataset:
@@ -576,6 +598,7 @@ class MicroscopyFOVMetadata(CellLineResource):
     '''
     Metadata for all of the FOVs associated with a cell line
     '''
+    @cache.cached(key_prefix=cache_key)
     def get(self, cell_line_id):
 
         only_annotated = flask.request.args.get('annotatedonly') == 'true'
@@ -646,6 +669,7 @@ class PulldownHits(PulldownResource):
     '''
     The metadata and hits for a pulldown
     '''
+    @cache.cached(key_prefix=cache_key)
     def get(self, pulldown_id):
         Session = flask.current_app.Session
         pulldown = self.get_pulldown(pulldown_id)

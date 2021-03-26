@@ -8,9 +8,9 @@ import {
     Switch,
     Route,
     Redirect,
-    useHistory, 
-    useLocation, 
-    useParams, 
+    useHistory,
+    useLocation,
+    useParams,
     useRouteMatch
  } from "react-router-dom";
 
@@ -18,15 +18,17 @@ import 'tachyons';
 import './app.scss';
 
 import Navbar from './components/navbar.jsx';
+import Footer from './components/footer.jsx';
+import settings from './settings/settings.js';
+
+import Home from './views/home/Home.jsx';
 import Dashboard from './views/dashboard/Dashboard';
+import SearchResults from './views/searchResults/searchResults.jsx';
 import TargetProfile from './views/targetProfile/targetProfile.jsx';
 import InteractorProfile from './views/interactorProfile/interactorProfile.jsx';
 import Gallery from './views/gallery/Gallery.jsx';
 import UMAPContainer from './views/umap/umapContainer.jsx';
-import About from './views/about/About.jsx';
-import Home from './views/home/Home.jsx';
-import SearchResults from './views/searchResults/searchResults.jsx';
-import settings from './settings/settings.js';
+import {About, HowTo, Privacy, Contact} from './views/about/About.jsx';
 
 
 function useCellLineId () {
@@ -55,7 +57,7 @@ function useCellLineId () {
                 'gallery', 'dashboard', 'microscopy', 'interactor', 'search'
             ];
             page = targetNonSpecificPages.includes(page) ? 'target' : page;
-            
+
             const newUrl = `/${page}/${newCellLineId}${history.location.search}`;
             //console.log(`Pushing to history: ${newUrl}`);
             history.push(newUrl);
@@ -73,14 +75,14 @@ function useGeneNameSearch (setCellLineId) {
     // which needs to both update the search query if it has changed and also call setCellLineId
     // even if the search has not changed, in order to run the page redirection in setCellLineId
     // (e.g., to redirect from /gallery to /profile even if the search, and cellLineId, is unchanged)
-    
+
     let history = useHistory();
     const [doSearch, setDoSearch] = useState(true);
     const [searchResultsFound, setSearchResultsFound] = useState(true);
     const [geneName, setGeneName] = useState();
     const modeContext = useContext(settings.ModeContext);
 
-    // retrieve a cellLineId from the target name query 
+    // retrieve a cellLineId from the target name query
     // HACK: if there's more than one matching ensg_id or oc_id, we arbitrarily pick one
     useEffect(() => {
 
@@ -104,6 +106,8 @@ function useGeneNameSearch (setCellLineId) {
         });
     }, [geneName]);
 
+    // unused popup to warn when no search results found
+    // (replaced by the search results page)
     const searchAlert = (
             <Alert
                 style={{minWidth: '500px'}}
@@ -154,105 +158,116 @@ function App() {
         }
     }, []);
 
-    const publicCellLineRoutes = [
-        <Route 
+    const publicRoutes = [
+        <Route
             key='target'
             path="/target"
             exact strict
             render={props => (
-                <TargetProfile 
-                    {...props} 
+                <TargetProfile
+                    {...props}
                     setCellLineId={setCellLineId}
-                    handleGeneNameSearch={handleGeneNameSearch} 
+                    handleGeneNameSearch={handleGeneNameSearch}
                 />
             )}
         />,
-        <Route 
+        <Route
             key='target'
             path="/target/:cellLineId"
             render={props => (
-                <TargetProfile 
-                    {...props} 
-                    cellLineId={cellLineId} 
+                <TargetProfile
+                    {...props}
+                    cellLineId={cellLineId}
                     setCellLineId={setCellLineId}
-                    handleGeneNameSearch={handleGeneNameSearch} 
+                    handleGeneNameSearch={handleGeneNameSearch}
                 />
             )}
         />,
-        <Route 
+        <Route
             key='interactor'
             path="/interactor/:ensgId"
             render={props => (
-                <InteractorProfile 
-                    {...props} 
+                <InteractorProfile
+                    {...props}
                     setCellLineId={setCellLineId}
-                    handleGeneNameSearch={handleGeneNameSearch} 
+                    handleGeneNameSearch={handleGeneNameSearch}
                 />
             )}
         />,
-        <Route 
+        <Route
             key='search'
             path="/search/:query"
             render={props => (
-                <SearchResults 
-                    {...props} 
+                <SearchResults
+                    {...props}
                     setCellLineId={setCellLineId}
-                    handleGeneNameSearch={handleGeneNameSearch} 
+                    handleGeneNameSearch={handleGeneNameSearch}
                 />
             )}
         />
     ];
 
-    const privateCellLineRoutes = [
-        <Route 
+    const privateRoutes = [
+        <Route
             key='fovs'
             path="/fovs/:cellLineId"
             render={props => (
-                <TargetProfile 
-                    {...props} 
-                    cellLineId={cellLineId} 
+                <TargetProfile
+                    {...props}
+                    cellLineId={cellLineId}
                     setCellLineId={setCellLineId}
                     showFovAnnotator
                 />
             )}
         />,
-        <Route 
+        <Route
             key='annotations'
             path="/annotations/:cellLineId"
             render={props => (
-                <TargetProfile 
-                    {...props} 
-                    cellLineId={cellLineId} 
-                    setCellLineId={setCellLineId} 
+                <TargetProfile
+                    {...props}
+                    cellLineId={cellLineId}
+                    setCellLineId={setCellLineId}
                     showTargetAnnotator
                 />
             )}
-        />
+        />,
+        <Route key='umap' path="/umap" component={UMAPContainer}/>,
+        <Route key='dashboard' path="/dashboard" component={Dashboard}/>
     ];
+
+
+    const mainApp = (
+        <>
+        <Navbar handleGeneNameSearch={handleGeneNameSearch}/>
+        <Switch>
+            {publicRoutes}
+            {modeContext==='private' ? privateRoutes : null}
+
+            <Route path="/target"></Route>
+            <Route path="/gallery" component={Gallery}/>
+            <Route path="/about" component={About}/>
+            <Route path="/howto" component={HowTo}/>
+            <Route path="/privacy" component={Privacy}/>
+            <Route path="/contact" component={Contact}/>
+            <Route><div className="f2 pa3 w-100 ma">Page not found</div></Route>
+        </Switch>
+        </>
+    );
 
     return (
         <>
-            <Navbar handleGeneNameSearch={handleGeneNameSearch}/>
-            <Switch>
-                <Route path="/" exact={true} render={props => (
-                        <Home {...props} handleGeneNameSearch={handleGeneNameSearch}/>
-                    )}
-                />
-                
-                {publicCellLineRoutes}
-                {modeContext==='private' ? privateCellLineRoutes : null}
-
-                <Route path="/target"></Route>
-                <Route path="/gallery" component={Gallery}/>
-                <Route path="/umap" component={UMAPContainer}/>
-                <Route path="/dashboard" component={Dashboard}/>
-
-                <Route><div className="f2 pa3 w-100 ma">Page not found</div></Route>
-            </Switch>
-            {searchAlert}
+        <Switch>
+            <Route path="/" exact={true} render={props => (
+                <Home {...props} handleGeneNameSearch={handleGeneNameSearch}/>
+            )}/>
+            <Route>{mainApp}</Route>
+        </Switch>
+        <Footer/>
         </>
-    )
+    );
 }
+
 
 let appMode = settings.defaultAppMode;
 
@@ -265,7 +280,6 @@ ReactDOM.render(
         <settings.ModeContext.Provider value={appMode}>
             <App/>
         </settings.ModeContext.Provider>
-    </BrowserRouter>, 
+    </BrowserRouter>,
     document.getElementById('root')
 );
-

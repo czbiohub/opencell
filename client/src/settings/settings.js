@@ -8,12 +8,11 @@ const numZSlices = 27;
 
 // the type of mass-spec clustering results to display
 const clusteringAnalysisType = 'primary:mcl_i3.0_haircut:keepcore_subcluster:mcl_hybrid_stoichs_7.0_1113';
-
-'primary:mcl_i3.0_haircut:keepcore_subcluster:mcl_hybrid_stoichs_3.0_20210111'
+// 'primary:mcl_i3.0_haircut:keepcore_subcluster:mcl_hybrid_stoichs_3.0_20210111'
 
 // constants defined by webpack at buildtime
-let apiUrl = API_URL;
-let defaultAppMode = DEFAULT_APP_MODE;
+let apiUrl = `${APP_SERVER==='ess' ? 'http' : 'https'}://${API_URL}`;
+let defaultAppMode = APP_MODE;
 let gaTrackingId = GA_TRACKING_ID;
 
 const ModeContext = React.createContext();

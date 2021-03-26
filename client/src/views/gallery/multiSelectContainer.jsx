@@ -72,6 +72,7 @@ export default class MultiSelectContainer extends Component {
             <MultiSelect
                 fill={true}
                 placeholder={''}
+                popoverProps={{minimal: true}}
                 items={this.props.items}
                 itemRenderer={this.renderItem}
                 onItemSelect={this.handleItemSelect}

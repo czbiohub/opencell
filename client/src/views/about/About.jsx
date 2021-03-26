@@ -10,13 +10,16 @@ import "@blueprintjs/core/lib/css/blueprint.css";
 import CellGraphic from './CellGraphic.jsx';
 import './About.scss';
 
-const Link = props => <a className='about-page-link' target='_blank' href={props.href}>{props.children}</a>
+
+const Link = props => (
+    <a className='about-page-link' target={props.new ? '_blank' : undefined} href={props.href}>{props.children}</a>
+);
+
 
 const Lightbox = props => {
-
     const [visible, setVisible] = useState(false);
     const lightboxContainer = (
-        <div className='lightbox-container' onClick={() => setVisible(false)}>
+        <div className='howto-lightbox-container' onClick={() => setVisible(false)}>
             <div className='pa3 bg-white br4'>
                 <div className='w-100 f2 b tc'>{props.title}</div>
                 {props.children}
@@ -30,74 +33,89 @@ const Lightbox = props => {
 };
 
 
-export default function About (props) {
+export function About (props) {
     return (
-        <div className='w-100 pt4 pl5 pr5 f5' style={{minWidth: '1200px'}}>
-
+        <div className='w-100 pt4 pl5 pr5 pb3 f5 about-page-container' style={{minWidth: '1200px'}}>
 
             {/* first row - logo and welcome blurb */}
             <div className='w-100 flex items-center'>
 
-                {/* large opencell logo */}
-                <div className='' style={{width: '220px'}}>
+                {/* large opencell logo - hard-coded width to match the SVG width */}
+                <div className='pr5' style={{width: '300px'}}>
                     <CellGraphic/>
-                    {/* <img src='/assets/images/opencell_logo_v2.png'/> */}
                 </div>
 
                 {/* welcome blurb */}
-                <div className='w-70 pl5'>
-                    <div className='w-100 f2'>Welcome to OpenCell!</div>
+                <div className='w-60 pl3'>
+                    <div className='w-100 f3'>About OpenCell</div>
                     <div className='w-100 pt2'>
                         <p>
-                        OpenCell is a collection of localization and interactome measurements
-                        for human proteins. It is a collaboration between 
-                        the <Link href='https://www.czbiohub.org/manuel-leonetti-intracellular-architecture/'>Leonetti group</Link> at
-                        the Chan Zuckerberg Biohub and 
-                        the <Link href='https://www.biochem.mpg.de/mann'>Mann Lab</Link> at 
-                        the Max Plank Institute for Biochemistry, along with many other colleagues. 
+                            OpenCell is a proteome-scale collection of protein localization and interaction measurements
+                            for a library of endogenously tagged human proteins.
+                            This website provides tools to access and visualize the OpenCell dataset;
+                            our hope is that this will facilitate the use of our data for biological discovery and hypothesis generation
+                            by the broader biomedical research community.
                         </p>
                         <p>
-                        This project is still under development. Thanks for being an alpha tester!
-                        We ask that you keep in mind a few important points:
+                            OpenCell is a collaboration between
+                            the <Link new href='https://www.czbiohub.org/manuel-leonetti-intracellular-architecture/'>
+                                Leonetti group
+                            </Link> at
+                            the Chan Zuckerberg Biohub and
+                            the <Link new href='https://www.biochem.mpg.de/mann'>Mann Lab</Link> at
+                            the Max Plank Institute for Biochemistry, and many other collaborators.
+                        </p>
+                        <p>
+                            Please note that the site is best viewed using a modern web browser (e.g., Chrome or Firefox)
+                            on a laptop or desktop computer.
+                        </p>
+
+                        <p>
+                            There are a few ways to start using the site:
                         </p>
                         <ul className='about-page-bullets'>
-                            <li>
-                            <b>Please keep our data confidential and do not share login credentials.</b>
-                            </li>
-                            <li>
-                            We use the canonical gene names defined by Uniprot and other reference databases;
-                            for example, 'CLTA' for clathrin light chain A and 'ACTB' for beta-actin. 
-                            </li>
-                            <li>
-                            At the moment, this website is best viewed using either Firefox or Chrome
-                            in a wide browser window on a laptop or desktop computer screen.
-                            </li>
-                            <li>
-                            We need your feedback! Write to us 
-                            at <Link href='mailto:opencell@czbiohub.org'>opencell@czbiohub.org</Link> to
-                            tell us what you like or dislike.
-                            </li>
+                        <li>
+                            Search for a protein by name or keyword (e.g., 'ACTB' or 'actin')
+                            using the search box in the top right corner of this page
+                        </li>
+                        <li>
+                            Explore the microscopy images for all tagged proteins in the dataset
+                            on <Link href='./gallery'>the gallery page</Link>
+                        </li>
+                        <li>
+                            Browse <Link href='./target'>a list</Link> of all tagged proteins in the dataset
+                        </li>
+                        <li>
+                            Read the <Link href='./howto'>how-to guide</Link> for
+                            details about how to use the site and interpret the data
+                        </li>
                         </ul>
-                        <p>
-                        To get started, use the search box at the top right of the page to search
-                        for a protein by name. Alternatively, jump to the page
-                        for one of our (subjectively) favorite proteins: <a href='./target/701'>POLR2F</a>, 
-                        a shared subunit of RNA polymerases.
+
+                        <p className='b'>
+                            We welcome feedback!
+                            Please <Link href='./contact'>contact us</Link> to
+                            tell us what you like or dislike.
                         </p>
+
+                        <div className='pt3 w-100 flex justify-center see-more-link'>
+                            <a target='_blank' href='https://www.biorxiv.org/'>
+                                Check out our preprint for more information
+                            </a>
+                        </div>
+
                     </div>
                 </div>
             </div>
 
-
             {/* second row - things to know about the data */}
-            <div className='w-100 pt3'>
+            <div className='w-100 pt4'>
                 <div className='w-100 f3 bb b--black-30'>About the data</div>
 
                 <div className='w-100 f6 pt2 flex items-center'>
 
                     <div className='about-item-container' style={{flex: '1 1 20%'}}>
                         <div className='about-item-icon-container'>
-                            <img src='/assets/images/cells_icon.png'/>
+                            <img src='/assets/images/icon_cells.png'/>
                         </div>
                         <div className='about-item-caption'>
                             All of our endogenous tags are in the <b>HEK293T</b> human cell line
@@ -106,85 +124,145 @@ export default function About (props) {
 
                     <div className='about-item-container' style={{flex: '1 1 35%'}}>
                         <div className='about-item-icon-container'>
-                            <img src='/assets/images/crispr_icon.png'/>
-                            <img src='/assets/images/sfp_tagging_icon.png'/>
+                            <img src='/assets/images/icon_crispr.png'/>
+                            <img src='/assets/images/icon_sfp_tagging.png'/>
                         </div>
                         <div className='about-item-caption'>
                             <p>
-                                Using CRISPR, 
-                                we <Link href='https://www.pnas.org/content/113/25/E3501'>endogenously tag</Link> our 
-                                target proteins 
-                                with <Link href='https://www.nature.com/articles/s41467-017-00494-8'>split-mNeonGreen<sub>2</sub></Link>.
+                                Using CRISPR,
+                                we <Link new href='https://www.pnas.org/content/113/25/E3501'>endogenously tag</Link> our
+                                target proteins
+                                with <Link new href='https://www.nature.com/articles/s41467-017-00494-8'>split-mNeonGreen<sub>2</sub></Link>.
                             </p>
                             <p>
-                                Whenever possible, we use existing literature or 3D protein structures 
-                                to determine the tag insertion site (N- or C-terminus). 
+                                Whenever possible, we use existing literature or 3D protein structures
+                                to determine the tag insertion site (N- or C-terminus).
                             </p>
                         </div>
                     </div>
 
                     <div className='about-item-container' style={{flex: '1 1 22%'}}>
                         <div className='about-item-icon-container'>
-                            <img src='/assets/images/microscope_icon.png'/>
+                            <img src='/assets/images/icon_microscope.png'/>
                         </div>
                         <div className='about-item-caption'>
-                            All images are of <b>living cells</b> and were acquired 
-                            using a spinning-disk confocal microscope with a 63x 1.45NA objective. 
+                            All images are of <b>living cells</b> and were acquired
+                            using a spinning-disk confocal microscope with a 63x 1.47NA objective.
                         </div>
                     </div>
 
                     <div className='about-item-container' style={{flex: '1 1 22%'}}>
                         <div className='about-item-icon-container'>
-                            <img src='/assets/images/mass_spec_icon.png'/>
+                            <img src='/assets/images/icon_mass_spec.png'/>
                         </div>
                         <div className='about-item-caption'>
                             We use an anti-mNeonGreen nanobody for immunoprecipitation and mass spectrometry.
                         </div>
                     </div>
                 </div>
+
             </div>
 
+        </div>
+    );
+};
 
-            {/* third row - explanation of website pages */}
-            <div className='w-100 pt4'>
-                <div className='w-100 f3 bb b--black-30'>About this website</div>
 
-                <div className='w-100 f6 pt3 flex items-center'>
+export function HowTo (props) {
+    return (
+        <div className='w-100 pt4 pl5 pr5 pb3 f5' style={{minWidth: '1200px'}}>
+            <div className='w-100 f3 bb b--black-30'>How to use this website</div>
 
-                    <div className='about-item-container' style={{flex: '1 1 30%'}}>
-                        <Lightbox className='about-item-screenshot-container' title='Target page'>
-                            <img src='/assets/images/2020-11-13-opencell-guide-target-page.jpeg'/>
-                        </Lightbox>
-                        <div className='about-item-caption'>
-                            <b>The target page</b> shows all of the imaging and interactome data
-                            for a selected OpenCell target.
-                        </div>
+            <div className='w-100 f6 pt3 flex items-center'>
+                <div className='howto-item-container' style={{flex: '1 1 30%'}}>
+                    <Lightbox className='howto-item-screenshot-container' title='Target page'>
+                        <img src='/assets/images/2020-11-13-opencell-guide-target-page.jpeg'/>
+                    </Lightbox>
+                    <div className='howto-item-caption'>
+                        <b>The target page</b> shows all of the imaging and interactome data
+                        for a selected OpenCell target.
                     </div>
+                </div>
 
-                    <div className='about-item-container' style={{flex: '1 1 30%'}}>
-                        <Lightbox className='about-item-screenshot-container' title='Interactor page'>
-                            <img src='/assets/images/2020-11-13-opencell-guide-interactor-page.jpeg'/>
-                        </Lightbox>
-                        <div className='about-item-caption'>
-                            <b>The interactor page</b> shows the interactome data for more than 4,000
-                            additional proteins that we have not tagged but that are present in our mass spec datasets.
-                        </div>
+                <div className='howto-item-container' style={{flex: '1 1 30%'}}>
+                    <Lightbox className='howto-item-screenshot-container' title='Interactor page'>
+                        <img src='/assets/images/2020-11-13-opencell-guide-interactor-page.jpeg'/>
+                    </Lightbox>
+                    <div className='howto-item-caption'>
+                        <b>The interactor page</b> shows the interactome data for more than 4,000
+                        additional proteins that we have not tagged but that are present in our mass spec datasets.
                     </div>
+                </div>
 
-                    <div className='about-item-container' style={{flex: '1 1 30%'}}>
-                        <Lightbox className='about-item-screenshot-container' title='Gallery page'>
-                            <img src='/assets/images/2020-11-13-opencell-guide-gallery-page.jpeg'/>
-                        </Lightbox>
-                        <div className='about-item-caption'>
-                            <b>The gallery page</b> displays a tiled array of image thumbnails
-                            representing all of the tagged proteins in OpenCell, 
-                            filtered by a user-selected set of localization annotations.
+                <div className='howto-item-container' style={{flex: '1 1 30%'}}>
+                    <Lightbox className='howto-item-screenshot-container' title='Gallery page'>
+                        <img src='/assets/images/2020-11-13-opencell-guide-gallery-page.jpeg'/>
+                    </Lightbox>
+                    <div className='howto-item-caption'>
+                        <b>The gallery page</b> displays a tiled array of image thumbnails
+                        representing all of the tagged proteins in OpenCell,
+                        filtered by a user-selected set of localization annotations.
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    );
+};
+
+
+export function Privacy (props) {
+    return (
+        <div className='w-100 pt4 flex justify-center about-page-container'>
+            <div className='w-70'>
+                <div className='w-100 f3 bb b--black-30'>OpenCell privacy policy</div>
+                <div className='w-100 pt2'>
+                    <p>
+
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+
+export function Contact (props) {
+    return (
+        <div className='w-100 pt4 flex justify-center about-page-container'>
+            <div className='w-70 pl5 pr5'>
+                <div className='w-100 f3 bb b--black-30'>Contact us</div>
+                <div className='w-100 f5 pt2'>
+                    <p>
+                        OpenCell is a work in progress! We welcome comments, feedback, and bug reports.
+                        We would also love to hear about how you are using our data,
+                        and <b>especially if our data helped you to generate new biological hypotheses or insights. </b>
+                    </p>
+
+                    <div className='w-100 pt3 flex flex-row justify-around contact-links-container'>
+                        <div className='contact-link-container'>
+                            <a target='_blank' href='mailto:opencell@czbiohub.org'>
+                                <img src='/assets/images/icon-email.svg' style={{opacity: 0.5}}/>
+                                <div className='contact-link-caption'>Email us</div>
+                            </a>
+                        </div>
+                        <div className='contact-link-container'>
+                            <a target='_blank' href='https://twitter.com/OpenCellCZB'>
+                                <img src='/assets/images/icon-twitter.png'/>
+                                <div className='contact-link-caption'>Follow us</div>
+                            </a>
+                        </div>
+                        <div className='contact-link-container'>
+                            <a target='_blank' href='https://github.com/czbiohub/opencell'>
+                                <img src='/assets/images/icon-github.png'/>
+                                <div className='contact-link-caption'>Report bugs</div>
+                            </a>
                         </div>
                     </div>
 
                 </div>
             </div>
-
         </div>
     );
 };

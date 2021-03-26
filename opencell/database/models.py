@@ -118,24 +118,28 @@ class CellLine(Base):
 
     # one cell line to one manual annotation
     annotation = db.orm.relationship(
-        'CellLineAnnotation', back_populates='cell_line', uselist=False
+        'CellLineAnnotation', back_populates='cell_line', uselist=False, passive_deletes='all'
     )
 
     # one cell line to one FACS dataset
     facs_dataset = db.orm.relationship(
-        'FACSDataset', back_populates='cell_line', uselist=False
+        'FACSDataset', back_populates='cell_line', uselist=False, passive_deletes='all'
     )
 
     # one cell line to one sequencing dataset
     sequencing_dataset = db.orm.relationship(
-        'SequencingDataset', back_populates='cell_line', uselist=False
+        'SequencingDataset', back_populates='cell_line', uselist=False, passive_deletes='all'
     )
 
     # one cell_line to many FOVs
-    fovs = db.orm.relationship('MicroscopyFOV', back_populates='cell_line')
+    fovs = db.orm.relationship(
+        'MicroscopyFOV', back_populates='cell_line', passive_deletes='all'
+    )
 
     # one cell_line to many pulldowns
-    pulldowns = db.orm.relationship('MassSpecPulldown', back_populates='cell_line')
+    pulldowns = db.orm.relationship(
+        'MassSpecPulldown', back_populates='cell_line', passive_deletes='all'
+    )
 
     def __repr__(self):
         return (
@@ -491,7 +495,9 @@ class FACSDataset(Base):
 
     __tablename__ = 'facs_dataset'
 
-    cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'), primary_key=True)
+    cell_line_id = db.Column(
+        db.Integer, db.ForeignKey('cell_line.id', ondelete='CASCADE'), primary_key=True
+    )
 
     # histograms
     histograms = db.Column(postgresql.JSONB)
@@ -539,7 +545,9 @@ class SequencingDataset(Base):
 
     __tablename__ = 'sequencing_dataset'
 
-    cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'), primary_key=True)
+    cell_line_id = db.Column(
+        db.Integer, db.ForeignKey('cell_line.id', ondelete='CASCADE'), primary_key=True
+    )
 
     # extracted properties (percent HDR among all alleles and modified alleles)
     scalars = db.Column(postgresql.JSONB)
@@ -614,7 +622,9 @@ class MicroscopyFOV(Base):
     id = db.Column(db.Integer, primary_key=True)
 
     # many FOVs to one cell_line
-    cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'), index=True)
+    cell_line_id = db.Column(
+        db.Integer, db.ForeignKey('cell_line.id', ondelete='CASCADE'), index=True
+    )
     cell_line = db.orm.relationship('CellLine', back_populates='fovs', uselist=False)
 
     # many FOVs to one microscopy_dataset
@@ -826,7 +836,7 @@ class CellLineAnnotation(Base):
     id = db.Column(db.Integer, primary_key=True)
 
     # one anotation to one cell_line
-    cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'))
+    cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id', ondelete='CASCADE'))
     cell_line = db.orm.relationship('CellLine', back_populates='annotation', uselist=False)
 
     date_created = db.Column(db.DateTime(timezone=True), server_default=db.sql.func.now())
@@ -899,7 +909,7 @@ class MassSpecPulldown(Base):
 
     __tablename__ = 'mass_spec_pulldown'
     id = db.Column(db.Integer, primary_key=True)
-    cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'))
+    cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id', ondelete='CASCADE'))
     pulldown_plate_id = db.Column(
         db.String, db.ForeignKey('mass_spec_pulldown_plate.id'), nullable=False
     )
@@ -924,16 +934,16 @@ class MassSpecPulldown(Base):
     cell_line = db.orm.relationship('CellLine', back_populates='pulldowns', uselist=False)
 
     # one pulldown to many hits
-    hits = db.orm.relationship('MassSpecHit', back_populates='pulldown')
+    hits = db.orm.relationship('MassSpecHit', back_populates='pulldown', passive_deletes='all')
 
-    # one pulldown to one pulldown_plate
+    # many pulldowns to one pulldown_plate
     pulldown_plate = db.orm.relationship(
         'MassSpecPulldownPlate', back_populates='pulldowns', uselist=False
     )
 
     # the cached cytoscape network for the pulldown
     network = db.orm.relationship(
-        'MassSpecPulldownNetwork', back_populates='pulldown', uselist=False
+        'MassSpecPulldownNetwork', back_populates='pulldown', uselist=False, passive_deletes='all'
     )
 
     def get_target_name(self):
@@ -1138,9 +1148,12 @@ class MassSpecHit(Base):
         db.String, db.ForeignKey('mass_spec_protein_group.id'), index=True
     )
 
-    # foreign key of each pulldown target from pulldown table
+    # many hits to one pulldown
     pulldown_id = db.Column(
-        db.Integer, db.ForeignKey('mass_spec_pulldown.id'), nullable=False, index=True
+        db.Integer,
+        db.ForeignKey('mass_spec_pulldown.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True,
     )
 
     # p-value of the hit's MS intensity
@@ -1190,32 +1203,28 @@ class MassSpecHit(Base):
 class MassSpecClusterHeatmap(Base):
     """
     This table contains hard-coded cluster memberships of interactions as well as
-    coordinates for hierarchical layout of cluster heatmap. Used for cluster heatmap
-    visualization in OpenCell
+    coordinates for hierarchical layout of cluster heatmap.
+    Used by resources.PulldownClusters and to determine cluster memberships
+    during target network construction in resources.PulldownNetwork
     """
-
     __tablename__ = 'mass_spec_cluster_heatmap'
     id = db.Column(db.Integer, primary_key=True)
 
-    # cluster group id - in a numerical range
+    # cluster, subcluster, and core complex ids
     cluster_id = db.Column(db.Integer, nullable=False)
-
-    # subcluster group id - in a numerical range
     subcluster_id = db.Column(db.Integer, nullable=True)
-
-    # core complex id - in a numerical range
     core_complex_id = db.Column(db.Integer, nullable=True)
 
-    # hit id that the heatmap coordinate refers to in target-prey match
-    hit_id = db.Column(db.Integer, db.ForeignKey('mass_spec_hit.id'), nullable=False)
+    # the hit that the heatmap coordinate refers to
+    hit_id = db.Column(
+        db.Integer, db.ForeignKey('mass_spec_hit.id', ondelete='CASCADE'), nullable=False
+    )
 
-    # row index of the heat map
+    # row and column index of the heat map
     row_index = db.Column(db.Integer, nullable=False)
-
-    # col index of the heatmap
     col_index = db.Column(db.Integer, nullable=False)
 
-    # clustering analysis identifier describing the cluster pipeline used.
+    # clustering analysis identifier describing the cluster pipeline used
     analysis_type = db.Column(db.String, nullable=False)
 
     # many cluster rows to one mass spec hit
@@ -1234,7 +1243,7 @@ class MassSpecPulldownNetwork(Base):
     id = db.Column(db.Integer, primary_key=True)
 
     # one network to one pulldown
-    pulldown_id = db.Column(db.Integer, db.ForeignKey('mass_spec_pulldown.id'))
+    pulldown_id = db.Column(db.Integer, db.ForeignKey('mass_spec_pulldown.id', ondelete='CASCADE'))
     pulldown = db.orm.relationship(
         'MassSpecPulldown', back_populates='network', uselist=False
     )
@@ -1291,7 +1300,7 @@ class CellLineEmbeddingPosition(Base):
     embedding_id = db.Column(
         db.Integer, db.ForeignKey('cell_line_embedding.id', ondelete='CASCADE')
     )
-    cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'))
+    cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id', ondelete='CASCADE'))
     position_x = db.Column(db.Float, nullable=False)
     position_y = db.Column(db.Float, nullable=False)
 
@@ -1320,7 +1329,7 @@ class ThumbnailTilePosition(Base):
     id = db.Column(db.Integer, primary_key=True)
 
     tile_id = db.Column(db.Integer, db.ForeignKey('thumbnail_tile.id', ondelete='CASCADE'))
-    cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id'))
+    cell_line_id = db.Column(db.Integer, db.ForeignKey('cell_line.id', ondelete='CASCADE'))
 
     tile_row = db.Column(db.Integer, nullable=False)
     tile_column = db.Column(db.Integer, nullable=False)

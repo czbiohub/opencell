@@ -1,14 +1,137 @@
 
-div {
-    border: 1px solid #f99;
+.home-banner-container {
+    line-height: 0;
+    padding-left: 15px;
+    padding-right: 15px;
+    background-color: #eee;
+    img {
+        mix-blend-mode: darken;
+    }
 }
 
-.title {
-    font-size: 60px;
+.home-container {
+    min-width: 1100px;
+    max-width: 1400px;
+}
+
+.home-logo-container {
+    img {
+        width: 250px;
+    }
+}
+
+.home-title {
+    color: #05aeef;
+    font-size: 72px;
     font-weight: bold;
+    font-family: "Lato";
+    //border-bottom: 1px solid #333;
 }
 
-.title-caption {
+.home-title-caption {
     font-size: 20px;
-    font-weight: 100;
+    font-weight: 200;
+    font-family: "Nunito Sans";
+    line-height: 1.2;
+}
+
+.home-menu-container {
+    padding-top: 10px;
+    padding-bottom: 10px;
+    padding-right: 50px;
+    padding-left: 50px;
+
+    border-style: solid;
+    border-color: #eee;
+    border-width: 1px 0 1px 0;
+    // background-color: #eee;
+    // border-radius: 10px;
+
+    font-size: 18px;
+    font-weight: bold;
+    a, a:visited {
+        padding-left: 30px;
+        padding-right: 30px;
+        color: #555;
+        &:hover {
+            text-decoration: none;
+            color: #999;
+        }
+    }
+}
+
+.search-bar-caption {
+    font-size: 24px;
+    font-weight: 300;
+    font-family: "Lato";
+}
+
+.search-bar-hint {
+    color: #999;
+    font-size: 14px;
+    a {
+        color: inherit;
+        text-decoration: underline;
+        &:hover {
+            color: #333;
+        }
+    }
+}
+
+@mixin input-shadow {
+    //box-shadow: 0 0 5px rgb(167, 167, 167);
+    //-webkit-box-shadow: 0 0 5px rgb(167, 167, 167);
+    border: 1px solid #aaa;
+    box-shadow: none;
+    -webkit-box-shadow: none;
+}
+
+.search-bar-container {
+    input {
+        height: 36px;
+        font-size: 16px;
+        background-color: white;
+        @include input-shadow;
+
+        // remove the blue outline
+        &:focus {
+            @include input-shadow;
+        }
+    }
+    ::placeholder, ::-webkit-input-placeholder {
+        vertical-align: center;
+    }
+    .bp3-popover-arrow {
+        left: 0px !important;
+    }
+}
+
+.home-thumbnail-container {
+    cursor: pointer;
+
+    img {
+        height: 120px;
+        width: 120px;
+        border-radius: 10px;
+    }
+
+    &:hover {
+        opacity: 0.7;
+    }
+
+    a:hover {
+        text-decoration: none;
+    }
+}
+
+.see-more-link {
+    font-size: 24px;
+    font-family: "Lato";
+    font-weight: 300;
+    a {
+        color: #666;
+        &:hover {
+            color: #333;
+        }
+    }
 }

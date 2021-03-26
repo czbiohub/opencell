@@ -7,11 +7,16 @@ html {
 	color: rgba(0, 0, 0, .7);
 }
 
-.body {
+#root {
     font-family: "Nunito Sans", sans-serif;
 	color: #333;
 	line-height: 1.15;
+    min-height: 100vh;
+    position: relative;
+    // this is to leave space for the absolutely-positioned footer
+    padding-bottom: 50px;
 }
+
 
 abbr {
     text-decoration: none !important;
@@ -110,12 +115,12 @@ button:focus {
 }
 
 
-/* 
+/*
 Hacks to set the default style for input placeholder text
 note that pseudo-elements can't be listed, so these blocks are duplicates
 */
 /* firefox 19+ */
-::-moz-placeholder { 
+::-moz-placeholder {
     color: rgb(154, 154, 154);
     font-size: 14px;
     font-weight: normal;
@@ -123,7 +128,7 @@ note that pseudo-elements can't be listed, so these blocks are duplicates
 }
 
 /* Firefox 18- */
-:-moz-placeholder { 
+:-moz-placeholder {
     color: rgb(154, 154, 154);
     font-size: 14px;
     font-weight: normal;
@@ -162,6 +167,11 @@ label.bp3-label {
 
 .bp3-button.bp3-minimal {
 	border-radius: 0px;
+}
+
+// active menu item in blueprint select dropdown menus
+.bp3-menu-item.bp3-intent-primary.bp3-active {
+    background-color: #5791b7 !important;
 }
 
 .bp3-button-custom {

@@ -30,7 +30,7 @@ function Thumbnail (props) {
 
     return (
         <div className={divClassName} onClick={props.onClick}>
-            <img 
+            <img
                 width={66}
                 height={66}
                 src={`data:image/jpg;base64,${props.thumbnail?.data}`}
@@ -85,8 +85,8 @@ function ROISelector (props) {
     // or the ROIThumbnailList component (to show the thumbnails directly)
 
     if (props.showMenu) return (
-        <Select filterable={false} {...props}>                     
-            <Button 
+        <Select filterable={false} {...props}>
+            <Button
                 className="bp3-button-custom"
                 rightIcon="double-caret-vertical"
                 text={`FOV ${props.activeItem.fov_id}`}
@@ -219,7 +219,7 @@ export default class ViewerContainer extends Component {
 
 
     render () {
-        
+
         const zIndexToMicrons = (index) => {
             const micronsPerSlice = 0.4;
             return (index * micronsPerSlice).toFixed(1);
@@ -232,7 +232,7 @@ export default class ViewerContainer extends Component {
                 </div>
             );
         }
-        
+
         // the current display state
         const displayState = Object.fromEntries(
             Object.keys(this.defaultDisplayState).map(key => [key, this.state[key]])
@@ -241,8 +241,8 @@ export default class ViewerContainer extends Component {
         let viewer;
         if (this.state.mode==='Volume') {
             viewer = (
-                <VolumeViewer 
-                    {...this.state} 
+                <VolumeViewer
+                    {...this.state}
                     volumes={this.volumes}
                     setCameraZoom={cameraZoom => this.setState({cameraZoom})}
                     setCameraPosition={cameraPosition => this.setState({cameraPosition})}
@@ -262,8 +262,8 @@ export default class ViewerContainer extends Component {
             }
             viewer = (
                 <SliceViewer
-                    loaded={loaded} 
-                    volumes={volumes} 
+                    loaded={loaded}
+                    volumes={volumes}
                     mode={this.state.mode}
                     channel={this.state.channel}
                     zIndex={this.state.zIndex}
@@ -281,7 +281,7 @@ export default class ViewerContainer extends Component {
         // the current FOV and ROI
         const fov = this.props.fovs.filter(fov => fov.metadata.id == this.props.fovId)[0];
         const roi = this.props.rois.filter(roi => roi.id == this.props.roiId)[0];
-    
+
         return (
             // use relative position so that the loading-overlay div only overlays this component
             <div className='relative pt0'>
@@ -304,8 +304,8 @@ export default class ViewerContainer extends Component {
                         <ROISelector
                             showMenu={false}
                             activeItem={roi}
-                            items={this.props.rois} 
-                            itemRenderer={roiItemRenderer} 
+                            items={this.props.rois.slice(0, 5)}
+                            itemRenderer={roiItemRenderer}
                             itemListRenderer={props => {
                                 return (
                                     <div className="roi-select-menu-container">
@@ -327,27 +327,27 @@ export default class ViewerContainer extends Component {
                     {/* top row */}
                     {/* mode buttons */}
                     <div className='flex'>
-                        <ButtonGroup 
-                            label='' 
+                        <ButtonGroup
+                            label=''
                             values={['Proj', 'Slice', 'Volume']}
                             labels={['2D projection', '2D slice', '3D']}
                             activeValue={this.state.mode}
                             onClick={value => this.setState({mode: value})}
                         />
                     </div>
-                        
+
                     {/* bottom row */}
                     <div className='w-100 flex flex-row pt2'>
 
                         {/* image quality buttons */}
-                        <Tooltip 
+                        <Tooltip
                             intent='warning'
                             targetClassName='w-100'
                             content='Image quality is only adjustable in z-slice and volume-rendering modes'
                             disabled={this.state.mode!=='Proj'}
                         >
-                            <SimpleSelect 
-                                label='Quality' 
+                            <SimpleSelect
+                                label='Quality'
                                 values={['Auto', 'High']}
                                 activeValue={this.state.imageQuality}
                                 onClick={value => this.setState({imageQuality: value})}
@@ -358,8 +358,8 @@ export default class ViewerContainer extends Component {
 
                         {/* channel buttons */}
                         <div className='pr3'>
-                            <SimpleSelect 
-                                label='Channel' 
+                            <SimpleSelect
+                                label='Channel'
                                 values={['405', '488', 'Both']}
                                 labels={['Nucleus', 'Target', 'Both channels']}
                                 activeValue={this.state.channel}
@@ -378,8 +378,8 @@ export default class ViewerContainer extends Component {
             <div className='flex flex-wrap w-100 pt2 pb2'>
 
                 {/* scale bar label */}
-                <div 
-                    className='scale-bar-label' 
+                <div
+                    className='scale-bar-label'
                     style={{visibility: this.state.mode==='Volume' ? 'hidden' : 'visible'}}
                 >
                     10<span>&micro;m</span>
@@ -412,15 +412,15 @@ export default class ViewerContainer extends Component {
                         </b>
                     </div>
                     <div className='w-70'>
-                        <Tooltip 
+                        <Tooltip
                             intent='warning'
                             targetClassName='w-100'
                             content='Please switch to 2D-slice mode to scroll through slices'
                             disabled={this.state.mode==='Slice'}
                         >
-                            <Slider 
-                                min={0} 
-                                max={this.numSlices - 1} 
+                            <Slider
+                                min={0}
+                                max={this.numSlices - 1}
                                 stepSize={1}
                                 labelStepSize={50}
                                 showTrackFill={false}
@@ -437,9 +437,9 @@ export default class ViewerContainer extends Component {
                     <div className='pb1'>
                         {`DNA intensity range: ${this.state.min405}% to ${this.state.max405}%`}
                     </div>
-                    <RangeSlider 
-                        min={0} 
-                        max={150} 
+                    <RangeSlider
+                        min={0}
+                        max={150}
                         stepSize={1}
                         labelStepSize={50}
                         labelRenderer={value => String(Math.round(value))}
@@ -450,9 +450,9 @@ export default class ViewerContainer extends Component {
                         {`DNA intensity gamma: ${this.state.gamma405.toFixed(2)}`}
                     </div>
                     <Slider
-                        min={0.5} 
-                        max={1.5} 
-                        stepSize={0.05} 
+                        min={0.5}
+                        max={1.5}
+                        stepSize={0.05}
                         labelStepSize={0.5}
                         showTrackFill={false}
                         value={this.state.gamma405}
@@ -465,9 +465,9 @@ export default class ViewerContainer extends Component {
                     <div className='pb1'>
                         {`Protein intensity range: ${this.state.min488}% to ${this.state.max488}%`}
                     </div>
-                    <RangeSlider 
-                        min={0} 
-                        max={150} 
+                    <RangeSlider
+                        min={0}
+                        max={150}
                         stepSize={1}
                         labelStepSize={50}
                         labelRenderer={value => String(Math.round(value))}
@@ -478,9 +478,9 @@ export default class ViewerContainer extends Component {
                         {`Protein intensity gamma: ${this.state.gamma488.toFixed(2)}`}
                     </div>
                     <Slider
-                        min={0.5} 
-                        max={1.5} 
-                        stepSize={0.05} 
+                        min={0.5}
+                        max={1.5}
+                        stepSize={0.05}
                         labelStepSize={0.5}
                         showTrackFill={false}
                         value={this.state.gamma488}
@@ -488,7 +488,7 @@ export default class ViewerContainer extends Component {
                     />
                 </div>
             </div>
-            
+
             {this.props.showMetadata ? (
                 <>
                     <SectionHeader title='FOV metadata'/>

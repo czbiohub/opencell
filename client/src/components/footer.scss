@@ -1,0 +1,19 @@
+
+.footer-container {
+    width: 100%;
+    background-color: #eee;
+
+    // position the footer
+    // this is hackish and requires that the app's root node have a bottom padding of 50px
+    position: absolute;
+    bottom: 0;
+    height: 50px;
+    span {
+        padding-left: 10px;
+        padding-right: 10px;
+        border-right: 1px solid black;
+        &:last-child {
+            border: none;
+        }
+    }
+}

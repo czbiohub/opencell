@@ -7,15 +7,15 @@ import ResponsiveXYFrame from "semiotic/lib/ResponsiveXYFrame";
 
 
 class ExpressionPlot extends Component {
-    // A scatterplot of two measures of target expression: 
+    // A scatterplot of two measures of target expression:
     // tpm from RNAseq and fluorescence intensity from FACS
 
     constructor (props) {
 
         super(props);
-        
+
         // highlight the selected cell line's dot in blue
-        this.selectedCellLineColor = '#01a1dd';
+        this.selectedCellLineColor = '#00a1dd';
 
         // y-axis is tpm from RNA-seq
         const yExtent = [0, 4];
@@ -39,7 +39,7 @@ class ExpressionPlot extends Component {
 
         // legend
         const foregroundGraphics = [(
-            <text key={'active'} x={70} y={30} style={{fill: chroma(this.selectedCellLineColor).saturate()}}>
+            <text key={'active'} x={70} y={30} style={{fill: chroma(this.selectedCellLineColor)}}>
                 <tspan fontSize="14">{'● Selected cell line'}</tspan>
             </text>
         ),(
@@ -50,7 +50,7 @@ class ExpressionPlot extends Component {
 
         // hard-coded constant XYFrame props
         // note that the width here is ignored by ResponsiveXYFrame
-        this.frameProps = {  
+        this.frameProps = {
             size: [400, 250],
             margin: {left: 60, bottom: 60, right: 10, top: 10},
             xExtent,
@@ -112,7 +112,7 @@ class ExpressionPlot extends Component {
         this.setState({loaded: true});
     }
 
-    
+
     bringActiveDotToFront () {
         const dot = d3.select('g.expression-plot-dot-active').node();
         if (!dot || !dot.parentNode) return;
@@ -135,16 +135,16 @@ class ExpressionPlot extends Component {
 
         const pointClass = (d, i) => {
             return (
-                d.cellLineId===this.props.cellLineId ? 
+                d.cellLineId===this.props.cellLineId ?
                 'expression-plot-dot-active' : 'expression-plot-dot'
             );
         };
 
         return (
-            <ResponsiveXYFrame 
-                responsiveWidth={true} 
-                pointStyle={pointStyle} 
-                pointClass={pointClass} 
+            <ResponsiveXYFrame
+                responsiveWidth={true}
+                pointStyle={pointStyle}
+                pointClass={pointClass}
                 points={this.points}
                 {...this.frameProps}
             />

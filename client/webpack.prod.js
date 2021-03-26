@@ -12,8 +12,9 @@ module.exports = env => {
             publicPath: '/',
         },
         plugins: [
-            new webpack.DefinePlugin({API_URL: '`https://${window.location.host}/api`'}),
-            new webpack.DefinePlugin({DEFAULT_APP_MODE: JSON.stringify(env.appMode)}),
+            new webpack.DefinePlugin({APP_MODE: JSON.stringify(env.appMode)}),
+            new webpack.DefinePlugin({APP_SERVER: JSON.stringify(env.appServer)}),
+            new webpack.DefinePlugin({API_URL: '`${window.location.host}/api`'}),
             new webpack.DefinePlugin({GA_TRACKING_ID: JSON.stringify('UA-181046024-1')}),
         ]
     };

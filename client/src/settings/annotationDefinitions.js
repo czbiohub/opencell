@@ -1,33 +1,34 @@
 
-export const publicLocalizationCategories = [
-    {'name': 'membrane', 'num': 191},
-    {'name': 'vesicles', 'num': 394},
-    {'name': 'er', 'num': 162},
-    {'name': 'golgi', 'num': 112},
-    {'name': 'mitochondria', 'num': 16},
-    {'name': 'centrosome', 'num': 69},
-    {'name': 'cytoskeleton', 'num': 60},
-    {'name': 'chromatin', 'num': 145},
-    {'name': 'nucleoplasm', 'num': 674},
-    {'name': 'nuclear_membrane', 'num': 48},
-    {'name': 'nucleolus_gc', 'num': 100},
-    {'name': 'nucleolus_fc_dfc', 'num': 37},
-    {'name': 'nuclear_punctae', 'num': 152},
-    {'name': 'small_aggregates', 'num': 124},
-    {'name': 'big_aggregates', 'num': 73},
-    {'name': 'cell_contact', 'num': 59},
-    {'name': 'focal_adhesions', 'num': 13},
-    {'name': 'cytoplasmic', 'num': 760},
-];
+export const localizationCategories = [
 
-export const privateLocalizationCategories = [
-    {'name': 'cilia', 'num': 3},
-    {'name': 'diffuse', 'num': 79},
-    {'name': 'textured', 'num': 149},
-    {'name': 'nucleus_cytoplasm_variation', 'num': 117},
-    {'name': 'nucleolar_ring', 'num': 17},
-    {'name': 'peri_golgi', 'num': 0},
-    {'name': 'lysosome', 'num': 0},
+    // public annotations
+    {'name': 'membrane', 'num': 191, status: 'public'},
+    {'name': 'vesicles', 'num': 394, status: 'public'},
+    {'name': 'er', 'num': 162, status: 'public'},
+    {'name': 'golgi', 'num': 112, status: 'public'},
+    {'name': 'mitochondria', 'num': 16, status: 'public'},
+    {'name': 'centrosome', 'num': 69, status: 'public'},
+    {'name': 'cytoskeleton', 'num': 60, status: 'public'},
+    {'name': 'chromatin', 'num': 145, status: 'public'},
+    {'name': 'nucleoplasm', 'num': 674, status: 'public'},
+    {'name': 'nuclear_membrane', 'num': 48, status: 'public'},
+    {'name': 'nucleolus_gc', 'num': 100, status: 'public'},
+    {'name': 'nucleolus_fc_dfc', 'num': 37, status: 'public'},
+    {'name': 'nuclear_punctae', 'num': 152, status: 'public'},
+    {'name': 'big_aggregates', 'num': 73, status: 'public'},
+    {'name': 'cell_contact', 'num': 59, status: 'public'},
+    {'name': 'focal_adhesions', 'num': 13, status: 'public'},
+    {'name': 'cytoplasmic', 'num': 760, status: 'public'},
+
+    // private/hidden annotations
+    {'name': 'cilia', 'num': 3, status: 'private'},
+    {'name': 'diffuse', 'num': 79, status: 'private'},
+    {'name': 'textured', 'num': 149, status: 'private'},
+    {'name': 'nucleus_cytoplasm_variation', 'num': 117, status: 'private'},
+    {'name': 'nucleolar_ring', 'num': 17, status: 'private'},
+    {'name': 'peri_golgi', 'num': 0, status: 'private'},
+    {'name': 'lysosome', 'num': 0, status: 'private'},
+    {'name': 'small_aggregates', 'num': 124, status: 'private'},
 ];
 
 export const qcCategories = [
@@ -79,6 +80,7 @@ export function categoryNameToLabel (categoryName) {
         nucleolus_gc: 'Nucleolus - GC',
         nucleolus_fc_dfc: 'Nucleolus - FC/DFC',
         nucleus_cytoplasm_variation: 'Nucleus-cytoplasm variation',
+        big_aggregates: 'Aggregates',
     };
 
     let label = categoryName.replace(/_/g, ' ');

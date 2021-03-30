@@ -1,7 +1,7 @@
 # OpenCell
 Public repo for the OpenCell database and web app
 
-*This is a public snapshot of the OpenCell repo without test data, deployment scripts, or database credentials. It is meant to document the database schema, data processing methodology, and the architecture of the OpenCell web app as described in our [OpenCell preprint](biorxiv.org).*
+*This is a public snapshot of the OpenCell repo without test data, deployment scripts, or database credentials. It is meant to document the database schema, data processing methodology, and the architecture of the OpenCell web app as described in our [OpenCell preprint](https://www.biorxiv.org/content/10.1101/2021.03.29.437450v1).*
 
 ## Directories
 
